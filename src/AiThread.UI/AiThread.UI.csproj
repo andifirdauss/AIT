@@ -5,6 +5,11 @@
     <ProjectReference Include="..\AiThread.Common\AiThread.Common.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- User guide for the Docs menu. Development reads the repository docs/ folder directly; builds and publishes carry a copy. -->
+    <None Include="..\..\docs\**\*.md" LinkBase="docs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

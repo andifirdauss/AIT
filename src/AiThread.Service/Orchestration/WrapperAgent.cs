@@ -7,7 +7,7 @@ using AiThread.Service.Models;
 namespace AiThread.Service.Orchestration;
 
 // Pools every executor result and turns it into one reply for the developer.
-public sealed class WrapperAgent(INineRouterService router)
+public sealed class WrapperAgent(INineRouterService router, NodeConcurrencyLimiter limiter)
 {
     private const int MaxDiffLinesPerTask = 60;
 
@@ -19,6 +19,7 @@ public sealed class WrapperAgent(INineRouterService router)
         Func<string, Task> onDelta,
         CancellationToken cancellationToken)
     {
+        using var lease = await limiter.AcquireAsync(node, cancellationToken);
         var result = await router.ChatAsync(new ChatCompletionRequest
         {
             Model = node.Model,

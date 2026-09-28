@@ -24,7 +24,7 @@ MCP server dikonfigurasi di [.mcp.json](.mcp.json). **Selalu utamakan MCP ini** 
 - Teks UI dan pesan log untuk user dalam Bahasa Indonesia; prompt ke model AI dan pesan error tool planner dalam Bahasa Inggris.
 
 ## Arsitektur singkat
-Lihat [README.md](README.md) untuk alur lengkap.
+Lihat [README.md](README.md) dan [docs/](docs/README.md) untuk alur lengkap. Perbarui dokumen di `docs/` bila perilaku, default, atau endpoint berubah.
 - `AiThread.Common`: entity (`ThreadRun`, `ThreadTask`, `AiNode`, `Project`, `LongMemory`, `SystemSetting`, `ActivityLog`), enum, DTO.
 - `AiThread.Data`: `AiThreadDbContext` (SQL Server, dipakai via `IDbContextFactory`), `RedisShortMemoryStore`, `InProcessEventBus` (sumber SSE), migrasi EF.
 - `AiThread.Service`: `NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`; `Orchestration/` (planner → `ExecutionEngine` paralel → wrapper → `MemoryExtractor`); `Workspace/` (sandbox path, parser & applier SEARCH/REPLACE); `Proxy/ClaudeRequestInspector`; worker di `Background/`.

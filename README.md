@@ -4,6 +4,9 @@ Proxy untuk Claude Code yang memecah satu permintaan menjadi tugas-tugas sangat 
 **planner** (model paling cerdas) merencanakan, banyak **executor** (model murah) mengerjakan secara paralel,
 lalu **wrapper** merangkum hasilnya untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
 
+> **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** — instalasi, konfigurasi, integrasi Claude Code,
+> penggunaan sehari-hari, memory, cara kerja, troubleshooting, dan referensi API.
+
 ```
 Claude Code ──(ANTHROPIC_BASE_URL)──► AiThread /v1/messages
                                           │
@@ -88,22 +91,23 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 | Menu | Fungsi |
 |---|---|
 | Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
-| Project | Project yang terbaca (unik per `.sln`/`.slnx`), sesi Claude Code per project, registrasi manual |
+| Project | Project yang terbaca (unik per `.sln`/`.slnx`), sesi Claude Code per project, penelusur & scan `.sln`/`.slnx`, registrasi manual |
 | Memory | Short memory (Redis, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
 | Node | Planner / executor / wrapper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan |
 | Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, integrasi `settings.json` Claude Code |
 
 ## Cara request Claude Code diperlakukan
 
-`POST /v1/messages` diorkestrasi bila request punya `tools`, system prompt Claude Code, dan pesan terakhir adalah
-teks user (bukan `tool_result`). Request pendukung lain (judul sesi, compact, cek kuota) diteruskan apa adanya ke
-`/v1/messages` 9router memakai *model passthrough* (default: model node Wrapper). Mematikan *Orkestrasi aktif* membuat
-AiThread menjadi proxy biasa.
+`POST /v1/messages` diorkestrasi bila request punya `tools`, system prompt Claude Code, pesan terakhir adalah
+teks user (bukan `tool_result`), **dan sesinya berasal dari project `.sln`/`.slnx`**. Request pendukung lain (judul
+sesi, compact, cek kuota) dan semua prompt dari sesi di luar project diteruskan apa adanya ke `/v1/messages` 9router
+memakai *model passthrough* (default: model node Wrapper). Mematikan *Orkestrasi aktif* membuat AiThread menjadi
+proxy biasa.
 
-Project ditentukan dari header `X-AiThread-Solution` / `X-AiThread-Cwd` bila ada, atau dari baris
-`Primary working directory:` di system prompt Claude Code. `.sln/.slnx` dicari di folder itu, lalu satu tingkat
-anak (hanya jika tepat satu), lalu folder induk. Tanpa solution, thread tetap berjalan sebagai workspace ad-hoc
-tanpa memory project.
+Pengecekan dilakukan per sesi Claude Code (keputusan diingat 30 menit). Solution diambil dari header
+`X-AiThread-Solution` bila ada; jika tidak, `.sln/.slnx` dicari dari working directory sesi (header `X-AiThread-Cwd`
+atau baris `Primary working directory:`): di folder itu, lalu sub-folder hingga 2 tingkat (hanya jika tepat satu),
+lalu folder induk. Ditemukan → project didaftarkan otomatis pada prompt pertama. Tidak ditemukan → sesi diabaikan.
 
 ## Memory
 

@@ -32,7 +32,6 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
             PromptContext: null,
             ConversationContext: null,
             WorkingDirectory: null,
-            SolutionHint: null,
             request.ProjectId,
             SessionId: null), cancellationToken);
 

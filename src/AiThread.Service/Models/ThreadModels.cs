@@ -10,8 +10,8 @@ public sealed record ThreadRequest(
     string? PromptContext,
     string? ConversationContext,
     string? WorkingDirectory,
-    string? SolutionHint,
-    Guid? ProjectId,
+    // Resolved before the thread starts; prompts outside a .sln/.slnx project never become threads.
+    Guid ProjectId,
     string? SessionId);
 
 public sealed record ThreadResult(Guid ThreadId, ThreadStatus Status, string FinalText, int TotalTokens);

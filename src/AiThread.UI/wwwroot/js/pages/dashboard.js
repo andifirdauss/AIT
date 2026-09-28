@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, debounce, stream, renderRouterPill } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, debounce, stream, renderRouterPill, routerKeyState } = window.AiThread;
 
   const levelOrder = { Debug: 0, Info: 1, Success: 2, Warning: 3, Error: 4 };
   const maxLogLines = 300;
@@ -19,9 +19,8 @@
       setState('router', false, 'Belum dicek', 'Atur URL 9router di menu Setting.');
       return;
     }
-    const keyWarn = status.apiKeyValid === false;
-    const keyText = !status.hasApiKey ? 'tanpa API key' : keyWarn ? 'API key ditolak' : 'API key OK';
-    setState('router', status.isOnline, status.isOnline ? 'Online' : 'Offline',
+    const [keyText, keyWarn] = routerKeyState(status);
+    setState('router', status.isOnline, status.isOnline ? (keyWarn ? 'Online · cek API key' : 'Online') : 'Offline',
       status.isOnline
         ? `${status.latencyMs} ms · ${status.modelCount} model · ${status.comboCount} combo · ${keyText}`
         : `${status.baseUrl} — ${status.error || 'tidak terhubung'}`,

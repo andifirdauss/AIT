@@ -7,6 +7,7 @@ using AiThread.Service.Workspace;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace AiThread.Service;
 
@@ -34,6 +35,9 @@ public static class DependencyInjection
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
         services.AddSingleton<ActivityLogQueue>();
         services.AddSingleton<IActivityLogService, ActivityLogService>();
+        services.AddSingleton<IDocsService>(sp => new DocsService(DocsService.ResolveDirectory(
+            sp.GetRequiredService<IHostEnvironment>().ContentRootPath,
+            configuration["AiThread:DocsPath"])));
 
         services.AddSingleton<ThreadRegistry>();
         services.AddSingleton<NodeConcurrencyLimiter>();
