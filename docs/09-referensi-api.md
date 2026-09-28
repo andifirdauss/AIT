@@ -1,0 +1,123 @@
+# 9. Referensi API
+
+Semua endpoint berada di host AiThread (default `http://localhost:5225`). Enum dikirim sebagai string
+(`"Planner"`, `"Short"`, `"Completed"`, …) dan properti JSON memakai camelCase.
+
+## Proxy Anthropic (untuk Claude Code)
+
+| Method | Path | Keterangan |
+|---|---|---|
+| `POST` | `/v1/messages` | Messages API. Request agen utama dari sesi di dalam project `.sln`/`.slnx` diorkestrasi (stream atau non-stream); lainnya — termasuk sesi di luar project — diteruskan ke 9router. `/v1/v1/messages` juga diterima. |
+| `POST` | `/v1/messages/count_tokens` | Diteruskan ke 9router; fallback estimasi `{ "input_tokens": n }`. |
+| `GET` | `/v1/models` | Daftar model 9router dalam format Anthropic. |
+
+Auth: `Authorization: Bearer <key>` atau `x-api-key: <key>` — hanya diperiksa bila *Proxy API key* diisi.
+Header opsional: `X-AiThread-Solution` (path `.sln`/`.slnx`), `X-AiThread-Cwd` (working directory).
+
+Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar: `message_start`,
+`content_block_start`, `ping` (tiap 10 detik selama bekerja), `content_block_delta` (`text_delta`),
+`content_block_stop`, `message_delta` (`stop_reason: end_turn`), `message_stop`. Error mengikuti format
+`{ "type": "error", "error": { "type": "...", "message": "..." } }`.
+
+## REST `/api`
+
+Semua respons dibungkus:
+
+```json
+{ "success": true, "data": { }, "message": "Opsional" }
+```
+
+Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, dengan `success: false` dan `message`.
+
+### Setting & 9router
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/settings` | — |
+| `PUT` | `/api/settings` | `nineRouterBaseUrl`, `nineRouterApiKey`, `clearNineRouterApiKey`, `proxyApiKey`, `passthroughModel`, `orchestrationEnabled`, `streamProgressToClient`, `plannerMaxSteps`, `executorMaxRetries`, `maxParallelTasks`, `requestTimeoutSeconds` |
+| `POST` | `/api/settings/test-router` | `{ "baseUrl"?: "...", "apiKey"?: "..." }` — kosong = pakai nilai tersimpan |
+| `GET` | `/api/settings/claude?scope=User\|Project&projectId=` | status file settings Claude Code |
+| `POST` | `/api/settings/claude/apply` | `{ "scope": "Project", "projectId": "...", "proxyBaseUrl": "http://localhost:5225", "timeoutMs": null }` |
+| `POST` | `/api/settings/claude/revert` | body sama dengan apply |
+| `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
+| `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
+
+### Node
+
+| Method | Path | Body |
+|---|---|---|
+| `GET` | `/api/nodes` | — |
+| `GET` | `/api/nodes/pipeline` | — (`isReady`, jumlah per peran, `issues`) |
+| `GET` | `/api/nodes/{id}` | — |
+| `POST` | `/api/nodes` | `name`, `role`, `model`, `temperature`, `maxTokens`, `maxConcurrency`, `priority`, `systemPrompt`, `isActive` |
+| `PUT` | `/api/nodes/{id}` | sama dengan POST |
+| `DELETE` | `/api/nodes/{id}` | — |
+| `POST` | `/api/nodes/{id}/test` | — (`success`, `reply`, `latencyMs`, `tokens`, `error`) |
+
+### Project
+
+| Method | Path | Body |
+|---|---|---|
+| `GET` | `/api/projects` | — |
+| `GET` | `/api/projects/{id}` | — (project, daftar project di solution, sesi) |
+| `POST` | `/api/projects` | `{ "path": "D:\\Source\\MyApp\\MyApp.sln" }` (file atau folder) |
+| `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A\\A.sln", "D:\\Source\\B\\B.slnx"] }` → `registered`, `alreadyRegistered`, `errors` |
+| `GET` | `/api/projects/browse?path=` | tanpa `path` = daftar drive. Hasil: `path`, `parent`, `folders[]` (`name`, `path`, `hasSolution`), `solutions[]` (`name`, `path`, `directory`, `isRegistered`, `projectId`), `quickLocations[]` |
+| `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Hasil: `root`, `solutions[]`, `foldersScanned`, `truncated`, `elapsedMs` |
+| `DELETE` | `/api/projects/{id}` | — (thread dipertahankan, memory project dihapus) |
+
+### Memory
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `page`, `pageSize` (maks 200) |
+| `GET` | `/api/memory/stats` | — |
+| `GET` | `/api/memory/{level}/{id}` | — |
+| `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "label": "...", "description": "..." }` → short memory |
+| `PUT` | `/api/memory/{level}/{id}` | sama dengan POST |
+| `DELETE` | `/api/memory/{level}/{id}` | — |
+| `POST` | `/api/memory/{id}/promote` | — (short → long) |
+| `POST` | `/api/memory/consolidate` | — (jumlah yang dipindah) |
+
+### Thread & dashboard
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/threads` | `take` (default 30, maks 200), `projectId` |
+| `GET` | `/api/threads/{id}` | — (ringkasan, `planJson`, respons akhir, metrik, tugas) |
+| `POST` | `/api/threads` | `{ "projectId": "...", "prompt": "..." }` → id thread, berjalan di belakang |
+| `POST` | `/api/threads/{id}/cancel` | — |
+| `GET` | `/api/dashboard/summary` | — |
+| `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
+| `GET` | `/api/health` | — |
+
+## SSE `/api/stream`
+
+```
+GET /api/stream?types=log,router,thread     # filter prefix tipe event
+GET /api/stream?threadId={id}               # semua event satu thread
+```
+
+Setiap event punya nama sesuai tipenya dan data `{ "data": …, "threadId": "…", "timestamp": "…" }`.
+Event `ping` dikirim tiap 15 detik saat sepi.
+
+| Event | `data` |
+|---|---|
+| `log` | entri log: `level`, `category`, `message`, `threadId`, `projectId`, `createdAt` |
+| `router.status` | status 9router (dikirim tiap interval monitor; juga saat koneksi dibuka tanpa `threadId`) |
+| `thread.created` | `id`, `projectId`, `status` |
+| `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
+| `thread.output` | aktivitas planner: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
+| `task.updated` | objek tugas lengkap (status, node, durasi, diff, error, …) |
+| `task.output` | potongan output model executor: `taskId`, `taskKey`, `text` |
+| `memory.changed` | `id`, `action` (`created`, `updated`, `deleted`, `promoted`, `consolidated`) |
+| `project.changed` | `id`, `action` |
+| `node.changed` | `id`, `action` |
+| `ping` | — |
+
+Contoh di browser:
+
+```js
+const source = new EventSource('/api/stream?types=task,thread');
+source.addEventListener('task.updated', e => console.log(JSON.parse(e.data).data));
+```

@@ -218,7 +218,16 @@
     pill.querySelector('.router-pill-text').textContent = status.isOnline
       ? `9router · ${status.latencyMs ?? '?'} ms`
       : '9router offline';
-    pill.title = status.isOnline ? `${status.baseUrl} — ${status.modelCount} model, ${status.comboCount} combo` : `${status.baseUrl}: ${status.error || 'offline'}`;
+    pill.title = status.isOnline
+      ? `${status.baseUrl} — ${status.modelCount} model, ${status.comboCount} combo${status.error ? ` — ${status.error}` : ''}`
+      : `${status.baseUrl}: ${status.error || 'offline'}`;
+  }
+
+  // How chat calls will authenticate against 9router: [label, isProblem]. Health and the model list are public,
+  // so a router can be online while every chat call fails for lack of a key.
+  function routerKeyState(status) {
+    if (status.apiKeyValid === false) return [status.hasApiKey ? 'API key ditolak' : 'API key wajib, belum disimpan', true];
+    return [status.hasApiKey ? 'API key OK' : 'tanpa API key (tidak diwajibkan)', false];
   }
 
   async function refreshRouterPill() {
@@ -249,5 +258,5 @@
     setInterval(refreshRouterPill, 20000);
   });
 
-  window.AiThread = { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill };
+  window.AiThread = { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState };
 })();

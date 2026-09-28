@@ -19,6 +19,7 @@ public sealed class RouterMonitorWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         bool? wasOnline = null;
+        var keyProblemLogged = false;
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Math.Max(5, options.Value.RouterMonitorIntervalSeconds)));
 
         do
@@ -36,6 +37,12 @@ public sealed class RouterMonitorWorker(
                         activityLog.Error("9router", $"9router tidak dapat dihubungi ({status.BaseUrl}): {status.Error}");
                     wasOnline = status.IsOnline;
                 }
+
+                // Online is not enough: chat calls fail if the key is missing or rejected.
+                var keyProblem = status.IsOnline && status.ApiKeyValid == false;
+                if (keyProblem && !keyProblemLogged) activityLog.Warn("9router", status.Error ?? "Masalah API key 9router.");
+                else if (!keyProblem && keyProblemLogged && status.IsOnline) activityLog.Success("9router", "API key 9router diterima.");
+                keyProblemLogged = keyProblem || (keyProblemLogged && !status.IsOnline);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
