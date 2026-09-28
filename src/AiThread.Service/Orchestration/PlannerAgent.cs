@@ -19,7 +19,7 @@ public sealed record PlannerInput(
 public sealed record PlanningResult(ThreadPlan Plan, int Steps, int Tokens);
 
 // Tool-using loop: the expensive model explores the repository (read-only) and ends by calling submit_plan.
-public sealed class PlannerAgent(INineRouterService router, IMemoryService memoryService)
+public sealed class PlannerAgent(INineRouterService router, IMemoryService memoryService, NodeConcurrencyLimiter limiter)
 {
     private const int MaxPromptChars = 40_000;
     private const int MaxTextNudges = 2;
@@ -44,14 +44,19 @@ public sealed class PlannerAgent(INineRouterService router, IMemoryService memor
             if (lastStep)
                 messages.Add(ChatMessages.User("You have reached the investigation limit. Call submit_plan now with the best plan you can make from what you already know."));
 
-            var result = await router.ChatAsync(new ChatCompletionRequest
+            // A slot is held only while the model answers, not while tools run, so concurrent threads share the planner.
+            ChatCompletionResult result;
+            using (await limiter.AcquireAsync(input.Node, cancellationToken))
             {
-                Model = input.Node.Model,
-                Messages = messages,
-                Tools = lastStep ? PlannerTools.SubmitOnly() : PlannerTools.All(),
-                Temperature = input.Node.Temperature ?? 0.2,
-                MaxTokens = input.Node.MaxTokens
-            }, cancellationToken: cancellationToken);
+                result = await router.ChatAsync(new ChatCompletionRequest
+                {
+                    Model = input.Node.Model,
+                    Messages = messages,
+                    Tools = lastStep ? PlannerTools.SubmitOnly() : PlannerTools.All(),
+                    Temperature = input.Node.Temperature ?? 0.2,
+                    MaxTokens = input.Node.MaxTokens
+                }, cancellationToken: cancellationToken);
+            }
             tokens += result.TotalTokens;
 
             if (result.ToolCalls.Count == 0)
@@ -196,7 +201,7 @@ public sealed class PlannerAgent(INineRouterService router, IMemoryService memor
         builder.Append("# Project\n");
         builder.Append($"Name: {project.Name}\n");
         builder.Append($"Root: {project.RootPath}\n");
-        builder.Append($"Solution: {(project.SolutionPath is null ? "(none — ad-hoc workspace)" : input.Scope.ToRelative(project.SolutionPath))}\n");
+        builder.Append($"Solution: {input.Scope.ToRelative(project.SolutionPath)}\n");
         if (project.SolutionProjects.Count > 0)
         {
             builder.Append("Projects in solution:\n");

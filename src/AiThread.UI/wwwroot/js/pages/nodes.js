@@ -80,39 +80,124 @@
     }
   }
 
-  // Combos first, then one group per provider prefix.
+  // Searchable model combobox. Free text is always accepted, so an id missing from 9router can still be saved.
+  const modelInput = el('nodeModel');
+  const modelList = el('nodeModelList');
+  let visibleModels = [];
+  let activeIndex = -1;
+
+  function groupOf(m) {
+    return m.isCombo ? 'Combo' : (m.ownedBy || 'lainnya');
+  }
+
+  // Every whitespace-separated term must appear in the id or group; combos first, then one group per provider.
+  function filterModels(query) {
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const matches = models.filter(m => {
+      const haystack = `${m.id} ${groupOf(m)}`.toLowerCase();
+      return terms.every(t => haystack.includes(t));
+    });
+    return matches.sort((a, b) => (b.isCombo - a.isCombo) || groupOf(a).localeCompare(groupOf(b)));
+  }
+
+  function renderModelList() {
+    const query = modelInput.value.trim();
+    // Show the full list when the input still holds an exact, already-chosen id.
+    visibleModels = models.some(m => m.id === query) ? filterModels('') : filterModels(query);
+    activeIndex = visibleModels.findIndex(m => m.id === query);
+
+    if (visibleModels.length === 0) {
+      modelList.innerHTML = `<div class="dropdown-item-text small text-secondary">Tidak ada model cocok — id "${escapeHtml(query)}" akan dipakai apa adanya.</div>`;
+      return;
+    }
+    let html = '';
+    let lastGroup = null;
+    visibleModels.forEach((m, i) => {
+      const group = groupOf(m);
+      if (group !== lastGroup) {
+        html += `<h6 class="dropdown-header">${escapeHtml(group)}</h6>`;
+        lastGroup = group;
+      }
+      const ctx = m.contextLength ? `<span class="text-secondary small ms-2">${Math.round(m.contextLength / 1000)}k ctx</span>` : '';
+      html += `<button type="button" class="dropdown-item mono small ${i === activeIndex ? 'active' : ''}" role="option" data-index="${i}">${escapeHtml(m.id)}${ctx}</button>`;
+    });
+    modelList.innerHTML = html;
+    scrollActiveIntoView();
+  }
+
+  function scrollActiveIntoView() {
+    modelList.querySelector('.dropdown-item.active')?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function setActive(index) {
+    if (visibleModels.length === 0) return;
+    activeIndex = (index + visibleModels.length) % visibleModels.length;
+    modelList.querySelectorAll('.dropdown-item').forEach(item =>
+      item.classList.toggle('active', Number(item.dataset.index) === activeIndex));
+    scrollActiveIntoView();
+  }
+
+  function openModelList() {
+    if (!modelsLoaded || models.length === 0) return;
+    renderModelList();
+    modelList.classList.add('show');
+    modelInput.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeModelList() {
+    modelList.classList.remove('show');
+    modelInput.setAttribute('aria-expanded', 'false');
+  }
+
+  function chooseModel(index) {
+    const m = visibleModels[index];
+    if (!m) return;
+    modelInput.value = m.id;
+    closeModelList();
+  }
+
+  modelInput.addEventListener('focus', openModelList);
+  modelInput.addEventListener('click', openModelList);
+  modelInput.addEventListener('input', () => {
+    openModelList();
+    // While typing, pre-select the first match so Enter picks it.
+    if (visibleModels.length && activeIndex < 0) setActive(0);
+  });
+  modelInput.addEventListener('blur', closeModelList);
+  modelInput.addEventListener('keydown', event => {
+    const isOpen = modelList.classList.contains('show');
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!isOpen) return openModelList();
+      setActive(activeIndex + (event.key === 'ArrowDown' ? 1 : -1));
+    } else if (event.key === 'Enter' && isOpen && activeIndex >= 0) {
+      event.preventDefault();
+      chooseModel(activeIndex);
+    } else if (event.key === 'Escape' && isOpen) {
+      // Keep the modal open; only close the list.
+      event.preventDefault();
+      event.stopPropagation();
+      closeModelList();
+    }
+  });
+  // mousedown (not click) so the choice lands before the input's blur closes the list.
+  modelList.addEventListener('mousedown', event => {
+    event.preventDefault();
+    const item = event.target.closest('[data-index]');
+    if (item) chooseModel(Number(item.dataset.index));
+  });
+
   function renderModelOptions(selected) {
-    const select = el('nodeModel');
-    const manual = el('nodeModelManual');
+    modelInput.value = selected || '';
+    closeModelList();
     if (!modelsLoaded || models.length === 0) {
-      select.classList.add('d-none');
-      manual.classList.remove('d-none');
-      manual.value = selected || '';
+      modelInput.placeholder = 'Model tidak termuat — ketik id model, mis. cc/claude-sonnet-5';
       el('modelHint').textContent = '9router tidak dapat dihubungi — isi id model manual.';
       return;
     }
-
-    select.classList.remove('d-none');
-    manual.classList.add('d-none');
-    const groups = new Map();
-    for (const m of models) {
-      const group = m.isCombo ? 'Combo' : (m.ownedBy || 'lainnya');
-      if (!groups.has(group)) groups.set(group, []);
-      groups.get(group).push(m);
-    }
-    let html = '<option value="">Pilih model…</option>';
-    if (selected && !models.some(m => m.id === selected)) {
-      html += `<option value="${escapeHtml(selected)}">${escapeHtml(selected)} (tidak ada di 9router)</option>`;
-    }
-    for (const [group, list] of groups) {
-      html += `<optgroup label="${escapeHtml(group)}">` + list.map(m => {
-        const ctx = m.contextLength ? ` · ${Math.round(m.contextLength / 1000)}k ctx` : '';
-        return `<option value="${escapeHtml(m.id)}">${escapeHtml(m.id)}${ctx}</option>`;
-      }).join('') + '</optgroup>';
-    }
-    select.innerHTML = html;
-    select.value = selected || '';
-    el('modelHint').textContent = `${models.length} model tersedia (${models.filter(m => m.isCombo).length} combo). Combo 9router otomatis fallback antar provider.`;
+    modelInput.placeholder = 'Cari model atau combo, mis. "sonnet" atau "combo"…';
+    const unknown = selected && !models.some(m => m.id === selected) ? ' Model saat ini tidak ada di 9router.' : '';
+    el('modelHint').textContent = `${models.length} model tersedia (${models.filter(m => m.isCombo).length} combo). Combo 9router otomatis fallback antar provider.${unknown}`;
   }
 
   function applyRoleDefaults(role) {
@@ -149,7 +234,7 @@
   el('nodeForm').addEventListener('submit', async event => {
     event.preventDefault();
     const id = el('nodeId').value;
-    const model = el('nodeModel').classList.contains('d-none') ? el('nodeModelManual').value.trim() : el('nodeModel').value;
+    const model = modelInput.value.trim();
     const temperature = el('nodeTemperature').value;
     const body = {
       name: el('nodeName').value.trim(),

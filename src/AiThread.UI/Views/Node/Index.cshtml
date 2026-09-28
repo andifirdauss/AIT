@@ -57,8 +57,11 @@
                     </div>
                     <div class="col-12">
                         <label class="form-label small" for="nodeModel">Model / combo 9router</label>
-                        <select class="form-select" id="nodeModel"></select>
-                        <input type="text" class="form-control mono mt-2 d-none" id="nodeModelManual" placeholder="Model tidak termuat — ketik id model, mis. cc/claude-sonnet-5" />
+                        <div class="model-combo">
+                            <input type="text" class="form-control mono" id="nodeModel" autocomplete="off" spellcheck="false" required
+                                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="nodeModelList" />
+                            <div class="dropdown-menu model-combo-list" id="nodeModelList" role="listbox"></div>
+                        </div>
                         <div class="form-text" id="modelHint"></div>
                     </div>
                     <div class="col-md-3">

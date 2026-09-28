@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, renderRouterPill } = window.AiThread;
+  const { api, toast, escapeHtml, renderRouterPill, routerKeyState } = window.AiThread;
   const el = id => document.getElementById(id);
   let settings = null;
 
@@ -53,24 +53,38 @@
     try {
       const s = await api.get('/api/settings');
       fill(s);
-      await Promise.all([loadModels(s.passthroughModel), loadProjects()]);
+      await Promise.all([loadModels(s.passthroughModel), loadProjects(), showStoredStatus()]);
       syncScope();
     } catch (error) {
       toast(error.message, 'error');
     }
   }
 
-  function routerResultHtml(r) {
+  // Status of the saved configuration, so a missing or rejected key is visible without pressing Test.
+  async function showStoredStatus() {
+    try {
+      el('routerTestResult').innerHTML = routerResultHtml(await api.get('/api/router/status?refresh=true'), false);
+    } catch {
+      // Test koneksi remains available.
+    }
+  }
+
+  function routerResultHtml(r, keyTypedButNotSaved) {
     if (!r.isOnline) return `<span class="text-danger">✕ Offline — ${escapeHtml(r.error || '')}</span>`;
-    const key = !r.hasApiKey ? 'tanpa API key' : r.apiKeyValid === false ? '<span class="text-danger">API key ditolak</span>' : 'API key valid';
-    return `<span class="text-success">✓ Online</span> · ${r.latencyMs} ms · ${r.modelCount} model · ${r.comboCount} combo · ${key}`;
+    const [keyText, keyProblem] = routerKeyState(r);
+    const key = keyProblem ? `<span class="text-danger">${keyText}</span>` : keyText;
+    const unsaved = keyTypedButNotSaved && !keyProblem
+      ? ' · <span class="text-warning">key ini belum disimpan — klik Simpan</span>'
+      : '';
+    return `<span class="text-success">✓ Online</span> · ${r.latencyMs} ms · ${r.modelCount} model · ${r.comboCount} combo · ${key}${unsaved}`;
   }
 
   el('btnTestRouter').addEventListener('click', async () => {
     el('routerTestResult').innerHTML = '<span class="text-secondary">Menguji…</span>';
+    const typedKey = el('routerKey').value.trim() || null;
     try {
-      const r = await api.post('/api/settings/test-router', { baseUrl: el('routerUrl').value.trim(), apiKey: el('routerKey').value.trim() || null });
-      el('routerTestResult').innerHTML = routerResultHtml(r);
+      const r = await api.post('/api/settings/test-router', { baseUrl: el('routerUrl').value.trim(), apiKey: typedKey });
+      el('routerTestResult').innerHTML = routerResultHtml(r, typedKey !== null);
     } catch (error) {
       el('routerTestResult').innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
     }
@@ -102,9 +116,12 @@
       fill(await api.put('/api/settings', body));
       toast('Setting tersimpan.');
       try {
-        renderRouterPill(await api.get('/api/router/status'));
+        // The save already re-checked 9router with the stored key; show that instead of the stale test result.
+        const status = await api.get('/api/router/status');
+        renderRouterPill(status);
+        el('routerTestResult').innerHTML = routerResultHtml(status, false);
       } catch {
-        // Pill refreshes on its own schedule.
+        el('routerTestResult').innerHTML = '';
       }
       await loadModels(settings.passthroughModel);
       refreshClaude();

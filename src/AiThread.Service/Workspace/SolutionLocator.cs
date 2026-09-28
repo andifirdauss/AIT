@@ -3,6 +3,8 @@ using System.Xml.Linq;
 
 namespace AiThread.Service.Workspace;
 
+public sealed record SolutionScanResult(IReadOnlyList<string> Solutions, int FoldersScanned, bool Truncated);
+
 public static partial class SolutionLocator
 {
     private const int MaxParentLevels = 6;
@@ -64,6 +66,80 @@ public static partial class SolutionLocator
         {
             return [];
         }
+    }
+
+    // Breadth-first search for solution files below a folder, nearest first. Stops at the depth, result or folder
+    // limit, or when cancelled (the caller applies a time limit), and reports whether it stopped early.
+    public static SolutionScanResult Scan(string root, int maxDepth, int maxResults, int maxFolders, CancellationToken cancellationToken)
+    {
+        var solutions = new List<string>();
+        var pending = new Queue<(DirectoryInfo Directory, int Depth)>();
+        pending.Enqueue((new DirectoryInfo(root), 0));
+        var scanned = 0;
+
+        while (pending.Count > 0)
+        {
+            if (cancellationToken.IsCancellationRequested || solutions.Count >= maxResults || scanned >= maxFolders)
+                return new SolutionScanResult(solutions, scanned, Truncated: true);
+
+            var (directory, depth) = pending.Dequeue();
+            scanned++;
+            solutions.AddRange(SolutionsIn(directory).Take(maxResults - solutions.Count));
+
+            if (depth >= maxDepth) continue;
+            foreach (var child in BrowsableDirectories(directory)) pending.Enqueue((child, depth + 1));
+        }
+
+        return new SolutionScanResult(solutions, scanned, Truncated: false);
+    }
+
+    public static IReadOnlyList<string> SolutionsIn(DirectoryInfo directory)
+    {
+        try
+        {
+            return directory.GetFiles("*.sln*")
+                .Where(f => IsSolutionFile(f.Name))
+                .Select(f => f.FullName)
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+            return [];
+        }
+    }
+
+    // Sub-folders worth showing when looking for solutions: no hidden/system folders, no build output or VCS
+    // folders, and no junctions/symlinks (following them could loop). Cloud placeholders (OneDrive) stay visible.
+    public static IReadOnlyList<DirectoryInfo> BrowsableDirectories(DirectoryInfo directory)
+    {
+        DirectoryInfo[] children;
+        try
+        {
+            children = directory.GetDirectories();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or System.Security.SecurityException)
+        {
+            return [];
+        }
+
+        var result = new List<DirectoryInfo>(children.Length);
+        foreach (var child in children)
+        {
+            try
+            {
+                if (child.Name.StartsWith('.') || child.Name.StartsWith('$') || WorkspaceScope.IsIgnoredDirectoryName(child.Name)) continue;
+                if ((child.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0) continue;
+                if (child.LinkTarget is not null) continue;
+                result.Add(child);
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            {
+                // Unreadable entry — skip it.
+            }
+        }
+
+        return result.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static string? PickSolution(DirectoryInfo directory)

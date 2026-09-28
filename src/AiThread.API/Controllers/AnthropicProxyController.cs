@@ -15,12 +15,14 @@ using Microsoft.Extensions.Logging;
 namespace AiThread.API.Controllers;
 
 // Anthropic-compatible surface that Claude Code talks to once ANTHROPIC_BASE_URL points here.
-// Main agent turns are orchestrated (planner -> executors -> wrapper); everything else is forwarded to 9router.
+// Main agent turns from sessions inside a .sln/.slnx project are orchestrated (planner -> executors -> wrapper);
+// everything else, including sessions outside any solution, is forwarded to 9router untouched.
 [ApiController]
 public class AnthropicProxyController(
     ISettingService settingService,
     INineRouterService router,
     INodeService nodeService,
+    IProjectService projectService,
     IThreadOrchestrator orchestrator,
     IActivityLogService activityLog,
     ILogger<AnthropicProxyController> logger) : ControllerBase
@@ -48,10 +50,20 @@ public class AnthropicProxyController(
         }
 
         var info = ClaudeRequestInspector.Inspect(body, InspectedHeaderValues(), raw.Length);
+        var reason = settings.OrchestrationEnabled ? info.Reason : "orchestration disabled";
+
         if (settings.OrchestrationEnabled && info.IsOrchestratable)
-            await OrchestrateAsync(info, cancellationToken);
-        else
-            await PassthroughAsync(body, info.Reason, settings, "/v1/messages" + Request.QueryString, cancellationToken);
+        {
+            var project = await ResolveSessionProjectAsync(info, cancellationToken);
+            if (project is not null)
+            {
+                await OrchestrateAsync(info, project, cancellationToken);
+                return;
+            }
+            reason = "session outside a .sln/.slnx project";
+        }
+
+        await PassthroughAsync(body, reason, settings, "/v1/messages" + Request.QueryString, cancellationToken);
     }
 
     [HttpPost("v1/messages/count_tokens")]
@@ -107,7 +119,23 @@ public class AnthropicProxyController(
         return Ok(new { data, has_more = false, first_id = data.FirstOrDefault()?.id, last_id = data.LastOrDefault()?.id });
     }
 
-    private async Task OrchestrateAsync(ClaudeRequestInfo info, CancellationToken cancellationToken)
+    // Null when the session is outside any solution, or when the check itself fails (the prompt then still
+    // reaches a model instead of breaking the user's session).
+    private async Task<ProjectContext?> ResolveSessionProjectAsync(ClaudeRequestInfo info, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await projectService.ResolveSessionAsync(info.SessionId, info.WorkingDirectory, info.SolutionHint, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Could not resolve the project of session {SessionId}.", info.SessionId);
+            activityLog.Error("proxy", $"Project sesi tidak dapat ditentukan ({ex.Message}); prompt diteruskan tanpa orkestrasi.");
+            return null;
+        }
+    }
+
+    private async Task OrchestrateAsync(ClaudeRequestInfo info, ProjectContext project, CancellationToken cancellationToken)
     {
         var request = new ThreadRequest(
             ThreadSource.ClaudeCode,
@@ -115,8 +143,7 @@ public class AnthropicProxyController(
             info.PromptContext,
             info.ConversationContext,
             info.WorkingDirectory,
-            info.SolutionHint,
-            ProjectId: null,
+            project.ProjectId,
             info.SessionId);
 
         if (!info.Stream)

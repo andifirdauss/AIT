@@ -307,6 +307,118 @@ body {
 .role-Executor { border-left-color: var(--app-ok); }
 .role-Wrapper { border-left-color: var(--app-warn); }
 
+.model-combo {
+  position: relative;
+}
+
+.model-combo-list {
+  width: 100%;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.browse-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.docs-sidebar {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.docs-nav .list-group-item {
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.docs-toc a {
+  display: block;
+  padding: 0.15rem 0;
+  color: var(--bs-secondary-color);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.docs-toc a:hover {
+  color: var(--bs-body-color);
+}
+
+.docs-toc a.level-3 {
+  padding-left: 0.85rem;
+}
+
+.docs-body {
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.docs-body h1 {
+  margin: 0 0 1rem;
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.docs-body h2 {
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.docs-body h3 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.docs-body :is(h1, h2, h3, h4) {
+  scroll-margin-top: 1rem;
+}
+
+.docs-body code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  background: var(--app-muted-bg);
+  color: inherit;
+  font-size: 0.85em;
+}
+
+.docs-body pre {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--app-muted-bg);
+  overflow-x: auto;
+}
+
+.docs-body pre code {
+  padding: 0;
+  background: none;
+}
+
+.docs-body blockquote {
+  padding: 0.5rem 1rem;
+  border-left: 3px solid var(--app-accent);
+  background: var(--app-muted-bg);
+}
+
+.docs-body blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.docs-body table {
+  font-size: 0.88rem;
+}
+
+.docs-body td,
+.docs-body th {
+  vertical-align: top;
+}
+
 .empty-state {
   padding: 2rem 1rem;
   color: var(--bs-secondary-color);
