@@ -1,0 +1,77 @@
+@{
+    ViewData["Title"] = "Thread";
+    var threadId = (Guid)ViewData["ThreadId"]!;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-controller="Home" asp-action="Index" class="small text-decoration-none">← Dashboard</a>
+        <h1 class="mt-1">Thread <span class="mono text-secondary" id="threadShortId"></span> <span id="threadStatus"></span></h1>
+        <p class="page-subtitle" id="threadMeta">Memuat…</p>
+    </div>
+    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCancel">Batalkan thread</button>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-8">
+        <div class="card mb-3">
+            <div class="card-header">Permintaan</div>
+            <div class="card-body"><div class="pre-wrap" id="threadPrompt"></div></div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Rencana planner</div>
+            <div class="card-body">
+                <p id="planSummary" class="mb-3 text-secondary">Planner sedang menganalisis…</p>
+                <h6 class="text-secondary small text-uppercase">Kontrak (nama yang wajib dipakai semua executor)</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th style="width:35%">Item</th><th>Nilai</th></tr></thead>
+                        <tbody id="contractRows"><tr><td colspan="2" class="text-secondary">–</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Tugas executor</span>
+                <span class="small text-secondary fw-normal" id="taskCounter"></span>
+            </div>
+            <div class="card-body border-bottom">
+                <h6 class="text-secondary small text-uppercase mb-2">Timeline paralel</h6>
+                <div class="timeline" id="timeline"><div class="text-secondary small">Belum ada tugas.</div></div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>ID</th><th>Tugas</th><th>Executor</th><th>Status</th><th>Durasi</th><th>Token</th><th></th></tr></thead>
+                    <tbody id="taskRows"><tr><td colspan="7" class="empty-state">Menunggu rencana…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">Hasil wrapper (yang diterima user)</div>
+            <div class="card-body markdown-body" id="finalResponse"><span class="text-secondary">Belum ada.</span></div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card mb-3">
+            <div class="card-header">Waktu & token</div>
+            <div class="card-body">
+                <dl class="row mb-0 small" id="metrics"></dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Aktivitas</div>
+            <div class="log-panel" style="height:560px" id="activity"><div class="empty-state">Memuat…</div></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>window.threadId = '@threadId';</script>
+    <script src="~/js/pages/thread.js" asp-append-version="true"></script>
+}

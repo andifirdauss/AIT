@@ -1,0 +1,103 @@
+@{
+    ViewData["Title"] = "Node";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Node</h1>
+        <p class="page-subtitle">Pekerja AI pipeline. Model diambil dari provider yang terhubung ke 9router, termasuk combo.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshModels">Muat ulang model 9router</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnAddNode">Tambah node</button>
+    </div>
+</div>
+
+<div id="pipelineAlert" class="alert d-none" role="status"></div>
+
+<div class="row g-3">
+    <div class="col-xl-4">
+        <h2 class="h6 text-uppercase text-secondary">Planner</h2>
+        <p class="small text-secondary">Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas.</p>
+        <div id="nodes-Planner"></div>
+    </div>
+    <div class="col-xl-4">
+        <h2 class="h6 text-uppercase text-secondary">Executor</h2>
+        <p class="small text-secondary">Model murah & cepat. Tiap tugas = satu file dengan konteks minimal; berjalan paralel.</p>
+        <div id="nodes-Executor"></div>
+    </div>
+    <div class="col-xl-4">
+        <h2 class="h6 text-uppercase text-secondary">Wrapper</h2>
+        <p class="small text-secondary">Mengumpulkan hasil semua executor dan menyusun balasan ke user. Juga dipakai untuk ekstraksi memory.</p>
+        <div id="nodes-Wrapper"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="nodeModal" tabindex="-1" aria-labelledby="nodeModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" id="nodeForm">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nodeModalTitle">Node</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="nodeId" />
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small" for="nodeName">Nama</label>
+                        <input type="text" class="form-control" id="nodeName" maxlength="100" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small" for="nodeRole">Role</label>
+                        <select class="form-select" id="nodeRole">
+                            <option value="Planner">Planner</option>
+                            <option value="Executor">Executor</option>
+                            <option value="Wrapper">Wrapper</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small" for="nodeModel">Model / combo 9router</label>
+                        <select class="form-select" id="nodeModel"></select>
+                        <input type="text" class="form-control mono mt-2 d-none" id="nodeModelManual" placeholder="Model tidak termuat — ketik id model, mis. cc/claude-sonnet-5" />
+                        <div class="form-text" id="modelHint"></div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small" for="nodeTemperature">Temperature</label>
+                        <input type="number" class="form-control" id="nodeTemperature" min="0" max="2" step="0.1" placeholder="default" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small" for="nodeMaxTokens">Max tokens</label>
+                        <input type="number" class="form-control" id="nodeMaxTokens" min="256" max="200000" step="256" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small" for="nodeConcurrency">Max paralel</label>
+                        <input type="number" class="form-control" id="nodeConcurrency" min="1" max="64" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small" for="nodePriority">Prioritas</label>
+                        <input type="number" class="form-control" id="nodePriority" required />
+                        <div class="form-text">kecil = diutamakan</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small" for="nodeSystemPrompt">Instruksi tambahan (opsional)</label>
+                        <textarea class="form-control" id="nodeSystemPrompt" rows="3" placeholder="Ditambahkan ke prompt bawaan role, mis. konvensi coding tim."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="nodeActive" checked />
+                            <label class="form-check-label" for="nodeActive">Aktif</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/nodes.js" asp-append-version="true"></script>
+}

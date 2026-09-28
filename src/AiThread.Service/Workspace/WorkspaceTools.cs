@@ -1,0 +1,211 @@
+using System.Text;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.FileSystemGlobbing;
+
+namespace AiThread.Service.Workspace;
+
+// Read-only repository access for the planner. Output is plain text sized for a model context.
+public sealed class WorkspaceTools(WorkspaceScope scope)
+{
+    public const int MaxReadLines = 600;
+    private const int MaxOutputChars = 24_000;
+    private const long MaxSearchFileBytes = 1_000_000;
+    private const long MaxReadFileBytes = 2_000_000;
+
+    private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cs", ".cshtml", ".razor", ".vb", ".fs", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte",
+        ".json", ".xml", ".config", ".sql", ".css", ".scss", ".less", ".html", ".htm", ".md", ".txt", ".yml", ".yaml",
+        ".csproj", ".vbproj", ".fsproj", ".props", ".targets", ".sln", ".slnx", ".resx", ".py", ".java", ".kt", ".go",
+        ".rb", ".php", ".sh", ".ps1", ".psm1", ".bat", ".cmd", ".ini", ".toml", ".env", ".graphql", ".proto", ".dart"
+    };
+
+    public WorkspaceScope Scope => scope;
+
+    public string ListDirectory(string? path, int depth = 2, int maxEntries = 300)
+    {
+        if (!scope.TryResolve(string.IsNullOrWhiteSpace(path) ? "." : path, out var fullPath, out var error)) return $"Error: {error}";
+        if (!Directory.Exists(fullPath)) return $"Error: directory '{path}' does not exist.";
+
+        depth = Math.Clamp(depth, 1, 4);
+        var builder = new StringBuilder();
+        var relative = scope.ToRelative(fullPath);
+        builder.Append(relative == "." ? "./" : relative + "/").Append('\n');
+
+        var count = 0;
+        var truncated = false;
+        Walk(fullPath, 1);
+        if (truncated) builder.Append($"... (listing truncated at {maxEntries} entries; list a sub-directory for more)\n");
+        return Limit(builder.ToString());
+
+        void Walk(string directory, int level)
+        {
+            if (level > depth || truncated) return;
+            string[] directories, files;
+            try
+            {
+                directories = Directory.GetDirectories(directory).OrderBy(d => d, StringComparer.OrdinalIgnoreCase).ToArray();
+                files = Directory.GetFiles(directory).OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToArray();
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+            {
+                return;
+            }
+
+            var indent = new string(' ', level * 2);
+            foreach (var child in directories)
+            {
+                var name = Path.GetFileName(child);
+                if (WorkspaceScope.IsIgnoredDirectoryName(name) || WorkspaceScope.IsIgnoredRelativePath(scope.ToRelative(child) + "/")) continue;
+                if (++count > maxEntries)
+                {
+                    truncated = true;
+                    return;
+                }
+                builder.Append(indent).Append(name).Append("/\n");
+                Walk(child, level + 1);
+                if (truncated) return;
+            }
+
+            foreach (var file in files)
+            {
+                if (++count > maxEntries)
+                {
+                    truncated = true;
+                    return;
+                }
+                builder.Append(indent).Append(Path.GetFileName(file)).Append('\n');
+            }
+        }
+    }
+
+    public string FindFiles(string pattern, int maxResults = 200)
+    {
+        if (string.IsNullOrWhiteSpace(pattern)) return "Error: pattern is empty.";
+
+        var matcher = CreateMatcher(pattern);
+        var results = new List<string>();
+        foreach (var file in scope.EnumerateFiles())
+        {
+            var relative = scope.ToRelative(file);
+            if (!matcher.Match(relative).HasMatches) continue;
+            results.Add(relative);
+            if (results.Count >= maxResults) break;
+        }
+
+        if (results.Count == 0) return $"No files match '{pattern}'.";
+        var suffix = results.Count >= maxResults ? $"\n... (stopped at {maxResults} results; use a narrower pattern)" : string.Empty;
+        return Limit(string.Join('\n', results) + suffix);
+    }
+
+    public string SearchText(string query, string? fileGlob, bool isRegex, int maxMatches = 80)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return "Error: query is empty.";
+
+        Regex? regex = null;
+        if (isRegex)
+        {
+            try
+            {
+                regex = new Regex(query, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+            }
+            catch (ArgumentException ex)
+            {
+                return $"Error: invalid regex: {ex.Message}";
+            }
+        }
+
+        var matcher = string.IsNullOrWhiteSpace(fileGlob) ? null : CreateMatcher(fileGlob);
+        var builder = new StringBuilder();
+        var matches = 0;
+        var filesWithMatches = 0;
+
+        foreach (var file in scope.EnumerateFiles())
+        {
+            var relative = scope.ToRelative(file);
+            if (matcher is not null ? !matcher.Match(relative).HasMatches : !TextExtensions.Contains(Path.GetExtension(file))) continue;
+
+            try
+            {
+                if (new FileInfo(file).Length > MaxSearchFileBytes || TextFileIo.LooksBinary(file)) continue;
+
+                var lineNumber = 0;
+                var fileMatched = false;
+                foreach (var line in File.ReadLines(file))
+                {
+                    lineNumber++;
+                    var hit = regex?.IsMatch(line) ?? line.Contains(query, StringComparison.OrdinalIgnoreCase);
+                    if (!hit) continue;
+
+                    if (!fileMatched)
+                    {
+                        fileMatched = true;
+                        filesWithMatches++;
+                    }
+                    builder.Append(relative).Append(':').Append(lineNumber).Append(": ").Append(Truncate(line.Trim(), 200)).Append('\n');
+                    if (++matches >= maxMatches)
+                    {
+                        builder.Append($"... (stopped at {maxMatches} matches; refine the query or file glob)\n");
+                        return Limit(builder.ToString());
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or RegexMatchTimeoutException)
+            {
+                // Unreadable file or pathological regex — skip it.
+            }
+        }
+
+        return matches == 0
+            ? $"No matches for '{query}'."
+            : Limit($"{matches} match(es) in {filesWithMatches} file(s):\n{builder}");
+    }
+
+    public async Task<string> ReadFileAsync(string path, int? startLine, int? endLine, CancellationToken cancellationToken = default)
+    {
+        if (!scope.TryResolve(path, out var fullPath, out var error)) return $"Error: {error}";
+        if (Directory.Exists(fullPath)) return $"Error: '{path}' is a directory. Use list_directory.";
+        if (!File.Exists(fullPath)) return $"Error: file '{path}' does not exist.";
+        if (new FileInfo(fullPath).Length > MaxReadFileBytes) return $"Error: '{path}' is larger than 2 MB.";
+        if (TextFileIo.LooksBinary(fullPath)) return $"Error: '{path}' is a binary file.";
+
+        var state = await TextFileIo.ReadAsync(fullPath, cancellationToken);
+        var lines = SplitLines(state.Content);
+        var total = lines.Length;
+        if (total == 0) return $"File: {scope.ToRelative(fullPath)} (empty)";
+
+        var from = Math.Clamp(startLine ?? 1, 1, total);
+        var to = Math.Clamp(endLine ?? from + MaxReadLines - 1, from, total);
+        if (to - from + 1 > MaxReadLines) to = from + MaxReadLines - 1;
+
+        var builder = new StringBuilder();
+        builder.Append($"File: {scope.ToRelative(fullPath)} (lines {from}-{to} of {total})\n");
+        for (var i = from; i <= to; i++) builder.Append(i).Append("| ").Append(lines[i - 1]).Append('\n');
+        if (to < total) builder.Append($"... {total - to} more line(s). Call read_file with startLine={to + 1} to continue.\n");
+        return Limit(builder.ToString());
+    }
+
+    // Lines without the phantom empty entry produced by a trailing newline.
+    public static string[] SplitLines(string content)
+    {
+        if (content.Length == 0) return [];
+        var lines = content.Split('\n');
+        return content.EndsWith('\n') ? lines[..^1] : lines;
+    }
+
+    private static Matcher CreateMatcher(string pattern)
+    {
+        var normalized = pattern.Trim().Replace('\\', '/').TrimStart('/');
+        if (normalized.StartsWith("./", StringComparison.Ordinal)) normalized = normalized[2..];
+        if (!normalized.Contains('/')) normalized = "**/" + normalized;
+
+        var matcher = new Matcher(StringComparison.OrdinalIgnoreCase);
+        matcher.AddInclude(normalized);
+        return matcher;
+    }
+
+    private static string Truncate(string value, int max) => value.Length <= max ? value : value[..max] + "…";
+
+    private static string Limit(string output) =>
+        output.Length <= MaxOutputChars ? output : output[..MaxOutputChars] + "\n... (output truncated)";
+}

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AiThread.API/AiThread.API.csproj" />
+    <Project Path="src/AiThread.Common/AiThread.Common.csproj" />
+    <Project Path="src/AiThread.Data/AiThread.Data.csproj" />
+    <Project Path="src/AiThread.Service/AiThread.Service.csproj" />
+    <Project Path="src/AiThread.UI/AiThread.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AiThread.Tests/AiThread.Tests.csproj" />
+  </Folder>
+</Solution>

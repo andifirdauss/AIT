@@ -1,0 +1,26 @@
+using AiThread.Common.DTOs;
+using AiThread.Common.Entities;
+using AiThread.Common.Enums;
+
+namespace AiThread.Service.Interfaces;
+
+// Planner / executor / wrapper worker configuration.
+public interface INodeService
+{
+    Task<IReadOnlyList<NodeDto>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    Task<NodeDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<NodeDto> CreateAsync(SaveNodeRequest request, CancellationToken cancellationToken = default);
+
+    Task<NodeDto?> UpdateAsync(Guid id, SaveNodeRequest request, CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    // Active nodes of a role ordered by priority.
+    Task<IReadOnlyList<AiNode>> GetActiveAsync(NodeRole role, CancellationToken cancellationToken = default);
+
+    Task<PipelineStatusDto> GetPipelineStatusAsync(CancellationToken cancellationToken = default);
+
+    Task<NodeTestResultDto> TestAsync(Guid id, CancellationToken cancellationToken = default);
+}

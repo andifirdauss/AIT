@@ -1,0 +1,112 @@
+@{
+    ViewData["Title"] = "Memory";
+    var projectId = ViewData["ProjectId"] as Guid?;
+}
+
+<div class="page-header">
+    <div>
+        <h1>Memory</h1>
+        <p class="page-subtitle">Pengetahuan yang disarikan dari thread. Planner membaca <strong>label</strong> dulu (keyword), lalu deskripsi yang relevan saja.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsolidate">Konsolidasi sekarang</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnAdd">Tambah memory</button>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Short · Redis</div><div class="stat-value" id="statShort">–</div><div class="stat-hint" id="statRedis">&nbsp;</div>
+    </div></div></div>
+    <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Long · Database</div><div class="stat-value" id="statLong">–</div><div class="stat-hint">hasil dump short &gt; 1 hari</div>
+    </div></div></div>
+    <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Project memory</div><div class="stat-value" id="statProject">–</div><div class="stat-hint">bisnis, validasi, flow</div>
+    </div></div></div>
+    <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Knowledge memory</div><div class="stat-value" id="statKnowledge">–</div><div class="stat-hint">pola umum lintas project</div>
+    </div></div></div>
+</div>
+
+<div class="card">
+    <div class="card-body border-bottom">
+        <div class="row g-2">
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterLevel">
+                    <option value="">Semua level</option><option value="Short">Short (Redis)</option><option value="Long">Long (DB)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterType">
+                    <option value="">Semua tipe</option><option value="Project">Project</option><option value="Knowledge">Knowledge</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="filterProject"><option value="">Semua project</option></select>
+            </div>
+            <div class="col-md-5">
+                <input type="search" class="form-control form-control-sm" id="filterSearch" placeholder="Cari label atau deskripsi…" />
+            </div>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Level</th><th>Tipe</th><th>Project</th><th style="width:40%">Label</th><th>Dibuat</th><th>Dipakai</th><th></th></tr></thead>
+            <tbody id="memoryRows"><tr><td colspan="7" class="empty-state">Memuat…</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center small">
+        <span class="text-secondary" id="pageInfo"></span>
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" id="btnPrev">‹ Sebelumnya</button>
+            <button type="button" class="btn btn-outline-secondary" id="btnNext">Berikutnya ›</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="memoryModal" tabindex="-1" aria-labelledby="memoryModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" id="memoryForm">
+            <div class="modal-header">
+                <h5 class="modal-title" id="memoryModalTitle">Memory</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="memoryId" />
+                <input type="hidden" id="memoryLevel" />
+                <div class="row g-2 mb-2">
+                    <div class="col-md-4">
+                        <label class="form-label small" for="memoryType">Tipe</label>
+                        <select class="form-select" id="memoryType">
+                            <option value="Project">Project — spesifik project</option>
+                            <option value="Knowledge">Knowledge — umum</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small" for="memoryProject">Project</label>
+                        <select class="form-select" id="memoryProject"></select>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small" for="memoryLabel">Label (keyword dipisah koma)</label>
+                    <input type="text" class="form-control" id="memoryLabel" maxlength="300" required />
+                </div>
+                <div>
+                    <label class="form-label small" for="memoryDescription">Deskripsi</label>
+                    <textarea class="form-control" id="memoryDescription" rows="8" required></textarea>
+                </div>
+                <div class="small text-secondary mt-2" id="memoryMeta"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>window.initialProjectId = '@(projectId?.ToString() ?? "")';</script>
+    <script src="~/js/pages/memory.js" asp-append-version="true"></script>
+}

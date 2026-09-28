@@ -1,0 +1,58 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    string Active(string name) => string.Equals(controller, name, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · AiThread</title>
+    <script>
+        // Apply the stored color mode before first paint to avoid a flash.
+        (() => {
+            try {
+                const theme = localStorage.getItem('aithread-theme');
+                if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-bs-theme', theme);
+            } catch { }
+        })();
+    </script>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/AiThread.UI.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="app-sidebar">
+            <a class="app-brand" asp-controller="Home" asp-action="Index">
+                <span class="app-brand-mark">⧉</span>
+                <span>AiThread</span>
+            </a>
+            <nav class="app-nav">
+                <a class="app-nav-link @Active("Home") @Active("Thread")" asp-controller="Home" asp-action="Index"><span class="app-nav-icon">◧</span>Dashboard</a>
+                <a class="app-nav-link @Active("Project")" asp-controller="Project" asp-action="Index"><span class="app-nav-icon">▤</span>Project</a>
+                <a class="app-nav-link @Active("Memory")" asp-controller="Memory" asp-action="Index"><span class="app-nav-icon">◈</span>Memory</a>
+                <a class="app-nav-link @Active("Node")" asp-controller="Node" asp-action="Index"><span class="app-nav-icon">⬡</span>Node</a>
+                <a class="app-nav-link @Active("Setting")" asp-controller="Setting" asp-action="Index"><span class="app-nav-icon">⚙</span>Setting</a>
+            </nav>
+            <div class="app-sidebar-footer">
+                <div id="routerPill" class="router-pill" title="Status koneksi 9router">
+                    <span class="status-dot"></span><span class="router-pill-text">9router…</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" id="themeToggle">Ganti tema</button>
+            </div>
+        </aside>
+        <main class="app-main" role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

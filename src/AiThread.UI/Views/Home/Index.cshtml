@@ -1,0 +1,120 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p class="page-subtitle">Koneksi 9router, kesiapan pipeline, thread yang berjalan, dan log langsung.</p>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshRouter">Cek ulang 9router</button>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl-3">
+        <div class="card h-100 stat-card"><div class="card-body">
+            <div class="stat-label">9router</div>
+            <div class="d-flex align-items-center gap-2 mt-1"><span id="routerDot" class="status-dot"></span><span class="stat-value fs-5" id="routerState">…</span></div>
+            <div class="stat-hint mt-1" id="routerDetail">&nbsp;</div>
+        </div></div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card h-100 stat-card"><div class="card-body">
+            <div class="stat-label">Short memory · Redis</div>
+            <div class="d-flex align-items-center gap-2 mt-1"><span id="redisDot" class="status-dot"></span><span class="stat-value fs-5" id="redisState">…</span></div>
+            <div class="stat-hint mt-1" id="redisDetail">&nbsp;</div>
+        </div></div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card h-100 stat-card"><div class="card-body">
+            <div class="stat-label">Database</div>
+            <div class="d-flex align-items-center gap-2 mt-1"><span id="dbDot" class="status-dot"></span><span class="stat-value fs-5" id="dbState">…</span></div>
+            <div class="stat-hint mt-1" id="dbDetail">&nbsp;</div>
+        </div></div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card h-100 stat-card"><div class="card-body">
+            <div class="stat-label">Pipeline node</div>
+            <div class="d-flex align-items-center gap-2 mt-1"><span id="pipelineDot" class="status-dot"></span><span class="stat-value fs-5" id="pipelineState">…</span></div>
+            <div class="stat-hint mt-1" id="pipelineDetail">&nbsp;</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Thread hari ini</div><div class="stat-value" id="statToday">–</div><div class="stat-hint" id="statTotal">&nbsp;</div>
+    </div></div></div>
+    <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Sedang berjalan</div><div class="stat-value" id="statActive">–</div><div class="stat-hint">thread aktif</div>
+    </div></div></div>
+    <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Success rate</div><div class="stat-value" id="statSuccess">–</div><div class="stat-hint">100 thread terakhir</div>
+    </div></div></div>
+    <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Speedup paralel</div><div class="stat-value" id="statSpeedup">–</div><div class="stat-hint">kerja executor ÷ waktu nyata</div>
+    </div></div></div>
+    <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Token hari ini</div><div class="stat-value" id="statTokens">–</div><div class="stat-hint">planner + executor + wrapper</div>
+    </div></div></div>
+    <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Project · Memory</div><div class="stat-value" id="statProjects">–</div><div class="stat-hint" id="statMemory">&nbsp;</div>
+    </div></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-7">
+        <div class="card mb-3">
+            <div class="card-header">Jalankan prompt</div>
+            <div class="card-body">
+                <p class="small text-secondary mb-2">Uji pipeline tanpa Claude Code: pilih project terdaftar, tulis permintaan, lalu pantau thread-nya.</p>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <select class="form-select" id="runProject"><option value="">Pilih project…</option></select>
+                    </div>
+                    <div class="col-md-8">
+                        <textarea class="form-control" id="runPrompt" rows="2" placeholder="Contoh: tambahkan kolom deskripsi pada form User (UI, JS, API, service, validasi, DDL)"></textarea>
+                    </div>
+                </div>
+                <div class="text-end mt-2">
+                    <button type="button" class="btn btn-primary" id="btnRun">Jalankan thread</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Thread terbaru</span>
+                <span class="small text-secondary fw-normal">klik baris untuk detail</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 table-clickable">
+                    <thead><tr><th>Waktu</th><th>Project</th><th>Prompt</th><th>Status</th><th>Tugas</th><th>Durasi</th><th>Speedup</th><th>Token</th></tr></thead>
+                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">Memuat…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                <span>Log langsung</span>
+                <div class="d-flex gap-2">
+                    <select class="form-select form-select-sm" id="logLevel" style="width:auto">
+                        <option value="Info" selected>Info+</option>
+                        <option value="Debug">Semua (debug)</option>
+                        <option value="Warning">Warning+</option>
+                        <option value="Error">Error</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPauseLog">Jeda</button>
+                </div>
+            </div>
+            <div class="log-panel" id="logPanel"><div class="empty-state">Memuat log…</div></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/dashboard.js" asp-append-version="true"></script>
+}
