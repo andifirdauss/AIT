@@ -22,6 +22,8 @@ public sealed class NineRouterService(
     ILogger<NineRouterService> logger) : INineRouterService
 {
     public const string HttpClientName = "NineRouter";
+    public const string KeyMissingMessage = "9router mewajibkan API key, tetapi belum ada API key tersimpan. Isi API key di menu Setting lalu klik Simpan.";
+    public const string KeyRejectedMessage = "API key ditolak oleh 9router. Periksa atau ganti API key di menu Setting.";
 
     private static readonly TimeSpan ModelCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan KeyCheckCacheDuration = TimeSpan.FromMinutes(5);
@@ -127,7 +129,11 @@ public sealed class NineRouterService(
             }
 
             var models = await GetModelsCoreAsync(baseUrl, refresh: !useCache, cancellationToken);
-            bool? keyValid = hasKey ? await ValidateKeyAsync(baseUrl, apiKey!, useCache, cancellationToken) : null;
+
+            // Health and the model list are public, so "online" says nothing about auth. ApiKeyValid answers
+            // "will chat requests authenticate?": false also when no key is stored but 9router requires one.
+            var accepted = await IsAuthenticationAcceptedAsync(baseUrl, hasKey ? apiKey : null, useCache, cancellationToken);
+            bool? keyValid = hasKey ? accepted : accepted ? null : false;
 
             return new RouterStatusDto(
                 true,
@@ -137,7 +143,7 @@ public sealed class NineRouterService(
                 models.Count(m => m.IsCombo),
                 hasKey,
                 keyValid,
-                keyValid == false ? "API key ditolak oleh 9router." : null,
+                accepted ? null : hasKey ? KeyRejectedMessage : KeyMissingMessage,
                 DateTime.UtcNow);
         }
         catch (Exception ex) when (ex is HttpRequestException or NineRouterException or JsonException
@@ -150,9 +156,10 @@ public sealed class NineRouterService(
     private static RouterStatusDto Offline(string baseUrl, bool hasKey, string error) =>
         new(false, baseUrl, null, 0, 0, hasKey, null, error, DateTime.UtcNow);
 
-    // 9router authenticates before validating the body, so an empty request tells a bad key (401)
-    // apart from a good one (400 "Missing model") without spending any tokens.
-    private async Task<bool> ValidateKeyAsync(string baseUrl, string apiKey, bool useCache, CancellationToken cancellationToken)
+    // 9router authenticates before validating the body, so an empty request tells a rejected or missing key (401)
+    // apart from an accepted one (400 "Missing model") without spending any tokens. A null key checks whether
+    // 9router requires one at all (its "require API key" option).
+    private async Task<bool> IsAuthenticationAcceptedAsync(string baseUrl, string? apiKey, bool useCache, CancellationToken cancellationToken)
     {
         var cached = _keyCheck;
         if (useCache && cached is not null && cached.BaseUrl == baseUrl && cached.Key == apiKey && DateTime.UtcNow - cached.CheckedAt < KeyCheckCacheDuration)
@@ -162,7 +169,7 @@ public sealed class NineRouterService(
         {
             Content = new StringContent("{\"messages\":[]}", Encoding.UTF8, "application/json")
         };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        if (apiKey is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(5));
@@ -206,7 +213,7 @@ public sealed class NineRouterService(
     private static List<RouterModelDto> ParseModels(string json)
     {
         var models = new List<RouterModelDto>();
-        if (JsonNode.Parse(json)?["data"] is not JsonArray data) return models;
+        if (Property(JsonNode.Parse(json), "data") is not JsonArray data) return models;
 
         foreach (var item in data)
         {
@@ -271,8 +278,11 @@ public sealed class NineRouterService(
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(timeout.Token);
+                var hint = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                    ? " — " + (string.IsNullOrEmpty(settings.NineRouterApiKey) ? KeyMissingMessage : KeyRejectedMessage)
+                    : string.Empty;
                 throw new NineRouterException(
-                    $"9router HTTP {(int)response.StatusCode} untuk model '{request.Model}': {ExtractError(errorBody)}",
+                    $"9router HTTP {(int)response.StatusCode} untuk model '{request.Model}': {ExtractError(errorBody)}{hint}",
                     (int)response.StatusCode);
             }
 
@@ -425,8 +435,10 @@ public sealed class NineRouterService(
         if (string.IsNullOrWhiteSpace(body)) return "(no body)";
         try
         {
+            // The body may be any JSON shape ({"error":"..."}, an array, a bare string), so never index a non-object.
             var node = JsonNode.Parse(body);
-            var message = GetString(node?["error"]?["message"]) ?? GetString(node?["message"]) ?? GetString(node?["error"]);
+            var error = Property(node, "error");
+            var message = GetString(Property(error, "message")) ?? GetString(Property(node, "message")) ?? GetString(error) ?? GetString(node);
             if (!string.IsNullOrWhiteSpace(message)) return message;
         }
         catch (JsonException)
@@ -435,6 +447,9 @@ public sealed class NineRouterService(
         }
         return body.Length > 500 ? body[..500] : body;
     }
+
+    private static JsonNode? Property(JsonNode? node, string name) =>
+        node is JsonObject obj ? obj[name] : null;
 
     private HttpClient Client() => httpClientFactory.CreateClient(HttpClientName);
 
@@ -467,5 +482,5 @@ public sealed class NineRouterService(
 
     private sealed record ModelCache(string BaseUrl, IReadOnlyList<RouterModelDto> Models, DateTime LoadedAt);
 
-    private sealed record KeyCheck(string BaseUrl, string Key, bool Valid, DateTime CheckedAt);
+    private sealed record KeyCheck(string BaseUrl, string? Key, bool Valid, DateTime CheckedAt);
 }

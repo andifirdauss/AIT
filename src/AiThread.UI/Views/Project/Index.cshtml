@@ -5,15 +5,20 @@
 <div class="page-header">
     <div>
         <h1>Project</h1>
-        <p class="page-subtitle">Codebase yang sudah dibaca AiThread. Identitas unik = file <span class="mono">.sln</span> / <span class="mono">.slnx</span>, sehingga banyak sesi dari project berbeda tidak saling tercampur.</p>
+        <p class="page-subtitle">Codebase yang dikenal AiThread. Identitas unik = file <span class="mono">.sln</span> / <span class="mono">.slnx</span>, sehingga banyak sesi dari project berbeda tidak saling tercampur.</p>
     </div>
 </div>
 
 <div class="card mb-3">
     <div class="card-body">
-        <label class="form-label small text-secondary" for="projectPath">Daftarkan manual (project juga terdaftar otomatis saat Claude Code memakai proxy)</label>
+        <p class="small text-secondary mb-2">
+            Project terdaftar otomatis pada prompt pertama dari sesi Claude Code yang dibuka di folder berisi <span class="mono">.sln</span>/<span class="mono">.slnx</span>.
+            Sesi di luar project <span class="mono">.sln</span>/<span class="mono">.slnx</span> <strong>diabaikan</strong> AiThread — prompt-nya diteruskan langsung tanpa orkestrasi.
+        </p>
+        <label class="form-label small text-secondary" for="projectPath">Daftarkan manual</label>
         <div class="input-group">
             <input type="text" class="form-control mono" id="projectPath" placeholder="D:\Source\MyApp\MyApp.sln atau folder yang berisi .sln/.slnx" />
+            <button class="btn btn-outline-secondary" type="button" id="btnBrowse">Telusuri…</button>
             <button class="btn btn-primary" type="button" id="btnRegister">Daftarkan</button>
         </div>
     </div>
@@ -27,6 +32,60 @@
             </thead>
             <tbody id="projectRows"><tr><td colspan="7" class="empty-state">Memuat…</td></tr></tbody>
         </table>
+    </div>
+</div>
+
+<div class="modal fade" id="browseModal" tabindex="-1" aria-labelledby="browseModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="browseModalTitle">Telusuri solution (.sln / .slnx)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-1 mb-2" id="quickLocations"></div>
+                <div class="input-group mb-3">
+                    <button class="btn btn-outline-secondary" type="button" id="btnUp" title="Folder induk">↑ Naik</button>
+                    <input type="text" class="form-control mono" id="browsePath" placeholder="Pilih drive/lokasi di atas atau ketik path folder, lalu Enter" />
+                    <button class="btn btn-outline-secondary" type="button" id="btnOpen">Buka</button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-5">
+                        <div class="small text-secondary mb-1" id="folderTitle">Folder</div>
+                        <div class="list-group browse-list" id="folderList"></div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="small text-secondary mb-1">Solution di folder ini</div>
+                        <div class="list-group mb-3" id="solutionList"></div>
+
+                        <div class="border rounded p-2">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="small">Cari di semua sub-folder, kedalaman</span>
+                                <select class="form-select form-select-sm" id="scanDepth" style="width:auto">
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4" selected>4</option>
+                                    <option value="6">6</option>
+                                    <option value="8">8</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnScan">Scan</button>
+                                <button type="button" class="btn btn-sm btn-link d-none" id="btnSelectAllNew">Pilih semua yang belum terdaftar</button>
+                            </div>
+                            <div class="small text-secondary mt-1" id="scanInfo">Folder build, VCS, tersembunyi, dan junction dilewati.</div>
+                            <div class="list-group browse-list mt-2" id="scanResults"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span class="small text-secondary" id="selectionInfo">Belum ada solution dipilih.</span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary" id="btnRegisterSelected" disabled>Daftarkan terpilih</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

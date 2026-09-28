@@ -30,6 +30,46 @@ public class WorkspaceTests : IDisposable
     }
 
     [Fact]
+    public void Scan_finds_solutions_within_depth_and_skips_ignored_folders()
+    {
+        var near = _workspace.Write("a/A.sln", "");
+        var deeper = _workspace.Write("b/src/B.slnx", "");
+        _workspace.Write("c/1/2/3/Deep.sln", "");
+        _workspace.Write("d/node_modules/pkg/Ignored.sln", "");
+        _workspace.Write(".hidden/Hidden.sln", "");
+
+        var result = SolutionLocator.Scan(_workspace.Root, maxDepth: 2, maxResults: 100, maxFolders: 1000, CancellationToken.None);
+
+        Assert.False(result.Truncated);
+        Assert.Equal([near, deeper], result.Solutions);
+    }
+
+    [Fact]
+    public void Scan_reports_truncation_when_a_limit_is_hit()
+    {
+        _workspace.Write("a/A.sln", "");
+        _workspace.Write("b/B.sln", "");
+        _workspace.Write("c/C.sln", "");
+
+        var result = SolutionLocator.Scan(_workspace.Root, maxDepth: 3, maxResults: 2, maxFolders: 1000, CancellationToken.None);
+
+        Assert.True(result.Truncated);
+        Assert.Equal(2, result.Solutions.Count);
+    }
+
+    [Fact]
+    public void Browsable_directories_hide_build_and_dot_folders()
+    {
+        _workspace.Write("src/a.cs", "");
+        _workspace.Write("bin/x.dll", "");
+        _workspace.Write(".git/HEAD", "");
+
+        var names = SolutionLocator.BrowsableDirectories(new DirectoryInfo(_workspace.Root)).Select(d => d.Name);
+
+        Assert.Equal(["src"], names);
+    }
+
+    [Fact]
     public void Reads_projects_from_sln_and_slnx()
     {
         var slnx = _workspace.Write("x/X.slnx", "<Solution><Folder Name=\"/src/\"><Project Path=\"src/A/A.csproj\" /></Folder></Solution>");

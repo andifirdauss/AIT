@@ -14,6 +14,7 @@ public sealed class MemoryExtractor(
     INineRouterService router,
     IMemoryService memoryService,
     IActivityLogService activityLog,
+    NodeConcurrencyLimiter limiter,
     ILogger<MemoryExtractor> logger)
 {
     private const int MaxMemories = 5;
@@ -23,17 +24,23 @@ public sealed class MemoryExtractor(
         try
         {
             var existing = await memoryService.GetIndexAsync(thread.ProjectId, thread.Prompt, 40, cancellationToken);
-            var result = await router.ChatAsync(new ChatCompletionRequest
+
+            // Counts against the node's Max paralel like any other call to it (usually the wrapper node).
+            ChatCompletionResult result;
+            using (await limiter.AcquireAsync(node, cancellationToken))
             {
-                Model = node.Model,
-                Messages =
-                [
-                    ChatMessages.System(AgentPrompts.MemoryExtractor),
-                    ChatMessages.User(BuildInput(thread, plan, execution, finalText, existing))
-                ],
-                Temperature = 0.2,
-                MaxTokens = Math.Min(node.MaxTokens, 4096)
-            }, cancellationToken: cancellationToken);
+                result = await router.ChatAsync(new ChatCompletionRequest
+                {
+                    Model = node.Model,
+                    Messages =
+                    [
+                        ChatMessages.System(AgentPrompts.MemoryExtractor),
+                        ChatMessages.User(BuildInput(thread, plan, execution, finalText, existing))
+                    ],
+                    Temperature = 0.2,
+                    MaxTokens = Math.Min(node.MaxTokens, 4096)
+                }, cancellationToken: cancellationToken);
+            }
 
             var memories = Parse(result.Content);
             var saved = new List<MemoryItemDto>();

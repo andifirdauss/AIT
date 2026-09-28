@@ -44,16 +44,15 @@ public sealed class ThreadOrchestrator(
 
     private async Task<PreparedThread> PrepareAsync(ThreadRequest request, CancellationToken cancellationToken)
     {
-        var project = request.ProjectId is { } projectId
-            ? await projectService.GetContextAsync(projectId, cancellationToken)
-            : await projectService.ResolveAsync(request.WorkingDirectory, request.SolutionHint, cancellationToken);
+        var project = await projectService.GetContextAsync(request.ProjectId, cancellationToken)
+                      ?? throw new AppValidationException("Project tidak ditemukan. Daftarkan ulang di menu Project.");
 
         var thread = new ThreadRun
         {
-            ProjectId = project?.ProjectId,
+            ProjectId = project.ProjectId,
             Source = request.Source,
             SessionId = request.SessionId,
-            WorkingDirectory = Truncate(request.WorkingDirectory ?? project?.RootPath, 800),
+            WorkingDirectory = Truncate(request.WorkingDirectory ?? project.RootPath, 800),
             Prompt = request.Prompt,
             Status = ThreadStatus.Pending
         };
@@ -66,7 +65,7 @@ public sealed class ThreadOrchestrator(
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.ThreadCreated, new { thread.Id, thread.ProjectId, thread.Status }, thread.Id));
         activityLog.Info("thread",
-            $"Thread baru dari {(request.Source == ThreadSource.ClaudeCode ? "Claude Code" : "dashboard")} · {project?.Name ?? "tanpa project"}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}",
+            $"Thread baru dari {(request.Source == ThreadSource.ClaudeCode ? "Claude Code" : "dashboard")} · {project.Name}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}",
             thread.Id, thread.ProjectId);
 
         return new PreparedThread(thread, project);
@@ -94,11 +93,8 @@ public sealed class ThreadOrchestrator(
         var progress = new ClientProgress(observer, settings.StreamProgressToClient);
         try
         {
-            var project = prepared.Project
-                          ?? throw new OrchestrationException("Working directory tidak terdeteksi dari request, sehingga project tidak dapat ditentukan.");
-
-            var solutionLabel = project.SolutionPath is null ? "⚠️ tanpa .sln/.slnx (memory project nonaktif)" : $"`{Path.GetFileName(project.SolutionPath)}`";
-            await progress.LineAsync($"**AiThread** · {solutionLabel} · thread `{thread.Id.ToString()[..8]}`", cancellationToken);
+            var project = prepared.Project;
+            await progress.LineAsync($"**AiThread** · `{Path.GetFileName(project.SolutionPath)}` · thread `{thread.Id.ToString()[..8]}`", cancellationToken);
 
             var planner = (await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken)).FirstOrDefault()
                           ?? throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
@@ -280,5 +276,5 @@ public sealed class ThreadOrchestrator(
     private static string Truncate(string? value, int max) =>
         value is null ? string.Empty : value.Length <= max ? value : value[..max];
 
-    private sealed record PreparedThread(ThreadRun Thread, ProjectContext? Project);
+    private sealed record PreparedThread(ThreadRun Thread, ProjectContext Project);
 }
