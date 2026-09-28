@@ -1,0 +1,161 @@
+using System.Text.Json.Nodes;
+using AiThread.Service.Models;
+
+namespace AiThread.Service.Orchestration;
+
+// OpenAI function definitions offered to the planner.
+public static class PlannerTools
+{
+    public const string ListDirectory = "list_directory";
+    public const string FindFiles = "find_files";
+    public const string SearchText = "search_text";
+    public const string ReadFile = "read_file";
+    public const string SearchMemory = "search_memory";
+    public const string ReadMemory = "read_memory";
+    public const string SubmitPlan = "submit_plan";
+
+    public static JsonArray All() =>
+    [
+        ChatMessages.Function(ListDirectory,
+            "List files and folders under a directory of the project (build output, VCS and third-party folders are hidden).",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "Directory relative to the project root. Use \".\" for the root." },
+                "depth": { "type": "integer", "description": "How many levels to expand (1-4). Default 2." }
+              },
+              "required": ["path"]
+            }
+            """)),
+        ChatMessages.Function(FindFiles,
+            "Find files by glob pattern, e.g. \"**/*User*.cs\", \"src/**/Views/User/*.cshtml\", \"*.sql\".",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "pattern": { "type": "string", "description": "Glob pattern relative to the project root." }
+              },
+              "required": ["pattern"]
+            }
+            """)),
+        ChatMessages.Function(SearchText,
+            "Search file contents (case-insensitive). Returns path:line: text for each match.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "query": { "type": "string", "description": "Text to search for, or a regular expression when regex is true." },
+                "glob": { "type": "string", "description": "Optional glob limiting which files are searched, e.g. \"**/*.js\"." },
+                "regex": { "type": "boolean", "description": "Treat query as a .NET regular expression." }
+              },
+              "required": ["query"]
+            }
+            """)),
+        ChatMessages.Function(ReadFile,
+            "Read a file with line numbers (max 600 lines per call; use startLine/endLine for large files).",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "File path relative to the project root." },
+                "startLine": { "type": "integer", "description": "First line to read (1-based)." },
+                "endLine": { "type": "integer", "description": "Last line to read (inclusive)." }
+              },
+              "required": ["path"]
+            }
+            """)),
+        ChatMessages.Function(SearchMemory,
+            "Search memory labels (project facts and reusable knowledge) by keywords. Returns ids and labels only.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "query": { "type": "string", "description": "Keywords, e.g. \"user validation description\"." }
+              },
+              "required": ["query"]
+            }
+            """)),
+        ChatMessages.Function(ReadMemory,
+            "Read the full description of memories by id.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "ids": { "type": "array", "items": { "type": "string" }, "description": "Memory ids from the index or search_memory." }
+              },
+              "required": ["ids"]
+            }
+            """)),
+        SubmitPlanDefinition()
+    ];
+
+    public static JsonArray SubmitOnly() => [SubmitPlanDefinition()];
+
+    private static JsonObject SubmitPlanDefinition() =>
+        ChatMessages.Function(SubmitPlan,
+            "Submit the final plan. Call exactly once, after investigating. For requests that need no file change, send an empty tasks list and the full answer in \"answer\".",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "summary": { "type": "string", "description": "One or two sentences, in the developer's language, describing what will be done." },
+                "answer": { "type": "string", "description": "Complete answer for requests that need no file changes." },
+                "contract": {
+                  "type": "array",
+                  "description": "Names shared between tasks/files that every executor must use verbatim.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string", "description": "What it is, e.g. \"UI input id\", \"DTO property\", \"DB column\"." },
+                      "value": { "type": "string", "description": "The exact identifier/value, e.g. \"txtDescription\", \"Description\", \"Description NVARCHAR(500) NULL\"." },
+                      "note": { "type": "string" }
+                    },
+                    "required": ["name", "value"]
+                  }
+                },
+                "tasks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "description": "Short id: T1, T2, ..." },
+                      "title": { "type": "string" },
+                      "file": { "type": "string", "description": "Target file relative to the project root." },
+                      "action": { "type": "string", "enum": ["edit", "create"] },
+                      "instruction": { "type": "string", "description": "Self-contained instruction for the executor." },
+                      "focus": {
+                        "type": "array",
+                        "description": "Line ranges of the target file around the change (needed for large files).",
+                        "items": {
+                          "type": "object",
+                          "properties": { "startLine": { "type": "integer" }, "endLine": { "type": "integer" } },
+                          "required": ["startLine", "endLine"]
+                        }
+                      },
+                      "context": {
+                        "type": "array",
+                        "description": "Read-only excerpts from other files the executor must see.",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "file": { "type": "string" },
+                            "startLine": { "type": "integer" },
+                            "endLine": { "type": "integer" },
+                            "note": { "type": "string" }
+                          },
+                          "required": ["file"]
+                        }
+                      },
+                      "dependsOn": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["id", "title", "file", "action", "instruction"]
+                  }
+                }
+              },
+              "required": ["summary", "tasks"]
+            }
+            """));
+
+    private static JsonObject Schema(string json) => (JsonObject)JsonNode.Parse(json)!;
+}

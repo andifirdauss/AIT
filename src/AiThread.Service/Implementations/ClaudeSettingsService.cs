@@ -1,0 +1,146 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using AiThread.Common.DTOs;
+using AiThread.Common.Enums;
+using AiThread.Service.Interfaces;
+using AiThread.Service.Models;
+using AiThread.Service.Proxy;
+
+namespace AiThread.Service.Implementations;
+
+// Claude Code reads env vars from the "env" block of settings.json:
+//   ANTHROPIC_BASE_URL   -> requests go to this proxy instead of api.anthropic.com
+//   ANTHROPIC_AUTH_TOKEN -> sent as "Authorization: Bearer"; also keeps real Anthropic credentials away from the proxy
+//   API_TIMEOUT_MS       -> an orchestrated thread can take minutes
+//   ANTHROPIC_CUSTOM_HEADERS (project scope only) -> pins the session to its solution file
+public sealed class ClaudeSettingsService(ISettingService settingService, IProjectService projectService) : IClaudeSettingsService
+{
+    private const string SolutionHeader = ClaudeRequestInspector.SolutionHeader;
+    private const int DefaultTimeoutMs = 1_800_000;
+    private const string BackupSuffix = ".aithread-backup";
+
+    private static readonly string[] ManagedKeys = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "API_TIMEOUT_MS"];
+    private static readonly JsonSerializerOptions WriteOptions = new() { WriteIndented = true };
+    private static readonly JsonDocumentOptions ReadOptions = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
+
+    public async Task<ClaudeSettingsStatusDto> GetStatusAsync(ClaudeSettingsScope scope, Guid? projectId, string proxyBaseUrl, CancellationToken cancellationToken = default)
+    {
+        var target = await ResolveTargetAsync(scope, projectId, cancellationToken);
+        var root = await ReadAsync(target.Path, cancellationToken);
+        var currentBaseUrl = GetString(root["env"]?["ANTHROPIC_BASE_URL"]);
+        var env = await BuildEnvAsync(proxyBaseUrl, null, target.SolutionPath, cancellationToken);
+
+        return new ClaudeSettingsStatusDto(
+            scope,
+            target.Path,
+            File.Exists(target.Path),
+            currentBaseUrl is not null && SameUrl(currentBaseUrl, proxyBaseUrl),
+            currentBaseUrl,
+            new JsonObject { ["env"] = env }.ToJsonString(WriteOptions));
+    }
+
+    public async Task<ClaudeSettingsStatusDto> ApplyAsync(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!Uri.TryCreate(request.ProxyBaseUrl, UriKind.Absolute, out _))
+            throw new AppValidationException("URL proxy tidak valid.");
+
+        var target = await ResolveTargetAsync(request.Scope, request.ProjectId, cancellationToken);
+        var root = await ReadAsync(target.Path, cancellationToken);
+        await BackupOnceAsync(target.Path, cancellationToken);
+
+        var env = root["env"] as JsonObject ?? new JsonObject();
+        root["env"] = env;
+        foreach (var (key, value) in await BuildEnvAsync(request.ProxyBaseUrl, request.TimeoutMs, target.SolutionPath, cancellationToken))
+        {
+            // Never overwrite custom headers the user configured themselves.
+            if (key == "ANTHROPIC_CUSTOM_HEADERS" && GetString(env[key]) is { } existing && !existing.StartsWith(SolutionHeader, StringComparison.OrdinalIgnoreCase))
+                continue;
+            env[key] = value?.DeepClone();
+        }
+
+        await WriteAsync(target.Path, root, cancellationToken);
+        return await GetStatusAsync(request.Scope, request.ProjectId, request.ProxyBaseUrl, cancellationToken);
+    }
+
+    public async Task<ClaudeSettingsStatusDto> RevertAsync(ClaudeSettingsScope scope, Guid? projectId, string proxyBaseUrl, CancellationToken cancellationToken = default)
+    {
+        var target = await ResolveTargetAsync(scope, projectId, cancellationToken);
+        if (File.Exists(target.Path))
+        {
+            var root = await ReadAsync(target.Path, cancellationToken);
+            if (root["env"] is JsonObject env)
+            {
+                foreach (var key in ManagedKeys) env.Remove(key);
+                if (GetString(env["ANTHROPIC_CUSTOM_HEADERS"])?.StartsWith(SolutionHeader, StringComparison.OrdinalIgnoreCase) == true)
+                    env.Remove("ANTHROPIC_CUSTOM_HEADERS");
+                if (env.Count == 0) root.Remove("env");
+            }
+            await WriteAsync(target.Path, root, cancellationToken);
+        }
+
+        return await GetStatusAsync(scope, projectId, proxyBaseUrl, cancellationToken);
+    }
+
+    private async Task<JsonObject> BuildEnvAsync(string proxyBaseUrl, int? timeoutMs, string? solutionPath, CancellationToken cancellationToken)
+    {
+        var settings = await settingService.GetRuntimeAsync(cancellationToken);
+        var env = new JsonObject
+        {
+            ["ANTHROPIC_BASE_URL"] = proxyBaseUrl.TrimEnd('/'),
+            ["ANTHROPIC_AUTH_TOKEN"] = settings.ProxyApiKey ?? "aithread-local",
+            ["API_TIMEOUT_MS"] = (timeoutMs is > 0 ? timeoutMs.Value : DefaultTimeoutMs).ToString()
+        };
+        if (solutionPath is not null) env["ANTHROPIC_CUSTOM_HEADERS"] = $"{SolutionHeader}: {solutionPath}";
+        return env;
+    }
+
+    private async Task<(string Path, string? SolutionPath)> ResolveTargetAsync(ClaudeSettingsScope scope, Guid? projectId, CancellationToken cancellationToken)
+    {
+        if (scope == ClaudeSettingsScope.User)
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return (Path.Combine(home, ".claude", "settings.json"), null);
+        }
+
+        if (projectId is null) throw new AppValidationException("Pilih project terlebih dahulu.");
+        var project = await projectService.GetContextAsync(projectId.Value, cancellationToken)
+                      ?? throw new AppValidationException("Project tidak ditemukan.");
+        return (Path.Combine(project.RootPath, ".claude", "settings.local.json"), project.SolutionPath);
+    }
+
+    private static async Task<JsonObject> ReadAsync(string path, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(path)) return new JsonObject();
+        var text = await File.ReadAllTextAsync(path, cancellationToken);
+        if (string.IsNullOrWhiteSpace(text)) return new JsonObject();
+
+        try
+        {
+            return JsonNode.Parse(text, documentOptions: ReadOptions) as JsonObject
+                   ?? throw new AppValidationException($"{path} bukan objek JSON.");
+        }
+        catch (JsonException ex)
+        {
+            throw new AppValidationException($"{path} tidak dapat dibaca sebagai JSON: {ex.Message}");
+        }
+    }
+
+    private static async Task WriteAsync(string path, JsonObject root, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllTextAsync(path, root.ToJsonString(WriteOptions) + Environment.NewLine, cancellationToken);
+    }
+
+    private static async Task BackupOnceAsync(string path, CancellationToken cancellationToken)
+    {
+        var backup = path + BackupSuffix;
+        if (File.Exists(path) && !File.Exists(backup))
+            await File.WriteAllBytesAsync(backup, await File.ReadAllBytesAsync(path, cancellationToken), cancellationToken);
+    }
+
+    private static bool SameUrl(string a, string b) =>
+        string.Equals(a.Trim().TrimEnd('/'), b.Trim().TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+
+    private static string? GetString(JsonNode? node) =>
+        node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+}

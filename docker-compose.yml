@@ -1,0 +1,15 @@
+# Redis for AiThread short memory.
+# Append-only persistence keeps short memories across Redis restarts until they are consolidated into the database.
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: aithread-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - aithread-redis:/data
+    restart: unless-stopped
+
+volumes:
+  aithread-redis:

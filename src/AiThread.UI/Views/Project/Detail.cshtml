@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Detail project";
+    var projectId = (Guid)ViewData["ProjectId"]!;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-controller="Project" asp-action="Index" class="small text-decoration-none">← Project</a>
+        <h1 class="mt-1" id="projectName">Memuat…</h1>
+        <p class="page-subtitle mono" id="projectPath"></p>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="/Memory?projectId=@projectId">Lihat memory project</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Thread</div><div class="stat-value" id="statThreads">–</div></div></div></div>
+    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Sesi Claude Code</div><div class="stat-value" id="statSessions">–</div></div></div></div>
+    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Memory</div><div class="stat-value" id="statMemory">–</div></div></div></div>
+    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Terakhir dipakai</div><div class="stat-value fs-5" id="statLastSeen">–</div></div></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-xl-4">
+        <div class="card mb-3">
+            <div class="card-header">Project dalam solution</div>
+            <ul class="list-group list-group-flush small mono" id="solutionProjects"><li class="list-group-item text-secondary">Memuat…</li></ul>
+        </div>
+        <div class="card">
+            <div class="card-header">Sesi</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Sesi</th><th>Thread</th><th>Terakhir</th></tr></thead>
+                    <tbody id="sessionRows"><tr><td colspan="3" class="text-secondary">–</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-header">Thread project ini</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 table-clickable">
+                    <thead><tr><th>Waktu</th><th>Project</th><th>Prompt</th><th>Status</th><th>Tugas</th><th>Durasi</th><th>Speedup</th><th>Token</th></tr></thead>
+                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">Memuat…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>window.projectId = '@projectId';</script>
+    <script src="~/js/pages/project-detail.js" asp-append-version="true"></script>
+}

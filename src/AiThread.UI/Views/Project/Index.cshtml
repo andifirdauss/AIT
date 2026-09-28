@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Project";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Project</h1>
+        <p class="page-subtitle">Codebase yang sudah dibaca AiThread. Identitas unik = file <span class="mono">.sln</span> / <span class="mono">.slnx</span>, sehingga banyak sesi dari project berbeda tidak saling tercampur.</p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <label class="form-label small text-secondary" for="projectPath">Daftarkan manual (project juga terdaftar otomatis saat Claude Code memakai proxy)</label>
+        <div class="input-group">
+            <input type="text" class="form-control mono" id="projectPath" placeholder="D:\Source\MyApp\MyApp.sln atau folder yang berisi .sln/.slnx" />
+            <button class="btn btn-primary" type="button" id="btnRegister">Daftarkan</button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 table-clickable">
+            <thead>
+                <tr><th>Project</th><th>Solution</th><th>Thread</th><th>Sesi</th><th>Memory</th><th>Terakhir dipakai</th><th></th></tr>
+            </thead>
+            <tbody id="projectRows"><tr><td colspan="7" class="empty-state">Memuat…</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/projects.js" asp-append-version="true"></script>
+}
