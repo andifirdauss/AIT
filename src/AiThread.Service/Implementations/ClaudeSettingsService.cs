@@ -81,6 +81,28 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
         return await GetStatusAsync(scope, projectId, proxyBaseUrl, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ProjectClaudeIntegrationDto>> GetProjectStatusesAsync(string proxyBaseUrl, CancellationToken cancellationToken = default)
+    {
+        var statuses = new List<ProjectClaudeIntegrationDto>();
+        foreach (var project in await projectService.GetAllAsync(cancellationToken))
+        {
+            var path = ProjectSettingsPath(project.RootPath);
+            try
+            {
+                var baseUrl = GetString((await ReadAsync(path, cancellationToken))["env"]?["ANTHROPIC_BASE_URL"]);
+                var enabled = baseUrl is not null && SameUrl(baseUrl, proxyBaseUrl);
+                statuses.Add(new ProjectClaudeIntegrationDto(project.Id, enabled, enabled ? null : baseUrl, path, null));
+            }
+            catch (Exception ex) when (ex is AppValidationException or IOException or UnauthorizedAccessException)
+            {
+                statuses.Add(new ProjectClaudeIntegrationDto(project.Id, false, null, path, ex.Message));
+            }
+        }
+        return statuses;
+    }
+
+    private static string ProjectSettingsPath(string rootPath) => Path.Combine(rootPath, ".claude", "settings.local.json");
+
     private async Task<JsonObject> BuildEnvAsync(string proxyBaseUrl, int? timeoutMs, string? solutionPath, CancellationToken cancellationToken)
     {
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
@@ -105,7 +127,7 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
         if (projectId is null) throw new AppValidationException("Pilih project terlebih dahulu.");
         var project = await projectService.GetContextAsync(projectId.Value, cancellationToken)
                       ?? throw new AppValidationException("Project tidak ditemukan.");
-        return (Path.Combine(project.RootPath, ".claude", "settings.local.json"), project.SolutionPath);
+        return (ProjectSettingsPath(project.RootPath), project.SolutionPath);
     }
 
     private static async Task<JsonObject> ReadAsync(string path, CancellationToken cancellationToken)

@@ -80,6 +80,47 @@ public class NineRouterServiceTests
         Assert.Contains(NineRouterService.KeyMissingMessage, ex.Message);
     }
 
+    [Fact]
+    public async Task Rate_limited_chat_honours_retry_after_and_then_succeeds()
+    {
+        var calls = 0;
+        var handler = new StubHandler(_ =>
+        {
+            if (++calls == 1)
+            {
+                var limited = Json(HttpStatusCode.TooManyRequests, "{\"error\":{\"message\":\"Rate limit reached\"}}");
+                limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.Zero);
+                return limited;
+            }
+            return Json(HttpStatusCode.OK, "{\"choices\":[{\"message\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}");
+        });
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), NullLogger<NineRouterService>.Instance);
+
+        var result = await router.ChatAsync(new ChatCompletionRequest { Model = "cc/claude-opus-5-5", Messages = [ChatMessages.User("hi")] });
+
+        Assert.Equal("ok", result.Content);
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public void Long_retry_after_is_not_waited_on_so_the_caller_can_fail_over()
+    {
+        var ex = new NineRouterException("limited", 429, retryAfter: TimeSpan.FromMinutes(5));
+
+        Assert.True(ex.IsModelUnavailable);
+        Assert.Null(NineRouterService.RetryDelay(ex, 1));
+    }
+
+    [Fact]
+    public void Rate_limit_without_retry_after_backs_off_longer_than_other_errors()
+    {
+        var rateLimited = NineRouterService.RetryDelay(new NineRouterException("limited", 429), 1)!.Value;
+        var serverError = NineRouterService.RetryDelay(new NineRouterException("boom", 502), 1)!.Value;
+
+        Assert.InRange(rateLimited.TotalSeconds, 5, 7.5);
+        Assert.InRange(serverError.TotalSeconds, 2, 3);
+    }
+
     private static HttpResponseMessage Json(HttpStatusCode status, string body) =>
         new(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 

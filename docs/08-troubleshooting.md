@@ -23,7 +23,30 @@ Key dienkripsi dengan Data Protection milik akun Windows tersebut. Isi ulang key
 
 **"9router HTTP 4xx/5xx untuk model '…'"**
 Model tidak tersedia atau provider-nya bermasalah. Klik *Test* pada node terkait; pilih model/combo lain bila perlu.
-Error sementara (429, 5xx, koneksi) sudah dicoba ulang otomatis 2 kali sebelum dilaporkan.
+Error sementara (429, 5xx, koneksi) sudah dicoba ulang otomatis 2 kali sebelum dilaporkan. Untuk 429, header
+`Retry-After` dari 9router dihormati (maks. 30 detik; bila lebih lama tidak ditunggu), tanpa header jedanya ±5 dan ±10
+detik.
+
+**Planner Claude Code CLI gagal**
+Klik *Test* pada node CLI; pesannya menunjukkan penyebab.
+
+| Pesan | Penyebab | Solusi |
+|---|---|---|
+| `Claude Code CLI tidak dapat dijalankan ('claude')` | CLI tidak ada di PATH proses AiThread. | Isi `AiThread:ClaudeCli:Command` dengan path lengkap `claude.exe` / `claude.cmd`. |
+| `berhenti (exit N) tanpa hasil: … login …` | CLI belum login di akun Windows yang menjalankan AiThread. | Jalankan `claude` sekali di terminal akun itu lalu login. |
+| `Claude Code CLI planner diarahkan kembali ke proxy AiThread` | `.claude/settings.json` project berisi `ANTHROPIC_BASE_URL` ke AiThread. | Pindahkan integrasi ke `settings.local.json` (menu Setting → scope project) atau ubah `ClaudeCli:SettingSources`. |
+| `mencapai batas N langkah tanpa memanggil submit_plan` | Investigasi terlalu panjang. | Naikkan *Langkah planner*. |
+| `Alamat lokal AiThread belum diketahui` | Kestrel tidak mengekspos alamat. | Isi `AiThread:LocalBaseUrl`, mis. `http://localhost:5080`. |
+
+**Planner kena 429 / rate limit**
+Biasanya karena akun provider (mis. langganan Claude di 9router) kehabisan kuota per menit — tiap langkah planner
+mengirim ulang seluruh percakapan, jadi token input cepat menumpuk. Solusi:
+- Tambahkan node Planner **kedua** (model/provider lain, prioritas lebih besar) dan biarkan aktif. AiThread otomatis
+  beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di progres.
+- Atau jadikan model planner sebuah **combo** 9router (mis. Claude → model lain) supaya fallback terjadi di 9router.
+- Atau pakai backend **Claude Code CLI lokal** untuk planner (lihat Konfigurasi → Planner lewat Claude Code CLI):
+  memakai klien resmi dengan prompt caching, sehingga token input per langkah jauh lebih kecil.
+- Kurangi slot node planner bila beberapa thread berjalan bersamaan, atau turunkan Setting → *Langkah planner*.
 
 **"Model '…' tidak merespons dalam N detik"**
 Naikkan Setting → *Timeout (detik)*, atau pakai model yang lebih cepat.

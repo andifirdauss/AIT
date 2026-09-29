@@ -2,11 +2,14 @@ using AiThread.Common.Enums;
 
 namespace AiThread.Common.Entities;
 
-// An AI worker (planner / executor / wrapper) backed by a 9router model or combo.
+// An AI worker (planner / executor / wrapper) backed by a 9router model or combo, or (planner only) a vendor CLI.
 public class AiNode : BaseEntity
 {
     public string Name { get; set; } = string.Empty;
     public NodeRole Role { get; set; }
+    public NodeBackend Backend { get; set; } = NodeBackend.Router;
+
+    // A 9router model/combo id, or a Claude Code model name/alias (e.g. "opus") for the ClaudeCli backend.
     public string Model { get; set; } = string.Empty;
     public double? Temperature { get; set; }
     public int MaxTokens { get; set; } = 8192;

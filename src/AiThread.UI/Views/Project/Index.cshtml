@@ -14,6 +14,7 @@
         <p class="small text-secondary mb-2">
             Project terdaftar otomatis pada prompt pertama dari sesi Claude Code yang dibuka di folder berisi <span class="mono">.sln</span>/<span class="mono">.slnx</span>.
             Sesi di luar project <span class="mono">.sln</span>/<span class="mono">.slnx</span> <strong>diabaikan</strong> AiThread — prompt-nya diteruskan langsung tanpa orkestrasi.
+            Kolom <strong>AiThread</strong> menyalakan/mematikan pengarahan Claude Code ke proxy ini lewat <span class="mono">&lt;project&gt;/.claude/settings.local.json</span>; buka sesi Claude Code baru setelah mengubahnya.
         </p>
         <label class="form-label small text-secondary" for="projectPath">Daftarkan manual</label>
         <div class="input-group">
@@ -28,9 +29,9 @@
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0 table-clickable">
             <thead>
-                <tr><th>Project</th><th>Solution</th><th>Thread</th><th>Sesi</th><th>Memory</th><th>Terakhir dipakai</th><th></th></tr>
+                <tr><th>Project</th><th title="Arahkan Claude Code di project ini ke AiThread (.claude/settings.local.json)">AiThread</th><th>Solution</th><th>Thread</th><th>Sesi</th><th>Memory</th><th>Terakhir dipakai</th><th></th></tr>
             </thead>
-            <tbody id="projectRows"><tr><td colspan="7" class="empty-state">Memuat…</td></tr></tbody>
+            <tbody id="projectRows"><tr><td colspan="8" class="empty-state">Memuat…</td></tr></tbody>
         </table>
     </div>
 </div>

@@ -18,7 +18,7 @@
 <div class="row g-3">
     <div class="col-xl-4">
         <h2 class="h6 text-uppercase text-secondary">Planner</h2>
-        <p class="small text-secondary">Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas.</p>
+        <p class="small text-secondary">Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas. Planner aktif lain menjadi cadangan otomatis.</p>
         <div id="nodes-Planner"></div>
     </div>
     <div class="col-xl-4">
@@ -55,8 +55,16 @@
                             <option value="Wrapper">Wrapper</option>
                         </select>
                     </div>
+                    <div class="col-12" id="nodeBackendGroup">
+                        <label class="form-label small" for="nodeBackend">Backend</label>
+                        <select class="form-select" id="nodeBackend">
+                            <option value="Router">9router (model / combo)</option>
+                            <option value="ClaudeCli">Claude Code CLI lokal (login langganan di mesin ini)</option>
+                        </select>
+                        <div class="form-text">Claude Code CLI hanya untuk Planner: CLI menjelajah kode dengan tool baca-saja miliknya, lalu mengirim rencana ke AiThread lewat MCP.</div>
+                    </div>
                     <div class="col-12">
-                        <label class="form-label small" for="nodeModel">Model / combo 9router</label>
+                        <label class="form-label small" for="nodeModel" id="nodeModelLabel">Model / combo 9router</label>
                         <div class="model-combo">
                             <input type="text" class="form-control mono" id="nodeModel" autocomplete="off" spellcheck="false" required
                                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="nodeModelList" />

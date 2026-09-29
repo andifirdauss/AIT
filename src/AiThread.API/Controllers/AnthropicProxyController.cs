@@ -6,6 +6,7 @@ using AiThread.API.Infrastructure;
 using AiThread.Common.Enums;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
+using AiThread.Service.Planner;
 using AiThread.Service.Proxy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -25,6 +26,7 @@ public class AnthropicProxyController(
     IProjectService projectService,
     IThreadOrchestrator orchestrator,
     IActivityLogService activityLog,
+    PlannerSessionRegistry plannerSessions,
     ILogger<AnthropicProxyController> logger) : ControllerBase
 {
     private static readonly string[] ForwardedHeaders = ["anthropic-version", "anthropic-beta"];
@@ -50,6 +52,18 @@ public class AnthropicProxyController(
         }
 
         var info = ClaudeRequestInspector.Inspect(body, InspectedHeaderValues(), raw.Length);
+
+        // A planner CLI spawned by AiThread must talk to Anthropic directly. Reaching this proxy means it picked up
+        // ANTHROPIC_BASE_URL from settings; orchestrating it would recurse, so fail it and let the planner fall back.
+        if (plannerSessions.IsCliSession(info.SessionId))
+        {
+            activityLog.Error("proxy", "Claude Code CLI planner memanggil proxy AiThread sendiri (ANTHROPIC_BASE_URL); permintaan ditolak.");
+            await WriteErrorAsync(StatusCodes.Status400BadRequest, "invalid_request_error",
+                "AiThread: Claude Code CLI planner diarahkan kembali ke proxy AiThread (ANTHROPIC_BASE_URL dari settings Claude). " +
+                "Hapus ANTHROPIC_BASE_URL dari .claude/settings.json project, atau atur AiThread:ClaudeCli:SettingSources.");
+            return;
+        }
+
         var reason = settings.OrchestrationEnabled ? info.Reason : "orchestration disabled";
 
         if (settings.OrchestrationEnabled && info.IsOrchestratable)

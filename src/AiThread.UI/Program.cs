@@ -22,8 +22,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Claude Code calls the proxy (/v1/*) over plain HTTP; redirecting it to HTTPS would break the connection.
-app.UseWhen(context => !context.Request.Path.StartsWithSegments("/v1"), branch => branch.UseHttpsRedirection());
+// Claude Code calls the proxy (/v1/*) and the planner CLI calls its MCP server (/mcp/*) over plain HTTP;
+// redirecting them to HTTPS would break the connection.
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/v1") && !context.Request.Path.StartsWithSegments("/mcp"),
+    branch => branch.UseHttpsRedirection());
 app.UseRouting();
 
 app.UseAuthorization();

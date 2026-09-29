@@ -69,6 +69,13 @@ namespace AiThread.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Backend")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Router");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 

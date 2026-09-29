@@ -4,10 +4,27 @@
   const el = id => document.getElementById(id);
   const browsePathKey = 'aithread-browse-path';
 
-  function row(p) {
+  // Switch for the project's .claude/settings.local.json; a URL to another proxy address gets a warning so it can be re-applied.
+  function integrationCell(p, status) {
+    if (!status) return '<td class="small text-secondary">–</td>';
+    const note = status.error
+      ? `<div class="small text-danger">${escapeHtml(status.error)}</div>`
+      : status.currentBaseUrl
+        ? `<div class="small text-warning" title="${escapeHtml(status.currentBaseUrl)}">URL lain — nyalakan untuk memperbarui</div>`
+        : '';
+    return `<td class="text-nowrap" title="${escapeHtml(status.path)}">
+      <div class="form-check form-switch mb-0">
+        <input class="form-check-input" type="checkbox" role="switch" data-integration="${p.id}" data-name="${escapeHtml(p.name)}"
+               ${status.enabled ? 'checked' : ''} ${p.exists && !status.error ? '' : 'disabled'} aria-label="AiThread untuk ${escapeHtml(p.name)}" />
+      </div>${note}
+    </td>`;
+  }
+
+  function row(p, status) {
     const missing = p.exists ? '' : ' <span class="badge text-bg-warning">file hilang</span>';
     return `<tr data-href="/Project/Detail/${p.id}">
       <td><div class="fw-semibold">${escapeHtml(p.name)}${missing}</div><div class="small text-secondary mono">${escapeHtml(p.rootPath)}</div></td>
+      ${integrationCell(p, status)}
       <td class="small mono">${escapeHtml(p.solutionPath)}</td>
       <td>${fmt.number(p.threadCount)}</td>
       <td>${fmt.number(p.sessionCount)}</td>
@@ -20,14 +37,35 @@
   async function load() {
     const tbody = el('projectRows');
     try {
-      const projects = await api.get('/api/projects');
+      // The integration status only reads local files; without it the list still renders.
+      const [projects, integration] = await Promise.all([
+        api.get('/api/projects'),
+        api.get('/api/projects/claude-integration').catch(() => [])
+      ]);
+      const statuses = new Map(integration.map(s => [s.projectId, s]));
       tbody.innerHTML = projects.length
-        ? projects.map(row).join('')
-        : '<tr><td colspan="7" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari .sln/.slnx, atau buka Claude Code di folder solution melalui AiThread.</td></tr>';
+        ? projects.map(p => row(p, statuses.get(p.id))).join('')
+        : '<tr><td colspan="8" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari .sln/.slnx, atau buka Claude Code di folder solution melalui AiThread.</td></tr>';
     } catch (error) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
   }
+
+  el('projectRows').addEventListener('change', async event => {
+    const toggle = event.target.closest('[data-integration]');
+    if (!toggle) return;
+    const enabled = toggle.checked;
+    toggle.disabled = true;
+    try {
+      await api.put(`/api/projects/${toggle.dataset.integration}/claude-integration`, { enabled });
+      toast(enabled
+        ? `AiThread aktif untuk ${toggle.dataset.name}. Buka sesi Claude Code baru di project ini.`
+        : `AiThread nonaktif untuk ${toggle.dataset.name}. Buka sesi Claude Code baru agar berlaku.`, enabled ? 'success' : 'info');
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+    load();
+  });
 
   el('btnRegister').addEventListener('click', async () => {
     const path = el('projectPath').value.trim();
