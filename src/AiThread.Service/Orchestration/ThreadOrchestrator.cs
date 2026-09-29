@@ -96,7 +96,9 @@ public sealed class ThreadOrchestrator(
             var project = prepared.Project;
             await progress.LineAsync($"**AiThread** · `{Path.GetFileName(project.SolutionPath)}` · thread `{thread.Id.ToString()[..8]}`", cancellationToken);
 
-            var planner = (await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken)).FirstOrDefault()
+            // Extra active planners are fallbacks for when the preferred one is rate limited or down.
+            var planners = await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken);
+            var planner = planners.FirstOrDefault()
                           ?? throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
             var executors = await nodeService.GetActiveAsync(NodeRole.Executor, cancellationToken);
             var wrapper = (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
@@ -111,12 +113,14 @@ public sealed class ThreadOrchestrator(
 
             var scope = new WorkspaceScope(project.RootPath);
             var planClock = Stopwatch.StartNew();
-            var planning = await plannerAgent.PlanAsync(new PlannerInput(request, project, planner, scope, settings), recorder, progress, cancellationToken);
+            var planning = await plannerAgent.PlanAsync(new PlannerInput(request, project, planners, scope, settings), recorder, progress, cancellationToken);
             planClock.Stop();
+            planner = planning.Node;
 
             var plan = planning.Plan;
             await recorder.UpdateThreadAsync(t =>
             {
+                t.PlannerModel = planner.Model;
                 t.PlanJson = plan.ToJson();
                 t.PlanSummary = Truncate(plan.Summary, 2000);
                 t.PlannerSteps = planning.Steps;

@@ -19,9 +19,11 @@ Hanya sesi Claude Code yang dibuka di project tersebut yang melewati AiThread.
 1. **Project** → *Telusuri…* → cari `.sln`/`.slnx` (navigasi folder atau *Scan* sub-folder) → centang →
    *Daftarkan terpilih*. Bisa juga menempel path di kolom lalu *Daftarkan*.
    Project juga terdaftar otomatis pada prompt pertama sesi Claude Code yang dibuka di folder solution.
-2. **Setting → Integrasi Claude Code** → pilih *Per project* → pilih project.
-3. Periksa *URL proxy AiThread* (default alamat http aplikasi) dan pratinjau blok yang akan ditulis.
-4. Klik **Terapkan ke Claude Code**.
+2. Paling cepat: di tabel **Project**, nyalakan switch kolom **AiThread** pada project tersebut (matikan untuk
+   mengembalikan). Switch memakai URL proxy default (alamat http aplikasi).
+3. Atau lewat **Setting → Integrasi Claude Code** → pilih *Per project* → pilih project, periksa *URL proxy AiThread*
+   dan pratinjau blok yang akan ditulis, lalu klik **Terapkan ke Claude Code**.
+4. Buka sesi Claude Code baru di project itu agar berlaku.
 
 File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder project = folder yang berisi
 `.sln`/`.slnx` (tertera di kotak status). `settings.local.json` adalah setting lokal Claude Code dan biasanya

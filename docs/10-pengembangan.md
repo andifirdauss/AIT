@@ -42,7 +42,9 @@ connection string LocalDB default.
 | `Implementations/ProjectService.cs` | `ResolveSessionAsync`: gerbang per sesi (project `.sln`/`.slnx` atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. |
 | `Workspace/SolutionLocator.cs` | Mencari solution dari working directory, scan rekursif, daftar folder yang layak ditelusuri, membaca isi `.sln`/`.slnx`. |
 | `Orchestration/ThreadOrchestrator.cs` | Alur utama thread: project → planner → eksekusi → wrapper → memory, status & error. |
-| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Loop tool planner dan definisi tool (JSON schema). |
+| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner per backend (loop tool 9router / Claude Code CLI), failover antar node planner, definisi tool (JSON schema). |
+| `Planner/ClaudeCliRunner.cs`, `ClaudeCliPlanner.cs` | Menjalankan `claude -p` (stream-json), argumen read-only, file `--mcp-config` sementara. |
+| `Planner/PlannerSessionRegistry.cs` + `API/Controllers/McpPlannerController.cs` | Server MCP minimal (`/mcp/planner/{token}`) untuk memory & `submit_plan`; daftar session id CLI untuk menolak loop ke proxy. |
 | `Orchestration/ThreadPlan.cs`, `PlanValidator.cs` | Model rencana dan aturan validasinya. |
 | `Orchestration/ExecutionEngine.cs` | Penjadwalan DAG paralel, pemilihan executor, skip dependensi gagal. |
 | `Orchestration/ExecutorAgent.cs` | Menyusun input executor, retry, menerapkan edit di bawah lock. |

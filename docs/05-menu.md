@@ -54,8 +54,12 @@ Daftar codebase yang dikenal AiThread. Satu project = satu file `.sln`/`.slnx`.
   Folder terakhir yang dibuka diingat browser untuk kunjungan berikutnya.
 - **Daftarkan manual**: tempel path file solution atau foldernya → *Daftarkan*.
 - Registrasi diperlukan sebelum menerapkan integrasi Claude Code per project.
-- Kolom: nama & root, path solution, jumlah thread, sesi Claude Code, memory, terakhir dipakai. Badge
+- Kolom: nama & root, **AiThread**, path solution, jumlah thread, sesi Claude Code, memory, terakhir dipakai. Badge
   *file hilang* muncul bila `.sln` sudah tidak ada.
+- **Switch AiThread**: menyala = `<project>/.claude/settings.local.json` mengarahkan Claude Code ke proxy ini. Menyalakan
+  menulis blok `env` (sama dengan *Setting → Integrasi Claude Code → Per project*); mematikan menghapus kunci AiThread
+  saja, kunci lain di file tetap. Catatan *URL lain* berarti file mengarah ke alamat proxy lain (mis. port lama) —
+  nyalakan ulang untuk memperbarui. Buka sesi Claude Code baru setelah mengubahnya.
 - **Hapus**: riwayat thread tetap ada (tanpa project), tetapi **semua memory project ini ikut terhapus**.
 
 **Detail project**: daftar project di dalam solution, sesi Claude Code (id sesi, jumlah thread, terakhir aktif),
