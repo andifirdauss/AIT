@@ -96,4 +96,97 @@ public class ClaudeRequestInspectorTests
         Assert.Equal(@"E:\Other", info.WorkingDirectory);
         Assert.Equal(@"E:\Other\Other.slnx", info.SolutionHint);
     }
+
+    [Fact]
+    public void Working_directory_with_was_suffix_is_cleaned()
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "claude-opus-5-5",
+            ["stream"] = true,
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "Read" } },
+            ["messages"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = " - Primary working directory: D:\\Source\\MyApp (was d:\\source\\myapp)\nDo something"
+                }
+            }
+        };
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal(@"D:\Source\MyApp", info.WorkingDirectory);
+    }
+
+    [Fact]
+    public void Working_directory_detected_from_claude_md()
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "claude-opus-5-5",
+            ["stream"] = true,
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "Read" } },
+            ["system"] = new JsonArray
+            {
+                new JsonObject { ["type"] = "text", ["text"] = "<system-reminder>Contents of D:\\Source\\MyOtherApp\\CLAUDE.md (project instructions)</system-reminder>" }
+            },
+            ["messages"] = new JsonArray
+            {
+                new JsonObject { ["role"] = "user", ["content"] = "Do something" }
+            }
+        };
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal(@"D:\Source\MyOtherApp", info.WorkingDirectory);
+    }
+
+    [Fact]
+    public void Assistant_prefill_turn_is_orchestrated()
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "claude-sonnet-5",
+            ["stream"] = true,
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "Read" } },
+            ["system"] = new JsonArray { new JsonObject { ["type"] = "text", ["text"] = "You are Claude Code" } },
+            ["messages"] = new JsonArray
+            {
+                new JsonObject { ["role"] = "user", ["content"] = "Buatkan UI Index untuk Master" },
+                new JsonObject { ["role"] = "assistant", ["content"] = "" }
+            }
+        };
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("Buatkan UI Index untuk Master", info.Prompt);
+    }
+
+    [Fact]
+    public void System_reminder_after_user_turn_is_orchestrated()
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "claude-sonnet-5",
+            ["stream"] = true,
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "Read" } },
+            ["system"] = new JsonArray { new JsonObject { ["type"] = "text", ["text"] = "You are Claude Code" } },
+            ["messages"] = new JsonArray
+            {
+                new JsonObject { ["role"] = "user", ["content"] = "Buatkan UI Index untuk Master" },
+                new JsonObject { ["role"] = "system", ["content"] = "<system-reminder>Some reminder</system-reminder>" }
+            }
+        };
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("Buatkan UI Index untuk Master", info.Prompt);
+        Assert.Contains("Some reminder", info.PromptContext);
+    }
 }
