@@ -39,19 +39,47 @@ public static partial class ClaudeRequestInspector
         var messages = body["messages"] as JsonArray ?? [];
         var tools = body["tools"] as JsonArray;
 
-        var last = messages.Count > 0 ? messages[^1] : null;
-        var (lastText, hasToolResult) = ContentText(last?["content"]);
-        var prompt = StripReminders(lastText).Trim();
+        // Find the active user turn. Claude Code may append system reminders (role: "system")
+        // and/or an assistant prefill (role: "assistant") after the user's prompt.
+        var userIndex = -1;
+        for (var i = messages.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(Str(messages[i]?["role"]), "user", StringComparison.OrdinalIgnoreCase))
+            {
+                userIndex = i;
+                break;
+            }
+        }
+
+        var userMessage = userIndex >= 0 ? messages[userIndex] : null;
+        var (userText, hasToolResult) = ContentText(userMessage?["content"]);
+        var prompt = StripReminders(userText).Trim();
+
+        var promptContextBuilder = new StringBuilder(userText.Trim());
+        for (var i = userIndex + 1; i < messages.Count; i++)
+        {
+            if (string.Equals(Str(messages[i]?["role"]), "system", StringComparison.OrdinalIgnoreCase))
+            {
+                var (sysText, _) = ContentText(messages[i]?["content"]);
+                if (!string.IsNullOrWhiteSpace(sysText))
+                {
+                    promptContextBuilder.Append("\n\n").Append(sysText.Trim());
+                }
+            }
+        }
+        var promptContext = promptContextBuilder.ToString();
 
         var workingDirectory = Header(headers, WorkingDirectoryHeader)
                                ?? FindWorkingDirectory(systemText)
-                               ?? messages.Select(m => FindWorkingDirectory(ContentText(m?["content"]).Text)).FirstOrDefault(d => d is not null);
+                               ?? (userMessage is not null ? FindWorkingDirectory(userText) : null)
+                               ?? messages.Reverse().Select(m => FindWorkingDirectory(ContentText(m?["content"]).Text)).FirstOrDefault(d => d is not null);
         var sessionId = Header(headers, "x-claude-code-session-id") ?? SessionFromMetadata(body["metadata"]?["user_id"]);
 
+        var lastRole = messages.Count > 0 ? Str(messages[^1]?["role"]) : "none";
         var (orchestratable, reason) =
             tools is null || tools.Count == 0 ? (false, "auxiliary request without tools")
             : !IsAgentSystemPrompt(systemText, workingDirectory) ? (false, "not a Claude Code agent request")
-            : Str(last?["role"]) != "user" ? (false, "last message is not from the user")
+            : userMessage is null ? (false, $"last message is not from the user (role: {lastRole})")
             : hasToolResult ? (false, "tool_result turn")
             : prompt.Length == 0 ? (false, "empty prompt")
             : (true, "main agent turn");
@@ -65,23 +93,39 @@ public static partial class ClaudeRequestInspector
             Header(headers, SolutionHeader),
             sessionId,
             prompt,
-            lastText.Trim(),
-            orchestratable ? BuildHistory(messages) : null,
+            promptContext,
+            orchestratable ? BuildHistory(messages, userIndex) : null,
             Math.Max(1, rawLength / 4));
     }
 
     public static string StripReminders(string text) => ReminderBlock().Replace(text, string.Empty);
 
     private static bool IsAgentSystemPrompt(string systemText, string? workingDirectory) =>
-        systemText.Contains("Claude Code", StringComparison.OrdinalIgnoreCase)
-        || systemText.Contains("Claude Agent SDK", StringComparison.OrdinalIgnoreCase)
+        string.IsNullOrEmpty(systemText)
+        || systemText.Contains("Claude", StringComparison.OrdinalIgnoreCase)
+        || systemText.Contains("Anthropic", StringComparison.OrdinalIgnoreCase)
         || workingDirectory is not null;
 
     private static string? FindWorkingDirectory(string text)
     {
         if (string.IsNullOrEmpty(text)) return null;
         var match = WorkingDirectoryLine().Match(text);
-        return match.Success ? match.Groups[1].Value.Trim().Trim('`', '"', '\'').TrimEnd('.', ' ') : null;
+        if (match.Success)
+        {
+            var raw = match.Groups[1].Value.Trim().Trim('`', '"', '\'').TrimEnd('.', ' ');
+            var wasIndex = raw.IndexOf("(was", StringComparison.OrdinalIgnoreCase);
+            if (wasIndex >= 0) raw = raw[..wasIndex].Trim().Trim('`', '"', '\'').TrimEnd('.', ' ');
+            if (raw.Length > 0) return raw;
+        }
+
+        var claudeMdMatch = ClaudeMdLine().Match(text);
+        if (claudeMdMatch.Success)
+        {
+            var raw = claudeMdMatch.Groups[1].Value.Trim().Trim('`', '"', '\'').TrimEnd('.', ' ');
+            if (raw.Length > 0) return raw;
+        }
+
+        return null;
     }
 
     // Claude Code sends metadata.user_id as "user_<hash>_account_<uuid>_session_<uuid>" or as a JSON string.
@@ -107,13 +151,14 @@ public static partial class ClaudeRequestInspector
         return null;
     }
 
-    private static string? BuildHistory(JsonArray messages)
+    private static string? BuildHistory(JsonArray messages, int userIndex)
     {
-        if (messages.Count <= 1) return null;
+        var end = userIndex >= 0 ? userIndex : messages.Count - 1;
+        if (end <= 0) return null;
 
         var parts = new List<string>();
-        var start = Math.Max(0, messages.Count - 1 - MaxHistoryMessages);
-        for (var i = start; i < messages.Count - 1; i++)
+        var start = Math.Max(0, end - MaxHistoryMessages);
+        for (var i = start; i < end; i++)
         {
             var role = Str(messages[i]?["role"]) ?? "user";
             var (text, _) = ContentText(messages[i]?["content"], includeToolMarkers: true);
@@ -172,6 +217,9 @@ public static partial class ClaudeRequestInspector
 
     [GeneratedRegex(@"(?:Primary working directory|Working directory)\s*:\s*([^\r\n]+)", RegexOptions.IgnoreCase)]
     private static partial Regex WorkingDirectoryLine();
+
+    [GeneratedRegex(@"Contents of\s+([^\r\n]+?)[\\/]CLAUDE\.md", RegexOptions.IgnoreCase)]
+    private static partial Regex ClaudeMdLine();
 
     [GeneratedRegex(@"session_([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})")]
     private static partial Regex SessionPattern();
