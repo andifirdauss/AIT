@@ -26,6 +26,10 @@ public sealed class ClientProgress(IThreadObserver observer, bool showProgress)
         await WriteAsync(line + "\n", isFinal: false, cancellationToken);
     }
 
+    // Written even when progress is hidden: the context keeper finds earlier threads through this line (ThreadAnchor).
+    public Task AnchorAsync(string line, CancellationToken cancellationToken) =>
+        WriteAsync(line + "\n", isFinal: false, cancellationToken);
+
     public Task FinalAsync(string delta, CancellationToken cancellationToken) =>
         string.IsNullOrEmpty(delta) ? Task.CompletedTask : WriteAsync(delta, isFinal: true, cancellationToken);
 

@@ -12,7 +12,13 @@ public sealed record ThreadRequest(
     string? WorkingDirectory,
     // Resolved before the thread starts; prompts outside a .sln/.slnx project never become threads.
     Guid ProjectId,
-    string? SessionId);
+    string? SessionId,
+    // Claude Code only: what the context keeper knows about the earlier turns of this chat.
+    SessionContext? Session = null);
+
+// ThreadIds are the AiThread threads found in the chat, oldest first. Pack is the context keeper's summary written
+// after PackThreadId, the latest of them that has one; turns after it reach the planner as ConversationContext.
+public sealed record SessionContext(Guid? PackThreadId, string? Pack, IReadOnlyList<Guid> ThreadIds);
 
 public sealed record ThreadResult(Guid ThreadId, ThreadStatus Status, string FinalText, int TotalTokens);
 

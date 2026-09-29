@@ -100,6 +100,13 @@ Kartu **Jalankan prompt** di Dashboard menjalankan thread tanpa Claude Code: pil
 prompt, klik *Jalankan thread*. Anda langsung diarahkan ke halaman detail thread untuk memantau. Cocok untuk
 menguji konfigurasi node.
 
+## Menjalankan prompt dari Telegram
+
+Saat laptop ditinggal menyala, kirim prompt dari HP lewat bot Telegram pribadi. Pilih project dengan `/projects`,
+lalu kirim pesan teks biasa: bot menampilkan status thread yang diperbarui live (rencana, tiap tugas, tombol
+*Batalkan*) dan mengirim ringkasan wrapper saat selesai; `/diff` menampilkan perubahan file. Setup dan daftar perintah
+ada di [Prompt dari Telegram](11-telegram.md).
+
 ## Sesi di luar project .sln/.slnx
 
 AiThread hanya mengorkestrasi sesi Claude Code yang dibuka di dalam project `.sln`/`.slnx`. Pada prompt pertama

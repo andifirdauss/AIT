@@ -26,6 +26,7 @@ public sealed class ThreadOrchestrator(
     ExecutionEngine executionEngine,
     WrapperAgent wrapperAgent,
     MemoryExtractor memoryExtractor,
+    ContextKeeper contextKeeper,
     IHostApplicationLifetime lifetime,
     ILogger<ThreadOrchestrator> logger) : IThreadOrchestrator
 {
@@ -65,7 +66,7 @@ public sealed class ThreadOrchestrator(
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.ThreadCreated, new { thread.Id, thread.ProjectId, thread.Status }, thread.Id));
         activityLog.Info("thread",
-            $"Thread baru dari {(request.Source == ThreadSource.ClaudeCode ? "Claude Code" : "dashboard")} · {project.Name}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}",
+            $"Thread baru dari {SourceLabel(request.Source)} · {project.Name}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}",
             thread.Id, thread.ProjectId);
 
         return new PreparedThread(thread, project);
@@ -94,7 +95,7 @@ public sealed class ThreadOrchestrator(
         try
         {
             var project = prepared.Project;
-            await progress.LineAsync($"**AiThread** · `{Path.GetFileName(project.SolutionPath)}` · thread `{thread.Id.ToString()[..8]}`", cancellationToken);
+            await progress.AnchorAsync(ThreadAnchor.Line(Path.GetFileName(project.SolutionPath), thread.Id), cancellationToken);
 
             // Extra active planners are fallbacks for when the preferred one is rate limited or down.
             var planners = await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken);
@@ -135,6 +136,7 @@ public sealed class ThreadOrchestrator(
                 recorder.Log(ActivityLevel.Success, "Planner menjawab langsung tanpa tugas eksekusi.");
                 await FinishAsync(recorder, ThreadStatus.Completed, answer, total, 0, null);
                 ScheduleMemoryExtraction(wrapper ?? planner, thread, plan, null, answer);
+                ScheduleContextKeeping(thread, request);
                 return new ThreadResult(thread.Id, ThreadStatus.Completed, progress.Transcript, TotalTokens(thread));
             }
 
@@ -211,6 +213,7 @@ public sealed class ThreadOrchestrator(
                 $"Thread selesai: {succeeded}/{execution.Results.Count} tugas berhasil dalam {Seconds(total.ElapsedMilliseconds)}.");
 
             if (succeeded > 0) ScheduleMemoryExtraction(wrapper ?? planner, thread, plan, execution, finalText);
+            ScheduleContextKeeping(thread, request);
             return new ThreadResult(thread.Id, status, progress.Transcript, TotalTokens(thread));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -225,7 +228,9 @@ public sealed class ThreadOrchestrator(
             if (ex is not (OrchestrationException or NineRouterException)) logger.LogError(ex, "Thread {ThreadId} crashed", thread.Id);
             var message = ex is OrchestrationException or NineRouterException ? ex.Message : $"Kesalahan internal: {ex.Message}";
             await MarkUnfinishedTasksCancelledAsync(thread.Id);
-            return await FailAsync(recorder, progress, total, message);
+            var failed = await FailAsync(recorder, progress, total, message);
+            ScheduleContextKeeping(thread, request);
+            return failed;
         }
         finally
         {
@@ -273,9 +278,23 @@ public sealed class ThreadOrchestrator(
     private void ScheduleMemoryExtraction(AiNode node, ThreadRun thread, ThreadPlan plan, ExecutionSummary? execution, string finalText) =>
         _ = Task.Run(() => memoryExtractor.ExtractAsync(node, thread, plan, execution, finalText, lifetime.ApplicationStopping), CancellationToken.None);
 
+    // Only Claude Code chats carry thread anchors, so only their next turn can pick the pack up.
+    private void ScheduleContextKeeping(ThreadRun thread, ThreadRequest request)
+    {
+        if (request.Source != ThreadSource.ClaudeCode) return;
+        _ = Task.Run(() => contextKeeper.UpdateAsync(thread, request, lifetime.ApplicationStopping), CancellationToken.None);
+    }
+
     private static int TotalTokens(ThreadRun thread) => thread.PlannerTokens + thread.ExecutorTokens + thread.WrapperTokens;
 
     private static string Seconds(long milliseconds) => $"{milliseconds / 1000.0:0.0}s";
+
+    private static string SourceLabel(ThreadSource source) => source switch
+    {
+        ThreadSource.ClaudeCode => "Claude Code",
+        ThreadSource.Telegram => "Telegram",
+        _ => "dashboard"
+    };
 
     private static string Truncate(string? value, int max) =>
         value is null ? string.Empty : value.Length <= max ? value : value[..max];
