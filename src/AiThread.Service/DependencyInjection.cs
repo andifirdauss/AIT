@@ -3,6 +3,7 @@ using AiThread.Service.Background;
 using AiThread.Service.Implementations;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Orchestration;
+using AiThread.Service.Planner;
 using AiThread.Service.Workspace;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -42,6 +43,10 @@ public static class DependencyInjection
         services.AddSingleton<ThreadRegistry>();
         services.AddSingleton<NodeConcurrencyLimiter>();
         services.AddSingleton<FileLockProvider>();
+        services.AddSingleton<PlannerSessionRegistry>();
+        services.AddSingleton<LocalServerUrl>();
+        services.AddSingleton<ClaudeCliRunner>();
+        services.AddSingleton<ClaudeCliPlanner>();
         services.AddSingleton<PlannerAgent>();
         services.AddSingleton<ExecutorAgent>();
         services.AddSingleton<ExecutionEngine>();
