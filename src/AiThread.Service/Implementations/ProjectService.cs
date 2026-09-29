@@ -53,8 +53,49 @@ public sealed class ProjectService(
         PruneExpiredSessions(now);
 
         var solution = FindSolution(solutionHint) ?? (directory is null ? null : SolutionLocator.Find(directory));
+
+        // If not found in directory, check if directory is inside or above any registered project
+        if (solution is null && directory is not null)
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+            var registered = await db.Projects.AsNoTracking().ToListAsync(cancellationToken);
+            var matched = registered.FirstOrDefault(p =>
+                directory.StartsWith(p.RootPath, StringComparison.OrdinalIgnoreCase)
+                || p.RootPath.StartsWith(directory, StringComparison.OrdinalIgnoreCase)
+                || directory.StartsWith(Path.GetDirectoryName(p.SolutionPath)!, StringComparison.OrdinalIgnoreCase));
+
+            if (matched is not null && File.Exists(matched.SolutionPath))
+            {
+                solution = matched.SolutionPath;
+            }
+        }
+
+        // Fallback: if working directory was missing or still no solution, use the single or most recently active registered project
+        if (solution is null)
+        {
+            await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+            var registered = await db.Projects.AsNoTracking().OrderByDescending(p => p.LastSeenAt).ToListAsync(cancellationToken);
+            if (registered.Count > 0)
+            {
+                var fallback = registered[0];
+                if (File.Exists(fallback.SolutionPath))
+                {
+                    solution = fallback.SolutionPath;
+                    directory ??= fallback.RootPath;
+                }
+            }
+        }
+
         var context = solution is null ? null : ToContext(await UpsertAsync(solution, RootFor(solution, directory), cancellationToken));
-        _sessions[key] = new SessionDecision(context?.ProjectId, now + SessionDecisionLifetime);
+
+        if (context is not null)
+        {
+            _sessions[key] = new SessionDecision(context.ProjectId, now + SessionDecisionLifetime);
+        }
+        else
+        {
+            _sessions[key] = new SessionDecision(null, now + TimeSpan.FromSeconds(5));
+        }
 
         var sessionLabel = string.IsNullOrEmpty(sessionId) ? "tanpa id" : sessionId[..Math.Min(8, sessionId.Length)];
         if (context is null)
@@ -382,7 +423,10 @@ public sealed class ProjectService(
         if (string.IsNullOrWhiteSpace(path)) return null;
         try
         {
-            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(path.Trim().Trim('"')));
+            var cleaned = path.Trim().Trim('`', '"', '\'');
+            var wasIndex = cleaned.IndexOf("(was", StringComparison.OrdinalIgnoreCase);
+            if (wasIndex >= 0) cleaned = cleaned[..wasIndex].Trim().Trim('`', '"', '\'');
+            var full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(cleaned));
             return Directory.Exists(full) ? full : null;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
