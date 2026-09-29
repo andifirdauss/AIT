@@ -49,7 +49,10 @@ Bila pengecekan gagal (mis. database mati), prompt juga diteruskan tanpa orkestr
 Planner menerima **brief**:
 
 - permintaan terbaru lengkap (termasuk konteks yang disisipkan Claude Code seperti isi `CLAUDE.md`), maks 40.000 karakter;
-- percakapan sebelumnya: 12 pesan terakhir, tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
+- **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AiThread sebelumnya (lihat
+  [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
+- percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
+  ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
 - info project: nama, root, path solution, daftar project di solution;
 - struktur folder 2 tingkat (maks 200 entri);
 - indeks memory (id + label, maks 25).
@@ -64,6 +67,7 @@ Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **r
 | `read_file(path, startLine?, endLine?)` | bernomor baris; maks 600 baris per panggilan; file ≤ 2 MB |
 | `search_memory(query)` | maks 25 label |
 | `read_memory(ids)` | deskripsi lengkap |
+| `read_thread(id)` | catatan lengkap thread sebelumnya di project ini (permintaan, rencana, tugas, balasan) |
 | `submit_plan(plan)` | mengakhiri planning |
 
 Folder `.git .vs .idea .nuget bin obj node_modules packages TestResults artifacts` dan `wwwroot/lib/` disembunyikan
@@ -182,6 +186,36 @@ Jika tidak ada wrapper aktif atau wrapper gagal, AiThread menyusun ringkasan oto
 - Status akhir: *Selesai* bila ada tugas yang berhasil (atau jawaban langsung), *Gagal* bila tidak ada.
 - Waktu, token per peran, dan setiap tugas tersimpan di database dan tampil di Dashboard.
 - Ekstraksi memory berjalan di belakang — lihat [Memory](06-memory.md).
+- Untuk thread dari Claude Code (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
+
+## Konteks sesi (Context Keeper)
+
+Planner tidak membawa ingatan antar prompt: setiap prompt memulai planner baru. Supaya chat yang panjang tetap
+nyambung tanpa mengirim seluruh percakapan, AiThread menyimpan **ringkasan sesi** per thread:
+
+1. Baris pertama setiap balasan orkestrasi adalah penanda ``**AiThread** · `X.sln` · thread `3f2a1b9c` `` (selalu
+   dikirim, juga saat progres dimatikan). Penanda ini ikut tersimpan di chat Claude Code.
+2. Setelah thread selesai, Context Keeper menulis ringkasan sesi (tujuan, keputusan & batasan, log kerja per thread,
+   fakta penting berupa penunjuk file, hal yang belum selesai) dan menyimpannya pada thread itu.
+3. Di prompt berikutnya, proxy mencari penanda di history yang dikirim Claude Code, mengambil ringkasan dari thread
+   terbaru yang punya ringkasan, dan memberikannya ke planner beserta pesan setelah thread itu saja.
+
+Karena yang dipakai selalu penanda yang masih ada di chat, konteks otomatis mengikuti chat: setelah *rewind* atau
+edit pesan, ringkasan kembali ke thread terakhir yang tersisa; `/clear` atau chat baru mulai dari kosong; resume sesi
+lama memulihkan ringkasannya. Pencarian dibatasi ke project yang sama dan thread 60 hari terakhir.
+
+- **Model**: node *Context Keeper* aktif dengan prioritas terkecil; tanpa node itu dipakai Wrapper. Tanpa keduanya,
+  atau bila modelnya gagal, thread baru dicatat apa adanya di bagian *Not yet summarized* dan dirangkum pada
+  pembaruan berikutnya.
+- **Mencegah ringkasan melenceng**: ringkasan biasanya diperbarui dari ringkasan sebelumnya, tetapi setiap thread ke-8
+  (dan setiap kali ringkasan sebelumnya tidak berasal dari thread tepat sebelumnya) disusun ulang dari catatan
+  maksimal 15 thread terakhir di database.
+- **Detail tidak hilang**: planner bisa memanggil `read_thread` untuk catatan lengkap thread mana pun, dan
+  ringkasan berisi penunjuk file, bukan isi file, sehingga planner membaca versi terbaru.
+- Ringkasan terbaru bisa dilihat di detail thread (panel *Konteks sesi dari Context Keeper*).
+
+Untuk sesi Claude Code biasa (termasuk yang tidak lewat proxy), Context Keeper juga bisa menjembatani `/clear`
+lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integrasi-claude-code.md#context-keeper-untuk-clear).
 
 ## Batas keamanan
 

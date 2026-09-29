@@ -11,4 +11,6 @@ public sealed record RuntimeSettings(
     int PlannerMaxSteps,
     int ExecutorMaxRetries,
     int MaxParallelTasks,
-    int RequestTimeoutSeconds);
+    int RequestTimeoutSeconds,
+    bool TelegramEnabled = false,
+    string? TelegramBotToken = null);

@@ -55,12 +55,7 @@ public sealed class SettingService(
         EnsureRange(request.RequestTimeoutSeconds, 30, 3600, "Request timeout");
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.SystemSettings.FirstOrDefaultAsync(s => s.Id == SystemSetting.SingletonId, cancellationToken);
-        if (entity is null)
-        {
-            entity = new SystemSetting { Id = SystemSetting.SingletonId };
-            db.SystemSettings.Add(entity);
-        }
+        var entity = await LoadTrackedAsync(db, cancellationToken);
 
         entity.NineRouterBaseUrl = baseUrl;
         if (request.ClearNineRouterApiKey)
@@ -81,6 +76,30 @@ public sealed class SettingService(
         await db.SaveChangesAsync(cancellationToken);
         _cache = ToRuntime(entity);
         return ToDto(entity, proxyBaseUrl);
+    }
+
+    public async Task<TelegramSettingsDto> GetTelegramAsync(CancellationToken cancellationToken = default) =>
+        ToTelegramDto(await LoadOrCreateAsync(cancellationToken));
+
+    public async Task<TelegramSettingsDto> UpdateTelegramAsync(UpdateTelegramSettingsRequest request, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var entity = await LoadTrackedAsync(db, cancellationToken);
+
+        if (request.ClearBotToken)
+            entity.TelegramBotTokenProtected = null;
+        else if (!string.IsNullOrWhiteSpace(request.BotToken))
+            entity.TelegramBotTokenProtected = _protector.Protect(request.BotToken.Trim());
+
+        if (request.Enabled && Unprotect(entity.TelegramBotTokenProtected) is null)
+            throw new AppValidationException("Isi bot token dari @BotFather sebelum mengaktifkan Telegram.");
+
+        entity.TelegramEnabled = request.Enabled;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+        _cache = ToRuntime(entity);
+        return ToTelegramDto(entity);
     }
 
     // Accepts what users typically paste from the 9router dashboard ("http://localhost:20128/v1").
@@ -111,6 +130,16 @@ public sealed class SettingService(
         return entity;
     }
 
+    private static async Task<SystemSetting> LoadTrackedAsync(AiThreadDbContext db, CancellationToken cancellationToken)
+    {
+        var entity = await db.SystemSettings.FirstOrDefaultAsync(s => s.Id == SystemSetting.SingletonId, cancellationToken);
+        if (entity is not null) return entity;
+
+        entity = new SystemSetting { Id = SystemSetting.SingletonId };
+        db.SystemSettings.Add(entity);
+        return entity;
+    }
+
     private RuntimeSettings ToRuntime(SystemSetting entity) => new(
         entity.NineRouterBaseUrl,
         Unprotect(entity.NineRouterApiKeyProtected),
@@ -121,7 +150,15 @@ public sealed class SettingService(
         entity.PlannerMaxSteps,
         entity.ExecutorMaxRetries,
         entity.MaxParallelTasks,
-        entity.RequestTimeoutSeconds);
+        entity.RequestTimeoutSeconds,
+        entity.TelegramEnabled,
+        Unprotect(entity.TelegramBotTokenProtected));
+
+    private TelegramSettingsDto ToTelegramDto(SystemSetting entity)
+    {
+        var token = Unprotect(entity.TelegramBotTokenProtected);
+        return new TelegramSettingsDto(entity.TelegramEnabled, token is not null, Mask(token));
+    }
 
     private SystemSettingDto ToDto(SystemSetting entity, string proxyBaseUrl)
     {
@@ -150,8 +187,8 @@ public sealed class SettingService(
         }
         catch (CryptographicException ex)
         {
-            // Data Protection keys were rotated or deleted; the key has to be entered again.
-            logger.LogWarning(ex, "Stored 9router API key can no longer be decrypted.");
+            // Data Protection keys were rotated or deleted; the secret has to be entered again.
+            logger.LogWarning(ex, "A stored secret (9router API key or Telegram bot token) can no longer be decrypted.");
             return null;
         }
     }

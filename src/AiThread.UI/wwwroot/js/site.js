@@ -116,6 +116,12 @@
     return `<span class="badge text-bg-${color}">${spinner}${escapeHtml(label)}</span>`;
   }
 
+  const sourceLabels = { ClaudeCode: 'Claude Code', Dashboard: 'Dashboard', Telegram: 'Telegram' };
+
+  function sourceLabel(source) {
+    return sourceLabels[source] || source;
+  }
+
   function isActiveStatus(status) {
     return ['Pending', 'Planning', 'Executing', 'Wrapping'].includes(status);
   }
@@ -192,7 +198,7 @@
   function threadRow(t) {
     const tasks = t.taskCount ? `${t.tasksSucceeded}/${t.taskCount}${t.tasksFailed ? ` <span class="text-danger">(${t.tasksFailed}✕)</span>` : ''}` : '–';
     return `<tr data-href="/Thread/Detail/${t.id}">
-      <td class="text-nowrap"><div>${fmt.dateTime(t.createdAt)}</div><div class="small text-secondary">${t.source === 'ClaudeCode' ? 'Claude Code' : 'Dashboard'}</div></td>
+      <td class="text-nowrap"><div>${fmt.dateTime(t.createdAt)}</div><div class="small text-secondary">${sourceLabel(t.source)}</div></td>
       <td class="text-nowrap">${escapeHtml(t.projectName || '–')}</td>
       <td><div class="text-truncate-2" title="${escapeHtml(t.prompt)}">${escapeHtml(t.prompt)}</div></td>
       <td>${statusBadge(t.status)}</td>
@@ -258,5 +264,5 @@
     setInterval(refreshRouterPill, 20000);
   });
 
-  window.AiThread = { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState };
+  window.AiThread = { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState };
 })();

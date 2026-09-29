@@ -101,6 +101,43 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
         return statuses;
     }
 
+    public async Task<ClaudeHooksStatusDto> GetHooksStatusAsync(ClaudeSettingsScope scope, Guid? projectId, string baseUrl, CancellationToken cancellationToken = default)
+    {
+        var target = await ResolveTargetAsync(scope, projectId, cancellationToken);
+        var installed = ClaudeHookConfig.InstalledBaseUrl(await ReadAsync(target.Path, cancellationToken));
+        return new ClaudeHooksStatusDto(
+            scope,
+            target.Path,
+            installed is not null && SameUrl(installed, baseUrl),
+            installed,
+            new JsonObject { ["hooks"] = ClaudeHookConfig.Block(baseUrl) }.ToJsonString(WriteOptions));
+    }
+
+    public async Task<ClaudeHooksStatusDto> ApplyHooksAsync(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!Uri.TryCreate(request.ProxyBaseUrl, UriKind.Absolute, out _))
+            throw new AppValidationException("URL AiThread tidak valid.");
+
+        var target = await ResolveTargetAsync(request.Scope, request.ProjectId, cancellationToken);
+        var root = await ReadAsync(target.Path, cancellationToken);
+        await BackupOnceAsync(target.Path, cancellationToken);
+        ClaudeHookConfig.Apply(root, request.ProxyBaseUrl);
+        await WriteAsync(target.Path, root, cancellationToken);
+        return await GetHooksStatusAsync(request.Scope, request.ProjectId, request.ProxyBaseUrl, cancellationToken);
+    }
+
+    public async Task<ClaudeHooksStatusDto> RevertHooksAsync(ClaudeSettingsScope scope, Guid? projectId, string baseUrl, CancellationToken cancellationToken = default)
+    {
+        var target = await ResolveTargetAsync(scope, projectId, cancellationToken);
+        if (File.Exists(target.Path))
+        {
+            var root = await ReadAsync(target.Path, cancellationToken);
+            ClaudeHookConfig.Remove(root);
+            await WriteAsync(target.Path, root, cancellationToken);
+        }
+        return await GetHooksStatusAsync(scope, projectId, baseUrl, cancellationToken);
+    }
+
     private static string ProjectSettingsPath(string rootPath) => Path.Combine(rootPath, ".claude", "settings.local.json");
 
     private async Task<JsonObject> BuildEnvAsync(string proxyBaseUrl, int? timeoutMs, string? solutionPath, CancellationToken cancellationToken)
