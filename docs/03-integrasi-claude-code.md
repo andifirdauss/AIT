@@ -98,9 +98,58 @@ Jika jawaban datang tanpa baris `**AiThread**`, lihat [Troubleshooting](08-troub
 
 Buka sesi Claude Code baru setelahnya.
 
+## Context Keeper untuk /clear
+
+Sesi Claude Code yang panjang mahal karena **setiap request membaca ulang seluruh konteks**. `/clear` membuat konteks
+kecil lagi, tetapi alurnya hilang. Hook ini menjembatani keduanya, dan berlaku untuk **semua** sesi di cakupannya —
+termasuk sesi yang tidak diarahkan ke proxy AiThread:
+
+1. Anda menjalankan `/clear`. Hook `SessionEnd` (reason `clear`) mengirim lokasi transcript sesi lama ke AiThread,
+   yang langsung membalas lalu bekerja di latar.
+2. AiThread meringkas transcript: prompt Anda, teks balasan, satu baris per tool call, error tool, dan ringkasan
+   `/compact` (hasil tool, thinking, dan sub-agent dilewati; maks 60.000 karakter). Context Keeper (node Context
+   Keeper, atau Wrapper) menulis ringkasan sesi dari situ, berikut ringkasan yang dipakai sesi lama itu sendiri.
+3. Hook `SessionStart` (source `clear`) sesi baru di folder yang sama menunggu ringkasan (maks ±40 detik) dan
+   menyisipkannya sebagai `additionalContext`. Claude melanjutkan dari ringkasan itu dengan konteks yang kecil.
+
+`/clear` berikutnya membangun ringkasan dari ringkasan sebelumnya plus sesi terbaru, jadi alur tetap tersambung.
+
+**Memasang**: **Setting → Integrasi Claude Code → Context Keeper untuk /clear** → pilih cakupan (Global disarankan agar
+berlaku di semua project) → **Pasang hook**. Yang ditulis ke file settings (hook lain milik Anda tidak disentuh):
+
+```json
+{
+  "hooks": {
+    "SessionEnd": [
+      { "matcher": "clear", "hooks": [ { "type": "http", "url": "http://localhost:5225/api/hooks/claude/session-end", "timeout": 5 } ] }
+    ],
+    "SessionStart": [
+      { "matcher": "clear", "hooks": [ { "type": "http", "url": "http://localhost:5225/api/hooks/claude/session-start", "timeout": 60 } ] }
+    ]
+  }
+}
+```
+
+Hook berlaku untuk sesi Claude Code yang dibuka setelah dipasang. **Lepas hook** menghapus entri AiThread saja.
+
+Catatan:
+
+- Setelah `/clear`, Claude Code menunggu ringkasan (biasanya beberapa detik, tergantung model Context Keeper). Bila
+  AiThread mati atau ringkasan belum selesai dalam 40 detik, sesi baru tetap dimulai tanpa ringkasan.
+- Sesi lama dan baru dicocokkan lewat working directory. Bila dua sesi di folder yang sama di-`/clear` pada saat
+  bersamaan, ringkasan bisa tertukar.
+- Isi transcript (versi ringkas) dikirim ke model Context Keeper lewat 9router. AiThread hanya mau membaca transcript
+  di dalam `~/.claude/projects`.
+- Ringkasan otomatis `/compact` bawaan Claude Code tidak diganti; hook ini hanya bekerja pada `/clear`.
+
 ## Catatan
 
-- Selama diarahkan ke AiThread, Claude Code **tidak** memakai akun Anthropic Anda; semua model berasal dari 9router.
+- Selama diarahkan ke AiThread, sesi Claude Code itu **tidak** memakai akun Anthropic Anda; semua model berasal dari
+  9router. Pengecualian: node Planner backend *Claude Code CLI* menjalankan `claude -p` dengan login CLI di mesin
+  AiThread, sehingga memakai kuota akun itu. Transcript-nya tersimpan sebagai sesi terpisah di folder project yang sama.
+- Usage yang dikembalikan untuk jawaban orkestrasi adalah estimasi ukuran konteks, dilaporkan sebagai
+  `cache_read_input_tokens` (`input_tokens` = 0). Claude Code tetap menghitung sisa konteks dengan benar, sementara
+  pelacak biaya yang membaca transcript (burn rate, ccusage, dll.) tidak menghitungnya sebagai input Opus penuh.
 - Environment variable sistem dengan nama yang sama bisa bertabrakan dengan setting ini. Jika hasil tidak sesuai,
   periksa `ANTHROPIC_BASE_URL` di environment Windows Anda.
 - Mematikan *Orkestrasi aktif* di Setting tidak perlu mengubah file ini: Claude Code tetap lewat AiThread, tetapi

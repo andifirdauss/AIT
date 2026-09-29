@@ -306,6 +306,7 @@ body {
 .role-Planner { border-left-color: #b180ff; }
 .role-Executor { border-left-color: var(--app-ok); }
 .role-Wrapper { border-left-color: var(--app-warn); }
+.role-ContextKeeper { border-left-color: #4fb8d8; }
 
 .model-combo {
   position: relative;

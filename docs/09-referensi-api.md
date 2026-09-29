@@ -19,6 +19,17 @@ Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar: `m
 `content_block_stop`, `message_delta` (`stop_reason: end_turn`), `message_stop`. Error mengikuti format
 `{ "type": "error", "error": { "type": "...", "message": "..." } }`.
 
+## Hook Claude Code
+
+Dipanggil oleh HTTP hook yang dipasang dari Setting (lihat
+[Context Keeper untuk /clear](03-integrasi-claude-code.md#context-keeper-untuk-clear)). Body = input hook Claude Code
+(JSON); respons **tidak** dibungkus `ApiResponse`. Tidak dialihkan ke HTTPS.
+
+| Method | Path | Keterangan |
+|---|---|---|
+| `POST` | `/api/hooks/claude/session-end` | Hanya `reason: "clear"`: mencatat sesi, lalu meringkas transcript-nya di latar. Membalas `200` kosong seketika. `transcript_path` harus berada di `~/.claude/projects` (atau `$CLAUDE_CONFIG_DIR/projects`). |
+| `POST` | `/api/hooks/claude/session-start` | Hanya `source: "clear"`: menunggu ringkasan sesi yang di-`/clear` di `cwd` yang sama (maks 40 detik), lalu membalas `{ "hookSpecificOutput": { "hookEventName": "SessionStart", "additionalContext": "..." } }`. Tanpa ringkasan: `200` kosong. |
+
 ## REST `/api`
 
 Semua respons dibungkus:
@@ -39,6 +50,9 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `GET` | `/api/settings/claude?scope=User\|Project&projectId=` | status file settings Claude Code |
 | `POST` | `/api/settings/claude/apply` | `{ "scope": "Project", "projectId": "...", "proxyBaseUrl": "http://localhost:5225", "timeoutMs": null }` |
 | `POST` | `/api/settings/claude/revert` | body sama dengan apply |
+| `GET` | `/api/settings/claude/hooks?scope=User\|Project&projectId=&baseUrl=` | status hook `/clear` Context Keeper di file settings Claude Code |
+| `POST` | `/api/settings/claude/hooks/apply` | pasang hook `/clear`; body sama dengan apply (`proxyBaseUrl` = alamat AiThread) |
+| `POST` | `/api/settings/claude/hooks/revert` | lepas hook `/clear` AiThread; hook lain tetap |
 | `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
 | `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
 
@@ -91,6 +105,29 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
 
+### Sistem
+
+Dipakai `scripts/aithread.ps1` untuk instance background.
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/system` | — (`processId`, `startedAt`, `environment`, `contentRoot`) |
+| `POST` | `/api/system/shutdown` | — ; wajib header `X-AiThread-Shutdown` dan hanya dari localhost, selain itu `403`. Mematikan AiThread dengan rapi: thread berjalan dibatalkan dan dicatat dulu. |
+
+### Telegram
+
+Kartu Telegram di halaman Setting — lihat [Prompt dari Telegram](11-telegram.md).
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/telegram` | — (`enabled`, `hasBotToken`, `botTokenMasked`, `state` = `Disabled`/`Starting`/`Running`/`Error`, `botUsername`, `error`, `lastPollAt`, `chats[]`) |
+| `PUT` | `/api/telegram` | `{ "enabled": true, "botToken": "123456789:AAE…", "clearBotToken": false }` — `botToken` kosong = pertahankan token tersimpan. Token baru diverifikasi ke Telegram (`getMe`); ditolak → `400`. |
+| `POST` | `/api/telegram/chats/{id}/allow` | — ; mengizinkan chat, bot mengirim konfirmasi ke chat itu |
+| `DELETE` | `/api/telegram/chats/{id}` | — ; menghapus chat. Chat yang sudah diizinkan dicabut aksesnya dan diberi tahu. |
+
+`chats[]`: `id`, `chatId`, `displayName`, `username`, `isAllowed`, `activeProjectId`, `activeProjectName`, `createdAt`,
+`lastMessageAt`; chat yang menunggu izin tampil lebih dulu. Token tidak pernah dikembalikan (hanya `botTokenMasked`).
+
 ## SSE `/api/stream`
 
 ```
@@ -113,6 +150,7 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `memory.changed` | `id`, `action` (`created`, `updated`, `deleted`, `promoted`, `consolidated`) |
 | `project.changed` | `id`, `action` |
 | `node.changed` | `id`, `action` |
+| `telegram.changed` | `action` (`status`, `created`, `allowed`, `deleted`, `project`); `id` chat untuk perubahan chat, `status` untuk perubahan status bot |
 | `ping` | — |
 
 Contoh di browser:

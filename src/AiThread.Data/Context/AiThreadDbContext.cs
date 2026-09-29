@@ -11,9 +11,11 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
     public DbSet<AiNode> Nodes => Set<AiNode>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<ThreadRun> Threads => Set<ThreadRun>();
+    public DbSet<SessionPack> SessionPacks => Set<SessionPack>();
     public DbSet<ThreadTask> ThreadTasks => Set<ThreadTask>();
     public DbSet<LongMemory> LongMemories => Set<LongMemory>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
+    public DbSet<TelegramChat> TelegramChats => Set<TelegramChat>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -65,6 +67,16 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.HasIndex(x => x.SessionId);
         });
 
+        modelBuilder.Entity<SessionPack>(e =>
+        {
+            e.ToTable("SessionPacks");
+            e.Property(x => x.SessionId).HasMaxLength(100).IsRequired();
+            e.Property(x => x.WorkingDirectory).HasMaxLength(800).IsRequired();
+            e.Property(x => x.HandedToSessionId).HasMaxLength(100);
+            e.HasIndex(x => new { x.WorkingDirectory, x.CreatedAt });
+            e.HasIndex(x => x.HandedToSessionId);
+        });
+
         modelBuilder.Entity<ThreadTask>(e =>
         {
             e.ToTable("ThreadTasks");
@@ -97,6 +109,15 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.Message).HasMaxLength(4000).IsRequired();
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.ThreadId);
+        });
+
+        modelBuilder.Entity<TelegramChat>(e =>
+        {
+            e.ToTable("TelegramChats");
+            e.Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Username).HasMaxLength(100);
+            e.HasOne(x => x.ActiveProject).WithMany().HasForeignKey(x => x.ActiveProjectId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => x.ChatId).IsUnique();
         });
     }
 }

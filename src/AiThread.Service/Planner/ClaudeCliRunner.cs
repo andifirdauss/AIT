@@ -20,6 +20,37 @@ public sealed record ClaudeCliResult(string Text, bool IsError, string? Subtype,
 
 public sealed record ClaudeCliPing(bool Success, string? Reply, int Tokens, string? Error);
 
+// Usage of every API call the CLI has made, read from its assistant events. Unlike the final result event it is also
+// known for a run that was stopped early, which is how every accepted CLI plan ends.
+public sealed class ClaudeCliUsage
+{
+    private readonly Dictionary<string, CallUsage> _calls = new(StringComparer.Ordinal);
+
+    public int Calls => _calls.Count;
+
+    public int Tokens => (int)Math.Min(int.MaxValue, _calls.Values.Sum(c => (long)c.Input + c.CacheWrite + c.CacheRead + c.Output));
+
+    // The CLI emits one assistant event per content block, all carrying the message id and usage of the same API
+    // call; earlier blocks may still hold a partial output count, so the largest value wins.
+    internal void Add(JsonObject evt)
+    {
+        if (evt["message"] is not JsonObject message || message["usage"] is not JsonObject usage) return;
+        var id = message["id"] is JsonValue v && v.TryGetValue<string>(out var s) ? s : $"call_{_calls.Count}";
+
+        var call = new CallUsage(
+            ClaudeCliRunner.Int(usage["input_tokens"]),
+            ClaudeCliRunner.Int(usage["cache_creation_input_tokens"]),
+            ClaudeCliRunner.Int(usage["cache_read_input_tokens"]),
+            ClaudeCliRunner.Int(usage["output_tokens"]));
+        _calls[id] = _calls.TryGetValue(id, out var seen)
+            ? new CallUsage(Math.Max(seen.Input, call.Input), Math.Max(seen.CacheWrite, call.CacheWrite),
+                Math.Max(seen.CacheRead, call.CacheRead), Math.Max(seen.Output, call.Output))
+            : call;
+    }
+
+    private readonly record struct CallUsage(int Input, int CacheWrite, int CacheRead, int Output);
+}
+
 // Runs `claude -p` headless: prompt on stdin, newline-delimited JSON events (--output-format stream-json) on stdout.
 // Each child gets its own session id, registered so the proxy can refuse requests that loop back into AiThread.
 public sealed class ClaudeCliRunner(
@@ -33,8 +64,14 @@ public sealed class ClaudeCliRunner(
     // Would point the child at this proxy, or hand it the proxy key, if AiThread itself was started with them.
     private static readonly string[] ScrubbedVariables = ["ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_CUSTOM_HEADERS"];
 
-    public async Task<ClaudeCliResult> RunAsync(ClaudeCliRun run, Func<ClaudeCliToolUse, Task>? onToolUse, CancellationToken cancellationToken)
+    // usage is filled while the CLI runs, so the caller still has it when the run is cancelled.
+    public async Task<ClaudeCliResult> RunAsync(
+        ClaudeCliRun run,
+        Func<ClaudeCliToolUse, Task>? onToolUse,
+        ClaudeCliUsage? usage,
+        CancellationToken cancellationToken)
     {
+        usage ??= new ClaudeCliUsage();
         var cli = options.CurrentValue.ClaudeCli;
         var sessionId = Guid.NewGuid().ToString();
         var arguments = new List<string> { "-p", "--output-format", "stream-json", "--verbose", "--model", run.Model, "--session-id", sessionId };
@@ -70,8 +107,10 @@ public sealed class ClaudeCliRunner(
                 if (ParseEvent(line) is not { } evt) continue;
                 switch (Str(evt["type"]))
                 {
-                    case "assistant" when onToolUse is not null:
-                        foreach (var use in ToolUses(evt)) await onToolUse(use);
+                    case "assistant":
+                        usage.Add(evt);
+                        if (onToolUse is not null)
+                            foreach (var use in ToolUses(evt)) await onToolUse(use);
                         break;
                     case "result":
                         result = evt;
@@ -100,11 +139,11 @@ public sealed class ClaudeCliRunner(
         var subtype = Str(result["subtype"]);
         var isError = result["is_error"] is JsonValue flag && flag.TryGetValue<bool>(out var e) && e
                       || subtype?.StartsWith("error", StringComparison.OrdinalIgnoreCase) == true;
-        var usage = result["usage"];
-        var tokens = Int(usage?["input_tokens"]) + Int(usage?["cache_creation_input_tokens"])
-                     + Int(usage?["cache_read_input_tokens"]) + Int(usage?["output_tokens"]);
+        var total = result["usage"];
+        var tokens = Int(total?["input_tokens"]) + Int(total?["cache_creation_input_tokens"])
+                     + Int(total?["cache_read_input_tokens"]) + Int(total?["output_tokens"]);
 
-        return new ClaudeCliResult(Str(result["result"]) ?? string.Empty, isError, subtype, Int(result["num_turns"]), tokens);
+        return new ClaudeCliResult(Str(result["result"]) ?? string.Empty, isError, subtype, Int(result["num_turns"]), Math.Max(tokens, usage.Tokens));
     }
 
     // Cheap end-to-end check for the node Test button: installed, logged in, model name accepted.
@@ -114,6 +153,7 @@ public sealed class ClaudeCliRunner(
         {
             var result = await RunAsync(
                 new ClaudeCliRun(model, "Reply with exactly one word: pong", Path.GetTempPath(), ["--max-turns", "1"], TimeSpan.FromMinutes(2)),
+                null,
                 null,
                 cancellationToken);
             return result.IsError
@@ -243,7 +283,7 @@ public sealed class ClaudeCliRunner(
     private static string? Str(JsonNode? node) =>
         node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 
-    private static int Int(JsonNode? node)
+    internal static int Int(JsonNode? node)
     {
         if (node is not JsonValue value) return 0;
         if (value.TryGetValue<int>(out var i)) return i;

@@ -18,6 +18,18 @@ public class AiThreadOptions
     public string? LocalBaseUrl { get; set; }
 
     public ClaudeCliOptions ClaudeCli { get; set; } = new();
+
+    public TelegramOptions Telegram { get; set; } = new();
+}
+
+// Telegram Bot API used for remote prompting. The bot token itself is a runtime setting (menu Setting).
+public class TelegramOptions
+{
+    // Official endpoint by default; point it at a self-hosted Bot API server or a proxy when needed.
+    public string ApiBaseUrl { get; set; } = "https://api.telegram.org";
+
+    // How long one getUpdates call waits for new messages.
+    public int PollTimeoutSeconds { get; set; } = 50;
 }
 
 // Claude Code CLI used by planner nodes with the ClaudeCli backend.
