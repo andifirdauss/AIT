@@ -37,6 +37,12 @@ public record ClaudeSettingsStatusDto(
     string? CurrentBaseUrl,
     string PreviewJson);
 
+// Enabled = the project's settings.local.json points Claude Code at this proxy. CurrentBaseUrl is set when it points
+// somewhere else (e.g. an old port); Error when the file cannot be read.
+public record ProjectClaudeIntegrationDto(Guid ProjectId, bool Enabled, string? CurrentBaseUrl, string Path, string? Error);
+
+public record SetProjectClaudeIntegrationRequest(bool Enabled);
+
 public record ClaudeSettingsApplyRequest(
     ClaudeSettingsScope Scope,
     Guid? ProjectId,

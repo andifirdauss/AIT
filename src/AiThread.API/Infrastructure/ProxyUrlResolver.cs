@@ -1,3 +1,4 @@
+using AiThread.Service.Planner;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
@@ -13,13 +14,6 @@ public static class ProxyUrlResolver
     {
         var addresses = context.RequestServices.GetService<IServer>()?.Features.Get<IServerAddressesFeature>()?.Addresses;
         var http = addresses?.FirstOrDefault(a => a.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
-        return http is not null ? Normalize(http) : $"{context.Request.Scheme}://{context.Request.Host}";
+        return http is not null ? LocalServerUrl.Normalize(http) : $"{context.Request.Scheme}://{context.Request.Host}";
     }
-
-    private static string Normalize(string address) => address
-        .Replace("://+", "://localhost", StringComparison.Ordinal)
-        .Replace("://*", "://localhost", StringComparison.Ordinal)
-        .Replace("://0.0.0.0", "://localhost", StringComparison.Ordinal)
-        .Replace("://[::]", "://localhost", StringComparison.Ordinal)
-        .TrimEnd('/');
 }

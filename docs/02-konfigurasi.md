@@ -55,7 +55,8 @@ kesiapan pipeline beserta catatannya.
 |---|---|---|
 | Nama | — | Label bebas, tampil di progres dan detail thread. |
 | Role | Executor | Planner / Executor / Wrapper. |
-| Model / combo | — | Dipilih dari `/v1/models` 9router, dikelompokkan: *Combo* dulu, lalu per provider. Jika 9router offline, muncul input teks untuk mengetik id model manual. |
+| Backend | 9router | Khusus Planner: *9router* atau *Claude Code CLI lokal* (lihat [Planner lewat Claude Code CLI](#planner-lewat-claude-code-cli)). Role lain selalu 9router. |
+| Model / combo | — | Dipilih dari `/v1/models` 9router, dikelompokkan: *Combo* dulu, lalu per provider. Jika 9router offline, muncul input teks untuk mengetik id model manual. Untuk backend CLI: daftar berisi alias Claude Code (`opus`, `fable`, `sonnet`, `haiku` — selalu model terbaru keluarganya); nama model lengkap tetap bisa diketik. Mengganti backend mengosongkan/mengganti isian yang tidak cocok. |
 | Temperature | Planner 0.2 · Executor 0.1 · Wrapper 0.3 | 0–2. Kosongkan untuk nilai default yang sama. |
 | Max tokens | Planner 16384 · Executor 8192 · Wrapper 4096 | 256–200000. Batas output per panggilan. |
 | Max paralel | Planner 2 · Executor 6 · Wrapper 4 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
@@ -68,8 +69,12 @@ balasan — cara cepat memastikan model dan key benar.
 
 ### Aturan pemilihan node
 
-- **Planner & Wrapper**: hanya satu yang dipakai — node aktif dengan prioritas terkecil. Node lain berfungsi sebagai
-  cadangan yang tinggal diaktifkan.
+- **Planner**: node aktif dengan prioritas terkecil yang dipakai. Node Planner aktif lainnya menjadi cadangan
+  otomatis: bila planner utama kena rate limit (429), timeout, atau error 5xx setelah retry — atau Claude Code CLI
+  gagal — planner berikutnya (urut prioritas) mengambil alih. Antar-node 9router investigasi dilanjutkan tanpa
+  mengulang; saat berpindah dari/ke backend CLI, planner berikutnya mulai lagi dari brief.
+- **Wrapper**: hanya satu yang dipakai — node aktif dengan prioritas terkecil. Node lain berfungsi sebagai cadangan
+  yang tinggal diaktifkan.
 - **Executor**: semua node aktif dipakai. Tiap tugas diberikan ke executor dengan slot kosong terbanyak, lalu
   prioritas terkecil, lalu bergiliran.
 - **Wrapper** juga dipakai untuk ekstraksi memory, dan menjadi model passthrough bila *Model passthrough* diset
@@ -83,12 +88,43 @@ Slot dibagi di antara semua thread yang sedang berjalan (beberapa project sekali
 | Peran | Yang memakai slot |
 |---|---|
 | Executor | Satu tugas selama dikerjakan, termasuk retry. Executor dengan 6 slot mengerjakan maksimal 6 tugas serentak. |
-| Planner | Satu slot per panggilan model; slot dilepas saat planner menjalankan tool baca-kode. Dengan 2 slot, maksimal 2 thread menunggu jawaban planner bersamaan. |
+| Planner | Satu slot per panggilan model; slot dilepas saat planner menjalankan tool baca-kode. Dengan 2 slot, maksimal 2 thread menunggu jawaban planner bersamaan. Backend CLI memegang satu slot selama seluruh proses `claude` berjalan. |
 | Wrapper | Satu slot untuk ringkasan akhir dan satu untuk ekstraksi memory tiap thread. |
 
 Selain itu, Setting → *Maks paralel* membatasi tugas serentak **per thread**. Jumlah tugas yang benar-benar berjalan
 bersamaan = nilai terkecil dari: tugas yang siap, *Maks paralel* per thread, dan total slot kosong semua executor.
 Panggilan passthrough (request pendukung Claude Code) dan tombol *Test* tidak memakai slot.
+
+### Planner lewat Claude Code CLI
+
+Backend *Claude Code CLI lokal* menjalankan `claude -p` di folder project memakai login Claude Code di mesin yang
+menjalankan AiThread (langganan atau API key milik CLI), bukan lewat 9router. Keuntungannya: prompt caching dan tool
+baca-kode bawaan CLI, serta kuota yang dipakai lewat klien resmi.
+
+Cara kerja:
+
+- CLI hanya boleh memakai tool baca `Read`, `Grep`, `Glob`. Tool tulis/perintah (`Edit`, `Write`, `Bash`, web, sub-agent)
+  diblokir.
+- Memory (`search_memory`, `read_memory`) dan `submit_plan` disediakan AiThread sebagai server MCP di
+  `/mcp/planner/{token}`. Token acak berlaku selama satu proses planner. Rencana tetap divalidasi `PlanValidator`, lalu
+  executor 9router dipicu seperti biasa.
+- Settings Claude level *user* dan *local* tidak dibaca (`--setting-sources project`), karena di sanalah AiThread menulis
+  `ANTHROPIC_BASE_URL`. Bila proses CLI tetap sampai ke proxy AiThread, request-nya ditolak (tidak diorkestrasi ulang)
+  dan planner cadangan mengambil alih.
+- Batas langkah CLI = 2 × *Langkah planner*; tidak ada langkah terakhir yang memaksa `submit_plan`.
+
+Konfigurasi di `appsettings.json` bagian `AiThread`:
+
+| Kunci | Default | Keterangan |
+|---|---|---|
+| `ClaudeCli:Command` | `claude` | Nama di PATH atau path lengkap (`claude.exe` installer native, `claude.cmd` dari npm). `~/.local/bin` ikut dicari. |
+| `ClaudeCli:SettingSources` | `project` | Nilai `--setting-sources` untuk CLI. |
+| `ClaudeCli:TimeoutMinutes` | 15 | Batas satu kali planning. |
+| `ClaudeCli:ExtraArguments` | `[]` | Argumen tambahan, mis. `["--fallback-model", "sonnet"]`. |
+| `LocalBaseUrl` | kosong | URL AiThread untuk klien MCP CLI. Kosong = alamat `http://` pertama Kestrel. |
+
+Setelah menyimpan node, klik **Test** untuk memastikan CLI terpasang, sudah login, dan nama model diterima.
+Disarankan tetap punya node Planner 9router aktif dengan prioritas lebih besar sebagai cadangan.
 
 ### Memilih model
 

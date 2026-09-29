@@ -27,6 +27,7 @@ public sealed class NineRouterService(
 
     private static readonly TimeSpan ModelCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan KeyCheckCacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(30);
 
     private readonly SemaphoreSlim _modelLock = new(1, 1);
     private ModelCache? _modelCache;
@@ -78,12 +79,26 @@ public sealed class NineRouterService(
             {
                 return await SendChatAsync(settings, request, trackedDelta, cancellationToken);
             }
-            catch (NineRouterException ex) when (ex.IsTransient && attempt < maxAttempts && !emitted && !cancellationToken.IsCancellationRequested)
+            catch (NineRouterException ex) when (ex.IsTransient && attempt < maxAttempts && !emitted && !cancellationToken.IsCancellationRequested
+                                                 && RetryDelay(ex, attempt) is { } delay)
             {
-                logger.LogWarning("9router call to {Model} failed (attempt {Attempt}): {Message}", request.Model, attempt, ex.Message);
-                await Task.Delay(TimeSpan.FromSeconds(attempt * 2), cancellationToken);
+                logger.LogWarning("9router call to {Model} failed (attempt {Attempt}), retrying in {Delay}s: {Message}",
+                    request.Model, attempt, delay.TotalSeconds, ex.Message);
+                await Task.Delay(delay, cancellationToken);
             }
         }
+    }
+
+    // Null means "do not retry here": the upstream asked for a longer wait than is worth blocking on,
+    // so the caller should fail over to another model instead.
+    public static TimeSpan? RetryDelay(NineRouterException ex, int attempt)
+    {
+        if (ex.RetryAfter is { } requested)
+            return requested <= MaxRetryAfter ? requested : null;
+
+        // Rate limits usually clear on a scale of seconds to a minute; other transient errors retry sooner.
+        var baseSeconds = ex.IsRateLimited ? 5 * attempt : 2 * attempt;
+        return TimeSpan.FromSeconds(baseSeconds + Random.Shared.NextDouble() * baseSeconds / 2);
     }
 
     public async Task<HttpResponseMessage> ForwardAnthropicAsync(
@@ -283,7 +298,8 @@ public sealed class NineRouterService(
                     : string.Empty;
                 throw new NineRouterException(
                     $"9router HTTP {(int)response.StatusCode} untuk model '{request.Model}': {ExtractError(errorBody)}{hint}",
-                    (int)response.StatusCode);
+                    (int)response.StatusCode,
+                    retryAfter: RetryAfterOf(response));
             }
 
             var mediaType = response.Content.Headers.ContentType?.MediaType;
@@ -446,6 +462,18 @@ public sealed class NineRouterService(
             // Not JSON — fall through to the raw text.
         }
         return body.Length > 500 ? body[..500] : body;
+    }
+
+    private static TimeSpan? RetryAfterOf(HttpResponseMessage response)
+    {
+        var header = response.Headers.RetryAfter;
+        if (header?.Delta is { } delta) return delta < TimeSpan.Zero ? TimeSpan.Zero : delta;
+        if (header?.Date is { } date)
+        {
+            var wait = date - DateTimeOffset.UtcNow;
+            return wait < TimeSpan.Zero ? TimeSpan.Zero : wait;
+        }
+        return null;
     }
 
     private static JsonNode? Property(JsonNode? node, string name) =>
