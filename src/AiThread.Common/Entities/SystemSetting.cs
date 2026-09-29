@@ -22,4 +22,10 @@ public class SystemSetting : BaseEntity
     public int ExecutorMaxRetries { get; set; } = 1;
     public int MaxParallelTasks { get; set; } = 8;
     public int RequestTimeoutSeconds { get; set; } = 600;
+
+    // Remote prompting through a Telegram bot. Long polling, so no public URL is needed.
+    public bool TelegramEnabled { get; set; }
+
+    // Encrypted like the 9router key; never exposed through the API.
+    public string? TelegramBotTokenProtected { get; set; }
 }

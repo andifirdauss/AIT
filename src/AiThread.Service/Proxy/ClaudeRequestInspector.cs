@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using AiThread.Service.Orchestration;
 
 namespace AiThread.Service.Proxy;
 
@@ -18,7 +19,11 @@ public sealed record ClaudeRequestInfo(
     // Latest user turn as sent (includes injected context such as CLAUDE.md).
     string PromptContext,
     string? ConversationContext,
-    int EstimatedInputTokens);
+    int EstimatedInputTokens,
+    // AiThread threads whose reply is still in the conversation, oldest first.
+    IReadOnlyList<ThreadAnchorRef> Anchors);
+
+public sealed record ThreadAnchorRef(string ShortId, int MessageIndex);
 
 // Reads an Anthropic Messages API request coming from Claude Code and decides whether it is a main-agent
 // turn worth orchestrating or an auxiliary call (title generation, compaction, quota check...) to pass through.
@@ -39,18 +44,7 @@ public static partial class ClaudeRequestInspector
         var messages = body["messages"] as JsonArray ?? [];
         var tools = body["tools"] as JsonArray;
 
-        // Find the active user turn. Claude Code may append system reminders (role: "system")
-        // and/or an assistant prefill (role: "assistant") after the user's prompt.
-        var userIndex = -1;
-        for (var i = messages.Count - 1; i >= 0; i--)
-        {
-            if (string.Equals(Str(messages[i]?["role"]), "user", StringComparison.OrdinalIgnoreCase))
-            {
-                userIndex = i;
-                break;
-            }
-        }
-
+        var userIndex = LastUserIndex(messages);
         var userMessage = userIndex >= 0 ? messages[userIndex] : null;
         var (userText, hasToolResult) = ContentText(userMessage?["content"]);
         var prompt = StripReminders(userText).Trim();
@@ -94,8 +88,17 @@ public static partial class ClaudeRequestInspector
             sessionId,
             prompt,
             promptContext,
-            orchestratable ? BuildHistory(messages, userIndex) : null,
-            Math.Max(1, rawLength / 4));
+            orchestratable ? BuildHistory(messages, 0, userIndex) : null,
+            Math.Max(1, rawLength / 4),
+            orchestratable ? FindAnchors(messages, userIndex) : []);
+    }
+
+    // The conversation between the message at afterIndex and the active user turn, for when the context keeper's
+    // summary already covers everything up to that message.
+    public static string? HistoryAfter(JsonNode body, int afterIndex)
+    {
+        var messages = body["messages"] as JsonArray ?? [];
+        return BuildHistory(messages, afterIndex + 1, LastUserIndex(messages));
     }
 
     public static string StripReminders(string text) => ReminderBlock().Replace(text, string.Empty);
@@ -151,13 +154,37 @@ public static partial class ClaudeRequestInspector
         return null;
     }
 
-    private static string? BuildHistory(JsonArray messages, int userIndex)
+    // Find the active user turn. Claude Code may append system reminders (role: "system")
+    // and/or an assistant prefill (role: "assistant") after the user's prompt.
+    private static int LastUserIndex(JsonArray messages)
+    {
+        for (var i = messages.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(Str(messages[i]?["role"]), "user", StringComparison.OrdinalIgnoreCase)) return i;
+        }
+        return -1;
+    }
+
+    private static List<ThreadAnchorRef> FindAnchors(JsonArray messages, int userIndex)
+    {
+        var anchors = new List<ThreadAnchorRef>();
+        for (var i = 0; i < userIndex; i++)
+        {
+            if (!string.Equals(Str(messages[i]?["role"]), "assistant", StringComparison.OrdinalIgnoreCase)) continue;
+            foreach (var id in ThreadAnchor.Find(ContentText(messages[i]?["content"]).Text))
+                anchors.Add(new ThreadAnchorRef(id, i));
+        }
+        return anchors;
+    }
+
+    // The last MaxHistoryMessages messages from index `from` up to (not including) the active user turn.
+    private static string? BuildHistory(JsonArray messages, int from, int userIndex)
     {
         var end = userIndex >= 0 ? userIndex : messages.Count - 1;
-        if (end <= 0) return null;
+        if (end <= from) return null;
 
         var parts = new List<string>();
-        var start = Math.Max(0, end - MaxHistoryMessages);
+        var start = Math.Max(from, end - MaxHistoryMessages);
         for (var i = start; i < end; i++)
         {
             var role = Str(messages[i]?["role"]) ?? "user";

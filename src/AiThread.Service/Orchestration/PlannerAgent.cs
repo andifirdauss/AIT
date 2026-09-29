@@ -38,7 +38,8 @@ public sealed class PlannerAgent(
     INineRouterService router,
     IMemoryService memoryService,
     NodeConcurrencyLimiter limiter,
-    ClaudeCliPlanner cliPlanner)
+    ClaudeCliPlanner cliPlanner,
+    ContextKeeper contextKeeper)
 {
     private const int MaxPromptChars = 40_000;
     private const int MaxTextNudges = 2;
@@ -299,6 +300,9 @@ public sealed class PlannerAgent(
                         ? "No memories found for those ids."
                         : string.Join("\n\n", memories.Select(m => $"### {m.Label} ({m.Type}, {m.Level})\n{m.Description}")), null);
 
+                case PlannerTools.ReadThread:
+                    return new PlannerToolOutcome(await contextKeeper.ReadThreadAsync(input.Project.ProjectId, Str(args, "id") ?? string.Empty, cancellationToken), null);
+
                 case PlannerTools.SubmitPlan:
                     return SubmitPlan(call.Arguments, input.Scope, recorder);
 
@@ -336,9 +340,17 @@ public sealed class PlannerAgent(
         builder.Append("# Developer request\n");
         builder.Append(Limit(request.PromptContext ?? request.Prompt, MaxPromptChars)).Append("\n\n");
 
+        // With a context pack the planner sees the summary plus only the turns the summary does not cover yet.
+        var pack = request.Session?.Pack;
+        if (!string.IsNullOrWhiteSpace(pack))
+        {
+            builder.Append("# Session so far (summary by the context keeper; read_thread gives the full record of a thread)\n");
+            builder.Append(pack.Trim()).Append("\n\n");
+        }
+
         if (!string.IsNullOrWhiteSpace(request.ConversationContext))
         {
-            builder.Append("# Earlier conversation (oldest first, truncated)\n");
+            builder.Append(string.IsNullOrWhiteSpace(pack) ? "# Earlier conversation (oldest first, truncated)\n" : "# Conversation since that summary (oldest first, truncated)\n");
             builder.Append(request.ConversationContext).Append("\n\n");
         }
 
@@ -388,6 +400,7 @@ public sealed class PlannerAgent(
         PlannerTools.SearchText => $"\"{Str(args, "query")}\"" + (Str(args, "glob") is { } g ? $" in `{g}`" : string.Empty),
         PlannerTools.SearchMemory => $"\"{Str(args, "query")}\"",
         PlannerTools.ReadMemory => $"{(args["ids"] as JsonArray)?.Count ?? 0} item",
+        PlannerTools.ReadThread => $"`{Str(args, "id")}`",
         _ => string.Empty
     };
 

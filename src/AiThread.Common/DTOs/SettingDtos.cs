@@ -43,6 +43,14 @@ public record ProjectClaudeIntegrationDto(Guid ProjectId, bool Enabled, string? 
 
 public record SetProjectClaudeIntegrationRequest(bool Enabled);
 
+// Installed = the /clear hooks point at this AiThread; InstalledBaseUrl is set when they exist at all.
+public record ClaudeHooksStatusDto(
+    ClaudeSettingsScope Scope,
+    string Path,
+    bool Installed,
+    string? InstalledBaseUrl,
+    string PreviewJson);
+
 public record ClaudeSettingsApplyRequest(
     ClaudeSettingsScope Scope,
     Guid? ProjectId,

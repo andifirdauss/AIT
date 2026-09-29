@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, stream, debounce, md, diffHtml } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, stream, debounce, md, diffHtml } = window.AiThread;
 
   const threadId = window.threadId;
   const el = id => document.getElementById(id);
@@ -16,7 +16,7 @@
     el('threadStatus').innerHTML = statusBadge(s.status);
     el('threadMeta').innerHTML = [
       s.projectName ? `<a href="/Project/Detail/${s.projectId}">${escapeHtml(s.projectName)}</a>` : 'tanpa project',
-      s.source === 'ClaudeCode' ? 'Claude Code' : 'Dashboard',
+      sourceLabel(s.source),
       s.sessionId ? `sesi <span class="mono">${escapeHtml(s.sessionId.substring(0, 8))}</span>` : null,
       fmt.dateTime(s.createdAt),
       detail.workingDirectory ? `<span class="mono">${escapeHtml(detail.workingDirectory)}</span>` : null
@@ -70,6 +70,8 @@
 
   function renderFinal() {
     if (detail.finalResponse) el('finalResponse').innerHTML = md(detail.finalResponse);
+    el('contextPackCard').classList.toggle('d-none', !detail.contextPack);
+    if (detail.contextPack) el('contextPack').innerHTML = md(detail.contextPack);
   }
 
   function taskDetailHtml(t) {

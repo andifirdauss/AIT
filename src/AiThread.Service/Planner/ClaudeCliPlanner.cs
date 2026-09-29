@@ -25,13 +25,13 @@ public sealed class ClaudeCliPlanner(
     // After a plan is accepted the CLI normally ends its turn at once; stop it if it keeps going.
     private static readonly TimeSpan StopGrace = TimeSpan.FromSeconds(5);
 
-    private static readonly string[] McpTools = [PlannerTools.SearchMemory, PlannerTools.ReadMemory, PlannerTools.SubmitPlan];
+    private static readonly string[] McpTools = [PlannerTools.SearchMemory, PlannerTools.ReadMemory, PlannerTools.ReadThread, PlannerTools.SubmitPlan];
     private static readonly string[] ReadOnlyTools = ["Read", "Grep", "Glob"];
 
     public const string ToolNotes = """
         Tools in this environment
         - Investigate the repository with the built-in Read, Grep and Glob tools; they replace list_directory, find_files, search_text and read_file mentioned above. The working directory is the project root. Read needs absolute paths: join the root shown in the brief with the relative path.
-        - search_memory, read_memory and submit_plan come from the "aithread" MCP server.
+        - search_memory, read_memory, read_thread and submit_plan come from the "aithread" MCP server.
         - You cannot edit files or run commands. Every path inside submit_plan must be relative to the project root and use forward slashes.
         - Your work ends with the submit_plan call. When it answers "Plan accepted.", stop immediately without further output.
         """;
@@ -76,19 +76,24 @@ public sealed class ClaudeCliPlanner(
                 "--tools", string.Join(',', ReadOnlyTools),
                 "--allowedTools", string.Join(',', ReadOnlyTools.Concat(McpTools.Select(McpToolName))),
                 "--permission-mode", "dontAsk",
-                "--max-turns", maxTurns.ToString(CultureInfo.InvariantCulture)
+                "--max-turns", maxTurns.ToString(CultureInfo.InvariantCulture),
+                // cwd, env and git status move from the system prompt into the first message, so the system prompt and
+                // tools stay byte-identical across runs and projects and are read from the prompt cache instead of
+                // being written again by every thread.
+                "--exclude-dynamic-system-prompt-sections"
             ];
             var timeout = TimeSpan.FromMinutes(Math.Max(1, options.CurrentValue.ClaudeCli.TimeoutMinutes));
+            var usage = new ClaudeCliUsage();
 
             ClaudeCliResult result;
             try
             {
-                result = await runner.RunAsync(new ClaudeCliRun(node.Model, prompt, workingDirectory, arguments, timeout), onToolUse, run.Token);
+                result = await runner.RunAsync(new ClaudeCliRun(node.Model, prompt, workingDirectory, arguments, timeout), onToolUse, usage, run.Token);
             }
             catch (OperationCanceledException) when (accepted is not null && !cancellationToken.IsCancellationRequested)
             {
-                // Stopped by us after the plan was accepted; the usage of an interrupted run is not reported.
-                return new CliPlanningResult(accepted, string.Empty, 0, 0);
+                // Stopped by us after the plan was accepted; the API calls made up to that point are still counted.
+                return new CliPlanningResult(accepted, string.Empty, usage.Calls, usage.Tokens);
             }
 
             if (accepted is not null) return new CliPlanningResult(accepted, result.Text, result.Turns, result.Tokens);

@@ -32,6 +32,7 @@ public class ClaudeCliRunnerTests : IDisposable
         var result = await Runner(script).RunAsync(
             new ClaudeCliRun("opus", "hello", _workspace.Root, ["--max-turns", "3", "--mcp-config", Path.Combine(_workspace.Root, "a b", "mcp.json")], TimeSpan.FromMinutes(1)),
             use => { uses.Add(use); return Task.CompletedTask; },
+            null,
             CancellationToken.None);
 
         Assert.False(result.IsError);
@@ -62,7 +63,7 @@ public class ClaudeCliRunnerTests : IDisposable
             echo {"type":"result","subtype":"success","is_error":true,"result":"API Error: 429 rate_limit_error","num_turns":1}
             """);
 
-        var result = await Runner(script).RunAsync(new ClaudeCliRun("opus", "hi", _workspace.Root, [], TimeSpan.FromMinutes(1)), null, CancellationToken.None);
+        var result = await Runner(script).RunAsync(new ClaudeCliRun("opus", "hi", _workspace.Root, [], TimeSpan.FromMinutes(1)), null, null, CancellationToken.None);
 
         Assert.True(result.IsError);
         Assert.Contains("429", result.Text);
@@ -81,10 +82,42 @@ public class ClaudeCliRunnerTests : IDisposable
             """);
 
         var ex = await Assert.ThrowsAsync<ClaudeCliException>(() =>
-            Runner(script).RunAsync(new ClaudeCliRun("opus", "hi", _workspace.Root, [], TimeSpan.FromMinutes(1)), null, CancellationToken.None));
+            Runner(script).RunAsync(new ClaudeCliRun("opus", "hi", _workspace.Root, [], TimeSpan.FromMinutes(1)), null, null, CancellationToken.None));
 
         Assert.Contains("exit 3", ex.Message);
         Assert.Contains("Not logged in", ex.Message);
+    }
+
+    [Fact]
+    public async Task Usage_of_a_stopped_run_comes_from_its_assistant_events()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        // Two events of the same API call (partial then final output count), a second call, then the CLI keeps running
+        // the way it does after submit_plan until the planner stops it.
+        var script = WriteScript("""
+            @echo off
+            more > nul
+            echo {"type":"assistant","message":{"id":"m1","content":[{"type":"text","text":"a"}],"usage":{"input_tokens":3,"cache_creation_input_tokens":1000,"output_tokens":1}}}
+            echo {"type":"assistant","message":{"id":"m1","content":[{"type":"tool_use","id":"t1","name":"Read","input":{}}],"usage":{"input_tokens":3,"cache_creation_input_tokens":1000,"output_tokens":40}}}
+            echo {"type":"assistant","message":{"id":"m2","content":[{"type":"tool_use","id":"t2","name":"mcp__aithread__submit_plan","input":{}}],"usage":{"input_tokens":2,"cache_read_input_tokens":1000,"cache_creation_input_tokens":500,"output_tokens":200}}}
+            ping -n 30 127.0.0.1 > nul
+            """);
+        using var stop = new CancellationTokenSource();
+        var usage = new ClaudeCliUsage();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Runner(script).RunAsync(
+            new ClaudeCliRun("opus", "hi", _workspace.Root, [], TimeSpan.FromMinutes(1)),
+            use =>
+            {
+                if (use.Name.EndsWith("submit_plan", StringComparison.Ordinal)) stop.Cancel();
+                return Task.CompletedTask;
+            },
+            usage,
+            stop.Token));
+
+        Assert.Equal(2, usage.Calls);
+        Assert.Equal(3 + 1000 + 40 + 2 + 1000 + 500 + 200, usage.Tokens);
     }
 
     [Fact]
@@ -97,11 +130,11 @@ public class ClaudeCliRunnerTests : IDisposable
     }
 
     [Fact]
-    public void Mcp_tools_are_memory_and_submit_plan_only()
+    public void Mcp_tools_are_memory_thread_records_and_submit_plan_only()
     {
         var names = ClaudeCliPlanner.ToolDefinitions().Select(t => t!["name"]!.GetValue<string>()).ToList();
 
-        Assert.Equal([PlannerTools.SearchMemory, PlannerTools.ReadMemory, PlannerTools.SubmitPlan], names);
+        Assert.Equal([PlannerTools.SearchMemory, PlannerTools.ReadMemory, PlannerTools.ReadThread, PlannerTools.SubmitPlan], names);
         Assert.All(ClaudeCliPlanner.ToolDefinitions(), t => Assert.Equal("object", t!["inputSchema"]!["type"]!.GetValue<string>()));
     }
 

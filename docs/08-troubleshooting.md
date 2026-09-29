@@ -40,7 +40,10 @@ Klik *Test* pada node CLI; pesannya menunjukkan penyebab.
 
 **Planner kena 429 / rate limit**
 Biasanya karena akun provider (mis. langganan Claude di 9router) kehabisan kuota per menit — tiap langkah planner
-mengirim ulang seluruh percakapan, jadi token input cepat menumpuk. Solusi:
+mengirim ulang seluruh percakapan, jadi token input cepat menumpuk. Lewat 9router (`/v1/chat/completions`) tidak ada
+prompt caching: satu thread planner `cc/claude-opus-…` dengan 10–20 langkah bisa memakai 0,2–1 juta token input penuh.
+Planner Claude Code CLI memakai cache, tetapi tetap membuka sesi baru per prompt dan memakai kuota akun yang sama
+dengan sesi Claude Code Anda. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya. Solusi:
 - Tambahkan node Planner **kedua** (model/provider lain, prioritas lebih besar) dan biarkan aktif. AiThread otomatis
   beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di progres.
 - Atau jadikan model planner sebuah **combo** 9router (mis. Claude → model lain) supaya fallback terjadi di 9router.
@@ -131,10 +134,38 @@ langsung masuk long memory; tidak ada data hilang.
 Untuk LocalDB: `sqllocaldb start MSSQLLocalDB`. Untuk server lain: periksa `ConnectionStrings:Default`.
 Restart AiThread setelah diperbaiki agar migrasi dijalankan.
 
+## Telegram
+
+Token ditolak, bot tidak membalas, *Token ini sedang dipakai program lain…*, *Chat ini belum diizinkan*, dan gejala
+bot Telegram lainnya: lihat [Prompt dari Telegram → Troubleshooting](11-telegram.md#troubleshooting).
+
 ## Aplikasi
+
+**AiThread berhenti saat browser, terminal, atau Visual Studio ditutup**
+Instance dari Visual Studio (debugger berhenti saat browser yang dibukanya ditutup) dan `dotnet run` hanya hidup
+selama program itu terbuka. Jalankan di background: `.\scripts\aithread.ps1 start` — lihat
+[Menjalankan di background](01-instalasi.md#5-menjalankan-di-background).
 
 **Port 5225 sudah dipakai**
 Jalankan dengan `--urls http://localhost:<port lain>` lalu terapkan ulang integrasi Claude Code.
+
+**`aithread.ps1 start`: "Port 5225 sudah dipakai proses lain (PID …)"**
+Biasanya instance dari Visual Studio / `dotnet run` masih hidup. Hentikan program itu, lalu `start` lagi. Bila yang
+memakai port adalah AiThread, `.\scripts\aithread.ps1 stop` juga bisa mematikannya.
+
+**`aithread.ps1 start`: "AiThread berhenti saat start (exit N)"**
+Potongan log langsung ditampilkan. Penyebab umum: database tidak bisa dihubungi (lihat [Redis & database](#redis--database))
+atau `appsettings.json` tidak valid. Log lengkap: `.\scripts\aithread.ps1 logs`.
+
+**Perubahan kode tidak terlihat di instance background**
+Instance background memakai hasil publish, bukan folder `src/`. Jalankan `.\scripts\aithread.ps1 restart`.
+
+**Log background berisi `Failed to determine the https port for redirect`**
+Normal: instance background hanya mendengarkan http. Peringatan ini tidak berpengaruh.
+
+**Thread *Cancelled*: "AiThread berhenti saat thread ini berjalan."**
+AiThread dimatikan (stop, restart, logoff, crash) saat thread itu berjalan. Hasil tugas yang sudah selesai tetap
+tertulis di file — tinjau dengan git, lalu kirim ulang prompt bila perlu.
 
 **Base URL https gagal dari Claude Code**
 Claude Code tidak mempercayai sertifikat development. Pakai alamat `http://localhost:5225`.

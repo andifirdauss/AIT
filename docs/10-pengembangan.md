@@ -31,6 +31,12 @@ dotnet tool run dotnet-ef migrations add <NamaMigrasi> --project src/AiThread.Da
 dotnet tool run dotnet-ef migrations has-pending-model-changes --project src/AiThread.Data --startup-project src/AiThread.Data
 ```
 
+Instance background (`scripts/aithread.ps1`, lihat [Instalasi](01-instalasi.md#5-menjalankan-di-background))
+memakai hasil publish di `%LOCALAPPDATA%\AiThread\app`, jadi build/debug dari repo tetap bisa jalan — asalkan
+memakai port lain (`--urls`) atau instance background dihentikan dulu. `Background/ThreadLifecycleWorker` menjaga
+status thread saat proses berhenti: shutdown rapi membatalkan thread yang berjalan, dan saat start thread yang
+tertinggal dari proses yang mati mendadak ditandai *Cancelled*.
+
 Migrasi diterapkan otomatis saat aplikasi start (`InitializeDataLayerAsync`). `DesignTimeDbContextFactory` memakai
 connection string LocalDB default.
 
@@ -49,10 +55,17 @@ connection string LocalDB default.
 | `Orchestration/ExecutionEngine.cs` | Penjadwalan DAG paralel, pemilihan executor, skip dependensi gagal. |
 | `Orchestration/ExecutorAgent.cs` | Menyusun input executor, retry, menerapkan edit di bawah lock. |
 | `Orchestration/WrapperAgent.cs`, `MemoryExtractor.cs` | Ringkasan akhir dan ekstraksi memory. |
-| `Orchestration/AgentPrompts.cs` | **Semua prompt peran** (planner, executor, wrapper, memory). |
+| `Orchestration/ContextKeeper.cs`, `ContextPackBuilder.cs`, `ThreadAnchor.cs` | Konteks sesi Claude Code: penanda thread di balasan, pencarian ringkasan dari history, pembaruan ringkasan setelah thread, tool `read_thread`. |
+| `Orchestration/SessionHandoff.cs`, `TranscriptDigest.cs`, `Implementations/ClaudeHookConfig.cs`, `API/Controllers/ClaudeHooksController.cs` | Context Keeper untuk `/clear`: hook `SessionEnd`/`SessionStart`, ringkasan transcript, penulisan blok `hooks` di settings Claude Code. |
+| `Orchestration/AgentPrompts.cs` | **Semua prompt peran** (planner, executor, wrapper, memory, context keeper). |
 | `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; teks progres untuk Claude Code. |
 | `Workspace/*` | Sandbox path, tool baca repo, parser & applier SEARCH/REPLACE, I/O teks (BOM/line ending), diff, pencari solution. |
 | `API/Infrastructure/AnthropicSseWriter.cs` | Menulis stream format Anthropic ke Claude Code. |
+| `Background/TelegramPollingWorker.cs`, `Telegram/TelegramBotRuntime.cs` | Long polling `getUpdates` bot Telegram, mulai ulang saat setting Telegram disimpan, backoff saat offline, status untuk kartu Setting. |
+| `Telegram/TelegramApi.cs` | Klien Bot API minimal: JSON dengan `Content-Length`, token dibaca dari runtime setting tiap panggilan, kirim ulang sebagai teks biasa bila HTML ditolak. HttpClient-nya tanpa logger karena token ada di URL. |
+| `Telegram/TelegramBot.cs` | Izin chat, perintah (`/projects`, `/status`, `/cancel`, `/diff`, `/new`), memulai thread (`ThreadSource.Telegram`, sesi `telegram:<chat>`, riwayat percakapan untuk planner). |
+| `Telegram/TelegramThreadReporter.cs` | Pesan status live per thread (event bus sebagai pemicu, database sebagai sumber data) dan pesan hasil akhir. |
+| `Telegram/TelegramFormatter.cs`, `TelegramMessages.cs` | Markdown wrapper → HTML Telegram (tanpa `<code>` di dalam `<b>`/`<i>`, dipecah per 4096 karakter) dan semua teks bot. |
 
 ## Dokumentasi di aplikasi
 
@@ -83,6 +96,12 @@ terkait harus diubah bersamaan.
 **Event SSE baru** — tambahkan konstanta di `AppEventTypes`, publikasikan lewat `IEventBus.Publish`, lalu tangani
 di `AiThread.stream(...)` pada halaman terkait.
 
+**Menambah perintah bot Telegram**
+1. Tambahkan ke `TelegramMessages.Commands` (menu `/` di Telegram diperbarui saat bot mulai polling).
+2. Tangani di `TelegramBot.HandleCommandAsync`; tulis teks balasan di `TelegramMessages` sebagai HTML Telegram dan
+   escape input dengan `TelegramFormatter.Escape`.
+3. Jangan menaruh `<code>`/`<pre>` di dalam `<b>`/`<i>`/`<s>`/`<a>` — Telegram menolak pesan seperti itu.
+
 ## Pengujian end-to-end tanpa biaya model
 
 Pipeline bisa diuji dengan server tiruan 9router yang mengimplementasikan `GET /api/health`, `GET /v1/models`, dan
@@ -91,3 +110,9 @@ prompt (`You are the PLANNER`, `You are an EXECUTOR`, `You are the WRAPPER`, `ma
 Setting → Base URL ke server tiruan tersebut, lalu kirim request berformat Claude Code ke `/v1/messages` atau
 gunakan *Jalankan prompt* di Dashboard. Gunakan database terpisah (ubah `ConnectionStrings:Default`) agar data uji
 tidak bercampur.
+
+Bot Telegram diuji dengan cara yang sama: arahkan `AiThread:Telegram:ApiBaseUrl` ke server tiruan Bot API yang
+menjawab `getMe`, `deleteWebhook`, `setMyCommands`, `getUpdates` (long poll dengan `offset`), `sendMessage`,
+`editMessageText`, dan `answerCallbackQuery`, lalu sisipkan update pesan/tombol ke antrean `getUpdates`-nya.
+Kecilkan `PollTimeoutSeconds` (mis. `2`) agar uji cepat. Server tiruan sebaiknya memvalidasi HTML seperti Telegram
+(tag yang didukung, entity, `code` tidak di dalam emphasis, batas 4096 karakter).

@@ -6,6 +6,7 @@ using AiThread.API.Infrastructure;
 using AiThread.Common.Enums;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
+using AiThread.Service.Orchestration;
 using AiThread.Service.Planner;
 using AiThread.Service.Proxy;
 using Microsoft.AspNetCore.Http;
@@ -27,6 +28,7 @@ public class AnthropicProxyController(
     IThreadOrchestrator orchestrator,
     IActivityLogService activityLog,
     PlannerSessionRegistry plannerSessions,
+    ContextKeeper contextKeeper,
     ILogger<AnthropicProxyController> logger) : ControllerBase
 {
     private static readonly string[] ForwardedHeaders = ["anthropic-version", "anthropic-beta"];
@@ -71,7 +73,7 @@ public class AnthropicProxyController(
             var project = await ResolveSessionProjectAsync(info, cancellationToken);
             if (project is not null)
             {
-                await OrchestrateAsync(info, project, cancellationToken);
+                await OrchestrateAsync(info, project, body, cancellationToken);
                 return;
             }
             reason = "session outside a .sln/.slnx project";
@@ -149,16 +151,23 @@ public class AnthropicProxyController(
         }
     }
 
-    private async Task OrchestrateAsync(ClaudeRequestInfo info, ProjectContext project, CancellationToken cancellationToken)
+    private async Task OrchestrateAsync(ClaudeRequestInfo info, ProjectContext project, JsonObject body, CancellationToken cancellationToken)
     {
+        // With a context pack, only the turns after the thread that wrote it still need to travel as conversation.
+        var session = await ResolveSessionAsync(info, project, cancellationToken);
+        var conversation = session?.PackMessageIndex is { } packIndex
+            ? ClaudeRequestInspector.HistoryAfter(body, packIndex)
+            : info.ConversationContext;
+
         var request = new ThreadRequest(
             ThreadSource.ClaudeCode,
             info.Prompt,
             info.PromptContext,
-            info.ConversationContext,
+            conversation,
             info.WorkingDirectory,
             project.ProjectId,
-            info.SessionId);
+            info.SessionId,
+            session?.Context);
 
         if (!info.Stream)
         {
@@ -189,6 +198,20 @@ public class AnthropicProxyController(
         }
 
         if (!cancellationToken.IsCancellationRequested) await writer.FinishAsync(cancellationToken);
+    }
+
+    // A failed lookup only costs continuity: the planner then gets the recent conversation as before.
+    private async Task<ResolvedSession?> ResolveSessionAsync(ClaudeRequestInfo info, ProjectContext project, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await contextKeeper.ResolveAsync(project.ProjectId, info.Anchors, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not resolve the context pack of session {SessionId}.", info.SessionId);
+            return null;
+        }
     }
 
     private async Task PassthroughAsync(JsonObject body, string reason, RuntimeSettings settings, string pathAndQuery, CancellationToken cancellationToken)
@@ -303,7 +326,7 @@ public class AnthropicProxyController(
             content = new[] { new { type = "text", text } },
             stop_reason = "end_turn",
             stop_sequence = (string?)null,
-            usage = new { input_tokens = inputTokens, output_tokens = Math.Max(1, text.Length / 4) }
+            usage = OrchestratedUsage.Start(inputTokens, Math.Max(1, text.Length / 4))
         }), cancellationToken);
     }
 

@@ -16,17 +16,21 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 
 1. Jalankan Redis dan 9router — [Instalasi](01-instalasi.md).
 2. Jalankan AiThread: `dotnet run --project src/AiThread.UI --launch-profile http` lalu buka http://localhost:5225.
+   Agar tetap hidup walau browser/terminal ditutup, jalankan di background: `.\scripts\aithread.ps1 start` —
+   [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background).
 3. **Setting** → isi URL & API key 9router → *Test koneksi* → *Simpan* — [Konfigurasi](02-konfigurasi.md).
 4. **Node** → tambahkan 1 Planner, minimal 1 Executor, 1 Wrapper.
 5. **Project** → *Telusuri…* untuk mencari dan mendaftarkan `.sln`/`.slnx` project Anda, lalu
    **Setting → Integrasi Claude Code** → *Terapkan* — [Integrasi Claude Code](03-integrasi-claude-code.md).
 6. Buka sesi Claude Code **baru** di folder project dan beri perintah seperti biasa — [Penggunaan](04-penggunaan.md).
+7. *(Opsional)* **Setting → Telegram** untuk mengirim prompt dari HP saat laptop ditinggal —
+   [Prompt dari Telegram](11-telegram.md).
 
 ## Daftar isi
 
 | # | Dokumen | Isi |
 |---|---|---|
-| 1 | [Instalasi](01-instalasi.md) | Prasyarat, Redis, 9router, database, menjalankan aplikasi, `appsettings.json` |
+| 1 | [Instalasi](01-instalasi.md) | Prasyarat, Redis, 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
 | 2 | [Konfigurasi](02-konfigurasi.md) | Menu Setting (9router, proxy, orkestrasi) dan menu Node (memilih model per peran) |
 | 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code ke AiThread lewat `settings.json`, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
@@ -36,6 +40,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | 8 | [Troubleshooting](08-troubleshooting.md) | Pesan error umum dan solusinya |
 | 9 | [Referensi API](09-referensi-api.md) | Endpoint proxy Anthropic, REST `/api`, event SSE |
 | 10 | [Pengembangan](10-pengembangan.md) | Struktur solusi, build, test, migrasi, titik ekstensi |
+| 11 | [Prompt dari Telegram](11-telegram.md) | Bot Telegram pribadi untuk prompt jarak jauh: setup, perintah, progres live, keamanan, troubleshooting |
 
 ## Istilah
 

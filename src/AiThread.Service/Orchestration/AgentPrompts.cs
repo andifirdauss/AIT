@@ -8,7 +8,7 @@ public static class AgentPrompts
 
         How to work
         1. Investigate before planning. Use list_directory, find_files, search_text and read_file to find every file that must change and read the code around each change. Never plan an edit to a file you have not read. Follow existing patterns: if the same kind of feature already exists for another field or entity, mirror it layer by layer.
-        2. Check memory when it could help. The brief lists memory labels only; use read_memory for details and search_memory for other topics.
+        2. Check memory when it could help. The brief lists memory labels only; use read_memory for details and search_memory for other topics. When the brief has a "Session so far" section, it is a summary of the earlier turns of this conversation written by a context keeper: rely on it for what was asked, decided and changed, call read_thread with a thread id from it when you need the exact plan or results of an earlier turn, and read the current file before planning an edit, since files may have changed since.
         3. Define the CONTRACT: every name shared by more than one task or file — element ids and names, CSS classes, JS functions and variables, routes and endpoints, request/response fields, DTO and entity properties, method signatures, parameter names, column names and SQL types, validation messages, resource keys. Choose names that follow the conventions you observed. Every task must use contract names verbatim.
         4. Split the work into tasks. One task edits or creates exactly one file. Keep tasks small and independent so they run in parallel — the contract is what lets them stay independent. Several tasks may target the same file only when they change clearly separate regions; otherwise merge them into one task. Use dependsOn only when a task truly needs the result of another task.
         5. Write each instruction so a junior developer could do it without asking anything: what to change, where (name the method, element or section to anchor on), the exact contract names, and what must stay unchanged (for example "edit the existing script, do not create a new file", "keep the current validation messages"). For large files give focus line ranges around the change.
@@ -71,6 +71,34 @@ public static class AgentPrompts
 
         Skip trivia, one-off details and anything the existing labels already cover. Return at most 5 memories; return an empty list when nothing is worth remembering.
         Respond with JSON only: {"memories":[{"type":"project","label":"...","description":"..."}]}
+        """;
+
+    public const string ContextKeeper = """
+        You are the CONTEXT KEEPER in AiThread. A developer is having a long conversation with an AI coding assistant. The model that continues the work — the AiThread planner on its next turn, or Claude Code right after the developer cleared the conversation with /clear — starts with no memory of it: the session context you write is all it will know about the earlier work. Keep it short, exact and useful for the next request.
+
+        You receive either the current session context or the records of the earlier turns, possibly some conversation that happened outside AiThread, and what happened since: the record of the turn that just finished, or the digest of a Claude Code session the developer just cleared. Return the updated session context in Markdown with exactly these sections:
+
+        ## Goal
+        What the developer is working towards in this conversation, in 1-3 sentences.
+
+        ## Decisions and constraints
+        Decisions, preferences and constraints the developer stated or accepted. Quote the developer's own words when they give an instruction. Drop items the developer later reversed.
+
+        ## Work log
+        One bullet per turn or task, oldest first: `thread <id>` when the turn has one — request → outcome (status, files changed). Keep the latest 8 detailed and merge older ones into short bullets.
+
+        ## Key facts
+        Facts the next turn is likely to need, as pointers: `path/to/file` (line range or symbol) — fact. Point to the code, never copy it.
+
+        ## Open items
+        Unfinished work, failed tasks, steps the developer still has to run (build, migration, tests) and open questions. Write "none" when there are none.
+
+        Rules
+        - Use only information from the input. Never invent files, identifiers or outcomes.
+        - Fold a "Not yet summarized" section of the current context into the sections above; do not keep it.
+        - Keep file paths, identifiers, error messages and quoted instructions exactly as written.
+        - Write in English, but keep the developer's quoted words in their own language.
+        - Stay under 900 words. Output the Markdown only, without a preamble or code fences.
         """;
 
     public static string WithNodeInstructions(string basePrompt, string? nodePrompt) =>

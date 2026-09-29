@@ -66,7 +66,41 @@ dotnet run --project src/AiThread.UI --no-launch-profile --urls http://localhost
 
 Setelah port berubah, terapkan ulang integrasi Claude Code (lihat [Integrasi Claude Code](03-integrasi-claude-code.md)).
 
-## 5. Verifikasi
+## 5. Menjalankan di background
+
+`dotnet run` dan Visual Studio hanya menjalankan AiThread selama terminal/debugger-nya terbuka. Di Visual Studio,
+menutup browser yang dibuka debugger juga menghentikan aplikasi. Untuk pemakaian sehari-hari (Claude Code, Telegram),
+jalankan AiThread di background agar tetap hidup walau browser, terminal, dan Visual Studio ditutup:
+
+```powershell
+.\scripts\aithread.ps1 start          # publish Release lalu jalankan tanpa jendela di http://localhost:5225
+.\scripts\aithread.ps1 status         # PID, sejak kapan, lokasi log, status autostart
+.\scripts\aithread.ps1 logs -Follow   # ikuti log (Ctrl+C untuk keluar)
+.\scripts\aithread.ps1 restart        # setelah kode berubah: stop, publish ulang, start
+.\scripts\aithread.ps1 stop           # matikan dengan rapi
+.\scripts\aithread.ps1 autostart-on   # jalankan otomatis saat login Windows (autostart-off untuk menghapus)
+```
+
+Tambahkan `-Open` pada `start`/`restart` untuk langsung membuka dashboard. Bila PowerShell menolak menjalankan
+script (*running scripts is disabled on this system*), pakai `scripts\aithread.cmd` dengan argumen yang sama.
+
+Port 5225 hanya bisa dipakai satu instance: hentikan dulu instance dari Visual Studio / `dotnet run`. `start` menolak
+bila port sudah dipakai dan menyebutkan prosesnya.
+
+| Hal | Keterangan |
+|---|---|
+| Lokasi aplikasi | `%LOCALAPPDATA%\AiThread\app` (hasil `dotnet publish -c Release`). Build memakai folder sendiri (`%LOCALAPPDATA%\AiThread\build`), jadi tidak bentrok dengan `bin/` yang sedang dikunci Visual Studio. Bila publish gagal, versi lama tetap dipakai. |
+| Log | `%LOCALAPPDATA%\AiThread\logs\aithread-<waktu>.log` (dan `.err.log`); 10 run terakhir disimpan. Log aktivitas thread tetap ada di Dashboard. |
+| Konfigurasi | `appsettings.json` ikut ter-publish: ubah `src/AiThread.UI/appsettings.json` lalu `restart`. Environment `Production`. Setting dari UI (database) tetap sama dengan saat development. |
+| Port lain | `-Port 6000` — pakai `-Port` yang sama untuk semua perintah, lalu terapkan ulang integrasi Claude Code. |
+| Autostart | Task Scheduler `AiThread`, 30 detik setelah login, berjalan sebagai akun Anda sendiri (tanpa admin). Karena itu LocalDB, API key 9router yang terenkripsi, dan login Claude Code CLI tetap berlaku. Memakai hasil publish terakhir tanpa build ulang. |
+| Stop | Lewat `POST /api/system/shutdown`: thread yang sedang berjalan dibatalkan dan dicatat (maks. ±15 detik), lalu proses keluar. Bila tidak berhenti dalam 45 detik, proses dihentikan paksa. |
+| Mati mendadak | Logoff, crash, atau dihentikan paksa: saat start berikutnya, thread yang tertinggal ditandai *Cancelled* dengan pesan *AiThread berhenti saat thread ini berjalan.* |
+
+Redis (Docker) dan 9router tetap dijalankan terpisah dan harus hidup. AiThread menyambung ulang otomatis bila
+keduanya baru menyala setelah AiThread.
+
+## 6. Verifikasi
 
 Buka **Dashboard**. Empat kartu status teratas harus:
 
@@ -88,6 +122,8 @@ Bagian `AiThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di
 | `RouterMonitorIntervalSeconds` | `15` | Interval cek kesehatan 9router untuk dashboard. |
 | `ActivityLogRetentionDays` | `14` | Log dashboard yang lebih tua dihapus otomatis. |
 | `ExecutorFullFileMaxLines` | `400` | File sampai sepanjang ini dikirim utuh ke executor; file lebih besar dikirim sebagai potongan. |
+| `Telegram:ApiBaseUrl` | `https://api.telegram.org` | Endpoint Bot API untuk [prompt dari Telegram](11-telegram.md) (token bot diatur di menu Setting). |
+| `Telegram:PollTimeoutSeconds` | `50` | Lama satu long poll `getUpdates` menunggu pesan baru (1–50). |
 
 Restart aplikasi setelah mengubah `appsettings.json`.
 

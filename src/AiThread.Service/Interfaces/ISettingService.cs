@@ -10,4 +10,9 @@ public interface ISettingService
     Task<SystemSettingDto> GetAsync(string proxyBaseUrl, CancellationToken cancellationToken = default);
 
     Task<SystemSettingDto> UpdateAsync(UpdateSystemSettingRequest request, string proxyBaseUrl, CancellationToken cancellationToken = default);
+
+    Task<TelegramSettingsDto> GetTelegramAsync(CancellationToken cancellationToken = default);
+
+    // Only touches the Telegram fields; the token must already be verified by the caller.
+    Task<TelegramSettingsDto> UpdateTelegramAsync(UpdateTelegramSettingsRequest request, CancellationToken cancellationToken = default);
 }

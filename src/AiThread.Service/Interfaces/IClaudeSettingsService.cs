@@ -14,4 +14,11 @@ public interface IClaudeSettingsService
 
     // Project-scope status (.claude/settings.local.json) of every registered project, for the project list toggle.
     Task<IReadOnlyList<ProjectClaudeIntegrationDto>> GetProjectStatusesAsync(string proxyBaseUrl, CancellationToken cancellationToken = default);
+
+    // The /clear hooks (SessionEnd + SessionStart) of the context keeper; independent from the proxy env block.
+    Task<ClaudeHooksStatusDto> GetHooksStatusAsync(ClaudeSettingsScope scope, Guid? projectId, string baseUrl, CancellationToken cancellationToken = default);
+
+    Task<ClaudeHooksStatusDto> ApplyHooksAsync(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken = default);
+
+    Task<ClaudeHooksStatusDto> RevertHooksAsync(ClaudeSettingsScope scope, Guid? projectId, string baseUrl, CancellationToken cancellationToken = default);
 }

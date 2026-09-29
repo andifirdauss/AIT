@@ -56,6 +56,7 @@ public record ThreadDetailDto(
     long? PlanningMs,
     long? WrappingMs,
     string? WorkingDirectory,
-    IReadOnlyList<ThreadTaskDto> Tasks);
+    IReadOnlyList<ThreadTaskDto> Tasks,
+    string? ContextPack = null);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);

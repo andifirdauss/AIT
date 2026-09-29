@@ -2,11 +2,13 @@
   'use strict';
   const { api, toast, escapeHtml, fmt, stream, debounce } = window.AiThread;
   const el = id => document.getElementById(id);
-  const roles = ['Planner', 'Executor', 'Wrapper'];
+  const roles = ['Planner', 'Executor', 'Wrapper', 'ContextKeeper'];
+  const roleLabels = { ContextKeeper: 'Context Keeper' };
   const defaults = {
     Planner: { maxTokens: 16384, concurrency: 2, temperature: 0.2 },
     Executor: { maxTokens: 8192, concurrency: 6, temperature: 0.1 },
-    Wrapper: { maxTokens: 4096, concurrency: 4, temperature: 0.3 }
+    Wrapper: { maxTokens: 4096, concurrency: 4, temperature: 0.3 },
+    ContextKeeper: { maxTokens: 4096, concurrency: 2, temperature: 0.2 }
   };
   const nodes = new Map();
   let models = [];
@@ -48,7 +50,7 @@
         const ofRole = list.filter(n => n.role === role);
         el(`nodes-${role}`).innerHTML = ofRole.length
           ? ofRole.map(nodeCard).join('')
-          : `<div class="card"><div class="empty-state small">Belum ada ${role.toLowerCase()}.</div></div>`;
+          : `<div class="card"><div class="empty-state small">Belum ada ${(roleLabels[role] || role).toLowerCase()}.</div></div>`;
       }
     } catch (error) {
       toast(error.message, 'error');

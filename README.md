@@ -61,6 +61,15 @@ dotnet run --project src/AiThread.UI --launch-profile http   # http://localhost:
 
 Migrasi database diterapkan otomatis saat start.
 
+Agar AiThread tetap hidup walau browser, terminal, atau Visual Studio ditutup, jalankan di background
+(publish Release ke `%LOCALAPPDATA%\AiThread\app`, tanpa jendela):
+
+```powershell
+.\scripts\aithread.ps1 start          # juga: stop · restart · status · logs -Follow · autostart-on · autostart-off
+```
+
+Detail: [docs/01-instalasi.md](docs/01-instalasi.md#5-menjalankan-di-background).
+
 1. **Setting** → isi URL 9router (mis. `http://localhost:20128`) dan API key dari dashboard 9router → *Test koneksi* → *Simpan*.
 2. **Node** → tambahkan minimal satu Planner, satu Executor, dan satu Wrapper. Model/combo diambil dari `/v1/models` 9router.
    - Planner: model terkuat yang mendukung *tool calling*.
@@ -94,7 +103,15 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 | Project | Project yang terbaca (unik per `.sln`/`.slnx`), sesi Claude Code per project, penelusur & scan `.sln`/`.slnx`, registrasi manual |
 | Memory | Short memory (Redis, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
 | Node | Planner / executor / wrapper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan |
-| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, integrasi `settings.json` Claude Code |
+| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, integrasi `settings.json` Claude Code, bot Telegram |
+
+## Prompt dari Telegram
+
+Laptop ditinggal di kantor/rumah? Kirim prompt dari HP lewat bot Telegram pribadi: **Setting → Telegram** → tempel
+token dari `@BotFather` → *Simpan Telegram*, kirim `/start` ke bot, lalu **Izinkan** chat Anda. Pesan teks biasa
+menjalankan thread di project aktif; progres tampil live di chat dan ringkasan wrapper dikirim saat selesai
+(`/projects`, `/status`, `/cancel`, `/diff`, `/new`). AiThread memakai long polling, jadi tidak perlu URL publik atau
+port forwarding. Detail: [docs/11-telegram.md](docs/11-telegram.md).
 
 ## Cara request Claude Code diperlakukan
 
@@ -123,8 +140,8 @@ lalu folder induk. Ditemukan → project didaftarkan otomatis pada prompt pertam
 
 - Proxy Anthropic: `POST /v1/messages`, `POST /v1/messages/count_tokens`, `GET /v1/models`
 - SSE: `GET /api/stream?types=log,router,thread` (prefix tipe event) atau `GET /api/stream?threadId={id}`.
-  Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `ping`.
-- REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/threads`, `/api/dashboard`.
+  Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `telegram.changed`, `ping`.
+- REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/threads`, `/api/dashboard`, `/api/telegram`.
 
 Konfigurasi infrastruktur ada di `src/AiThread.UI/appsettings.json` (connection string, `AiThread:ShortMemoryHours`,
 interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executor).
@@ -135,7 +152,8 @@ interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executo
 - AiThread tidak menjalankan build/test/migrasi; langkah lanjutan disebutkan di ringkasan wrapper.
 - Proxy dapat menulis file di folder mana pun yang dikirim sebagai working directory. Biarkan hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin diakses orang lain.
-- API key 9router disimpan terenkripsi (ASP.NET Core Data Protection).
+- API key 9router dan token bot Telegram disimpan terenkripsi (ASP.NET Core Data Protection).
+- Bot Telegram hanya melayani chat pribadi yang Anda izinkan di menu Setting — izinkan hanya akun Anda sendiri.
 
 ## Pengembangan
 

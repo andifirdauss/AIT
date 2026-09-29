@@ -39,7 +39,7 @@ public sealed class AnthropicSseWriter(HttpResponse response, string model) : IA
                 content = Array.Empty<object>(),
                 stop_reason = (string?)null,
                 stop_sequence = (string?)null,
-                usage = new { input_tokens = inputTokens, output_tokens = 1 }
+                usage = OrchestratedUsage.Start(inputTokens, 1)
             }
         }, cancellationToken);
         await WriteEventAsync("content_block_start", new { type = "content_block_start", index = 0, content_block = new { type = "text", text = "" } }, cancellationToken);
@@ -116,6 +116,21 @@ public sealed class AnthropicSseWriter(HttpResponse response, string model) : IA
             _lock.Release();
         }
     }
+}
+
+// Usage reported for an orchestrated answer. The conversation never reaches Claude (the real planner cost sits in the
+// planner CLI's own transcript), but Claude Code sizes its context window from input + cache fields, so the estimate
+// is kept, reported as cache reads. Usage trackers that price Claude Code transcripts would otherwise bill every
+// orchestrated turn as fresh Opus input.
+public static class OrchestratedUsage
+{
+    public static object Start(int estimatedContextTokens, long outputTokens) => new
+    {
+        input_tokens = 0,
+        cache_creation_input_tokens = 0,
+        cache_read_input_tokens = estimatedContextTokens,
+        output_tokens = outputTokens
+    };
 }
 
 // Everything the orchestrator shows the client becomes text deltas of the one text block.

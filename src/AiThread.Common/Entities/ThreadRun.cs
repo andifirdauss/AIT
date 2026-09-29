@@ -38,5 +38,9 @@ public class ThreadRun : BaseEntity
     public long? TotalMs { get; set; }
     public DateTime? CompletedAt { get; set; }
 
+    // Summary of the conversation up to and including this thread, written by the context keeper. The next planner
+    // run of the same chat starts from it instead of the full history.
+    public string? ContextPack { get; set; }
+
     public ICollection<ThreadTask> Tasks { get; set; } = [];
 }

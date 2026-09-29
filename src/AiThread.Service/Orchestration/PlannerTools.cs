@@ -12,6 +12,7 @@ public static class PlannerTools
     public const string ReadFile = "read_file";
     public const string SearchMemory = "search_memory";
     public const string ReadMemory = "read_memory";
+    public const string ReadThread = "read_thread";
     public const string SubmitPlan = "submit_plan";
 
     public static JsonArray All() =>
@@ -85,6 +86,17 @@ public static class PlannerTools
                 "ids": { "type": "array", "items": { "type": "string" }, "description": "Memory ids from the index or search_memory." }
               },
               "required": ["ids"]
+            }
+            """)),
+        ChatMessages.Function(ReadThread,
+            "Read the full record of an earlier turn of this conversation: request, plan, tasks with their results and the reply. Thread ids appear in the \"Session so far\" section of the brief.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "Thread id, e.g. \"3f2a1b9c\"." }
+              },
+              "required": ["id"]
             }
             """)),
         SubmitPlanDefinition()

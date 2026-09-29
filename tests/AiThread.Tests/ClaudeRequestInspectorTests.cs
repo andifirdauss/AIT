@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AiThread.Service.Orchestration;
 using AiThread.Service.Proxy;
 
 namespace AiThread.Tests;
@@ -189,4 +190,40 @@ public class ClaudeRequestInspectorTests
         Assert.Equal("Buatkan UI Index untuk Master", info.Prompt);
         Assert.Contains("Some reminder", info.PromptContext);
     }
+
+    [Fact]
+    public void Thread_anchors_in_replies_are_found_and_history_can_start_after_one()
+    {
+        var first = Guid.Parse("3f2a1b9c-0000-4000-8000-000000000001");
+        var second = Guid.Parse("7d41e0aa-0000-4000-8000-000000000002");
+        var body = MainAgentRequest(
+        [
+            new JsonObject { ["role"] = "user", ["content"] = "Add a description column" },
+            Reply($"{ThreadAnchor.Line("MyApp.sln", first)}\n🧠 Planner …\n\n---\n\nDone."),
+            new JsonObject { ["role"] = "user", ["content"] = "Also validate it" },
+            Reply($"{ThreadAnchor.Line("MyApp.sln", second)}\n\n---\n\nValidated."),
+            new JsonObject { ["role"] = "user", ["content"] = "quick question outside AiThread" },
+            Reply("An answer that did not go through AiThread."),
+            new JsonObject { ["role"] = "user", ["content"] = "Now add a unit test" }
+        ]);
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.Equal([new ThreadAnchorRef("3f2a1b9c", 1), new ThreadAnchorRef("7d41e0aa", 3)], info.Anchors);
+
+        var sinceSecond = ClaudeRequestInspector.HistoryAfter(body, 3);
+        Assert.Contains("quick question outside AiThread", sinceSecond);
+        Assert.Contains("did not go through AiThread", sinceSecond);
+        Assert.DoesNotContain("Validated", sinceSecond);
+        Assert.DoesNotContain("Now add a unit test", sinceSecond);
+
+        // Nothing happened after the latest reply but the new prompt itself.
+        Assert.Null(ClaudeRequestInspector.HistoryAfter(body, 5));
+    }
+
+    private static JsonObject Reply(string text) => new()
+    {
+        ["role"] = "assistant",
+        ["content"] = new JsonArray { new JsonObject { ["type"] = "text", ["text"] = text } }
+    };
 }

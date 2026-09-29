@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, renderRouterPill, routerKeyState } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill, routerKeyState } = window.AiThread;
   const el = id => document.getElementById(id);
   let settings = null;
 
@@ -157,6 +157,9 @@
       el('claudeStatus').className = 'alert alert-secondary small';
       el('claudeStatus').textContent = 'Pilih project terlebih dahulu.';
       el('claudePreview').textContent = '';
+      el('hooksStatus').className = 'alert alert-secondary small';
+      el('hooksStatus').textContent = 'Pilih project terlebih dahulu.';
+      el('hooksPreview').textContent = '';
       return;
     }
     try {
@@ -165,7 +168,55 @@
       el('claudeStatus').className = 'alert alert-warning small';
       el('claudeStatus').textContent = error.message;
     }
+    refreshHooks();
   }
+
+  // --- Context Keeper /clear hooks ---
+
+  function renderHooks(status) {
+    const box = el('hooksStatus');
+    box.classList.remove('alert-success', 'alert-secondary', 'alert-warning');
+    if (status.installed) {
+      box.classList.add('alert-success');
+      box.innerHTML = `✓ Hook /clear terpasang.<br><span class="mono">${escapeHtml(status.path)}</span>`;
+    } else if (status.installedBaseUrl) {
+      box.classList.add('alert-warning');
+      box.innerHTML = `Hook terpasang ke alamat lain: <span class="mono">${escapeHtml(status.installedBaseUrl)}</span> — pasang ulang untuk memperbarui.<br><span class="mono">${escapeHtml(status.path)}</span>`;
+    } else {
+      box.classList.add('alert-secondary');
+      box.innerHTML = `Belum terpasang: <span class="mono">${escapeHtml(status.path)}</span>`;
+    }
+    el('hooksPreview').textContent = status.previewJson;
+  }
+
+  async function refreshHooks() {
+    const params = claudeQuery();
+    if (el('proxyUrl').value.trim()) params.set('baseUrl', el('proxyUrl').value.trim());
+    try {
+      renderHooks(await api.get(`/api/settings/claude/hooks?${params}`));
+    } catch (error) {
+      el('hooksStatus').className = 'alert alert-warning small';
+      el('hooksStatus').textContent = error.message;
+    }
+  }
+
+  el('btnApplyHooks').addEventListener('click', async () => {
+    try {
+      renderHooks(await api.post('/api/settings/claude/hooks/apply', claudeBody()));
+      toast('Hook /clear terpasang. Berlaku untuk sesi Claude Code berikutnya.');
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
+
+  el('btnRevertHooks').addEventListener('click', async () => {
+    try {
+      renderHooks(await api.post('/api/settings/claude/hooks/revert', claudeBody()));
+      toast('Hook /clear AiThread dilepas.', 'info');
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
 
   function syncScope() {
     el('claudeProjectGroup').classList.toggle('d-none', scope() !== 'Project');
@@ -202,6 +253,107 @@
 
   document.querySelectorAll('input[name="claudeScope"]').forEach(r => r.addEventListener('change', syncScope));
   el('claudeProject').addEventListener('change', refreshClaude);
+  el('proxyUrl').addEventListener('change', refreshHooks);
+
+  // --- Telegram ---
+
+  const telegramStates = {
+    Disabled: ['secondary', 'Nonaktif'],
+    Starting: ['info', 'Menghubungkan…'],
+    Running: ['success', 'Aktif'],
+    Error: ['danger', 'Bermasalah']
+  };
+
+  function renderTelegram(t, keepForm) {
+    if (!keepForm) {
+      el('telegramEnabled').checked = t.enabled;
+      el('telegramToken').value = '';
+      el('telegramTokenClear').checked = false;
+    }
+    el('telegramTokenHint').textContent = t.hasBotToken
+      ? `Tersimpan terenkripsi: ${t.botTokenMasked}`
+      : 'Belum ada token. Buat bot lewat @BotFather (/newbot) lalu tempel tokennya di sini.';
+
+    const [color, label] = telegramStates[t.state] || ['secondary', t.state];
+    const bot = t.botUsername
+      ? ` <a class="mono" href="https://t.me/${encodeURIComponent(t.botUsername)}" target="_blank" rel="noopener">@${escapeHtml(t.botUsername)}</a>`
+      : '';
+    const polled = t.state === 'Running' && t.lastPollAt ? ` <span class="text-secondary">· cek terakhir ${fmt.relative(t.lastPollAt)}</span>` : '';
+    const error = t.error ? `<div class="text-danger mt-1">${escapeHtml(t.error)}</div>` : '';
+    el('telegramState').innerHTML = `<span class="badge text-bg-${color}">${label}</span>${bot}${polled}${error}`;
+
+    const start = t.botUsername ? `kirim <span class="mono">/start</span> ke @${escapeHtml(t.botUsername)}` : 'aktifkan bot lalu kirim <span class="mono">/start</span> ke bot Anda';
+    el('telegramChatRows').innerHTML = t.chats.length
+      ? t.chats.map(telegramChatRow).join('')
+      : `<tr><td colspan="5" class="text-secondary small">Belum ada chat — ${start} dari Telegram.</td></tr>`;
+  }
+
+  function telegramChatRow(c) {
+    const name = `${escapeHtml(c.displayName)}${c.username ? ` <span class="text-secondary">@${escapeHtml(c.username)}</span>` : ''}
+      <div class="small text-secondary mono">ID ${escapeHtml(c.chatId)}</div>`;
+    const status = c.isAllowed
+      ? '<span class="badge text-bg-success">Diizinkan</span>'
+      : '<span class="badge text-bg-warning">Menunggu izin</span>';
+    const actions = c.isAllowed
+      ? `<button type="button" class="btn btn-outline-danger btn-sm" data-tg-revoke="${c.id}">Cabut</button>`
+      : `<button type="button" class="btn btn-primary btn-sm me-1" data-tg-allow="${c.id}">Izinkan</button>
+         <button type="button" class="btn btn-outline-secondary btn-sm" data-tg-delete="${c.id}">Hapus</button>`;
+    return `<tr>
+      <td>${name}</td>
+      <td>${status}</td>
+      <td>${escapeHtml(c.activeProjectName || '–')}</td>
+      <td class="text-nowrap small">${fmt.relative(c.lastMessageAt)}</td>
+      <td class="text-end text-nowrap">${actions}</td>
+    </tr>`;
+  }
+
+  // keepForm: a live refresh must not wipe a token the user is typing.
+  async function loadTelegram(keepForm) {
+    try {
+      renderTelegram(await api.get('/api/telegram'), keepForm);
+    } catch (error) {
+      el('telegramState').innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
+    }
+  }
+
+  el('telegramForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const body = {
+      enabled: el('telegramEnabled').checked,
+      botToken: el('telegramToken').value.trim() || null,
+      clearBotToken: el('telegramTokenClear').checked
+    };
+    try {
+      renderTelegram(await api.put('/api/telegram', body));
+      toast(body.enabled ? 'Setting Telegram tersimpan. Bot sedang dihubungkan…' : 'Bot Telegram dinonaktifkan.');
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
+
+  el('telegramChatRows').addEventListener('click', async event => {
+    const button = event.target.closest('button[data-tg-allow], button[data-tg-delete], button[data-tg-revoke]');
+    if (!button) return;
+    const { tgAllow, tgDelete, tgRevoke } = button.dataset;
+    if (tgRevoke && !confirm('Cabut akses chat ini? Chat tidak bisa lagi mengirim prompt ke AiThread.')) return;
+    button.disabled = true;
+    try {
+      if (tgAllow) {
+        await api.post(`/api/telegram/chats/${tgAllow}/allow`);
+        toast('Chat diizinkan. Bot mengirim pesan konfirmasi ke chat tersebut.');
+      } else {
+        await api.del(`/api/telegram/chats/${tgDelete || tgRevoke}`);
+        toast(tgRevoke ? 'Akses chat dicabut.' : 'Chat dihapus.', 'info');
+      }
+      await loadTelegram(true);
+    } catch (error) {
+      button.disabled = false;
+      toast(error.message, 'error');
+    }
+  });
+
+  stream('types=telegram', { 'telegram.changed': debounce(() => loadTelegram(true), 300) });
 
   load();
+  loadTelegram(false);
 })();

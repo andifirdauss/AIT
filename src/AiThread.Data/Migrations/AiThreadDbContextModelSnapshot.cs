@@ -211,6 +211,50 @@ namespace AiThread.Data.Migrations
                     b.ToTable("Projects", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.SessionPack", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("HandedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HandedToSessionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Pack")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("PreviousPackId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SessionId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WorkingDirectory")
+                        .IsRequired()
+                        .HasMaxLength(800)
+                        .HasColumnType("nvarchar(800)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HandedToSessionId");
+
+                    b.HasIndex("WorkingDirectory", "CreatedAt");
+
+                    b.ToTable("SessionPacks", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.SystemSetting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -254,12 +298,64 @@ namespace AiThread.Data.Migrations
                     b.Property<bool>("StreamProgressToClient")
                         .HasColumnType("bit");
 
+                    b.Property<string>("TelegramBotTokenProtected")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("TelegramEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
                     b.ToTable("SystemSettings", (string)null);
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.TelegramChat", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ActiveProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("ChatId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ConversationStartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<bool>("IsAllowed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastMessageAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Username")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveProjectId");
+
+                    b.HasIndex("ChatId")
+                        .IsUnique();
+
+                    b.ToTable("TelegramChats", (string)null);
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.ThreadRun", b =>
@@ -270,6 +366,9 @@ namespace AiThread.Data.Migrations
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ContextPack")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -462,6 +561,16 @@ namespace AiThread.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.TelegramChat", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.Project", "ActiveProject")
+                        .WithMany()
+                        .HasForeignKey("ActiveProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ActiveProject");
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.ThreadRun", b =>
