@@ -21,20 +21,23 @@ penjelasan.
 
 | Level | Penyimpanan | Umur |
 |---|---|---|
-| **Short** | Redis (tanpa TTL) | Sampai berumur `ShortMemoryHours` (default 24 jam). |
+| **Short** | Garnet di dalam AiThread (protokol Redis, tanpa TTL) | Sampai berumur `ShortMemoryHours` (default 24 jam). |
 | **Long** | Database (`LongMemories`) | Permanen sampai dihapus. |
 
 ```
-thread selesai ─► ekstraksi (model wrapper) ─► short memory (Redis)
+thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
                                                     │  worker konsolidasi, tiap 10 menit:
                                                     │  umur > 24 jam ─► long memory (DB, id sama)
                                                     ▼
                                              long memory (database)
 ```
 
-- Memory dipindah oleh worker, bukan oleh kedaluwarsa Redis — jadi tidak ada yang hilang walau aplikasi mati saat
+- Memory dipindah oleh worker, bukan oleh kedaluwarsa (TTL) — jadi tidak ada yang hilang walau aplikasi mati saat
   sebuah memory berumur 24 jam. Id tetap sama sehingga pemindahan aman diulang.
-- **Redis mati**: memory baru langsung disimpan sebagai long memory (tercatat di log sebagai peringatan).
+- Short memory bertahan saat AiThread di-restart atau crash: Garnet mencatat setiap penulisan ke disk
+  (`%LOCALAPPDATA%\AiThread\garnet\<port>`) sebelum dikonfirmasi.
+- **Short memory tidak tersedia** (mis. Garnet gagal start): memory baru langsung disimpan sebagai long memory
+  (tercatat di log sebagai peringatan).
 - Short memory dari project yang sudah dihapus berubah menjadi knowledge memory saat dipindah.
 
 ## Kapan memory dibuat
@@ -76,6 +79,7 @@ Tips menulis memory manual:
 |---|---|
 | `AiThread:ShortMemoryHours` | 24 |
 | `AiThread:MemoryConsolidationIntervalMinutes` | 10 |
-| `ConnectionStrings:Redis` | `localhost:6379` |
+| `ConnectionStrings:Redis` | `localhost:6379` (port Garnet; lihat [Instalasi](01-instalasi.md#1-short-memory-garnet)) |
+| `AiThread:EmbeddedRedis:Enabled` | `true` |
 
 Perkiraan "±N jam lagi ke DB" di tabel Memory selalu dihitung dari 24 jam.

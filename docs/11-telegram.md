@@ -107,7 +107,7 @@ halaman detail" bisa dipahami tanpa mengulang konteks. Riwayat mulai dari nol se
   Options → Choose what closing the lid does** → *When plugged in* = **Do nothing**.
 - Jalankan AiThread di background (`.\scripts\aithread.ps1 start`, opsional `autostart-on`) agar tidak ikut mati saat
   browser, terminal, atau Visual Studio ditutup — lihat [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background).
-- Pastikan AiThread, Redis, dan 9router berjalan sebelum pergi, lalu uji sekali dengan `/status` dari HP.
+- Pastikan AiThread dan 9router berjalan sebelum pergi, lalu uji sekali dengan `/status` dari HP.
 - Bila koneksi internet putus, AiThread mencoba lagi otomatis (jeda naik hingga 60 detik) dan log dashboard mencatat
   saat koneksi ke Telegram pulih.
 
