@@ -44,7 +44,7 @@ thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
 
 Setelah thread selesai (minimal satu tugas berhasil, atau planner menjawab langsung), model **Wrapper** membaca
 permintaan, rencana, kontrak, hasil tugas, dan ringkasan, lalu menulis **maksimal 5** memory baru. Label yang sudah
-ada ikut dikirim agar tidak terjadi duplikasi. Karena hanya sesi di dalam project `.sln`/`.slnx` yang diorkestrasi,
+ada ikut dikirim agar tidak terjadi duplikasi. Karena hanya sesi di dalam sebuah project (folder dengan `.git` atau file build) yang diorkestrasi,
 setiap thread selalu punya project; bila project dihapus saat thread berjalan, hanya knowledge memory yang disimpan.
 Proses ini berjalan di belakang dan tidak menunda balasan ke Claude Code.
 

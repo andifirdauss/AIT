@@ -22,7 +22,6 @@
         <div class="d-flex justify-content-between align-items-start gap-2">
           <div>
             <div class="fw-semibold">${escapeHtml(n.name)}
-              ${n.backend === 'ClaudeCli' ? '<span class="badge text-bg-info">Claude CLI</span>' : ''}
               ${n.isActive ? '' : '<span class="badge text-bg-secondary">nonaktif</span>'}</div>
             <div class="mono small">${escapeHtml(n.model)}</div>
           </div>
@@ -33,7 +32,7 @@
           </div>
         </div>
         <div class="small text-secondary mt-1">
-          ${n.backend === 'ClaudeCli' ? '' : `temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · `}${n.maxConcurrency} paralel · prioritas ${n.priority}
+          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}
         </div>
         ${n.systemPrompt ? `<div class="small mt-1 text-truncate-2" title="${escapeHtml(n.systemPrompt)}">📝 ${escapeHtml(n.systemPrompt)}</div>` : ''}
         <div class="small mt-1" data-test-result="${n.id}"></div>
@@ -90,17 +89,6 @@
   let visibleModels = [];
   let activeIndex = -1;
 
-  // Aliases accepted by `claude --model` (always the latest model of that family); full model names can be typed.
-  const cliModels = [
-    { id: 'opus', ownedBy: 'Alias Claude Code', note: 'Opus terbaru' },
-    { id: 'fable', ownedBy: 'Alias Claude Code', note: 'Fable terbaru' },
-    { id: 'sonnet', ownedBy: 'Alias Claude Code', note: 'Sonnet terbaru — lebih cepat & hemat kuota' },
-    { id: 'haiku', ownedBy: 'Alias Claude Code', note: 'Haiku terbaru — paling ringan' }
-  ];
-
-  const isCli = () => el('nodeBackend').value === 'ClaudeCli';
-  const modelSource = () => isCli() ? cliModels : models;
-
   function groupOf(m) {
     return m.isCombo ? 'Combo' : (m.ownedBy || 'lainnya');
   }
@@ -108,18 +96,17 @@
   // Every whitespace-separated term must appear in the id or group; combos first, then one group per provider.
   function filterModels(query) {
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    const matches = modelSource().filter(m => {
+    const matches = models.filter(m => {
       const haystack = `${m.id} ${groupOf(m)}`.toLowerCase();
       return terms.every(t => haystack.includes(t));
     });
-    // The CLI aliases keep their curated order.
-    return isCli() ? matches : matches.sort((a, b) => (b.isCombo - a.isCombo) || groupOf(a).localeCompare(groupOf(b)));
+    return matches.sort((a, b) => (b.isCombo - a.isCombo) || groupOf(a).localeCompare(groupOf(b)));
   }
 
   function renderModelList() {
     const query = modelInput.value.trim();
     // Show the full list when the input still holds an exact, already-chosen id.
-    visibleModels = modelSource().some(m => m.id === query) ? filterModels('') : filterModels(query);
+    visibleModels = models.some(m => m.id === query) ? filterModels('') : filterModels(query);
     activeIndex = visibleModels.findIndex(m => m.id === query);
 
     if (visibleModels.length === 0) {
@@ -155,7 +142,7 @@
   }
 
   function openModelList() {
-    if (!isCli() && (!modelsLoaded || models.length === 0)) return;
+    if (!modelsLoaded || models.length === 0) return;
     renderModelList();
     modelList.classList.add('show');
     modelInput.setAttribute('aria-expanded', 'true');
@@ -204,24 +191,9 @@
     if (item) chooseModel(Number(item.dataset.index));
   });
 
-  // The CLI backend exists for planners only; other roles always go through 9router.
-  function syncBackend() {
-    const planner = el('nodeRole').value === 'Planner';
-    el('nodeBackendGroup').classList.toggle('d-none', !planner);
-    if (!planner) el('nodeBackend').value = 'Router';
-    renderModelOptions(modelInput.value.trim());
-  }
-
   function renderModelOptions(selected) {
     modelInput.value = selected || '';
     closeModelList();
-    if (isCli()) {
-      el('nodeModelLabel').textContent = 'Model Claude Code';
-      modelInput.placeholder = 'Pilih alias (opus, sonnet, …) atau ketik nama model lengkap';
-      el('modelHint').textContent = 'Diteruskan ke "claude --model". Temperature dan max tokens tidak dipakai oleh CLI. Klik Test setelah menyimpan untuk memastikan CLI terpasang & sudah login.';
-      return;
-    }
-    el('nodeModelLabel').textContent = 'Model / combo 9router';
     if (!modelsLoaded || models.length === 0) {
       modelInput.placeholder = 'Model tidak termuat — ketik id model, mis. cc/claude-sonnet-5';
       el('modelHint').textContent = '9router tidak dapat dihubungi — isi id model manual.';
@@ -244,7 +216,6 @@
     el('nodeId').value = node?.id || '';
     el('nodeName').value = node?.name || '';
     el('nodeRole').value = node?.role || role;
-    el('nodeBackend').value = node?.backend || 'Router';
     el('nodePriority').value = node?.priority ?? 100;
     el('nodeSystemPrompt').value = node?.systemPrompt || '';
     el('nodeActive').checked = node?.isActive ?? true;
@@ -255,22 +226,13 @@
     } else {
       applyRoleDefaults(el('nodeRole').value);
     }
-    modelInput.value = node?.model || '';
-    syncBackend();
+    renderModelOptions(node?.model || '');
     el('nodeModalTitle').textContent = node ? `Edit node · ${node.name}` : 'Tambah node';
     modal.show();
   }
 
   el('nodeRole').addEventListener('change', () => {
     if (!el('nodeId').value) applyRoleDefaults(el('nodeRole').value);
-    syncBackend();
-  });
-  // A 9router id (provider/model) means nothing to the CLI and a CLI alias means nothing to 9router.
-  el('nodeBackend').addEventListener('change', () => {
-    const current = modelInput.value.trim();
-    if (isCli() && !cliModels.some(m => m.id === current)) modelInput.value = cliModels[0].id;
-    else if (!isCli() && cliModels.some(m => m.id === current)) modelInput.value = '';
-    syncBackend();
   });
 
   el('nodeForm').addEventListener('submit', async event => {
@@ -281,7 +243,6 @@
     const body = {
       name: el('nodeName').value.trim(),
       role: el('nodeRole').value,
-      backend: el('nodeBackend').value,
       model,
       temperature: temperature === '' ? null : Number(temperature),
       maxTokens: Number(el('nodeMaxTokens').value),

@@ -7,7 +7,8 @@
     <div>
         <a asp-controller="Project" asp-action="Index" class="small text-decoration-none">← Project</a>
         <h1 class="mt-1" id="projectName">Memuat…</h1>
-        <p class="page-subtitle mono" id="projectPath"></p>
+        <p class="page-subtitle mono mb-1" id="projectPath"></p>
+        <div id="projectStacks"></div>
     </div>
     <a class="btn btn-outline-secondary btn-sm" href="/Memory?projectId=@projectId">Lihat memory project</a>
 </div>
@@ -22,8 +23,8 @@
 <div class="row g-3">
     <div class="col-xl-4">
         <div class="card mb-3">
-            <div class="card-header">Project dalam solution</div>
-            <ul class="list-group list-group-flush small mono" id="solutionProjects"><li class="list-group-item text-secondary">Memuat…</li></ul>
+            <div class="card-header">Solution &amp; file build</div>
+            <ul class="list-group list-group-flush small mono" id="projectModules"><li class="list-group-item text-secondary">Memuat…</li></ul>
         </div>
         <div class="card">
             <div class="card-header">Sesi</div>

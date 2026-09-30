@@ -53,6 +53,16 @@ public class PlanValidatorTests : IDisposable
     }
 
     [Fact]
+    public void Absolute_path_outside_the_root_is_refused_for_changes_even_though_it_can_be_read()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), "aithread-outside.txt");
+        var plan = new ThreadPlan { Summary = "x", Tasks = [Task("T1", outside, "create")] };
+
+        Assert.Contains(PlanValidator.Validate(plan, _scope), e => e.Contains("inside the project root"));
+        Assert.True(_scope.TryResolveForRead(outside, out _, out _));
+    }
+
+    [Fact]
     public void Rejects_unknown_dependency_and_cycles()
     {
         var unknown = new ThreadPlan { Summary = "x", Tasks = [Task("T1", "a.sql", "create", "T9")] };

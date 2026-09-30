@@ -27,28 +27,14 @@ Error sementara (429, 5xx, koneksi) sudah dicoba ulang otomatis 2 kali sebelum d
 `Retry-After` dari 9router dihormati (maks. 30 detik; bila lebih lama tidak ditunggu), tanpa header jedanya ±5 dan ±10
 detik.
 
-**Planner Claude Code CLI gagal**
-Klik *Test* pada node CLI; pesannya menunjukkan penyebab.
-
-| Pesan | Penyebab | Solusi |
-|---|---|---|
-| `Claude Code CLI tidak dapat dijalankan ('claude')` | CLI tidak ada di PATH proses AiThread. | Isi `AiThread:ClaudeCli:Command` dengan path lengkap `claude.exe` / `claude.cmd`. |
-| `berhenti (exit N) tanpa hasil: … login …` | CLI belum login di akun Windows yang menjalankan AiThread. | Jalankan `claude` sekali di terminal akun itu lalu login. |
-| `Claude Code CLI planner diarahkan kembali ke proxy AiThread` | `.claude/settings.json` project berisi `ANTHROPIC_BASE_URL` ke AiThread. | Pindahkan integrasi ke `settings.local.json` (menu Setting → scope project) atau ubah `ClaudeCli:SettingSources`. |
-| `mencapai batas N langkah tanpa memanggil submit_plan` | Investigasi terlalu panjang. | Naikkan *Langkah planner*. |
-| `Alamat lokal AiThread belum diketahui` | Kestrel tidak mengekspos alamat. | Isi `AiThread:LocalBaseUrl`, mis. `http://localhost:5080`. |
-
 **Planner kena 429 / rate limit**
 Biasanya karena akun provider (mis. langganan Claude di 9router) kehabisan kuota per menit — tiap langkah planner
 mengirim ulang seluruh percakapan, jadi token input cepat menumpuk. Lewat 9router (`/v1/chat/completions`) tidak ada
 prompt caching: satu thread planner `cc/claude-opus-…` dengan 10–20 langkah bisa memakai 0,2–1 juta token input penuh.
-Planner Claude Code CLI memakai cache, tetapi tetap membuka sesi baru per prompt dan memakai kuota akun yang sama
-dengan sesi Claude Code Anda. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya. Solusi:
+Kolom token planner di detail thread menunjukkan pemakaian sebenarnya. Solusi:
 - Tambahkan node Planner **kedua** (model/provider lain, prioritas lebih besar) dan biarkan aktif. AiThread otomatis
   beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di progres.
 - Atau jadikan model planner sebuah **combo** 9router (mis. Claude → model lain) supaya fallback terjadi di 9router.
-- Atau pakai backend **Claude Code CLI lokal** untuk planner (lihat Konfigurasi → Planner lewat Claude Code CLI):
-  memakai klien resmi dengan prompt caching, sehingga token input per langkah jauh lebih kecil.
 - Kurangi slot node planner bila beberapa thread berjalan bersamaan, atau turunkan Setting → *Langkah planner*.
 
 **"Model '…' tidak merespons dalam N detik"**
@@ -65,8 +51,8 @@ Jawaban muncul tanpa baris `**AiThread** · …` dan tidak ada thread baru di Da
 4. Pastikan tidak ada environment variable Windows `ANTHROPIC_BASE_URL` yang menimpa.
 5. Setting → *Orkestrasi aktif* harus menyala. Jika mati, request tetap lewat AiThread tetapi diteruskan tanpa orkestrasi
    (terlihat sebagai log debug `Passthrough (orchestration disabled)`).
-6. Cari di log baris `Sesi xxxxxxxx (…) bukan bagian project .sln/.slnx`. Artinya sesi **sengaja diabaikan** karena
-   working directory-nya bukan bagian project solution — lihat [Project](#project).
+6. Cari di log baris `Sesi xxxxxxxx (…) bukan bagian project (…)`. Artinya sesi **sengaja diabaikan** karena
+   working directory-nya bukan bagian sebuah project — lihat [Project](#project).
 
 Log debug `Passthrough (auxiliary request without tools)` untuk request judul sesi/compact adalah hal normal.
 
@@ -83,19 +69,24 @@ Log debug `Passthrough (auxiliary request without tools)` untuk request judul se
 
 ## Project
 
-**Prompt tidak diorkestrasi: log `Sesi … bukan bagian project .sln/.slnx`**
-Sesi dianggap di luar project, sehingga prompt diteruskan langsung. Penyebab umum:
+**Prompt tidak diorkestrasi: log `Sesi … bukan bagian project (…)`**
+Sesi dianggap di luar project, sehingga prompt diteruskan langsung dan tidak ada memory yang dibuat. Alasan di dalam
+kurung menunjukkan penyebabnya:
 
-- tidak ada `.sln`/`.slnx` di working directory, di folder induknya (hingga 6 tingkat), maupun di sub-folder (hingga 2 tingkat);
-- ada **lebih dari satu** solution di sub-folder — ambigu, sehingga tidak ada yang dipilih;
-- working directory tidak terbaca dari request.
+- *tidak ada marker project*: tidak ada `.git` atau file build (`.sln`, `pom.xml`, `package.json`, `go.mod`, dst.) di
+  working directory maupun folder induknya (hingga 6 tingkat). Ini wajar untuk folder kosong atau folder catatan;
+- *folder ini berisi project a, b, …*: working directory hanya berisi beberapa project, tidak ada yang dipilih karena
+  ambigu. Buka sesi di salah satunya;
+- *folder ini terlalu luas*: working directory adalah drive, folder Home, atau folder sistem;
+- *working directory tidak diketahui*: klien tidak mengirimnya; set header `X-AiThread-Cwd`.
 
-Solusi: jalankan Claude Code di folder solution, atau daftarkan project lewat *Telusuri…* lalu terapkan integrasi
-*per project* (mengirim header `X-AiThread-Solution` sehingga solution selalu tepat). Keputusan per sesi diingat
-30 menit — buka sesi Claude Code baru setelah memperbaiki.
+Solusi: jalankan Claude Code di folder project, tambahkan `.git` (`git init`) atau file build ke folder itu, atau
+daftarkan foldernya lewat *Daftarkan manual* di menu Project (folder tanpa marker pun bisa). Bisa juga menerapkan
+integrasi *per project* (mengirim header `X-AiThread-Project`). Sesi yang diabaikan dicek ulang setelah sekitar 5 detik.
 
-**Registrasi manual: "File .sln/.slnx tidak ditemukan pada path tersebut"**
-Path salah atau folder tidak langsung berisi solution. Gunakan *Telusuri…* → *Scan* untuk mencarinya di sub-folder.
+**Registrasi manual: "Folder … tidak ditemukan" atau "Folder ini terlalu luas untuk jadi project"**
+Path salah, atau folder yang dituju adalah drive/Home/folder sistem. Isi path folder project-nya, atau gunakan
+*Telusuri…* → *Scan* untuk mencarinya.
 
 **Scan: "berhenti lebih awal (batas waktu/jumlah)"**
 Scan dibatasi 300 hasil, 50.000 folder, dan 20 detik. Masuk ke folder yang lebih spesifik atau kurangi kedalaman.
@@ -105,12 +96,19 @@ Folder tersembunyi/sistem, folder yang diawali `.` atau `$`, folder build (`bin`
 junction/symlink sengaja disembunyikan. Ketik path lengkapnya di kolom path lalu Enter.
 
 **Project salah terdeteksi**
-Folder berisi beberapa solution: yang bernama sama dengan foldernya diutamakan, lalu `.slnx`. Gunakan integrasi
-per project untuk mengunci solution yang benar.
+Root dipilih dari root repository (`.git`) terdekat, lalu file penghimpun paling luar, lalu manifest terdekat (lihat
+[Cek sesi](07-cara-kerja.md#2-cek-sesi-project-atau-bukan)); project yang sudah terdaftar dan memuat folder itu
+diutamakan. Bila root yang Anda mau berbeda (mis. satu modul di monorepo sebagai project sendiri), daftarkan folder
+itu lewat *Daftarkan manual*: folder dengan marker sendiri didaftarkan apa adanya, dan sesi di dalamnya memakainya.
+Integrasi per project (header `X-AiThread-Project`) juga mengunci foldernya.
 
-**Badge *file hilang* di menu Project**
-File `.sln`/`.slnx` sudah dipindah/dihapus. Daftarkan path baru; hapus entri lama bila tidak diperlukan
+**Badge *folder hilang* di menu Project**
+Folder project sudah dipindah/dihapus. Daftarkan path baru; hapus entri lama bila tidak diperlukan
 (ingat: memory project ikut terhapus).
+
+**Project lama muncul ganda atau menyatu setelah pembaruan**
+Identitas project berpindah dari file `.sln` ke folder root. Migrasi otomatis menyatukan dua solution yang berada di
+folder yang sama menjadi satu project (yang terakhir dipakai), lengkap dengan thread dan memory-nya.
 
 ## Tugas executor
 

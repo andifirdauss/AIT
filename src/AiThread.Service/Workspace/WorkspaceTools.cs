@@ -4,7 +4,8 @@ using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace AiThread.Service.Workspace;
 
-// Read-only repository access for the planner. Output is plain text sized for a model context.
+// Read-only repository access for the planner. Output is plain text sized for a model context. Relative paths are
+// relative to the project root; absolute paths may point outside it, for checking another folder or project.
 public sealed class WorkspaceTools(WorkspaceScope scope)
 {
     public const int MaxReadLines = 600;
@@ -24,13 +25,13 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
 
     public string ListDirectory(string? path, int depth = 2, int maxEntries = 300)
     {
-        if (!scope.TryResolve(string.IsNullOrWhiteSpace(path) ? "." : path, out var fullPath, out var error)) return $"Error: {error}";
+        if (!scope.TryResolveForRead(string.IsNullOrWhiteSpace(path) ? "." : path, out var fullPath, out var error)) return $"Error: {error}";
         if (!Directory.Exists(fullPath)) return $"Error: directory '{path}' does not exist.";
 
         depth = Math.Clamp(depth, 1, 4);
         var builder = new StringBuilder();
-        var relative = scope.ToRelative(fullPath);
-        builder.Append(relative == "." ? "./" : relative + "/").Append('\n');
+        var display = scope.ToDisplay(fullPath);
+        builder.Append(display == "." ? "./" : display + "/").Append('\n');
 
         var count = 0;
         var truncated = false;
@@ -56,7 +57,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
             foreach (var child in directories)
             {
                 var name = Path.GetFileName(child);
-                if (WorkspaceScope.IsIgnoredDirectoryName(name) || WorkspaceScope.IsIgnoredRelativePath(scope.ToRelative(child) + "/")) continue;
+                if (scope.IsIgnoredDirectoryPath(child)) continue;
                 if (++count > maxEntries)
                 {
                     truncated = true;
@@ -79,17 +80,19 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         }
     }
 
-    public string FindFiles(string pattern, int maxResults = 200)
+    // path: where to search (default the project root). Inside the root, patterns stay relative to the root; outside it,
+    // they are relative to that folder.
+    public string FindFiles(string pattern, string? path = null, int maxResults = 200)
     {
         if (string.IsNullOrWhiteSpace(pattern)) return "Error: pattern is empty.";
+        if (!TryResolveBase(path, out var baseDirectory, out var baseError)) return $"Error: {baseError}";
 
         var matcher = CreateMatcher(pattern);
         var results = new List<string>();
-        foreach (var file in scope.EnumerateFiles())
+        foreach (var file in scope.EnumerateFiles(baseDirectory))
         {
-            var relative = scope.ToRelative(file);
-            if (!matcher.Match(relative).HasMatches) continue;
-            results.Add(relative);
+            if (!matcher.Match(MatchPath(file, baseDirectory)).HasMatches) continue;
+            results.Add(scope.ToDisplay(file));
             if (results.Count >= maxResults) break;
         }
 
@@ -98,9 +101,10 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         return Limit(string.Join('\n', results) + suffix);
     }
 
-    public string SearchText(string query, string? fileGlob, bool isRegex, int maxMatches = 80)
+    public string SearchText(string query, string? fileGlob, bool isRegex, int maxMatches = 80, string? path = null)
     {
         if (string.IsNullOrWhiteSpace(query)) return "Error: query is empty.";
+        if (!TryResolveBase(path, out var baseDirectory, out var baseError)) return $"Error: {baseError}";
 
         Regex? regex = null;
         if (isRegex)
@@ -120,10 +124,10 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         var matches = 0;
         var filesWithMatches = 0;
 
-        foreach (var file in scope.EnumerateFiles())
+        foreach (var file in scope.EnumerateFiles(baseDirectory))
         {
-            var relative = scope.ToRelative(file);
-            if (matcher is not null ? !matcher.Match(relative).HasMatches : !TextExtensions.Contains(Path.GetExtension(file))) continue;
+            var display = scope.ToDisplay(file);
+            if (matcher is not null ? !matcher.Match(MatchPath(file, baseDirectory)).HasMatches : !TextExtensions.Contains(Path.GetExtension(file))) continue;
 
             try
             {
@@ -142,7 +146,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
                         fileMatched = true;
                         filesWithMatches++;
                     }
-                    builder.Append(relative).Append(':').Append(lineNumber).Append(": ").Append(Truncate(line.Trim(), 200)).Append('\n');
+                    builder.Append(display).Append(':').Append(lineNumber).Append(": ").Append(Truncate(line.Trim(), 200)).Append('\n');
                     if (++matches >= maxMatches)
                     {
                         builder.Append($"... (stopped at {maxMatches} matches; refine the query or file glob)\n");
@@ -163,7 +167,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
 
     public async Task<string> ReadFileAsync(string path, int? startLine, int? endLine, CancellationToken cancellationToken = default)
     {
-        if (!scope.TryResolve(path, out var fullPath, out var error)) return $"Error: {error}";
+        if (!scope.TryResolveForRead(path, out var fullPath, out var error)) return $"Error: {error}";
         if (Directory.Exists(fullPath)) return $"Error: '{path}' is a directory. Use list_directory.";
         if (!File.Exists(fullPath)) return $"Error: file '{path}' does not exist.";
         if (new FileInfo(fullPath).Length > MaxReadFileBytes) return $"Error: '{path}' is larger than 2 MB.";
@@ -172,14 +176,14 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         var state = await TextFileIo.ReadAsync(fullPath, cancellationToken);
         var lines = SplitLines(state.Content);
         var total = lines.Length;
-        if (total == 0) return $"File: {scope.ToRelative(fullPath)} (empty)";
+        if (total == 0) return $"File: {scope.ToDisplay(fullPath)} (empty)";
 
         var from = Math.Clamp(startLine ?? 1, 1, total);
         var to = Math.Clamp(endLine ?? from + MaxReadLines - 1, from, total);
         if (to - from + 1 > MaxReadLines) to = from + MaxReadLines - 1;
 
         var builder = new StringBuilder();
-        builder.Append($"File: {scope.ToRelative(fullPath)} (lines {from}-{to} of {total})\n");
+        builder.Append($"File: {scope.ToDisplay(fullPath)} (lines {from}-{to} of {total})\n");
         for (var i = from; i <= to; i++) builder.Append(i).Append("| ").Append(lines[i - 1]).Append('\n');
         if (to < total) builder.Append($"... {total - to} more line(s). Call read_file with startLine={to + 1} to continue.\n");
         return Limit(builder.ToString());
@@ -192,6 +196,22 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         var lines = content.Split('\n');
         return content.EndsWith('\n') ? lines[..^1] : lines;
     }
+
+    // The folder a search starts in: the project root, or a folder given by the planner (possibly outside the root).
+    private bool TryResolveBase(string? path, out string directory, out string? error)
+    {
+        directory = scope.Root;
+        error = null;
+        if (string.IsNullOrWhiteSpace(path)) return true;
+        if (!scope.TryResolveForRead(path, out directory, out error)) return false;
+        if (Directory.Exists(directory)) return true;
+
+        error = $"directory '{path}' does not exist.";
+        return false;
+    }
+
+    private string MatchPath(string file, string baseDirectory) =>
+        scope.IsInside(file) ? scope.ToRelative(file) : Path.GetRelativePath(baseDirectory, file).Replace('\\', '/');
 
     private static Matcher CreateMatcher(string pattern)
     {
