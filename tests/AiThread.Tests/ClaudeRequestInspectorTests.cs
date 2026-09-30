@@ -146,6 +146,94 @@ public class ClaudeRequestInspectorTests
         Assert.Equal(@"D:\Source\MyOtherApp", info.WorkingDirectory);
     }
 
+    [Theory]
+    [InlineData("Current working directory: D:\\Source\\MyApp")]
+    [InlineData("cwd: D:\\Source\\MyApp")]
+    [InlineData("<cwd>D:\\Source\\MyApp</cwd>")]
+    public void Non_claude_agent_is_orchestrated_and_its_working_directory_found(string systemLine)
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "some-model",
+            ["stream"] = true,
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "read" } },
+            ["system"] = $"You are an expert coding assistant.\n{systemLine}\n",
+            ["messages"] = new JsonArray { new JsonObject { ["role"] = "user", ["content"] = "Add a description column" } }
+        };
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal(@"D:\Source\MyApp", info.WorkingDirectory);
+    }
+
+    // Shape captured from oh-my-pi 18.4.4: no vendor name, cwd only in a reminder block of the user turn, session in
+    // metadata.user_id as JSON and in X-Claude-Code-Session-Id.
+    [Fact]
+    public void Oh_my_pi_request_is_orchestrated_with_quoted_working_directory()
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "claude-sonnet-4-5",
+            ["stream"] = true,
+            ["metadata"] = new JsonObject { ["user_id"] = "{\"session_id\":\"01a0f155-469a-7589-b1e2-5d6d3133261e\"}" },
+            ["system"] = new JsonArray { new JsonObject { ["type"] = "text", ["text"] = "You are omp's trusted coding assistant." } },
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "read" }, new JsonObject { ["name"] = "bash" } },
+            ["messages"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = new JsonArray
+                    {
+                        new JsonObject { ["type"] = "text", ["text"] = "<system-reminder>\nToday: 2026-09-30; current working directory: 'D:/Source/My App'. Do not repeat this information in your reply.\n</system-reminder>" },
+                        new JsonObject { ["type"] = "text", ["text"] = "hello" }
+                    }
+                }
+            }
+        };
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("D:/Source/My App", info.WorkingDirectory);
+        Assert.Equal("01a0f155-469a-7589-b1e2-5d6d3133261e", info.SessionId);
+        Assert.Equal("hello", info.Prompt);
+    }
+
+    [Fact]
+    public void Agent_without_any_vendor_marker_or_directory_is_still_orchestratable()
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "some-model",
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "read" } },
+            ["system"] = "You are a helpful assistant.",
+            ["messages"] = new JsonArray { new JsonObject { ["role"] = "user", ["content"] = "hello" } }
+        };
+
+        Assert.True(ClaudeRequestInspector.Inspect(body, NoHeaders, 100).IsOrchestratable);
+    }
+
+    [Fact]
+    public void Generic_session_headers_are_read_in_priority_order()
+    {
+        var body = new JsonObject
+        {
+            ["tools"] = new JsonArray { new JsonObject { ["name"] = "read" } },
+            ["messages"] = new JsonArray { new JsonObject { ["role"] = "user", ["content"] = "go" } }
+        };
+        var headers = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["x-session-id"] = "generic",
+            [ClaudeRequestInspector.SessionHeader] = "explicit"
+        };
+
+        Assert.Equal("explicit", ClaudeRequestInspector.Inspect(body, headers, 100).SessionId);
+        headers.Remove(ClaudeRequestInspector.SessionHeader);
+        Assert.Equal("generic", ClaudeRequestInspector.Inspect(body, headers, 100).SessionId);
+    }
+
     [Fact]
     public void Assistant_prefill_turn_is_orchestrated()
     {

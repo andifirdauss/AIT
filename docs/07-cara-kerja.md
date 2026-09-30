@@ -5,18 +5,20 @@ konfigurasi dengan tepat.
 
 ## 1. Klasifikasi request
 
-Claude Code mengirim banyak request ke `POST /v1/messages`, tidak hanya prompt Anda. AiThread **mengorkestrasi**
+Agen coding mengirim banyak request, tidak hanya prompt Anda: Claude Code ke `POST /v1/messages`, dan klien lain ke
+`/v1/chat/completions`, `/v1/responses` (Codex), atau `/v1beta/models/…` (Gemini CLI) — lihat
+[Klien lain](03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll). Semuanya lebih dulu diubah ke satu
+bentuk internal (`ProtocolAdapter`), jadi aturan di bawah sama untuk semua format. AiThread **mengorkestrasi**
 sebuah request hanya bila semua syarat terpenuhi:
 
 - *Orkestrasi aktif* menyala di Setting;
 - request membawa daftar `tools` (ciri request agen utama);
-- system prompt berasal dari Claude Code / Claude Agent SDK, atau memuat working directory;
 - pesan terakhir berasal dari user, **bukan** `tool_result`;
 - teks prompt tidak kosong setelah blok `<system-reminder>` dibuang;
 - **sesi berasal dari project `.sln`/`.slnx`** (lihat bagian 2).
 
 Selain itu (judul sesi, `/compact`, cek kuota, sesi di luar project, dll.) request diteruskan apa adanya ke
-`/v1/messages` 9router dengan **model passthrough** — AiThread tidak membuat thread dan tidak memanggil planner. `POST /v1/messages/count_tokens` juga diteruskan; bila gagal, jumlah token
+endpoint 9router yang sama dengan **model passthrough** — AiThread tidak membuat thread dan tidak memanggil planner. `POST /v1/messages/count_tokens` juga diteruskan; bila gagal, jumlah token
 diperkirakan (±4 karakter per token).
 
 Jika *Proxy API key* diisi, request tanpa key yang cocok (`Authorization: Bearer` atau `x-api-key`) ditolak `401`.
@@ -25,8 +27,9 @@ Jika *Proxy API key* diisi, request tanpa key yang cocok (`Authorization: Bearer
 
 Sebelum planner dipanggil, AiThread memeriksa **sesi Claude Code** asal prompt:
 
-1. Id sesi diambil dari `metadata.user_id` (atau header `x-claude-code-session-id`); working directory dari header
-   `X-AiThread-Cwd`, atau dari baris `Primary working directory:` / `Working directory:` di system prompt.
+1. Id sesi diambil dari header `X-AiThread-Session` / `x-claude-code-session-id` / `x-session-id`, atau dari
+   `metadata.user_id`; working directory dari header `X-AiThread-Cwd`, atau dari baris `Primary working directory:` /
+   `Working directory:` / `Current working directory:` / `cwd:` (atau tag `<cwd>`) di system prompt.
 2. Solution diambil dari header `X-AiThread-Solution` bila ada. Jika tidak, `.sln`/`.slnx` dicari:
    di folder itu → di sub-folder hingga 2 tingkat (hanya bila **tepat satu** ditemukan) → di folder induk hingga
    6 tingkat. Bila satu folder berisi beberapa solution, yang bernama sama dengan foldernya diutamakan, lalu `.slnx`.

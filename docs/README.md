@@ -1,8 +1,10 @@
 # Dokumentasi AiThread
 
-AiThread adalah proxy lokal di antara **Claude Code** dan **9router**. Setiap prompt yang Anda ketik di Claude Code
-direncanakan oleh satu model yang kuat (planner), dikerjakan paralel oleh banyak model murah (executor) dengan
-konteks sekecil mungkin, lalu dirangkum (wrapper) sebelum dikirim balik ke Claude Code.
+AiThread adalah proxy lokal di antara agen coding (**Claude Code**, **Codex CLI**, **Gemini CLI**, oh-my-pi, …) dan
+**9router**. Setiap prompt yang Anda ketik direncanakan oleh satu model yang kuat (planner), dikerjakan paralel oleh
+banyak model murah (executor) dengan konteks sekecil mungkin, lalu dirangkum (wrapper) sebelum dikirim balik ke agen
+Anda dalam format yang ia pahami (Anthropic, OpenAI, atau Gemini). Panduan utama memakai Claude Code; klien lain ada di
+[Klien lain](03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll).
 
 ```
 Anda ─► Claude Code ─► AiThread ─► Planner ─► Executor × N (paralel) ─► Wrapper ─► Claude Code
@@ -22,7 +24,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 3. **Setting** → isi URL & API key 9router → *Test koneksi* → *Simpan* — [Konfigurasi](02-konfigurasi.md).
 4. **Node** → tambahkan 1 Planner, minimal 1 Executor, 1 Wrapper.
 5. **Project** → *Telusuri…* untuk mencari dan mendaftarkan `.sln`/`.slnx` project Anda, lalu
-   **Setting → Integrasi Claude Code** → *Terapkan* — [Integrasi Claude Code](03-integrasi-claude-code.md).
+   menu **CLI** → nyalakan switch Claude Code (atau oh-my-pi) — [Integrasi Claude Code](03-integrasi-claude-code.md).
 6. Buka sesi Claude Code **baru** di folder project dan beri perintah seperti biasa — [Penggunaan](04-penggunaan.md).
 7. *(Opsional)* **Setting → Telegram** untuk mengirim prompt dari HP saat laptop ditinggal —
    [Prompt dari Telegram](11-telegram.md).
@@ -33,9 +35,9 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 |---|---|---|
 | 1 | [Instalasi](01-instalasi.md) | Prasyarat, short memory (Garnet), 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
 | 2 | [Konfigurasi](02-konfigurasi.md) | Menu Setting (9router, proxy, orkestrasi) dan menu Node (memilih model per peran) |
-| 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code ke AiThread lewat `settings.json`, verifikasi, mengembalikan |
+| 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code (dan Codex, Gemini CLI, oh-my-pi) ke AiThread lewat menu CLI, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
-| 5 | [Panduan menu](05-menu.md) | Dashboard, detail thread, Project, Memory, Node, Setting |
+| 5 | [Panduan menu](05-menu.md) | Dashboard, detail thread, Project, Memory, Node, CLI, Setting |
 | 6 | [Memory](06-memory.md) | Short vs long memory, project vs knowledge memory, siklus hidup, pengelolaan |
 | 7 | [Cara kerja](07-cara-kerja.md) | Detail pipeline: klasifikasi request, planner, kontrak, validator, executor, wrapper |
 | 8 | [Troubleshooting](08-troubleshooting.md) | Pesan error umum dan solusinya |

@@ -54,11 +54,11 @@ Daftar codebase yang dikenal AiThread. Satu project = satu file `.sln`/`.slnx`.
   - centang satu atau beberapa solution → **Daftarkan terpilih**.
   Folder terakhir yang dibuka diingat browser untuk kunjungan berikutnya.
 - **Daftarkan manual**: tempel path file solution atau foldernya → *Daftarkan*.
-- Registrasi diperlukan sebelum menerapkan integrasi Claude Code per project.
+- Registrasi diperlukan sebelum menerapkan integrasi CLI per project.
 - Kolom: nama & root, **AiThread**, path solution, jumlah thread, sesi Claude Code, memory, terakhir dipakai. Badge
   *file hilang* muncul bila `.sln` sudah tidak ada.
 - **Switch AiThread**: menyala = `<project>/.claude/settings.local.json` mengarahkan Claude Code ke proxy ini. Menyalakan
-  menulis blok `env` (sama dengan *Setting → Integrasi Claude Code → Per project*); mematikan menghapus kunci AiThread
+  menulis blok `env` (sama dengan switch Claude Code per project di menu [CLI](#cli)); mematikan menghapus kunci AiThread
   saja, kunci lain di file tetap. Catatan *URL lain* berarti file mengarah ke alamat proxy lain (mis. port lama) —
   nyalakan ulang untuk memperbarui. Buka sesi Claude Code baru setelah mengubahnya.
 - **Hapus**: riwayat thread tetap ada (tanpa project), tetapi **semua memory project ini ikut terhapus**.
@@ -84,18 +84,38 @@ Empat kolom: Planner, Executor, Wrapper, Context Keeper (opsional). Setiap kartu
 prioritas, instruksi tambahan, dengan tombol *Test*, *Edit*, *Hapus*. *Muat ulang model 9router* menyegarkan daftar
 model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-node).
 
+## CLI
+
+Mengarahkan CLI coding ke proxy AiThread dengan satu switch, tanpa menyunting file konfigurasi CLI itu sendiri. Saat ini
+ada dua CLI: **Claude Code** dan **oh-my-pi (omp)**; CLI lain bisa ditambahkan dengan cara yang sama.
+
+- **URL proxy AiThread** di bagian atas: alamat yang ditulis ke konfigurasi CLI (default = alamat http aplikasi).
+  Mengubahnya menyegarkan status semua switch.
+- Tiap CLI punya satu kartu berisi:
+  - **Global** — semua sesi CLI itu di komputer ini (`~/.claude/settings.json` untuk Claude Code,
+    `~/.omp/agent/.env` untuk omp). Menyalakan meminta konfirmasi.
+  - **Per project** — satu switch per project terdaftar (`<project>/.claude/settings.local.json` atau
+    `<project>/.env`). Lencana *Aktif*, *Nonaktif*, atau *Mengarah ke alamat lain* (file menunjuk URL lain, mis. port
+    lama — matikan lalu nyalakan lagi).
+  - *Yang akan ditulis*: pratinjau isi yang akan dituliskan.
+- Mematikan switch hanya menghapus yang ditulis AiThread; isi lain di file tetap. Backup file asli disimpan sekali
+  sebagai `*.aithread-backup`.
+- Kartu Claude Code juga memuat **Context Keeper untuk /clear** (*Pasang hook* / *Lepas hook*; lihat
+  [Integrasi Claude Code](03-integrasi-claude-code.md#context-keeper-untuk-clear)).
+- Bila *Proxy API key* di Setting diubah, matikan lalu nyalakan lagi agar key baru ikut tertulis.
+
+Detail tiap CLI: [Integrasi Claude Code](03-integrasi-claude-code.md) dan
+[Klien lain](03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll).
+
 ## Setting
 
 - **Koneksi 9router** — URL, API key, *Test koneksi* (tidak menyimpan) dan *Simpan*; baris status menunjukkan apakah key tersimpan dan diterima.
 - **Proxy & orkestrasi** — saklar orkestrasi & progres, model passthrough, proxy API key, batas planner/executor/
   paralel/timeout.
-- **Integrasi Claude Code** — cakupan per project/global, URL proxy, status file, pratinjau, *Terapkan* /
-  *Kembalikan*. Di bawahnya, **Context Keeper untuk /clear**: status, pratinjau, *Pasang hook* / *Lepas hook*
-  (lihat [Integrasi Claude Code](03-integrasi-claude-code.md#context-keeper-untuk-clear)).
+- **Integrasi CLI** — hanya tautan ke menu [CLI](#cli), tempat integrasi Claude Code/omp dan hook Context Keeper diatur.
 - **Telegram** — token bot, aktif/nonaktif, status koneksi live, dan tabel chat (*Izinkan* / *Hapus* / *Cabut*).
 
-Detail di [Konfigurasi](02-konfigurasi.md), [Integrasi Claude Code](03-integrasi-claude-code.md), dan
-[Prompt dari Telegram](11-telegram.md).
+Detail di [Konfigurasi](02-konfigurasi.md) dan [Prompt dari Telegram](11-telegram.md).
 
 ## Docs
 

@@ -20,8 +20,9 @@ public interface INineRouterService
         Func<string, Task>? onDelta = null,
         CancellationToken cancellationToken = default);
 
-    // Forwards a raw Anthropic Messages API request (Claude Code format) to 9router. Caller disposes the response.
-    Task<HttpResponseMessage> ForwardAnthropicAsync(
+    // Forwards a raw request in the client's own format (Anthropic Messages, OpenAI chat/responses, Gemini) to the
+    // matching 9router endpoint, which translates it for the target provider. Caller disposes the response.
+    Task<HttpResponseMessage> ForwardAsync(
         string pathAndQuery,
         string body,
         IReadOnlyDictionary<string, string> headers,

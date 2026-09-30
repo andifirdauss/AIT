@@ -12,6 +12,8 @@ public static class DependencyInjection
         builder.Services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+        builder.Services.AddScoped<AgentProxyHandler>();
+
         return builder
             .AddApplicationPart(typeof(DependencyInjection).Assembly)
             .AddMvcOptions(options => options.Filters.Add<ApiExceptionFilter>())

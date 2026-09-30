@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AiThread.Service\AiThread.Service.csproj" />
+    <ProjectReference Include="..\..\src\AiThread.API\AiThread.API.csproj" />
   </ItemGroup>
 
 </Project>

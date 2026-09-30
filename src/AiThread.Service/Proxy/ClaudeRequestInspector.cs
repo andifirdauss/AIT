@@ -31,6 +31,10 @@ public static partial class ClaudeRequestInspector
 {
     public const string SolutionHeader = "X-AiThread-Solution";
     public const string WorkingDirectoryHeader = "X-AiThread-Cwd";
+    public const string SessionHeader = "X-AiThread-Session";
+
+    // Session id headers in priority order: explicit AiThread header, Claude Code, Codex, generic agents.
+    public static readonly string[] SessionHeaders = [SessionHeader, "x-claude-code-session-id", "session_id", "x-session-id"];
 
     private const int MaxHistoryMessages = 12;
     private const int MaxHistoryMessageChars = 1_500;
@@ -67,12 +71,13 @@ public static partial class ClaudeRequestInspector
                                ?? FindWorkingDirectory(systemText)
                                ?? (userMessage is not null ? FindWorkingDirectory(userText) : null)
                                ?? messages.Reverse().Select(m => FindWorkingDirectory(ContentText(m?["content"]).Text)).FirstOrDefault(d => d is not null);
-        var sessionId = Header(headers, "x-claude-code-session-id") ?? SessionFromMetadata(body["metadata"]?["user_id"]);
+        var sessionId = SessionHeaders.Select(name => Header(headers, name)).FirstOrDefault(v => v is not null)
+                        ?? Str(body["metadata"]?["session_id"])
+                        ?? SessionFromMetadata(body["metadata"]?["user_id"]);
 
         var lastRole = messages.Count > 0 ? Str(messages[^1]?["role"]) : "none";
         var (orchestratable, reason) =
             tools is null || tools.Count == 0 ? (false, "auxiliary request without tools")
-            : !IsAgentSystemPrompt(systemText, workingDirectory) ? (false, "not a Claude Code agent request")
             : userMessage is null ? (false, $"last message is not from the user (role: {lastRole})")
             : hasToolResult ? (false, "tool_result turn")
             : prompt.Length == 0 ? (false, "empty prompt")
@@ -103,19 +108,14 @@ public static partial class ClaudeRequestInspector
 
     public static string StripReminders(string text) => ReminderBlock().Replace(text, string.Empty);
 
-    private static bool IsAgentSystemPrompt(string systemText, string? workingDirectory) =>
-        string.IsNullOrEmpty(systemText)
-        || systemText.Contains("Claude", StringComparison.OrdinalIgnoreCase)
-        || systemText.Contains("Anthropic", StringComparison.OrdinalIgnoreCase)
-        || workingDirectory is not null;
-
     private static string? FindWorkingDirectory(string text)
     {
         if (string.IsNullOrEmpty(text)) return null;
         var match = WorkingDirectoryLine().Match(text);
+        if (!match.Success) match = WorkingDirectoryTag().Match(text);
         if (match.Success)
         {
-            var raw = match.Groups[1].Value.Trim().Trim('`', '"', '\'').TrimEnd('.', ' ');
+            var raw = match.Groups["path"].Value.Trim().Trim('`', '"', '\'').TrimEnd('.', ' ');
             var wasIndex = raw.IndexOf("(was", StringComparison.OrdinalIgnoreCase);
             if (wasIndex >= 0) raw = raw[..wasIndex].Trim().Trim('`', '"', '\'').TrimEnd('.', ' ');
             if (raw.Length > 0) return raw;
@@ -242,8 +242,14 @@ public static partial class ClaudeRequestInspector
     [GeneratedRegex(@"<system-reminder>[\s\S]*?</system-reminder>", RegexOptions.IgnoreCase)]
     private static partial Regex ReminderBlock();
 
-    [GeneratedRegex(@"(?:Primary working directory|Working directory)\s*:\s*([^\r\n]+)", RegexOptions.IgnoreCase)]
+    // "Primary working directory:" is Claude Code, "working in the directory:" Gemini CLI, and oh-my-pi writes
+    // "current working directory: '<path>'. Do not repeat…", so a quoted path ends at its closing quote. Codex puts
+    // <cwd> in its environment context.
+    [GeneratedRegex(@"(?:Primary working directory|Current working directory|Working directory|working in the directory|Current directory|Project directory|\bcwd)\s*[:=]\s*(?:'(?<path>[^'\r\n]+)'|""(?<path>[^""\r\n]+)""|`(?<path>[^`\r\n]+)`|(?<path>[^\r\n]+))", RegexOptions.IgnoreCase)]
     private static partial Regex WorkingDirectoryLine();
+
+    [GeneratedRegex(@"<(?<tag>cwd|working_directory|current_working_directory)>\s*(?<path>[^<\r\n]+?)\s*</\k<tag>>", RegexOptions.IgnoreCase)]
+    private static partial Regex WorkingDirectoryTag();
 
     [GeneratedRegex(@"Contents of\s+([^\r\n]+?)[\\/]CLAUDE\.md", RegexOptions.IgnoreCase)]
     private static partial Regex ClaudeMdLine();

@@ -81,8 +81,8 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    - Planner: model terkuat yang mendukung *tool calling*.
    - Executor: model murah & cepat; tambah beberapa node untuk menyebar beban. `Max paralel` dibatasi per node lintas semua thread.
    - Wrapper: model murah; juga dipakai untuk ekstraksi memory dan sebagai model passthrough default.
-3. **Setting → Integrasi Claude Code** → pilih *Per project* (disarankan) atau *Global* → *Terapkan*.
-   Ini menulis blok `env` ke `.claude/settings.local.json` (atau `~/.claude/settings.json`):
+3. Menu **CLI** → kartu *Claude Code* → nyalakan switch *Per project* (disarankan) atau *Global*. Kartu *oh-my-pi*
+   bekerja sama (menulis `.env` yang dibaca omp). Untuk Claude Code, ini menulis blok `env` ke `.claude/settings.local.json` (atau `~/.claude/settings.json`):
 
    ```json
    {

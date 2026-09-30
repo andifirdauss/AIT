@@ -1,0 +1,29 @@
+@{
+    ViewData["Title"] = "CLI";
+}
+
+<div class="page-header">
+    <div>
+        <h1>CLI</h1>
+        <p class="page-subtitle">Arahkan CLI coding ke proxy AiThread. Tiap CLI bisa diaktifkan secara global atau per project, dan dimatikan kapan saja.</p>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <label class="form-label small" for="proxyUrl">URL proxy AiThread</label>
+        <input type="url" class="form-control mono" id="proxyUrl" />
+        <div class="form-text">
+            Alamat yang ditulis ke konfigurasi CLI. Gunakan HTTP — CLI berbasis Node/Bun tidak mempercayai sertifikat development ASP.NET.
+            Bila <em>Proxy API key</em> di Setting diubah, matikan lalu aktifkan lagi agar key baru ikut tertulis.
+        </div>
+    </div>
+</div>
+
+<div id="cliCards" class="row g-3">
+    <div class="col-12 text-secondary small">Memuat…</div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/cli.js" asp-append-version="true"></script>
+}

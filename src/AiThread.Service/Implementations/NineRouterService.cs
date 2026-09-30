@@ -15,7 +15,9 @@ namespace AiThread.Service.Implementations;
 //   GET  /api/health             -> {"ok":true}, no auth
 //   GET  /v1/models              -> OpenAI list; combos have owned_by = "combo", no auth
 //   POST /v1/chat/completions    -> OpenAI chat, Bearer key when "require API key" is on
-//   POST /v1/messages            -> Anthropic Messages API (used for Claude Code passthrough)
+//   POST /v1/messages            -> Anthropic Messages API (Claude Code passthrough)
+//   POST /v1/responses           -> OpenAI Responses API (Codex passthrough)
+//   POST /v1beta/models/{m}:generateContent | :streamGenerateContent -> Gemini native (Gemini CLI passthrough)
 public sealed class NineRouterService(
     IHttpClientFactory httpClientFactory,
     ISettingService settingService,
@@ -101,7 +103,7 @@ public sealed class NineRouterService(
         return TimeSpan.FromSeconds(baseSeconds + Random.Shared.NextDouble() * baseSeconds / 2);
     }
 
-    public async Task<HttpResponseMessage> ForwardAnthropicAsync(
+    public async Task<HttpResponseMessage> ForwardAsync(
         string pathAndQuery,
         string body,
         IReadOnlyDictionary<string, string> headers,

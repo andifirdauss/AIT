@@ -3,16 +3,22 @@
 Semua endpoint berada di host AiThread (default `http://localhost:5225`). Enum dikirim sebagai string
 (`"Planner"`, `"Short"`, `"Completed"`, …) dan properti JSON memakai camelCase.
 
-## Proxy Anthropic (untuk Claude Code)
+## Proxy agen coding (Claude Code, Codex, Gemini CLI, …)
 
 | Method | Path | Keterangan |
 |---|---|---|
-| `POST` | `/v1/messages` | Messages API. Request agen utama dari sesi di dalam project `.sln`/`.slnx` diorkestrasi (stream atau non-stream); lainnya — termasuk sesi di luar project — diteruskan ke 9router. `/v1/v1/messages` juga diterima. |
+| `POST` | `/v1/messages` | Format Anthropic Messages. Request agen utama dari sesi di dalam project `.sln`/`.slnx` diorkestrasi (stream atau non-stream); lainnya — termasuk sesi di luar project — diteruskan ke 9router. `/v1/v1/messages` juga diterima. |
 | `POST` | `/v1/messages/count_tokens` | Diteruskan ke 9router; fallback estimasi `{ "input_tokens": n }`. |
-| `GET` | `/v1/models` | Daftar model 9router dalam format Anthropic. |
+| `POST` | `/v1/chat/completions` | Format OpenAI Chat Completions; aturan orkestrasi/passthrough sama. |
+| `POST` | `/v1/responses` | Format OpenAI Responses (Codex CLI); aturan sama. |
+| `POST` | `/v1beta/models/{model}:generateContent`, `:streamGenerateContent` | Format Gemini native (model & mode stream dari URL); aturan sama. Aksi lain → `404`. |
+| `GET` | `/v1/models` | Daftar model 9router; satu respons memuat field Anthropic dan OpenAI. |
+| `GET` | `/v1beta/models` | Daftar model 9router dalam format Gemini. |
 
-Auth: `Authorization: Bearer <key>` atau `x-api-key: <key>` — hanya diperiksa bila *Proxy API key* diisi.
-Header opsional: `X-AiThread-Solution` (path `.sln`/`.slnx`), `X-AiThread-Cwd` (working directory).
+Balasan orkestrasi dan pesan error memakai format klien yang memanggil. Auth (hanya diperiksa bila *Proxy API key*
+diisi): `Authorization: Bearer <key>`, `x-api-key: <key>`, `x-goog-api-key: <key>`, atau `?key=<key>` (Gemini).
+Header opsional: `X-AiThread-Solution` (path `.sln`/`.slnx`), `X-AiThread-Cwd` (working directory),
+`X-AiThread-Session` (id sesi).
 
 Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar: `message_start`,
 `content_block_start`, `ping` (tiap 10 detik selama bekerja), `content_block_delta` (`text_delta`),
@@ -55,6 +61,17 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `POST` | `/api/settings/claude/hooks/revert` | lepas hook `/clear` AiThread; hook lain tetap |
 | `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
 | `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
+
+### CLI
+
+Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi`; id lain → `404`. `scope` = `Global` atau `Project`.
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/cli` | daftar CLI (`id`, `name`, `description`, `globalPath`, `projectFile`, `note`) dan `proxyBaseUrl` default |
+| `GET` | `/api/cli/{id}/status?scope=&projectId=&proxyBaseUrl=` | status file: `path`, `fileExists`, `enabled`, `currentBaseUrl`, `preview` |
+| `GET` | `/api/cli/{id}/projects?proxyBaseUrl=` | status `enabled`/`currentBaseUrl`/`path`/`error` tiap project terdaftar |
+| `PUT` | `/api/cli/{id}/toggle` | `{ "scope": "Project", "projectId": "...", "enabled": true, "proxyBaseUrl"?: "..." }` — `enabled: false` menghapus yang ditulis AiThread |
 
 ### Node
 

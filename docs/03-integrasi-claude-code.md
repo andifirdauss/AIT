@@ -21,8 +21,8 @@ Hanya sesi Claude Code yang dibuka di project tersebut yang melewati AiThread.
    Project juga terdaftar otomatis pada prompt pertama sesi Claude Code yang dibuka di folder solution.
 2. Paling cepat: di tabel **Project**, nyalakan switch kolom **AiThread** pada project tersebut (matikan untuk
    mengembalikan). Switch memakai URL proxy default (alamat http aplikasi).
-3. Atau lewat **Setting → Integrasi Claude Code** → pilih *Per project* → pilih project, periksa *URL proxy AiThread*
-   dan pratinjau blok yang akan ditulis, lalu klik **Terapkan ke Claude Code**.
+3. Atau lewat menu **CLI** → kartu *Claude Code* → nyalakan switch project di daftar *Per project*. URL proxy yang
+   ditulis diatur di kolom *URL proxy AiThread* di bagian atas halaman; *Yang akan ditulis* menampilkan pratinjaunya.
 4. Buka sesi Claude Code baru di project itu agar berlaku.
 
 File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder project = folder yang berisi
@@ -35,7 +35,8 @@ di-*gitignore*.
 
 ### Global
 
-Semua sesi Claude Code di komputer ini melewati AiThread. Pilih *Global* lalu **Terapkan**. File yang ditulis:
+Semua sesi Claude Code di komputer ini melewati AiThread. Di menu **CLI**, nyalakan switch *Global* pada kartu Claude
+Code (ada konfirmasi). File yang ditulis:
 `%USERPROFILE%\.claude\settings.json`.
 
 Hanya sesi yang dibuka di dalam project `.sln`/`.slnx` yang diorkestrasi. Sesi di folder lain (project non-.NET,
@@ -91,7 +92,7 @@ Jika jawaban datang tanpa baris `**AiThread**`, lihat [Troubleshooting](08-troub
 
 ## Mengembalikan
 
-- UI: **Setting → Integrasi Claude Code** → pilih cakupan yang sama → **Kembalikan**. Kunci AiThread
+- UI: menu **CLI** → matikan switch yang sama (atau switch **AiThread** di tabel Project). Kunci AiThread
   (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `API_TIMEOUT_MS`, dan header `X-AiThread-Solution`) dihapus;
   isi lain dibiarkan.
 - Manual: hapus kunci-kunci tersebut, atau pulihkan dari file `*.aithread-backup`.
@@ -114,7 +115,7 @@ termasuk sesi yang tidak diarahkan ke proxy AiThread:
 
 `/clear` berikutnya membangun ringkasan dari ringkasan sebelumnya plus sesi terbaru, jadi alur tetap tersambung.
 
-**Memasang**: **Setting → Integrasi Claude Code → Context Keeper untuk /clear** → pilih cakupan (Global disarankan agar
+**Memasang**: **CLI → kartu Claude Code → Context Keeper untuk /clear** → pilih cakupan (Global disarankan agar
 berlaku di semua project) → **Pasang hook**. Yang ditulis ke file settings (hook lain milik Anda tidak disentuh):
 
 ```json
@@ -141,6 +142,97 @@ Catatan:
 - Isi transcript (versi ringkas) dikirim ke model Context Keeper lewat 9router. AiThread hanya mau membaca transcript
   di dalam `~/.claude/projects`.
 - Ringkasan otomatis `/compact` bawaan Claude Code tidak diganti; hook ini hanya bekerja pada `/clear`.
+
+## Klien lain: Codex, Gemini CLI, oh-my-pi, dll.
+
+AiThread tidak terikat ke Claude Code. Ia menerima empat format request, dan 9router menerjemahkannya ke provider mana
+pun (Claude, GPT, Gemini, …) — jadi model yang dipakai tidak harus sama dengan "bahasa" klien:
+
+| Format | Endpoint AiThread | Klien contoh |
+|---|---|---|
+| Anthropic Messages | `POST /v1/messages` | Claude Code, oh-my-pi (`anthropic-messages`) |
+| OpenAI Chat Completions | `POST /v1/chat/completions` | Cursor, Continue, opencode, oh-my-pi (`openai-completions`) |
+| OpenAI Responses | `POST /v1/responses` | Codex CLI |
+| Gemini native | `POST /v1beta/models/{model}:generateContent` dan `:streamGenerateContent` | Gemini CLI |
+
+Aturan orkestrasi sama untuk semuanya: request diorkestrasi bila membawa `tools`, pesan terakhirnya dari user (bukan
+hasil tool), dan sesinya berasal dari project `.sln`/`.slnx`; balasannya dikirim dalam format klien itu sendiri
+(stream maupun non-stream). Selain itu request diteruskan ke endpoint 9router yang sama dengan model passthrough.
+
+**Codex CLI** — `~/.codex/config.toml` (Codex hanya memakai `wire_api = "responses"`):
+
+```toml
+model_provider = "aithread"
+
+[model_providers.aithread]
+name = "AiThread"
+base_url = "http://localhost:5225/v1"
+env_key = "AITHREAD_API_KEY"        # isi dengan Proxy API key (atau nilai bebas bila kosong)
+wire_api = "responses"
+```
+
+**Gemini CLI** — variabel lingkungan (HTTP diizinkan karena `localhost`):
+
+```powershell
+$env:GOOGLE_GEMINI_BASE_URL = "http://localhost:5225"
+$env:GEMINI_API_KEY = "aithread-local"   # Proxy API key bila diisi
+```
+
+Nama model yang dikirim klien diabaikan pada passthrough dan tampil apa adanya pada balasan orkestrasi; model yang
+sebenarnya dipakai ditentukan Setting *Passthrough model* dan Node.
+
+**oh-my-pi (paling mudah: menu CLI)** — di menu **CLI**, nyalakan switch pada kartu *oh-my-pi (omp)*, global atau
+per project. AiThread menulis satu blok di file `.env` yang dibaca omp (`<project>/.env` atau `~/.omp/agent/.env`),
+tanpa menyentuh baris lain di file itu:
+
+```dotenv
+# >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
+ANTHROPIC_BASE_URL=http://localhost:5225
+ANTHROPIC_API_KEY=aithread-local
+ANTHROPIC_CUSTOM_HEADERS=X-AiThread-Solution: D:\Source\MyApp\MyApp.sln
+# <<< AiThread <<<
+```
+
+Diuji dengan omp 18.4.4: omp memuat `.env` dari folder tempat ia dijalankan, mengirim request ke URL itu, dan sudah
+menyertakan id sesi serta working directory-nya sendiri, jadi sesi langsung dikenali dan diorkestrasi. Yang perlu
+diingat:
+
+- Ini hanya berlaku untuk provider **anthropic** bawaan omp. Untuk provider lain, pakai `models.yml` di bawah.
+- Jalankan omp dari folder yang berisi `.env` (biasanya root project); omp tidak mencari `.env` ke folder induk.
+- Bila `.env` Anda sudah memuat `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, atau `ANTHROPIC_CUSTOM_HEADERS` di luar
+  blok AiThread, AiThread menolak menulis (agar tidak bertabrakan) dan menyebut kuncinya.
+- Variabel yang sudah diekspor di shell selalu menang atas `.env`, dan login OAuth Anthropic di omp dipakai lebih dulu
+  daripada `ANTHROPIC_API_KEY`.
+- `.env` berisi kunci proxy lokal; jangan di-commit (tambahkan ke `.gitignore`).
+
+**oh-my-pi lewat `models.yml`** — `~/.omp/agent/models.yml`; pilih `api: anthropic-messages` (baseUrl
+`http://localhost:5225`) atau `api: openai-completions` (baseUrl `http://localhost:5225/v1`):
+
+```yaml
+providers:
+  aithread:
+    baseUrl: http://localhost:5225
+    api: anthropic-messages
+    apiKey: aithread-local          # Proxy API key bila diisi di Setting
+    headers:
+      X-AiThread-Cwd: D:\Source\MyApp   # opsional, lihat di bawah
+    models:
+      - id: <id model dari GET /v1/models>
+        name: AiThread
+```
+
+**Membantu AiThread mengenali sesi.** Working directory dicari dari header `X-AiThread-Cwd`, lalu dari teks request:
+`Primary working directory:` (Claude Code), `<cwd>…</cwd>` (Codex), `I'm currently working in the directory:`
+(Gemini CLI), atau `Current working directory:` / `Working directory:` / `Current directory:` / `cwd:`. Bila klien Anda
+tidak mengirim salah satunya, set header `X-AiThread-Cwd` (atau `X-AiThread-Solution`). Id sesi dibaca dari header
+`X-AiThread-Session`, `x-claude-code-session-id`, `session_id` (Codex) atau `x-session-id`, dari `prompt_cache_key`
+(OpenAI), atau dari `metadata.user_id`; tanpa id sesi, keputusan project diingat per working directory.
+
+**Batasan**
+- Endpoint Gemini hanya `generateContent` dan `streamGenerateContent` (`countTokens` dll. tidak diproxy), dan stream
+  Gemini selalu berformat SSE (`alt=sse`, yang dipakai Gemini CLI).
+- Codex harus memakai HTTP biasa (bukan WebSocket) ke provider ini; itu default untuk provider kustom.
+- Label sumber thread di dashboard/Telegram untuk semua klien ini masih "Claude Code".
 
 ## Catatan
 

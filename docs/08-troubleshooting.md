@@ -59,7 +59,7 @@ Naikkan Setting → *Timeout (detik)*, atau pakai model yang lebih cepat.
 Jawaban muncul tanpa baris `**AiThread** · …` dan tidak ada thread baru di Dashboard:
 
 1. Buka **sesi Claude Code baru** — env hanya dibaca saat sesi dimulai.
-2. Setting → Integrasi Claude Code: status harus *✓ sudah diarahkan*.
+2. Menu CLI → kartu Claude Code: switch harus menyala dengan lencana *Aktif* (bukan *Mengarah ke alamat lain*).
 3. Untuk cakupan per project, pastikan Claude Code dijalankan di folder yang berisi `.claude/settings.local.json`
    (lihat path di kotak status). Jika berbeda, salin blok `env` ke folder tempat Anda menjalankan `claude`.
 4. Pastikan tidak ada environment variable Windows `ANTHROPIC_BASE_URL` yang menimpa.
