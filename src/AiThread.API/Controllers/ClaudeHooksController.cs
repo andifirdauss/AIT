@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AiThread.API.Controllers;
 
-// Targets of the Claude Code HTTP hooks written by Setting → Integrasi Claude Code (ClaudeHookConfig). Claude Code posts
+// Targets of the Claude Code HTTP hooks written by the CLI menu (ClaudeHookConfig). Claude Code posts
 // the hook input as JSON; an empty 200 means "nothing to add", and every failure stays non-blocking on its side.
 [ApiController]
 [Route("api/hooks/claude")]

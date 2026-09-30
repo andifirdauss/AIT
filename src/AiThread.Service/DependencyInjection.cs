@@ -1,6 +1,7 @@
 using AiThread.Common.Options;
 using AiThread.Service.Background;
 using AiThread.Service.Implementations;
+using AiThread.Service.Implementations.Cli;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Orchestration;
 using AiThread.Service.Planner;
@@ -38,6 +39,8 @@ public static class DependencyInjection
         services.AddSingleton<IThreadService, ThreadService>();
         services.AddSingleton<IDashboardService, DashboardService>();
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
+        services.AddSingleton<ICliIntegration, ClaudeCodeIntegration>();
+        services.AddSingleton<ICliIntegration, OhMyPiIntegration>();
         services.AddSingleton<ActivityLogQueue>();
         services.AddSingleton<IActivityLogService, ActivityLogService>();
         services.AddSingleton<IDocsService>(sp => new DocsService(DocsService.ResolveDirectory(
