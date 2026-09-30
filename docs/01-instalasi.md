@@ -109,7 +109,52 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 9router tetap dijalankan terpisah dan harus hidup; AiThread menyambung ulang otomatis bila 9router baru menyala
 setelah AiThread. Short memory (Garnet) ikut berjalan di dalam proses AiThread.
 
-## 6. Verifikasi
+## 6. AiThread.exe standalone (tanpa .NET)
+
+Untuk dipakai tanpa .NET SDK atau `dotnet run`, buat `AiThread.exe` self-contained (Windows x64, ±60 MB, satu berkas):
+
+```powershell
+.\scripts\publish-exe.ps1 -Zip     # hasil: dist\AiThread\ dan dist\AiThread-win-x64.zip
+```
+
+Folder `dist\AiThread` berisi `AiThread.exe`, `appsettings.json` (boleh diubah, mis. connection string),
+`wwwroot\` dan `docs\`; salin seluruh folder ke komputer lain. SQL Server (LocalDB) dan 9router tetap diperlukan.
+Jalankan `AiThread.exe` tanpa argumen untuk **menu interaktif**; server berjalan di jendela itu, lognya ke file:
+
+| Menu | Fungsi |
+|---|---|
+| 1 Web UI | Buka dashboard di browser. |
+| 2 Sembunyikan ke Tray | Pindahkan ke background dengan ikon di system tray; jendela terminal boleh ditutup. Thread yang sedang berjalan dibatalkan dan dicatat, karena server dijalankan ulang sebagai proses tanpa jendela (±10 detik). |
+| 3 Log langsung | Ikuti log server; tombol apa pun kembali ke menu. |
+| 4 Restart server | Terapkan `appsettings.json` yang baru diubah. |
+| 5 Ganti port | Disimpan di `%LOCALAPPDATA%\AiThread\cli.json`. Terapkan ulang integrasi Claude Code karena alamatnya berubah. |
+| 6 Autostart | Jalankan tray otomatis saat login Windows (kunci `Run` milik pengguna, tanpa admin). |
+| 0 Keluar | Matikan server dengan rapi. |
+
+Bila sudah ada instance yang berjalan di port itu (mis. di tray), menu mengendalikan instance tersebut: buka Web UI,
+lihat log terakhir, atau matikan. Klik kanan ikon tray untuk *Buka Web UI*, *Lihat log*, *Buka folder log*,
+*Jalankan saat login Windows*, dan *Keluar*; klik ganda membuka Web UI.
+
+Perintah tanpa menu (`AiThread.exe help` menampilkan semuanya):
+
+```powershell
+AiThread.exe serve            # di jendela ini, log tampil di konsol (Ctrl+C untuk berhenti)
+AiThread.exe tray --open      # background dengan ikon tray, lalu buka dashboard
+AiThread.exe status           # PID, sejak kapan, lokasi log, status autostart
+AiThread.exe logs -f          # ikuti log terbaru
+AiThread.exe stop             # matikan dengan rapi
+AiThread.exe autostart on     # atau off
+AiThread.exe serve --port 6000
+```
+
+Port default 5225 (atau yang terakhir disimpan dari menu); `--port` berlaku untuk satu perintah. Log ada di
+`%LOCALAPPDATA%\AiThread\logs` (folder yang sama dengan `scripts\aithread.ps1`). Dengan `--urls`/`--environment`
+atau tanpa terminal (mis. `dotnet run`, Visual Studio), exe berjalan sebagai host biasa tanpa menu.
+
+Autostart exe (kunci `Run`) dan `scripts\aithread.ps1 autostart-on` (Task Scheduler) tidak perlu diaktifkan bersamaan;
+instance kedua mendeteksi yang pertama dan hanya membuka dashboard.
+
+## 7. Verifikasi
 
 Buka **Dashboard**. Empat kartu status teratas harus:
 

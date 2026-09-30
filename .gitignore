@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Standalone exe output (scripts/publish-exe.ps1)
+dist/
+!src/AiThread.UI/Properties/PublishProfiles/standalone.pubxml

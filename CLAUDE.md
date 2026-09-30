@@ -30,4 +30,5 @@ Lihat [README.md](README.md) dan [docs/](docs/README.md) untuk alur lengkap. Per
 - `AiThread.Service`: `NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`; `Orchestration/` (planner → `ExecutionEngine` paralel → wrapper → `MemoryExtractor`); `Workspace/` (sandbox path, parser & applier SEARCH/REPLACE); `Proxy/ClaudeRequestInspector`; worker di `Background/`.
 - `AiThread.API`: `AnthropicProxyController` (`/v1/messages` untuk Claude Code), `StreamController` (SSE), REST `/api/*`.
 - `AiThread.UI`: host MVC; view hanya kerangka, data dimuat oleh `wwwroot/js/pages/*.js` lewat `/api` + SSE.
+  `Hosting/`: entry point `AiThread.exe` (`Cli`: menu interaktif, `tray`, `serve`, `stop`, dll.), ikon tray Win32, autostart. Exe standalone: `scripts/publish-exe.ps1`.
 - Test: `tests/AiThread.Tests` (`dotnet test`). Migrasi: `dotnet tool run dotnet-ef migrations add <Nama> --project src/AiThread.Data --startup-project src/AiThread.Data`.
