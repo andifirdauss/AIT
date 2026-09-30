@@ -1,3 +1,4 @@
+using AiThread.Common.Options;
 using AiThread.Data.Cache;
 using AiThread.Data.Context;
 using AiThread.Data.Messaging;
@@ -24,6 +25,16 @@ public static class DependencyInjection
         // A factory rather than a scoped context: executors update rows from many parallel tasks.
         services.AddDbContextFactory<AiThreadDbContext>(options =>
             options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(3)));
+
+        var embeddedRedis = configuration
+            .GetSection($"{AiThreadOptions.SectionName}:{nameof(AiThreadOptions.EmbeddedRedis)}")
+            .Get<EmbeddedRedisOptions>() ?? new EmbeddedRedisOptions();
+        if (embeddedRedis.Enabled)
+        {
+            // Registered before the service layer's workers, so it starts before them and stops after them.
+            services.AddHostedService(sp => new EmbeddedRedisServer(
+                redisConnectionString, embeddedRedis, sp.GetRequiredService<ILogger<EmbeddedRedisServer>>()));
+        }
 
         services.AddSingleton(sp => new RedisConnectionProvider(
             redisConnectionString, sp.GetRequiredService<ILogger<RedisConnectionProvider>>()));

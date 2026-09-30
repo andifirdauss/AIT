@@ -14,7 +14,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 
 ## Mulai cepat
 
-1. Jalankan Redis dan 9router — [Instalasi](01-instalasi.md).
+1. Jalankan 9router — [Instalasi](01-instalasi.md). Redis/Docker tidak diperlukan.
 2. Jalankan AiThread: `dotnet run --project src/AiThread.UI --launch-profile http` lalu buka http://localhost:5225.
    Agar tetap hidup walau browser/terminal ditutup, jalankan di background: `.\scripts\aithread.ps1 start` —
    [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background).
@@ -30,7 +30,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 
 | # | Dokumen | Isi |
 |---|---|---|
-| 1 | [Instalasi](01-instalasi.md) | Prasyarat, Redis, 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
+| 1 | [Instalasi](01-instalasi.md) | Prasyarat, short memory (Garnet), 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
 | 2 | [Konfigurasi](02-konfigurasi.md) | Menu Setting (9router, proxy, orkestrasi) dan menu Node (memilih model per peran) |
 | 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code ke AiThread lewat `settings.json`, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
@@ -56,6 +56,6 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | **Combo** | Model gabungan di 9router yang otomatis fallback antar provider. Bisa dipilih seperti model biasa. |
 | **Passthrough** | Request Claude Code yang tidak diorkestrasi (judul sesi, compact, cek kuota, sesi di luar project) dan diteruskan langsung ke 9router. |
 | **Sesi diabaikan** | Sesi Claude Code yang working directory-nya bukan bagian project `.sln`/`.slnx`. Semua prompt-nya dilewatkan apa adanya — tidak ada planner/executor. |
-| **Short memory** | Memory baru, disimpan di Redis selama ±24 jam. |
-| **Long memory** | Memory yang sudah dipindah dari Redis ke database. |
+| **Short memory** | Memory baru, disimpan di Garnet (server protokol Redis di dalam AiThread) selama ±24 jam. |
+| **Long memory** | Memory yang sudah dipindah dari short memory ke database. |
 | **Project memory / Knowledge memory** | Pengetahuan khusus satu project / pola umum yang berguna lintas project. |

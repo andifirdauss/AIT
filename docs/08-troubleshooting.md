@@ -127,8 +127,15 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 ## Redis & database
 
 **Kartu Redis *Tidak terhubung***
-Jalankan `docker compose up -d redis` atau periksa `ConnectionStrings:Redis`. Selama Redis mati, memory baru
-langsung masuk long memory; tidak ada data hilang.
+Short memory memakai Garnet di dalam AiThread. Cari baris `Embedded Garnet` di log AiThread: bila Garnet gagal
+start, penyebabnya tercatat di situ. Bila `AiThread:EmbeddedRedis:Enabled` = `false`, pastikan Redis eksternal di
+`ConnectionStrings:Redis` hidup. Selama short memory tidak tersedia, memory baru langsung masuk long memory; tidak
+ada data hilang.
+
+**Log `Port 6379 is already in use … short memory uses that server`**
+Program lain (biasanya container Docker `aithread-redis` lama) memakai port short memory, sehingga AiThread
+memakainya alih-alih Garnet. Pindahkan dulu short memory yang ingin disimpan (menu Memory → **→ DB**), lalu
+`docker rm -f aithread-redis` dan restart AiThread. Lihat [Instalasi](01-instalasi.md#1-short-memory-garnet).
 
 **Kartu Database *Tidak terhubung*** / log `Database migration failed`
 Untuk LocalDB: `sqllocaldb start MSSQLLocalDB`. Untuk server lain: periksa `ConnectionStrings:Default`.

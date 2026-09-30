@@ -7,7 +7,7 @@ Konvensi kode dan penggunaan MCP ada di `CLAUDE.md` di root repo.
 | Project | Isi |
 |---|---|
 | `src/AiThread.Common` | Entity, enum, DTO, `AiThreadOptions`. |
-| `src/AiThread.Data` | `AiThreadDbContext` (SQL Server via `IDbContextFactory`), migrasi EF, `RedisShortMemoryStore`, `InProcessEventBus`. |
+| `src/AiThread.Data` | `AiThreadDbContext` (SQL Server via `IDbContextFactory`), migrasi EF, `RedisShortMemoryStore`, `EmbeddedRedisServer` (Garnet di dalam proses), `InProcessEventBus`. |
 | `src/AiThread.Service` | Service utama (`NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`, dll.), `Orchestration/`, `Workspace/`, `Proxy/`, `Background/`. |
 | `src/AiThread.API` | Controller REST `/api/*`, `AnthropicProxyController` (`/v1/*`), `StreamController` (SSE), infrastruktur. |
 | `src/AiThread.UI` | Host ASP.NET Core MVC. View hanya kerangka; data dimuat oleh `wwwroot/js/pages/*.js` lewat `/api` + SSE. |
