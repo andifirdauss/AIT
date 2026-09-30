@@ -37,6 +37,14 @@ memakai port lain (`--urls`) atau instance background dihentikan dulu. `Backgrou
 status thread saat proses berhenti: shutdown rapi membatalkan thread yang berjalan, dan saat start thread yang
 tertinggal dari proses yang mati mendadak ditandai *Cancelled*.
 
+`AiThread.exe` standalone: `scripts/publish-exe.ps1` memakai profil `src/AiThread.UI/Properties/PublishProfiles/standalone.pubxml`
+(win-x64, self-contained, single-file; `AssemblyName` jadi `AiThread` hanya di profil itu, build biasa tetap
+`AiThread.UI`) dan membangun ke `dist/.build`, jadi tidak bentrok dengan `bin/` yang sedang dikunci. Menu, tray
+(Win32 murni, tanpa WinForms agar RAM kecil), autostart, dan perintah CLI ada di `src/AiThread.UI/Hosting/`;
+`Program.cs` hanya memanggil `Cli.RunAsync`. Tanpa argumen dan tanpa terminal/`--urls`/env `ASPNETCORE_*`, host berjalan
+seperti biasa (`dotnet run`, Visual Studio, script background tidak berubah). Menguji menu membutuhkan konsol asli:
+jalankan exe dengan `menu --port <port uji>` agar tidak menyentuh instance port 5225.
+
 Migrasi diterapkan otomatis saat aplikasi start (`InitializeDataLayerAsync`). `DesignTimeDbContextFactory` memakai
 connection string LocalDB default.
 
