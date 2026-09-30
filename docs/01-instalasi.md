@@ -103,7 +103,7 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 | Log | `%LOCALAPPDATA%\AiThread\logs\aithread-<waktu>.log` (dan `.err.log`); 10 run terakhir disimpan. Log aktivitas thread tetap ada di Dashboard. |
 | Konfigurasi | `appsettings.json` ikut ter-publish: ubah `src/AiThread.UI/appsettings.json` lalu `restart`. Environment `Production`. Setting dari UI (database) tetap sama dengan saat development. |
 | Port lain | `-Port 6000` — pakai `-Port` yang sama untuk semua perintah, lalu terapkan ulang integrasi Claude Code. |
-| Autostart | Task Scheduler `AiThread`, 30 detik setelah login, berjalan sebagai akun Anda sendiri (tanpa admin). Karena itu LocalDB, API key 9router yang terenkripsi, dan login Claude Code CLI tetap berlaku. Memakai hasil publish terakhir tanpa build ulang. |
+| Autostart | Task Scheduler `AiThread`, 30 detik setelah login, berjalan sebagai akun Anda sendiri (tanpa admin). Karena itu LocalDB dan API key 9router yang terenkripsi tetap berlaku. Memakai hasil publish terakhir tanpa build ulang. |
 | Stop | Lewat `POST /api/system/shutdown`: thread yang sedang berjalan dibatalkan dan dicatat (maks. ±15 detik), lalu proses keluar. Bila tidak berhenti dalam 45 detik, proses dihentikan paksa. |
 | Mati mendadak | Logoff, crash, atau dihentikan paksa: saat start berikutnya, thread yang tertinggal ditandai *Cancelled* dengan pesan *AiThread berhenti saat thread ini berjalan.* |
 

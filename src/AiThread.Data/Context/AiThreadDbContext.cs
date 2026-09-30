@@ -38,7 +38,6 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.ToTable("Nodes");
             e.Property(x => x.Name).HasMaxLength(100).IsRequired();
             e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
-            e.Property(x => x.Backend).HasConversion<string>().HasMaxLength(20).HasDefaultValue(NodeBackend.Router);
             e.Property(x => x.Model).HasMaxLength(200).IsRequired();
             e.HasIndex(x => new { x.Role, x.IsActive });
         });
@@ -47,9 +46,8 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
         {
             e.ToTable("Projects");
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
-            e.Property(x => x.SolutionPath).HasMaxLength(800).IsRequired();
             e.Property(x => x.RootPath).HasMaxLength(800).IsRequired();
-            e.HasIndex(x => x.SolutionPath).IsUnique();
+            e.HasIndex(x => x.RootPath).IsUnique();
         });
 
         modelBuilder.Entity<ThreadRun>(e =>

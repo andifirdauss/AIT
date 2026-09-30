@@ -69,13 +69,6 @@ namespace AiThread.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Backend")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("Router");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -192,11 +185,6 @@ namespace AiThread.Data.Migrations
                         .HasMaxLength(800)
                         .HasColumnType("nvarchar(800)");
 
-                    b.Property<string>("SolutionPath")
-                        .IsRequired()
-                        .HasMaxLength(800)
-                        .HasColumnType("nvarchar(800)");
-
                     b.Property<string>("Summary")
                         .HasColumnType("nvarchar(max)");
 
@@ -205,7 +193,7 @@ namespace AiThread.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SolutionPath")
+                    b.HasIndex("RootPath")
                         .IsUnique();
 
                     b.ToTable("Projects", (string)null);

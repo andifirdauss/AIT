@@ -12,7 +12,7 @@ public sealed record ClaudeRequestInfo(
     bool Stream,
     string Model,
     string? WorkingDirectory,
-    string? SolutionHint,
+    string? ProjectHint,
     string? SessionId,
     // Latest user turn without <system-reminder> blocks.
     string Prompt,
@@ -29,7 +29,9 @@ public sealed record ThreadAnchorRef(string ShortId, int MessageIndex);
 // turn worth orchestrating or an auxiliary call (title generation, compaction, quota check...) to pass through.
 public static partial class ClaudeRequestInspector
 {
-    public const string SolutionHeader = "X-AiThread-Solution";
+    // Pins the session to a project root folder. The old name carried a .sln path and is still accepted.
+    public const string ProjectHeader = "X-AiThread-Project";
+    public const string LegacySolutionHeader = "X-AiThread-Solution";
     public const string WorkingDirectoryHeader = "X-AiThread-Cwd";
     public const string SessionHeader = "X-AiThread-Session";
 
@@ -89,7 +91,7 @@ public static partial class ClaudeRequestInspector
             stream,
             model,
             workingDirectory,
-            Header(headers, SolutionHeader),
+            Header(headers, ProjectHeader) ?? Header(headers, LegacySolutionHeader),
             sessionId,
             prompt,
             promptContext,

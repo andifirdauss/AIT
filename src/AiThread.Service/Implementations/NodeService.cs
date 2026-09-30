@@ -6,7 +6,6 @@ using AiThread.Data.Context;
 using AiThread.Data.Messaging;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
-using AiThread.Service.Planner;
 using Microsoft.EntityFrameworkCore;
 
 namespace AiThread.Service.Implementations;
@@ -14,7 +13,6 @@ namespace AiThread.Service.Implementations;
 public sealed class NodeService(
     IDbContextFactory<AiThreadDbContext> dbFactory,
     INineRouterService router,
-    ClaudeCliRunner claudeCli,
     IEventBus eventBus,
     IActivityLogService activityLog) : INodeService
 {
@@ -114,12 +112,6 @@ public sealed class NodeService(
         if (node is null) return new NodeTestResultDto(false, null, 0, 0, "Node tidak ditemukan.");
 
         var stopwatch = Stopwatch.StartNew();
-        if (node.Backend == NodeBackend.ClaudeCli)
-        {
-            var reply = await claudeCli.PingAsync(node.Model, cancellationToken);
-            return new NodeTestResultDto(reply.Success, reply.Reply, stopwatch.ElapsedMilliseconds, reply.Tokens, reply.Error);
-        }
-
         try
         {
             var result = await router.ChatAsync(new ChatCompletionRequest
@@ -144,9 +136,6 @@ public sealed class NodeService(
         if (string.IsNullOrWhiteSpace(request.Name)) throw new AppValidationException("Nama node wajib diisi.");
         if (request.Name.Length > 100) throw new AppValidationException("Nama node maksimal 100 karakter.");
         if (!Enum.IsDefined(request.Role)) throw new AppValidationException("Role node tidak valid.");
-        if (!Enum.IsDefined(request.Backend)) throw new AppValidationException("Backend node tidak valid.");
-        if (request.Backend == NodeBackend.ClaudeCli && request.Role != NodeRole.Planner)
-            throw new AppValidationException("Backend Claude Code CLI hanya bisa dipakai untuk node Planner.");
         if (string.IsNullOrWhiteSpace(request.Model)) throw new AppValidationException("Model wajib dipilih.");
         if (request.MaxTokens is < 256 or > 200_000) throw new AppValidationException("Max tokens harus di antara 256 dan 200000.");
         if (request.MaxConcurrency is < 1 or > 64) throw new AppValidationException("Max concurrency harus di antara 1 dan 64.");
@@ -157,7 +146,6 @@ public sealed class NodeService(
     {
         node.Name = request.Name.Trim();
         node.Role = request.Role;
-        node.Backend = request.Backend;
         node.Model = request.Model.Trim();
         node.Temperature = request.Temperature;
         node.MaxTokens = request.MaxTokens;
@@ -168,6 +156,6 @@ public sealed class NodeService(
     }
 
     private static NodeDto ToDto(AiNode n) => new(
-        n.Id, n.Name, n.Role, n.Backend, n.Model, n.Temperature, n.MaxTokens, n.MaxConcurrency,
+        n.Id, n.Name, n.Role, n.Model, n.Temperature, n.MaxTokens, n.MaxConcurrency,
         n.Priority, n.SystemPrompt, n.IsActive, n.CreatedAt, n.UpdatedAt);
 }

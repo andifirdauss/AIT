@@ -7,7 +7,7 @@ Semua endpoint berada di host AiThread (default `http://localhost:5225`). Enum d
 
 | Method | Path | Keterangan |
 |---|---|---|
-| `POST` | `/v1/messages` | Format Anthropic Messages. Request agen utama dari sesi di dalam project `.sln`/`.slnx` diorkestrasi (stream atau non-stream); lainnya — termasuk sesi di luar project — diteruskan ke 9router. `/v1/v1/messages` juga diterima. |
+| `POST` | `/v1/messages` | Format Anthropic Messages. Request agen utama dari sesi di dalam sebuah project (folder dengan `.git` atau file build) diorkestrasi (stream atau non-stream); lainnya — termasuk sesi di luar project — diteruskan ke 9router. `/v1/v1/messages` juga diterima. |
 | `POST` | `/v1/messages/count_tokens` | Diteruskan ke 9router; fallback estimasi `{ "input_tokens": n }`. |
 | `POST` | `/v1/chat/completions` | Format OpenAI Chat Completions; aturan orkestrasi/passthrough sama. |
 | `POST` | `/v1/responses` | Format OpenAI Responses (Codex CLI); aturan sama. |
@@ -17,8 +17,8 @@ Semua endpoint berada di host AiThread (default `http://localhost:5225`). Enum d
 
 Balasan orkestrasi dan pesan error memakai format klien yang memanggil. Auth (hanya diperiksa bila *Proxy API key*
 diisi): `Authorization: Bearer <key>`, `x-api-key: <key>`, `x-goog-api-key: <key>`, atau `?key=<key>` (Gemini).
-Header opsional: `X-AiThread-Solution` (path `.sln`/`.slnx`), `X-AiThread-Cwd` (working directory),
-`X-AiThread-Session` (id sesi).
+Header opsional: `X-AiThread-Project` (folder root project; `X-AiThread-Solution` dengan path `.sln`/`.slnx` dari versi
+lama masih diterima), `X-AiThread-Cwd` (working directory), `X-AiThread-Session` (id sesi).
 
 Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar: `message_start`,
 `content_block_start`, `ping` (tiap 10 detik selama bekerja), `content_block_delta` (`text_delta`),
@@ -89,12 +89,12 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi`; id lain → `404`.
 
 | Method | Path | Body |
 |---|---|---|
-| `GET` | `/api/projects` | — |
-| `GET` | `/api/projects/{id}` | — (project, daftar project di solution, sesi) |
-| `POST` | `/api/projects` | `{ "path": "D:\\Source\\MyApp\\MyApp.sln" }` (file atau folder) |
-| `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A\\A.sln", "D:\\Source\\B\\B.slnx"] }` → `registered`, `alreadyRegistered`, `errors` |
-| `GET` | `/api/projects/browse?path=` | tanpa `path` = daftar drive. Hasil: `path`, `parent`, `folders[]` (`name`, `path`, `hasSolution`), `solutions[]` (`name`, `path`, `directory`, `isRegistered`, `projectId`), `quickLocations[]` |
-| `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Hasil: `root`, `solutions[]`, `foldersScanned`, `truncated`, `elapsedMs` |
+| `GET` | `/api/projects` | — (tiap project: `name`, `rootPath`, `stacks[]`, `exists`, jumlah thread/sesi/memory) |
+| `GET` | `/api/projects/{id}` | — (`project`, `modules[]` = file solution/build di dalam project, `sessions[]`) |
+| `POST` | `/api/projects` | `{ "path": "D:\\Source\\MyApp" }` (folder; path di dalam project mendaftarkan project itu, path file memakai foldernya). `400` untuk drive, Home, atau folder sistem |
+| `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A", "D:\\Source\\B"] }` → `registered`, `alreadyRegistered`, `errors` |
+| `GET` | `/api/projects/browse?path=` | tanpa `path` = daftar drive. Hasil: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (root project di folder itu: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
+| `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Hasil: `root`, `projects[]` (bentuk sama dengan `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
 | `DELETE` | `/api/projects/{id}` | — (thread dipertahankan, memory project dihapus) |
 
 ### Memory

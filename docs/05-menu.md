@@ -40,30 +40,35 @@ tombol *Jeda*. Log debug berisi panggilan tool planner dan request passthrough.
 
 ## Project
 
-Daftar codebase yang dikenal AiThread. Satu project = satu file `.sln`/`.slnx`.
+Daftar codebase yang dikenal AiThread. Satu project = satu folder root, yaitu folder yang berisi `.git` atau file build
+(`.sln`, `pom.xml`, `package.json`, `go.mod`, dst.), apa pun bahasanya.
 
-- **Registrasi otomatis**: prompt pertama dari sesi Claude Code di folder solution mendaftarkan project-nya. Sesi di
-  luar project `.sln`/`.slnx` diabaikan (lihat [Penggunaan](04-penggunaan.md#sesi-di-luar-project-slnslnx)).
-- **Telusuri…**: membuka penelusur solution tanpa perlu menyalin path:
+- **Registrasi otomatis**: prompt pertama dari sesi di dalam sebuah project mendaftarkan project-nya. Sesi di folder
+  tanpa marker diabaikan (lihat [Penggunaan](04-penggunaan.md#sesi-di-luar-project)).
+- **Telusuri…**: membuka penelusur folder tanpa perlu menyalin path:
   - pintasan lokasi: drive, *Home*, `source\repos`, dan folder induk project yang baru dipakai;
-  - daftar folder — klik untuk masuk, *↑ Naik* untuk kembali, atau ketik path lalu Enter. Folder yang langsung berisi
-    solution bertanda <kbd>sln</kbd>;
-  - *Solution di folder ini*: `.sln`/`.slnx` di folder aktif, dengan status *Terdaftar* / *Baru*;
+  - daftar folder — klik untuk masuk, *↑ Naik* untuk kembali, atau ketik path lalu Enter. Folder project bertanda
+    stack-nya (mis. <kbd>.NET</kbd>, <kbd>Java (Maven)</kbd>, <kbd>Node.js</kbd>) atau <kbd>git</kbd>;
+  - *Project di folder ini*: folder aktif bila ia sebuah root project, dengan status *Terdaftar* / *Baru*;
   - *Scan*: cari di semua sub-folder sampai kedalaman 2–8 (folder build, VCS, tersembunyi, dan junction dilewati;
-    berhenti di 300 hasil, 50.000 folder, atau 20 detik). *Pilih semua yang belum terdaftar* mencentang semua hasil baru;
-  - centang satu atau beberapa solution → **Daftarkan terpilih**.
+    sebuah project tidak dipindai lebih dalam; berhenti di 300 hasil, 50.000 folder, atau 20 detik). *Pilih semua yang
+    belum terdaftar* mencentang semua hasil baru;
+  - centang satu atau beberapa project → **Daftarkan terpilih**.
   Folder terakhir yang dibuka diingat browser untuk kunjungan berikutnya.
-- **Daftarkan manual**: tempel path file solution atau foldernya → *Daftarkan*.
+- **Daftarkan manual**: tempel path folder → *Daftarkan*. Folder dengan marker sendiri didaftarkan apa adanya; path di
+  dalam sebuah project mendaftarkan project itu; folder tanpa marker sama sekali tetap bisa didaftarkan (sesi di
+  dalamnya lalu diorkestrasi dan punya memory). Drive, folder Home, dan folder sistem ditolak. Path file juga diterima
+  (foldernya yang dipakai).
 - Registrasi diperlukan sebelum menerapkan integrasi CLI per project.
-- Kolom: nama & root, **AiThread**, path solution, jumlah thread, sesi Claude Code, memory, terakhir dipakai. Badge
-  *file hilang* muncul bila `.sln` sudah tidak ada.
+- Kolom: nama & root, **AiThread**, stack, jumlah thread, sesi Claude Code, memory, terakhir dipakai. Badge
+  *folder hilang* muncul bila folder project sudah tidak ada.
 - **Switch AiThread**: menyala = `<project>/.claude/settings.local.json` mengarahkan Claude Code ke proxy ini. Menyalakan
   menulis blok `env` (sama dengan switch Claude Code per project di menu [CLI](#cli)); mematikan menghapus kunci AiThread
   saja, kunci lain di file tetap. Catatan *URL lain* berarti file mengarah ke alamat proxy lain (mis. port lama) —
   nyalakan ulang untuk memperbarui. Buka sesi Claude Code baru setelah mengubahnya.
 - **Hapus**: riwayat thread tetap ada (tanpa project), tetapi **semua memory project ini ikut terhapus**.
 
-**Detail project**: daftar project di dalam solution, sesi Claude Code (id sesi, jumlah thread, terakhir aktif),
+**Detail project**: stack, daftar file solution/build yang ditemukan di dalam project, sesi Claude Code (id sesi, jumlah thread, terakhir aktif),
 thread project ini, dan tautan ke memory-nya.
 
 ## Memory

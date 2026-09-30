@@ -5,20 +5,20 @@
 <div class="page-header">
     <div>
         <h1>Project</h1>
-        <p class="page-subtitle">Codebase yang dikenal AiThread. Identitas unik = file <span class="mono">.sln</span> / <span class="mono">.slnx</span>, sehingga banyak sesi dari project berbeda tidak saling tercampur.</p>
+        <p class="page-subtitle">Codebase yang dikenal AiThread. Identitas unik = folder root project (berisi <span class="mono">.git</span> atau file build seperti <span class="mono">.sln</span>, <span class="mono">pom.xml</span>, <span class="mono">package.json</span>), sehingga banyak sesi dari project berbeda tidak saling tercampur.</p>
     </div>
 </div>
 
 <div class="card mb-3">
     <div class="card-body">
         <p class="small text-secondary mb-2">
-            Project terdaftar otomatis pada prompt pertama dari sesi Claude Code yang dibuka di folder berisi <span class="mono">.sln</span>/<span class="mono">.slnx</span>.
-            Sesi di luar project <span class="mono">.sln</span>/<span class="mono">.slnx</span> <strong>diabaikan</strong> AiThread — prompt-nya diteruskan langsung tanpa orkestrasi.
+            Project terdaftar otomatis pada prompt pertama dari sesi yang dibuka di folder project (atau di dalamnya).
+            Sesi di folder tanpa marker project <strong>diabaikan</strong> AiThread — prompt-nya diteruskan langsung tanpa orkestrasi dan tanpa memory.
             Kolom <strong>AiThread</strong> menyalakan/mematikan pengarahan Claude Code ke proxy ini lewat <span class="mono">&lt;project&gt;/.claude/settings.local.json</span>; buka sesi Claude Code baru setelah mengubahnya.
         </p>
         <label class="form-label small text-secondary" for="projectPath">Daftarkan manual</label>
         <div class="input-group">
-            <input type="text" class="form-control mono" id="projectPath" placeholder="D:\Source\MyApp\MyApp.sln atau folder yang berisi .sln/.slnx" />
+            <input type="text" class="form-control mono" id="projectPath" placeholder="D:\Source\MyApp (folder project)" />
             <button class="btn btn-outline-secondary" type="button" id="btnBrowse">Telusuri…</button>
             <button class="btn btn-primary" type="button" id="btnRegister">Daftarkan</button>
         </div>
@@ -29,7 +29,7 @@
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0 table-clickable">
             <thead>
-                <tr><th>Project</th><th title="Arahkan Claude Code di project ini ke AiThread (.claude/settings.local.json)">AiThread</th><th>Solution</th><th>Thread</th><th>Sesi</th><th>Memory</th><th>Terakhir dipakai</th><th></th></tr>
+                <tr><th>Project</th><th title="Arahkan Claude Code di project ini ke AiThread (.claude/settings.local.json)">AiThread</th><th>Stack</th><th>Thread</th><th>Sesi</th><th>Memory</th><th>Terakhir dipakai</th><th></th></tr>
             </thead>
             <tbody id="projectRows"><tr><td colspan="8" class="empty-state">Memuat…</td></tr></tbody>
         </table>
@@ -40,7 +40,7 @@
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="browseModalTitle">Telusuri solution (.sln / .slnx)</h5>
+                <h5 class="modal-title" id="browseModalTitle">Telusuri folder project</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body">
@@ -57,8 +57,8 @@
                         <div class="list-group browse-list" id="folderList"></div>
                     </div>
                     <div class="col-lg-7">
-                        <div class="small text-secondary mb-1">Solution di folder ini</div>
-                        <div class="list-group mb-3" id="solutionList"></div>
+                        <div class="small text-secondary mb-1">Project di folder ini</div>
+                        <div class="list-group mb-3" id="projectList"></div>
 
                         <div class="border rounded p-2">
                             <div class="d-flex flex-wrap align-items-center gap-2">
@@ -80,7 +80,7 @@
                 </div>
             </div>
             <div class="modal-footer justify-content-between">
-                <span class="small text-secondary" id="selectionInfo">Belum ada solution dipilih.</span>
+                <span class="small text-secondary" id="selectionInfo">Belum ada project dipilih.</span>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
                     <button type="button" class="btn btn-primary" id="btnRegisterSelected" disabled>Daftarkan terpilih</button>
