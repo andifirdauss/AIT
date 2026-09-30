@@ -21,9 +21,9 @@ public class ContextPackBuilderTests
     [Fact]
     public void Anchor_line_round_trips_to_the_short_id()
     {
-        var line = ThreadAnchor.Line("MasterData.sln", FirstId);
+        var line = ThreadAnchor.Line("MasterData", FirstId);
 
-        Assert.Equal("**AiThread** · `MasterData.sln` · thread `3f2a1b9c`", line);
+        Assert.Equal("**AiThread** · `MasterData` · thread `3f2a1b9c`", line);
         Assert.Equal(["3f2a1b9c"], ThreadAnchor.Find($"intro\n{line}\nmore"));
         Assert.Empty(ThreadAnchor.Find("thread `3f2a1b9c` mentioned without the AiThread header"));
     }

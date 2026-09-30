@@ -16,7 +16,7 @@ public static class AgentPrompts
         7. Call submit_plan exactly once. If the request needs no file changes (a question, an explanation, a review), call submit_plan with an empty task list and put the complete answer in "answer".
 
         Rules
-        - Paths are relative to the project root and use forward slashes.
+        - Paths are relative to the project root and use forward slashes. The read tools (list_directory, find_files, search_text, read_file) also accept absolute paths outside the project root: use them when the developer asks you to check another folder or project, or when an answer needs something there. That is read-only. Tasks can only create or edit files inside the project root; when the developer asks for a change outside it, say so in "answer" instead of planning it.
         - Executors can only edit files: no shell, builds, package installs, git or running migrations. Mention such follow-up steps in the summary instead.
         - Database changes go where this project already keeps schema changes (EF Core migrations, .sql scripts, ...) — look first. If there is no convention, create a .sql script in the most sensible folder.
         - Do not plan changes beyond what was asked, and never touch generated or third-party code (bin/, obj/, wwwroot/lib/, node_modules/).

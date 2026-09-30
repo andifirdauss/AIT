@@ -15,7 +15,7 @@
 Contoh untuk prompt *"Tambahkan kolom deskripsi di form user: field di UI, logic di JS, validasi di service, dan DDL database."*:
 
 ```
-**AiThread** · `SampleApp.sln` · thread `5e469b54`
+**AiThread** · `SampleApp` · thread `5e469b54`
 🧠 Planner `cc/claude-opus` menganalisis project & menyusun rencana…
    · list_directory `.`
    · read_file `src/Web/Views/User/Index.cshtml`
@@ -42,7 +42,7 @@ Field **Deskripsi** sudah ditambahkan end-to-end. …
 
 | Baris | Arti |
 |---|---|
-| `**AiThread** · MyApp.sln · thread …` | Project yang terdeteksi dan id thread (cari di Dashboard). Baris ini hanya muncul untuk sesi di dalam project `.sln`/`.slnx`. |
+| `**AiThread** · MyApp · thread …` | Nama project yang terdeteksi dan id thread (cari di Dashboard). Baris ini hanya muncul untuk sesi di dalam sebuah project (folder dengan `.git` atau file build). |
 | `🧠 Planner …` dan baris `·` | Planner sedang membaca kode. Setiap baris adalah satu panggilan tool (read-only). |
 | `📋 Rencana` dan `•` | Rencana yang sudah lolos validasi, satu baris per tugas. `(setelah T3)` = menunggu tugas lain. |
 | `✅` / `❌` / `⏭️` | Tugas berhasil / gagal (dengan alasan) / dilewati karena tugas yang ditunggunya gagal. |
@@ -107,23 +107,37 @@ lalu kirim pesan teks biasa: bot menampilkan status thread yang diperbarui live 
 *Batalkan*) dan mengirim ringkasan wrapper saat selesai; `/diff` menampilkan perubahan file. Setup dan daftar perintah
 ada di [Prompt dari Telegram](11-telegram.md).
 
-## Sesi di luar project .sln/.slnx
+## Sesi di luar project
 
-AiThread hanya mengorkestrasi sesi Claude Code yang dibuka di dalam project `.sln`/`.slnx`. Pada prompt pertama
-sebuah sesi, AiThread memeriksa working directory-nya:
+AiThread hanya mengorkestrasi sesi yang dibuka di dalam sebuah project: folder yang berisi `.git` atau file build
+(`.sln`, `pom.xml`, `package.json`, `go.mod`, dst.), atau salah satu sub-foldernya. Bahasa project tidak dibatasi.
+Pada prompt pertama sebuah sesi, AiThread memeriksa working directory-nya:
 
-- **ada solution** → project didaftarkan (bila belum) dan semua prompt sesi itu diorkestrasi;
-- **tidak ada solution** → sesi **diabaikan**: prompt diteruskan langsung ke 9router, Claude Code bekerja sebagai agen
-  biasa, dan tidak ada thread yang tercatat. Log dashboard menampilkan
-  `Sesi xxxxxxxx (…) bukan bagian project .sln/.slnx — prompt diabaikan orkestrasi dan diteruskan langsung.`
+- **ada marker project** → project didaftarkan (bila belum) dan semua prompt sesi itu diorkestrasi;
+- **tidak ada marker** → sesi **diabaikan**: prompt diteruskan langsung ke 9router, Claude Code bekerja sebagai agen
+  biasa, dan tidak ada thread, project, maupun memory yang tercatat. Contohnya folder kosong tempat Anda hanya meminta
+  dibuatkan sebuah file teks. Log dashboard menampilkan
+  `Sesi xxxxxxxx (…) bukan bagian project (alasannya) — prompt diabaikan orkestrasi dan diteruskan langsung.`
 
-Keputusan diingat per sesi selama 30 menit. Jika Anda baru menambahkan `.sln` ke folder itu, mulai sesi baru
-(atau tunggu 30 menit) agar dicek ulang.
+Folder induk yang hanya berisi beberapa project (mis. 4 repo berdampingan) juga diabaikan karena ambigu; log menyebut
+nama project di dalamnya. Buka sesi Claude Code di dalam salah satunya. Ingin folder tanpa marker tetap diorkestrasi
+dan punya memory? Daftarkan manual lewat menu Project (*Daftarkan manual*).
+
+Keputusan untuk sesi yang diabaikan dicek ulang setelah sekitar 5 detik, jadi begitu Anda menambahkan `.git` atau file
+build, prompt berikutnya langsung dikenali.
 
 ## Beberapa project sekaligus
 
-Sesi Claude Code dari project berbeda boleh berjalan bersamaan. Tiap thread terikat ke solution-nya sendiri
-(`.sln`/`.slnx`), memory project terpisah, dan batas *Max paralel* tiap node dibagi di antara semua thread.
+Sesi dari project berbeda boleh berjalan bersamaan (mis. 4 sesi Claude Code di 4 project, atau campuran Java, Node,
+dan .NET). Tiap thread terikat ke root project-nya sendiri, memory project terpisah, dan batas *Max paralel* tiap
+node dibagi di antara semua thread.
+
+## Mengecek folder atau project lain
+
+Sebutkan path lengkapnya di prompt, mis. *"cek struktur `D:/project/otherproject` dan bandingkan dengan project ini"*.
+Planner boleh **membaca** (melihat isi folder, mencari teks, membaca file) di luar root project, jadi ia bisa menjawab
+dari sana. Mengubah file tetap hanya di dalam root project: bila Anda meminta perubahan di luar root, planner
+menjelaskannya di jawaban dan tidak membuat tugas. Untuk mengerjakan project lain, buka sesi di project itu.
 
 ## Percakapan lanjutan
 

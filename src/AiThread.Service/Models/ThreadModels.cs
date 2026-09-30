@@ -10,7 +10,7 @@ public sealed record ThreadRequest(
     string? PromptContext,
     string? ConversationContext,
     string? WorkingDirectory,
-    // Resolved before the thread starts; prompts outside a .sln/.slnx project never become threads.
+    // Resolved before the thread starts; prompts outside a project (no .git or build manifest) never become threads.
     Guid ProjectId,
     string? SessionId,
     // Claude Code only: what the context keeper knows about the earlier turns of this chat.

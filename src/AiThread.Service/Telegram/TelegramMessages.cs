@@ -28,7 +28,7 @@ public static class TelegramMessages
 
     public const string TextOnly = "Hanya pesan teks yang didukung. Kirim /help untuk bantuan.";
     public const string UnknownCommand = "Perintah tidak dikenal. Kirim /help untuk daftar perintah.";
-    public const string NoProjects = "Belum ada project terdaftar. Daftarkan <code>.sln</code>/<code>.slnx</code> di menu <b>Project</b> AiThread terlebih dahulu.";
+    public const string NoProjects = "Belum ada project terdaftar. Buka sesi di folder project (berisi <code>.git</code> atau file build) atau daftarkan foldernya di menu <b>Project</b> AiThread terlebih dahulu.";
     public const string ConversationReset = "🆕 Percakapan baru. Prompt berikutnya dikirim tanpa riwayat sebelumnya.";
     public const string NothingToCancel = "Tidak ada thread berjalan dari chat ini. Untuk thread lain: <code>/cancel &lt;id&gt;</code> (lihat /status).";
     public const string NoThreadYet = "Belum ada thread dari chat ini.";
