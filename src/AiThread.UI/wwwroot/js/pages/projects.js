@@ -20,12 +20,18 @@
     </td>`;
   }
 
+  // A folder marked as project without a recognized stack is a plain repository (.git only).
+  function stackBadges(stacks, gitFallback) {
+    if (stacks?.length) return stacks.map(s => `<span class="badge text-bg-primary me-1">${escapeHtml(s)}</span>`).join('');
+    return gitFallback ? '<span class="badge text-bg-secondary">git</span>' : '<span class="small text-secondary">–</span>';
+  }
+
   function row(p, status) {
-    const missing = p.exists ? '' : ' <span class="badge text-bg-warning">file hilang</span>';
+    const missing = p.exists ? '' : ' <span class="badge text-bg-warning">folder hilang</span>';
     return `<tr data-href="/Project/Detail/${p.id}">
       <td><div class="fw-semibold">${escapeHtml(p.name)}${missing}</div><div class="small text-secondary mono">${escapeHtml(p.rootPath)}</div></td>
       ${integrationCell(p, status)}
-      <td class="small mono">${escapeHtml(p.solutionPath)}</td>
+      <td>${stackBadges(p.stacks, false)}</td>
       <td>${fmt.number(p.threadCount)}</td>
       <td>${fmt.number(p.sessionCount)}</td>
       <td><a href="/Memory?projectId=${p.id}">${fmt.number(p.memoryCount)}</a></td>
@@ -45,7 +51,7 @@
       const statuses = new Map(integration.map(s => [s.projectId, s]));
       tbody.innerHTML = projects.length
         ? projects.map(p => row(p, statuses.get(p.id))).join('')
-        : '<tr><td colspan="8" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari .sln/.slnx, atau buka Claude Code di folder solution melalui AiThread.</td></tr>';
+        : '<tr><td colspan="8" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari folder project, atau buka Claude Code di folder project (berisi .git atau file build) melalui AiThread.</td></tr>';
     } catch (error) {
       tbody.innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
@@ -70,7 +76,7 @@
   el('btnRegister').addEventListener('click', async () => {
     const path = el('projectPath').value.trim();
     if (!path) {
-      toast('Isi path .sln/.slnx atau foldernya, atau klik Telusuri….', 'warning');
+      toast('Isi path folder project, atau klik Telusuri….', 'warning');
       return;
     }
     try {
@@ -96,7 +102,7 @@
     }
   });
 
-  // --- Solution browser ------------------------------------------------------------------------
+  // --- Project browser -------------------------------------------------------------------------
 
   const browseModal = bootstrap.Modal.getOrCreateInstance(el('browseModal'));
   const selected = new Set();
@@ -119,14 +125,14 @@
     }
   }
 
-  function solutionItem(s, subtitle) {
-    const status = s.isRegistered
-      ? `<a class="badge text-bg-success text-decoration-none" href="/Project/Detail/${s.projectId}">Terdaftar</a>`
+  function projectItem(c, subtitle) {
+    const status = c.isRegistered
+      ? `<a class="badge text-bg-success text-decoration-none" href="/Project/Detail/${c.projectId}">Terdaftar</a>`
       : '<span class="badge text-bg-secondary">Baru</span>';
-    const checked = s.isRegistered || selected.has(s.path) ? 'checked' : '';
+    const checked = c.isRegistered || selected.has(c.path) ? 'checked' : '';
     return `<label class="list-group-item d-flex align-items-center gap-2">
-      <input class="form-check-input flex-shrink-0 mt-0" type="checkbox" data-select="${escapeHtml(s.path)}" ${checked} ${s.isRegistered ? 'disabled' : ''} />
-      <span class="flex-grow-1 text-break"><span class="fw-semibold">${escapeHtml(s.name)}</span>
+      <input class="form-check-input flex-shrink-0 mt-0" type="checkbox" data-select="${escapeHtml(c.path)}" ${checked} ${c.isRegistered ? 'disabled' : ''} />
+      <span class="flex-grow-1 text-break"><span class="fw-semibold">${escapeHtml(c.name)}</span> ${stackBadges(c.stacks, true)}
         <span class="d-block small text-secondary mono">${escapeHtml(subtitle)}</span></span>
       ${status}
     </label>`;
@@ -142,17 +148,17 @@
     el('folderTitle').textContent = current.path ? `Folder (${current.folders.length})` : 'Drive';
     el('folderList').innerHTML = current.folders.length
       ? current.folders.map(f => `<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-path="${escapeHtml(f.path)}">
-          <span class="text-break">📁 ${escapeHtml(f.name)}</span>${f.hasSolution ? '<span class="badge text-bg-primary">sln</span>' : ''}
+          <span class="text-break">📁 ${escapeHtml(f.name)}</span>${f.isProject ? `<span>${stackBadges(f.stacks, true)}</span>` : ''}
         </button>`).join('')
       : '<div class="list-group-item small text-secondary">Tidak ada sub-folder.</div>';
   }
 
-  function renderSolutions() {
-    el('solutionList').innerHTML = !current.path
+  function renderProjects() {
+    el('projectList').innerHTML = !current.path
       ? '<div class="list-group-item small text-secondary">Pilih drive atau lokasi untuk mulai.</div>'
-      : current.solutions.length
-        ? current.solutions.map(s => solutionItem(s, s.directory)).join('')
-        : '<div class="list-group-item small text-secondary">Tidak ada .sln/.slnx langsung di folder ini. Buka folder bertanda <span class="badge text-bg-primary">sln</span> atau gunakan Scan.</div>';
+      : current.projects.length
+        ? current.projects.map(c => projectItem(c, c.path)).join('')
+        : '<div class="list-group-item small text-secondary">Folder ini bukan root project (tidak ada .git atau file build). Buka folder yang bertanda stack atau <span class="badge text-bg-secondary">git</span>, gunakan Scan, atau isi path-nya di kolom Daftarkan manual.</div>';
   }
 
   function renderScan() {
@@ -164,11 +170,11 @@
     }
 
     const truncated = lastScan.truncated ? ' · <span class="text-warning">berhenti lebih awal (batas waktu/jumlah) — persempit folder atau kedalaman</span>' : '';
-    el('scanInfo').innerHTML = `${lastScan.solutions.length} solution dari ${fmt.number(lastScan.foldersScanned)} folder di <span class="mono">${escapeHtml(lastScan.root)}</span> · ${fmt.ms(lastScan.elapsedMs)}${truncated}`;
-    el('scanResults').innerHTML = lastScan.solutions.length
-      ? lastScan.solutions.map(s => solutionItem(s, relativeTo(lastScan.root, s.directory))).join('')
-      : '<div class="list-group-item small text-secondary">Tidak ditemukan .sln/.slnx.</div>';
-    button.classList.toggle('d-none', !lastScan.solutions.some(s => !s.isRegistered));
+    el('scanInfo').innerHTML = `${lastScan.projects.length} project dari ${fmt.number(lastScan.foldersScanned)} folder di <span class="mono">${escapeHtml(lastScan.root)}</span> · ${fmt.ms(lastScan.elapsedMs)}${truncated}`;
+    el('scanResults').innerHTML = lastScan.projects.length
+      ? lastScan.projects.map(c => projectItem(c, relativeTo(lastScan.root, c.path))).join('')
+      : '<div class="list-group-item small text-secondary">Tidak ditemukan folder project (.git atau file build).</div>';
+    button.classList.toggle('d-none', !lastScan.projects.some(c => !c.isRegistered));
   }
 
   function relativeTo(root, directory) {
@@ -180,7 +186,7 @@
 
   function renderSelection() {
     const count = selected.size;
-    el('selectionInfo').textContent = count ? `${count} solution dipilih.` : 'Belum ada solution dipilih.';
+    el('selectionInfo').textContent = count ? `${count} project dipilih.` : 'Belum ada project dipilih.';
     el('btnRegisterSelected').disabled = count === 0;
     el('btnRegisterSelected').textContent = count ? `Daftarkan terpilih (${count})` : 'Daftarkan terpilih';
   }
@@ -210,7 +216,7 @@
     rememberPath(current.path);
     renderQuick(current.quickLocations);
     renderFolders();
-    renderSolutions();
+    renderProjects();
   }
 
   async function scan() {
@@ -252,7 +258,7 @@
 
       const failed = new Set(result.errors.map(e => e.split(': ')[0]));
       selected.clear();
-      if (lastScan) lastScan.solutions.forEach(s => { if (paths.includes(s.path) && !failed.has(s.path)) s.isRegistered = true; });
+      if (lastScan) lastScan.projects.forEach(c => { if (paths.includes(c.path) && !failed.has(c.path)) c.isRegistered = true; });
       await browse(current?.path);
       renderScan();
       renderSelection();
@@ -275,9 +281,9 @@
   el('btnScan').addEventListener('click', scan);
   el('btnRegisterSelected').addEventListener('click', registerSelected);
   el('btnSelectAllNew').addEventListener('click', () => {
-    lastScan?.solutions.filter(s => !s.isRegistered).forEach(s => selected.add(s.path));
+    lastScan?.projects.filter(c => !c.isRegistered).forEach(c => selected.add(c.path));
     renderScan();
-    renderSolutions();
+    renderProjects();
     renderSelection();
   });
 
@@ -290,7 +296,7 @@
     const box = event.target.closest('[data-select]');
     if (!box) return;
     box.checked ? selected.add(box.dataset.select) : selected.delete(box.dataset.select);
-    // The same solution can appear in both lists; keep them in sync.
+    // The same project can appear in both lists; keep them in sync.
     el('browseModal').querySelectorAll('[data-select]').forEach(other => {
       if (other.dataset.select === box.dataset.select && !other.disabled) other.checked = box.checked;
     });

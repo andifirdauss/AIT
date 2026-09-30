@@ -15,7 +15,7 @@ sebuah request hanya bila semua syarat terpenuhi:
 - request membawa daftar `tools` (ciri request agen utama);
 - pesan terakhir berasal dari user, **bukan** `tool_result`;
 - teks prompt tidak kosong setelah blok `<system-reminder>` dibuang;
-- **sesi berasal dari project `.sln`/`.slnx`** (lihat bagian 2).
+- **sesi berasal dari sebuah project**, yaitu folder dengan `.git` atau file build (lihat bagian 2).
 
 Selain itu (judul sesi, `/compact`, cek kuota, sesi di luar project, dll.) request diteruskan apa adanya ke
 endpoint 9router yang sama dengan **model passthrough** — AiThread tidak membuat thread dan tidak memanggil planner. `POST /v1/messages/count_tokens` juga diteruskan; bila gagal, jumlah token
@@ -23,27 +23,45 @@ diperkirakan (±4 karakter per token).
 
 Jika *Proxy API key* diisi, request tanpa key yang cocok (`Authorization: Bearer` atau `x-api-key`) ditolak `401`.
 
-## 2. Cek sesi: project `.sln`/`.slnx` atau bukan
+## 2. Cek sesi: project atau bukan
 
-Sebelum planner dipanggil, AiThread memeriksa **sesi Claude Code** asal prompt:
+Sebelum planner dipanggil, AiThread memeriksa **sesi** asal prompt:
 
 1. Id sesi diambil dari header `X-AiThread-Session` / `x-claude-code-session-id` / `x-session-id`, atau dari
    `metadata.user_id`; working directory dari header `X-AiThread-Cwd`, atau dari baris `Primary working directory:` /
    `Working directory:` / `Current working directory:` / `cwd:` (atau tag `<cwd>`) di system prompt.
-2. Solution diambil dari header `X-AiThread-Solution` bila ada. Jika tidak, `.sln`/`.slnx` dicari:
-   di folder itu → di sub-folder hingga 2 tingkat (hanya bila **tepat satu** ditemukan) → di folder induk hingga
-   6 tingkat. Bila satu folder berisi beberapa solution, yang bernama sama dengan foldernya diutamakan, lalu `.slnx`.
-3. **Solution ditemukan** → project didaftarkan otomatis bila belum ada (prompt pertama sesi), lalu prompt
-   diorkestrasi. **Root workspace** = folder solution, kecuali working directory berada di atasnya (mis. root repo
-   dengan `src/App.sln`) — maka root = working directory.
-4. **Solution tidak ditemukan** (atau working directory tidak ada) → sesi **diabaikan**: setiap prompt-nya diteruskan
-   langsung ke 9router dengan model passthrough, sehingga Claude Code tetap bekerja sebagai agen biasa. Tidak ada
-   thread, project, maupun memory yang dibuat.
+2. **Project = folder root** yang berisi `.git` atau file build, tanpa memandang bahasanya: `.sln`/`.slnx`/`.csproj`,
+   `pom.xml`, `build.gradle(.kts)`, `package.json`, `pyproject.toml`/`requirements.txt`, `go.mod`, `Cargo.toml`,
+   `composer.json`, `Gemfile`, `pubspec.yaml`, `CMakeLists.txt`, dan sejenisnya. Yang dilihat hanya folder working
+   directory dan **folder induknya** (hingga 6 tingkat), tidak pernah sub-foldernya. Urutan pemilihan:
+   1. project yang sudah terdaftar dan memuat folder itu (yang rootnya paling dalam), agar project yang didaftarkan
+      manual atau oleh versi lama tetap dikenali;
+   2. root repository terdekat (folder `.git`);
+   3. tanpa `.git`: file penghimpun paling luar (`.sln`/`.slnx`, `settings.gradle`, `pom.xml` berisi `<modules>`,
+      `package.json` berisi `workspaces`, `pnpm-workspace.yaml`, `go.work`, dst.);
+   4. lainnya: manifest terdekat.
+
+   Header `X-AiThread-Project` (folder root) menjadi titik awal pencarian menggantikan working directory (bila tidak
+   menghasilkan project, working directory dipakai); header lama `X-AiThread-Solution` (path `.sln`, foldernya yang
+   dipakai) tetap diterima. Drive, folder Home, dan folder sistem tidak pernah menjadi project, walau ada `package.json` atau
+   `.git` nyasar di sana.
+3. **Project ditemukan** → didaftarkan otomatis bila belum ada (prompt pertama sesi), lalu prompt diorkestrasi.
+   **Root workspace** = folder root project, sehingga sesi yang dibuka di `repo/services/api` tetap bekerja pada
+   `repo`; planner diberi tahu bahwa sesi dibuka di `services/api`.
+4. **Tidak ada marker** (atau working directory tidak ada/tidak diketahui) → sesi **diabaikan**: setiap prompt-nya
+   diteruskan langsung ke 9router dengan model passthrough, sehingga Claude Code tetap bekerja sebagai agen biasa. Tidak
+   ada thread, project, maupun memory yang dibuat, misalnya untuk folder kosong tempat Anda hanya meminta dibuatkan
+   sebuah file teks. Folder induk yang hanya berisi beberapa project (mis. `a`, `b`, `c`) juga diabaikan karena
+   ambigu, dan log menyebut nama project di dalamnya agar Anda membuka sesi di salah satunya.
+
+Stack ditentukan dari manifest yang ditemukan (kedalaman 3): `.NET`, `Java (Maven)`, `JVM (Gradle)`, `Node.js`,
+`Python`, `Go`, `Rust`, `PHP`, `Ruby`, dan lainnya; satu project boleh campuran. Stack dipakai untuk badge di menu
+Project, brief planner, dan daftar folder build yang disembunyikan (mis. `target/` untuk Maven, `dist/` untuk Node.js).
 
 Keputusan ini **diingat per sesi** selama 30 menit — prompt berikutnya di sesi yang sama tidak memindai disk lagi.
-Sesi yang terhubung ke project diperpanjang setiap kali dipakai; sesi yang diabaikan dicek ulang setelah 30 menit
-(berguna bila Anda baru menambahkan `.sln`). Log dashboard mencatat satu baris per keputusan:
-`Sesi xxxxxxxx terhubung ke project …` atau `Sesi xxxxxxxx (…) bukan bagian project .sln/.slnx — prompt diabaikan orkestrasi…`.
+Sesi yang terhubung ke project diperpanjang setiap kali dipakai; sesi yang diabaikan dicek ulang setelah sekitar 5
+detik (berguna bila Anda baru menambahkan `.git` atau file build). Log dashboard mencatat satu baris per keputusan:
+`Sesi xxxxxxxx terhubung ke project …` atau `Sesi xxxxxxxx (…) bukan bagian project (alasannya) — prompt diabaikan orkestrasi…`.
 
 Bila pengecekan gagal (mis. database mati), prompt juga diteruskan tanpa orkestrasi dan kesalahannya dicatat di log.
 
@@ -56,17 +74,20 @@ Planner menerima **brief**:
   [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
 - percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
   ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
-- info project: nama, root, path solution, daftar project di solution;
+- info project: nama, root, stack, folder tempat sesi dibuka (bila di bawah root), dan daftar file solution/build yang ditemukan;
 - struktur folder 2 tingkat (maks 200 entri);
 - indeks memory (id + label, maks 25).
 
-Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only** dan dibatasi ke root:
+Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**. Path relatif dihitung dari
+root project; tool baca (`list_directory`, `find_files`, `search_text`, `read_file`) juga menerima **path absolut di luar
+root**, supaya planner bisa mengecek folder atau project lain ketika Anda memintanya (mis. "cek ke
+`D:/project/otherproject`"). Di luar root hasilnya ditampilkan dengan path absolut:
 
 | Tool | Batas |
 |---|---|
 | `list_directory(path, depth)` | depth 1–4, maks 300 entri |
-| `find_files(pattern)` | glob, mis. `**/*User*.cs`; maks 200 hasil |
-| `search_text(query, glob?, regex?)` | tidak peka huruf besar/kecil; file ≤ 1 MB; maks 80 hasil |
+| `find_files(pattern, path?)` | glob, mis. `**/*User*.cs`; maks 200 hasil; `path` = folder pencarian (default root; bila di luar root, pola relatif terhadap folder itu) |
+| `search_text(query, glob?, regex?, path?)` | tidak peka huruf besar/kecil; file ≤ 1 MB; maks 80 hasil; `path` seperti `find_files` |
 | `read_file(path, startLine?, endLine?)` | bernomor baris; maks 600 baris per panggilan; file ≤ 2 MB |
 | `search_memory(query)` | maks 25 label |
 | `read_memory(ids)` | deskripsi lengkap |
@@ -122,7 +143,8 @@ Rencana ditolak dan dikembalikan ke planner (memakan satu langkah) bila:
 
 - lebih dari 40 tugas, atau `summary` kosong padahal ada tugas;
 - id tugas ganda, `instruction` kosong, `action` bukan `edit`/`create`;
-- path di luar root, menunjuk folder, atau berada di folder yang disembunyikan;
+- path di luar root (perubahan hanya boleh di dalam root; membaca di luar root diperbolehkan), menunjuk folder, atau
+  berada di folder yang disembunyikan;
 - `edit` untuk file yang tidak ada, `create` untuk file yang sudah ada, atau dua tugas membuat file yang sama;
 - `dependsOn` menunjuk tugas yang tidak ada, dirinya sendiri, atau membentuk siklus.
 
@@ -196,7 +218,7 @@ Jika tidak ada wrapper aktif atau wrapper gagal, AiThread menyusun ringkasan oto
 Planner tidak membawa ingatan antar prompt: setiap prompt memulai planner baru. Supaya chat yang panjang tetap
 nyambung tanpa mengirim seluruh percakapan, AiThread menyimpan **ringkasan sesi** per thread:
 
-1. Baris pertama setiap balasan orkestrasi adalah penanda ``**AiThread** · `X.sln` · thread `3f2a1b9c` `` (selalu
+1. Baris pertama setiap balasan orkestrasi adalah penanda ``**AiThread** · `NamaProject` · thread `3f2a1b9c` `` (selalu
    dikirim, juga saat progres dimatikan). Penanda ini ikut tersimpan di chat Claude Code.
 2. Setelah thread selesai, Context Keeper menulis ringkasan sesi (tujuan, keputusan & batasan, log kerja per thread,
    fakta penting berupa penunjuk file, hal yang belum selesai) dan menyimpannya pada thread itu.
@@ -222,8 +244,10 @@ lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integras
 
 ## Batas keamanan
 
-- Planner hanya bisa membaca; executor hanya bisa menulis file target tugasnya — keduanya dibatasi ke root workspace
-  dan tidak bisa menyentuh folder yang disembunyikan.
+- Planner hanya bisa membaca; executor hanya bisa menulis file target tugasnya. Penulisan dibatasi ke root workspace
+  dan tidak bisa menyentuh folder yang disembunyikan. Pembacaan planner boleh keluar root (path absolut), jadi ia dapat
+  membaca file apa pun yang bisa dibaca akun yang menjalankan AiThread, dan isinya dikirim ke model planner. Permintaan
+  "cek" ke folder lain hanya menghasilkan jawaban; mengubah file di luar root tidak didukung.
 - Tidak ada eksekusi perintah shell.
 - AiThread menulis ke folder mana pun yang dikirim sebagai working directory. Biarkan aplikasi hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin dapat diakses orang lain.

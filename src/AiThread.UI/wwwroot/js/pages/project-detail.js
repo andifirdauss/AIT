@@ -9,15 +9,16 @@
       const detail = await api.get(`/api/projects/${projectId}`);
       const p = detail.project;
       el('projectName').textContent = p.name;
-      el('projectPath').textContent = p.solutionPath + (p.exists ? '' : '  (file tidak ditemukan)');
+      el('projectPath').textContent = p.rootPath + (p.exists ? '' : '  (folder tidak ditemukan)');
+      el('projectStacks').innerHTML = p.stacks.map(s => `<span class="badge text-bg-primary me-1">${escapeHtml(s)}</span>`).join('');
       el('statThreads').textContent = fmt.number(p.threadCount);
       el('statSessions').textContent = fmt.number(p.sessionCount);
       el('statMemory').textContent = fmt.number(p.memoryCount);
       el('statLastSeen').textContent = fmt.relative(p.lastSeenAt);
 
-      el('solutionProjects').innerHTML = detail.solutionProjects.length
-        ? detail.solutionProjects.map(sp => `<li class="list-group-item">${escapeHtml(sp)}</li>`).join('')
-        : '<li class="list-group-item text-secondary">Tidak ada project terbaca.</li>';
+      el('projectModules').innerHTML = detail.modules.length
+        ? detail.modules.map(m => `<li class="list-group-item">${escapeHtml(m)}</li>`).join('')
+        : '<li class="list-group-item text-secondary">Tidak ada file solution/build terbaca.</li>';
 
       el('sessionRows').innerHTML = detail.sessions.length
         ? detail.sessions.map(s => `<tr><td class="mono" title="${escapeHtml(s.sessionId)}">${escapeHtml(s.sessionId.substring(0, 8))}</td><td>${s.threadCount}</td><td>${fmt.relative(s.lastSeenAt)}</td></tr>`).join('')

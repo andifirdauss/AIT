@@ -32,10 +32,10 @@ Claude Code ──(ANTHROPIC_BASE_URL)──► AiThread /v1/messages
 Masalah klasik multi-agent: executor UI membuat `id="description"` sementara executor JS membaca `#txtDesc`,
 atau executor JS membuat file baru karena tidak tahu file yang sudah ada. AiThread mencegahnya dengan:
 
-1. **Planner wajib membaca kode dulu** (tool read-only) sebelum `submit_plan`.
+1. **Planner wajib membaca kode dulu** (tool read-only, boleh juga membaca path di luar root untuk pengecekan) sebelum `submit_plan`.
 2. **Kontrak**: semua nama yang dipakai lintas file (id elemen, properti DTO, parameter API, kolom DB, pesan validasi)
    ditetapkan sekali oleh planner dan dikirim ke setiap executor. Karena itu tugas bisa independen dan berjalan paralel.
-3. **Validator rencana**: file `edit` harus ada, file `create` belum ada, path tidak boleh keluar root atau masuk
+3. **Validator rencana**: file `edit` harus ada, file `create` belum ada, path perubahan tidak boleh keluar root atau masuk
    `bin/ obj/ wwwroot/lib/`, `dependsOn` tanpa siklus. Rencana yang salah dikembalikan ke planner untuk diperbaiki.
 4. **Executor hanya menerima**: satu file target (utuh, atau potongan di sekitar `focus` untuk file besar), instruksi,
    kontrak, dan potongan referensi dari file lain yang dipilih planner.
@@ -90,7 +90,7 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
        "ANTHROPIC_BASE_URL": "http://localhost:5225",
        "ANTHROPIC_AUTH_TOKEN": "<proxy key atau aithread-local>",
        "API_TIMEOUT_MS": "1800000",
-       "ANTHROPIC_CUSTOM_HEADERS": "X-AiThread-Solution: D:\\Source\\MyApp\\MyApp.sln"
+       "ANTHROPIC_CUSTOM_HEADERS": "X-AiThread-Project: D:\\Source\\MyApp"
      }
    }
    ```
@@ -106,7 +106,7 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 | Menu | Fungsi |
 |---|---|
 | Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
-| Project | Project yang terbaca (unik per `.sln`/`.slnx`), sesi Claude Code per project, penelusur & scan `.sln`/`.slnx`, registrasi manual |
+| Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual |
 | Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
 | Node | Planner / executor / wrapper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan |
 | Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, integrasi `settings.json` Claude Code, bot Telegram |
@@ -122,15 +122,17 @@ port forwarding. Detail: [docs/11-telegram.md](docs/11-telegram.md).
 ## Cara request Claude Code diperlakukan
 
 `POST /v1/messages` diorkestrasi bila request punya `tools`, system prompt Claude Code, pesan terakhir adalah
-teks user (bukan `tool_result`), **dan sesinya berasal dari project `.sln`/`.slnx`**. Request pendukung lain (judul
+teks user (bukan `tool_result`), **dan sesinya berasal dari sebuah project (folder dengan `.git` atau file build)**. Request pendukung lain (judul
 sesi, compact, cek kuota) dan semua prompt dari sesi di luar project diteruskan apa adanya ke `/v1/messages` 9router
 memakai *model passthrough* (default: model node Wrapper). Mematikan *Orkestrasi aktif* membuat AiThread menjadi
 proxy biasa.
 
-Pengecekan dilakukan per sesi Claude Code (keputusan diingat 30 menit). Solution diambil dari header
-`X-AiThread-Solution` bila ada; jika tidak, `.sln/.slnx` dicari dari working directory sesi (header `X-AiThread-Cwd`
-atau baris `Primary working directory:`): di folder itu, lalu sub-folder hingga 2 tingkat (hanya jika tepat satu),
-lalu folder induk. Ditemukan → project didaftarkan otomatis pada prompt pertama. Tidak ditemukan → sesi diabaikan.
+Pengecekan dilakukan per sesi Claude Code (keputusan diingat 30 menit). Project = folder root yang berisi `.git`
+atau file build (`.sln`, `pom.xml`, `package.json`, `go.mod`, …), dicari dari working directory sesi (header
+`X-AiThread-Cwd` atau baris `Primary working directory:`) naik ke folder induknya hingga 6 tingkat, tidak pernah ke
+sub-folder; header `X-AiThread-Project` bisa menunjuk folder rootnya langsung. Ditemukan → project didaftarkan otomatis
+pada prompt pertama. Tidak ada marker (mis. folder kosong) atau folder induk berisi beberapa project → sesi
+diabaikan: tanpa orkestrasi, tanpa memory.
 
 ## Memory
 

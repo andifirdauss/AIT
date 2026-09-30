@@ -3,12 +3,13 @@ using AiThread.Service.Models;
 
 namespace AiThread.Service.Interfaces;
 
-// Projects are identified by their .sln/.slnx file so concurrent sessions never mix contexts.
+// Projects are identified by their root folder (the one holding .git or a build manifest) so concurrent sessions
+// never mix contexts.
 public interface IProjectService
 {
-    // Decides once per Claude Code session whether it belongs to a .sln/.slnx project (registering it on the
-    // first prompt). Null means the session is outside any solution and AiThread must not orchestrate it.
-    Task<ProjectContext?> ResolveSessionAsync(string? sessionId, string? workingDirectory, string? solutionHint, CancellationToken cancellationToken = default);
+    // Decides once per agent session whether it belongs to a project (registering it on the first prompt). Null means
+    // no project marker was found around the session and AiThread must not orchestrate it (and keeps no memory for it).
+    Task<ProjectContext?> ResolveSessionAsync(string? sessionId, string? workingDirectory, string? projectHint, CancellationToken cancellationToken = default);
 
     Task<ProjectContext?> GetContextAsync(Guid projectId, CancellationToken cancellationToken = default);
 
@@ -16,15 +17,16 @@ public interface IProjectService
 
     Task<ProjectDetailDto?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default);
 
+    // Registers the project a folder belongs to; a folder without any marker is registered as it is.
     Task<ProjectDto> RegisterAsync(string path, CancellationToken cancellationToken = default);
 
-    Task<RegisterProjectsResultDto> RegisterManyAsync(IReadOnlyList<string> solutionPaths, CancellationToken cancellationToken = default);
+    Task<RegisterProjectsResultDto> RegisterManyAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
-    // Folder browser for picking a solution file; an empty path lists the drives.
+    // Folder browser for picking a project folder; an empty path lists the drives.
     Task<FolderBrowseDto> BrowseAsync(string? path, CancellationToken cancellationToken = default);
 
-    // Recursive search for .sln/.slnx files below a folder.
-    Task<SolutionScanDto> ScanAsync(string path, int depth, CancellationToken cancellationToken = default);
+    // Recursive search for project folders below a folder.
+    Task<ProjectScanDto> ScanAsync(string path, int depth, CancellationToken cancellationToken = default);
 }

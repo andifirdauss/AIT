@@ -6,7 +6,6 @@ public record NodeDto(
     Guid Id,
     string Name,
     NodeRole Role,
-    NodeBackend Backend,
     string Model,
     double? Temperature,
     int MaxTokens,
@@ -26,8 +25,7 @@ public record SaveNodeRequest(
     int MaxConcurrency,
     int Priority,
     string? SystemPrompt,
-    bool IsActive,
-    NodeBackend Backend = NodeBackend.Router);
+    bool IsActive);
 
 public record PipelineStatusDto(
     bool IsReady,

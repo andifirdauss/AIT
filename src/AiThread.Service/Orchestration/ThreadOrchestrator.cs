@@ -95,7 +95,7 @@ public sealed class ThreadOrchestrator(
         try
         {
             var project = prepared.Project;
-            await progress.AnchorAsync(ThreadAnchor.Line(Path.GetFileName(project.SolutionPath), thread.Id), cancellationToken);
+            await progress.AnchorAsync(ThreadAnchor.Line(project.Name, thread.Id), cancellationToken);
 
             // Extra active planners are fallbacks for when the preferred one is rate limited or down.
             var planners = await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken);
@@ -112,7 +112,7 @@ public sealed class ThreadOrchestrator(
             });
             await progress.LineAsync($"🧠 Planner `{planner.Model}` menganalisis project & menyusun rencana…", cancellationToken);
 
-            var scope = new WorkspaceScope(project.RootPath);
+            var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
             var planClock = Stopwatch.StartNew();
             var planning = await plannerAgent.PlanAsync(new PlannerInput(request, project, planners, scope, settings), recorder, progress, cancellationToken);
             planClock.Stop();

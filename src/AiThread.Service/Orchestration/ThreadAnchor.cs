@@ -7,8 +7,8 @@ namespace AiThread.Service.Orchestration;
 // the history are found.
 public static partial class ThreadAnchor
 {
-    public static string Line(string solutionFile, Guid threadId) =>
-        $"**AiThread** · `{solutionFile}` · thread `{ShortId(threadId)}`";
+    public static string Line(string projectName, Guid threadId) =>
+        $"**AiThread** · `{projectName}` · thread `{ShortId(threadId)}`";
 
     public static string ShortId(Guid threadId) => threadId.ToString("N")[..8];
 

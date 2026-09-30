@@ -12,10 +12,10 @@ namespace AiThread.Service.Implementations;
 //   ANTHROPIC_BASE_URL   -> requests go to this proxy instead of api.anthropic.com
 //   ANTHROPIC_AUTH_TOKEN -> sent as "Authorization: Bearer"; also keeps real Anthropic credentials away from the proxy
 //   API_TIMEOUT_MS       -> an orchestrated thread can take minutes
-//   ANTHROPIC_CUSTOM_HEADERS (project scope only) -> pins the session to its solution file
+//   ANTHROPIC_CUSTOM_HEADERS (project scope only) -> pins the session to its project root folder
 public sealed class ClaudeSettingsService(ISettingService settingService, IProjectService projectService) : IClaudeSettingsService
 {
-    private const string SolutionHeader = ClaudeRequestInspector.SolutionHeader;
+    private const string ProjectHeader = ClaudeRequestInspector.ProjectHeader;
     private const int DefaultTimeoutMs = 1_800_000;
     private const string BackupSuffix = ".aithread-backup";
 
@@ -28,7 +28,7 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
         var target = await ResolveTargetAsync(scope, projectId, cancellationToken);
         var root = await ReadAsync(target.Path, cancellationToken);
         var currentBaseUrl = GetString(root["env"]?["ANTHROPIC_BASE_URL"]);
-        var env = await BuildEnvAsync(proxyBaseUrl, null, target.SolutionPath, cancellationToken);
+        var env = await BuildEnvAsync(proxyBaseUrl, null, target.ProjectRoot, cancellationToken);
 
         return new ClaudeSettingsStatusDto(
             scope,
@@ -50,10 +50,10 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
 
         var env = root["env"] as JsonObject ?? new JsonObject();
         root["env"] = env;
-        foreach (var (key, value) in await BuildEnvAsync(request.ProxyBaseUrl, request.TimeoutMs, target.SolutionPath, cancellationToken))
+        foreach (var (key, value) in await BuildEnvAsync(request.ProxyBaseUrl, request.TimeoutMs, target.ProjectRoot, cancellationToken))
         {
             // Never overwrite custom headers the user configured themselves.
-            if (key == "ANTHROPIC_CUSTOM_HEADERS" && GetString(env[key]) is { } existing && !existing.StartsWith(SolutionHeader, StringComparison.OrdinalIgnoreCase))
+            if (key == "ANTHROPIC_CUSTOM_HEADERS" && GetString(env[key]) is { } existing && !IsAiThreadHeader(existing))
                 continue;
             env[key] = value?.DeepClone();
         }
@@ -71,7 +71,7 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
             if (root["env"] is JsonObject env)
             {
                 foreach (var key in ManagedKeys) env.Remove(key);
-                if (GetString(env["ANTHROPIC_CUSTOM_HEADERS"])?.StartsWith(SolutionHeader, StringComparison.OrdinalIgnoreCase) == true)
+                if (GetString(env["ANTHROPIC_CUSTOM_HEADERS"]) is { } headers && IsAiThreadHeader(headers))
                     env.Remove("ANTHROPIC_CUSTOM_HEADERS");
                 if (env.Count == 0) root.Remove("env");
             }
@@ -138,9 +138,14 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
         return await GetHooksStatusAsync(scope, projectId, baseUrl, cancellationToken);
     }
 
+    // Also recognizes the header of earlier versions (X-AiThread-Solution), so applying again replaces it.
+    private static bool IsAiThreadHeader(string value) =>
+        value.StartsWith(ProjectHeader, StringComparison.OrdinalIgnoreCase)
+        || value.StartsWith(ClaudeRequestInspector.LegacySolutionHeader, StringComparison.OrdinalIgnoreCase);
+
     private static string ProjectSettingsPath(string rootPath) => Path.Combine(rootPath, ".claude", "settings.local.json");
 
-    private async Task<JsonObject> BuildEnvAsync(string proxyBaseUrl, int? timeoutMs, string? solutionPath, CancellationToken cancellationToken)
+    private async Task<JsonObject> BuildEnvAsync(string proxyBaseUrl, int? timeoutMs, string? projectRoot, CancellationToken cancellationToken)
     {
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
         var env = new JsonObject
@@ -149,11 +154,11 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
             ["ANTHROPIC_AUTH_TOKEN"] = settings.ProxyApiKey ?? "aithread-local",
             ["API_TIMEOUT_MS"] = (timeoutMs is > 0 ? timeoutMs.Value : DefaultTimeoutMs).ToString()
         };
-        if (solutionPath is not null) env["ANTHROPIC_CUSTOM_HEADERS"] = $"{SolutionHeader}: {solutionPath}";
+        if (projectRoot is not null) env["ANTHROPIC_CUSTOM_HEADERS"] = $"{ProjectHeader}: {projectRoot}";
         return env;
     }
 
-    private async Task<(string Path, string? SolutionPath)> ResolveTargetAsync(ClaudeSettingsScope scope, Guid? projectId, CancellationToken cancellationToken)
+    private async Task<(string Path, string? ProjectRoot)> ResolveTargetAsync(ClaudeSettingsScope scope, Guid? projectId, CancellationToken cancellationToken)
     {
         if (scope == ClaudeSettingsScope.User)
         {
@@ -164,7 +169,7 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
         if (projectId is null) throw new AppValidationException("Pilih project terlebih dahulu.");
         var project = await projectService.GetContextAsync(projectId.Value, cancellationToken)
                       ?? throw new AppValidationException("Project tidak ditemukan.");
-        return (ProjectSettingsPath(project.RootPath), project.SolutionPath);
+        return (ProjectSettingsPath(project.RootPath), project.RootPath);
     }
 
     private static async Task<JsonObject> ReadAsync(string path, CancellationToken cancellationToken)

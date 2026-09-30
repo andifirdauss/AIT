@@ -71,19 +71,16 @@ public class OhMyPiIntegrationTests : IDisposable
     private const string Proxy = "http://localhost:5225";
     private readonly string _root = Path.Combine(Path.GetTempPath(), "aithread-omp-" + Guid.NewGuid().ToString("N")[..8]);
     private readonly Guid _projectId = Guid.NewGuid();
-    private string _solution;
-
     public OhMyPiIntegrationTests()
     {
         Directory.CreateDirectory(_root);
-        _solution = Path.Combine(_root, "MyApp.sln");
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
     private string EnvPath => Path.Combine(_root, ".env");
 
-    private OhMyPiIntegration Create() => new(new StubSettings(), new StubProjects(_projectId, _root, _solution));
+    private OhMyPiIntegration Create() => new(new StubSettings(), new StubProjects(_projectId, _root));
 
     [Fact]
     public async Task Apply_writes_the_block_and_status_reports_enabled()
@@ -95,7 +92,7 @@ public class OhMyPiIntegrationTests : IDisposable
         Assert.Equal(EnvPath, status.Path);
         Assert.Contains($"ANTHROPIC_BASE_URL={Proxy}", text);
         Assert.Contains("ANTHROPIC_API_KEY=aithread-local", text);
-        Assert.Contains($"ANTHROPIC_CUSTOM_HEADERS=X-AiThread-Solution: {_solution}", text);
+        Assert.Contains($"ANTHROPIC_CUSTOM_HEADERS=X-AiThread-Project: {_root}", text);
     }
 
     [Fact]
@@ -152,13 +149,14 @@ public class OhMyPiIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task Solution_path_that_would_break_the_header_list_is_left_out()
+    public async Task Project_root_that_would_break_the_header_list_is_left_out()
     {
-        _solution = Path.Combine(_root, "My,App", "MyApp.sln");
+        var commaRoot = Path.Combine(_root, "My,App");
+        Directory.CreateDirectory(commaRoot);
 
-        await Create().ApplyAsync(CliScope.Project, _projectId, Proxy);
+        await new OhMyPiIntegration(new StubSettings(), new StubProjects(_projectId, commaRoot)).ApplyAsync(CliScope.Project, _projectId, Proxy);
 
-        var text = await File.ReadAllTextAsync(EnvPath);
+        var text = await File.ReadAllTextAsync(Path.Combine(commaRoot, ".env"));
         Assert.Contains("ANTHROPIC_BASE_URL=", text);
         Assert.DoesNotContain("ANTHROPIC_CUSTOM_HEADERS", text);
     }
@@ -190,26 +188,26 @@ public class OhMyPiIntegrationTests : IDisposable
         public Task<TelegramSettingsDto> UpdateTelegramAsync(UpdateTelegramSettingsRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
-    private sealed class StubProjects(Guid id, string root, string solution) : IProjectService
+    private sealed class StubProjects(Guid id, string root) : IProjectService
     {
         public Task<ProjectContext?> GetContextAsync(Guid projectId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ProjectContext?>(projectId == id ? new ProjectContext(id, "MyApp", root, solution, []) : null);
+            Task.FromResult<ProjectContext?>(projectId == id ? new ProjectContext(id, "MyApp", root, [], []) : null);
 
         public Task<IReadOnlyList<ProjectDto>> GetAllAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ProjectDto>>([new ProjectDto(id, "MyApp", solution, root, null, DateTime.UtcNow, DateTime.UtcNow, 0, 0, 0, true)]);
+            Task.FromResult<IReadOnlyList<ProjectDto>>([new ProjectDto(id, "MyApp", root, [], null, DateTime.UtcNow, DateTime.UtcNow, 0, 0, 0, true)]);
 
-        public Task<ProjectContext?> ResolveSessionAsync(string? sessionId, string? workingDirectory, string? solutionHint, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<ProjectContext?> ResolveSessionAsync(string? sessionId, string? workingDirectory, string? projectHint, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<ProjectDetailDto?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<ProjectDto> RegisterAsync(string path, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task<RegisterProjectsResultDto> RegisterManyAsync(IReadOnlyList<string> solutionPaths, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RegisterProjectsResultDto> RegisterManyAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<FolderBrowseDto> BrowseAsync(string? path, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task<SolutionScanDto> ScanAsync(string path, int depth, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<ProjectScanDto> ScanAsync(string path, int depth, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

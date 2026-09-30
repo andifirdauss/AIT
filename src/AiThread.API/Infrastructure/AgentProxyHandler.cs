@@ -6,7 +6,6 @@ using AiThread.Common.Enums;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
 using AiThread.Service.Orchestration;
-using AiThread.Service.Planner;
 using AiThread.Service.Proxy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -18,7 +17,7 @@ namespace AiThread.API.Infrastructure;
 public sealed record ProxyCall(ClientProtocol Protocol, string? Model = null, bool? Stream = null, string? GeminiAction = null);
 
 // The proxy behind every client protocol (Anthropic Messages, OpenAI chat/responses, Gemini). Main agent turns from
-// sessions inside a .sln/.slnx project are orchestrated (planner -> executors -> wrapper) and answered in the client's
+// sessions inside a project (a folder with .git or a build manifest) are orchestrated (planner -> executors -> wrapper) and answered in the client's
 // own format; everything else is forwarded untouched to the same endpoint of 9router, which translates it for
 // whichever provider the passthrough model lives on.
 public sealed class AgentProxyHandler(
@@ -28,13 +27,12 @@ public sealed class AgentProxyHandler(
     IProjectService projectService,
     IThreadOrchestrator orchestrator,
     IActivityLogService activityLog,
-    PlannerSessionRegistry plannerSessions,
     ContextKeeper contextKeeper,
     ILogger<AgentProxyHandler> logger)
 {
     private static readonly string[] AnthropicForwardedHeaders = ["anthropic-version", "anthropic-beta"];
     private static readonly string[] InspectedHeaders =
-        [ClaudeRequestInspector.SolutionHeader, ClaudeRequestInspector.WorkingDirectoryHeader, .. ClaudeRequestInspector.SessionHeaders];
+        [ClaudeRequestInspector.ProjectHeader, ClaudeRequestInspector.LegacySolutionHeader, ClaudeRequestInspector.WorkingDirectoryHeader, .. ClaudeRequestInspector.SessionHeaders];
 
     public async Task HandleAsync(HttpContext http, ProxyCall call, CancellationToken cancellationToken)
     {
@@ -55,17 +53,6 @@ public sealed class AgentProxyHandler(
         var canonical = ProtocolAdapter.ToCanonical(call.Protocol, body, call.Model, call.Stream);
         var info = ClaudeRequestInspector.Inspect(canonical, InspectedHeaderValues(http.Request), raw.Length);
 
-        // A planner CLI spawned by AiThread must talk to its provider directly. Reaching this proxy means it picked up
-        // a base URL from settings; orchestrating it would recurse, so fail it and let the planner fall back.
-        if (plannerSessions.IsCliSession(info.SessionId))
-        {
-            activityLog.Error("proxy", "Claude Code CLI planner memanggil proxy AiThread sendiri (ANTHROPIC_BASE_URL); permintaan ditolak.");
-            await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status400BadRequest, "invalid_request_error",
-                "AiThread: Claude Code CLI planner diarahkan kembali ke proxy AiThread sendiri (ANTHROPIC_BASE_URL dari settings Claude). " +
-                "Hapus ANTHROPIC_BASE_URL dari .claude/settings.json project, atau atur AiThread:ClaudeCli:SettingSources.");
-            return;
-        }
-
         var reason = settings.OrchestrationEnabled ? info.Reason : "orchestration disabled";
 
         if (settings.OrchestrationEnabled && info.IsOrchestratable)
@@ -76,7 +63,7 @@ public sealed class AgentProxyHandler(
                 await OrchestrateAsync(http, call, info, project, canonical, cancellationToken);
                 return;
             }
-            reason = "session outside a .sln/.slnx project";
+            reason = "session outside any project (no project marker)";
         }
 
         await PassthroughAsync(http, call, body, reason, settings, cancellationToken);
@@ -85,13 +72,13 @@ public sealed class AgentProxyHandler(
     public async Task<bool> AuthorizeAsync(HttpRequest request, CancellationToken cancellationToken) =>
         IsAuthorized(request, await settingService.GetRuntimeAsync(cancellationToken));
 
-    // Null when the session is outside any solution, or when the check itself fails (the prompt then still
+    // Null when the session is outside any project, or when the check itself fails (the prompt then still
     // reaches a model instead of breaking the user's session).
     private async Task<ProjectContext?> ResolveSessionProjectAsync(ClaudeRequestInfo info, CancellationToken cancellationToken)
     {
         try
         {
-            return await projectService.ResolveSessionAsync(info.SessionId, info.WorkingDirectory, info.SolutionHint, cancellationToken);
+            return await projectService.ResolveSessionAsync(info.SessionId, info.WorkingDirectory, info.ProjectHint, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

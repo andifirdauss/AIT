@@ -39,7 +39,7 @@ public sealed class OhMyPiIntegration(ISettingService settingService, IProjectSe
     {
         var target = await ResolveTargetAsync(scope, projectId, cancellationToken);
         var content = await ReadAsync(target.Path, cancellationToken);
-        var entries = await BuildEntriesAsync(proxyBaseUrl, target.SolutionPath, cancellationToken);
+        var entries = await BuildEntriesAsync(proxyBaseUrl, target.ProjectRoot, cancellationToken);
         var (enabled, current) = Inspect(content, proxyBaseUrl);
         return new CliStatusDto(Id, scope, target.Path, File.Exists(target.Path), enabled, current, EnvFileBlock.Render(entries, "\n"));
     }
@@ -58,7 +58,7 @@ public sealed class OhMyPiIntegration(ISettingService settingService, IProjectSe
             throw new AppValidationException(
                 $"{target.Path} sudah memuat {string.Join(", ", conflicts)} di luar blok AiThread. Hapus atau beri komentar baris itu dulu agar tidak bertabrakan.");
 
-        var entries = await BuildEntriesAsync(proxyBaseUrl, target.SolutionPath, cancellationToken);
+        var entries = await BuildEntriesAsync(proxyBaseUrl, target.ProjectRoot, cancellationToken);
         await BackupOnceAsync(target.Path, cancellationToken);
         await WriteAsync(target.Path, EnvFileBlock.Apply(content, entries), cancellationToken);
         return await GetStatusAsync(scope, projectId, proxyBaseUrl, cancellationToken);
@@ -96,7 +96,7 @@ public sealed class OhMyPiIntegration(ISettingService settingService, IProjectSe
         return statuses;
     }
 
-    private async Task<List<KeyValuePair<string, string>>> BuildEntriesAsync(string proxyBaseUrl, string? solutionPath, CancellationToken cancellationToken)
+    private async Task<List<KeyValuePair<string, string>>> BuildEntriesAsync(string proxyBaseUrl, string? projectRoot, CancellationToken cancellationToken)
     {
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
         var entries = new List<KeyValuePair<string, string>>
@@ -105,10 +105,10 @@ public sealed class OhMyPiIntegration(ISettingService settingService, IProjectSe
             new(ApiKeyKey, settings.ProxyApiKey ?? "aithread-local")
         };
 
-        // Pins the session to its solution. Left out when the path would break the header list (commas) or the
+        // Pins the session to its project root. Left out when the path would break the header list (commas) or the
         // .env syntax (# starts a comment, quotes are parsed), since a wrong header is worse than none.
-        if (solutionPath is not null && solutionPath.IndexOfAny([',', '#', '\'', '"', '`', '\r', '\n']) < 0)
-            entries.Add(new(HeadersKey, $"{ClaudeRequestInspector.SolutionHeader}: {solutionPath}"));
+        if (projectRoot is not null && projectRoot.IndexOfAny([',', '#', '\'', '"', '`', '\r', '\n']) < 0)
+            entries.Add(new(HeadersKey, $"{ClaudeRequestInspector.ProjectHeader}: {projectRoot}"));
         return entries;
     }
 
@@ -120,14 +120,14 @@ public sealed class OhMyPiIntegration(ISettingService settingService, IProjectSe
         return (enabled, current);
     }
 
-    private async Task<(string Path, string? SolutionPath)> ResolveTargetAsync(CliScope scope, Guid? projectId, CancellationToken cancellationToken)
+    private async Task<(string Path, string? ProjectRoot)> ResolveTargetAsync(CliScope scope, Guid? projectId, CancellationToken cancellationToken)
     {
         if (scope == CliScope.Global) return (GlobalFile, null);
 
         if (projectId is null) throw new AppValidationException("Pilih project terlebih dahulu.");
         var project = await projectService.GetContextAsync(projectId.Value, cancellationToken)
                       ?? throw new AppValidationException("Project tidak ditemukan.");
-        return (Path.Combine(project.RootPath, ".env"), project.SolutionPath);
+        return (Path.Combine(project.RootPath, ".env"), project.RootPath);
     }
 
     private static async Task<string> ReadAsync(string path, CancellationToken cancellationToken) =>

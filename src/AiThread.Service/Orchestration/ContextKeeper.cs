@@ -128,7 +128,7 @@ public sealed class ContextKeeper(
     {
         // A dedicated node when there is one, otherwise the wrapper (also a cheap 9router model).
         var node = (await nodeService.GetActiveAsync(NodeRole.ContextKeeper, cancellationToken)).FirstOrDefault()
-                   ?? (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault(n => n.Backend == NodeBackend.Router);
+                   ?? (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
         if (node is null) return (fallback(), "ringkasan otomatis (tidak ada node Context Keeper/Wrapper)");
 
         try

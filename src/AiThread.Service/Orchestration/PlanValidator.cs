@@ -49,9 +49,9 @@ public static class PlanValidator
 
             if (!scope.TryResolve(task.File, out var fullPath, out var pathError))
             {
-                errors.Add($"{label}: {pathError}");
+                errors.Add($"{label}: {pathError} Tasks can only create or edit files inside the project root; put anything about other places in \"answer\" or \"summary\".");
             }
-            else if (WorkspaceScope.IsIgnoredRelativePath(scope.ToRelative(fullPath)))
+            else if (scope.IsIgnoredPath(scope.ToRelative(fullPath)))
             {
                 errors.Add($"{label}: '{task.File}' is inside a generated or third-party folder and must not be edited.");
             }

@@ -18,12 +18,12 @@ public static class PlannerTools
     public static JsonArray All() =>
     [
         ChatMessages.Function(ListDirectory,
-            "List files and folders under a directory of the project (build output, VCS and third-party folders are hidden).",
+            "List files and folders under a directory (build output, VCS and third-party folders are hidden).",
             Schema("""
             {
               "type": "object",
               "properties": {
-                "path": { "type": "string", "description": "Directory relative to the project root. Use \".\" for the root." },
+                "path": { "type": "string", "description": "Directory relative to the project root, or an absolute path anywhere on this machine to look outside the project (read-only). Use \".\" for the root." },
                 "depth": { "type": "integer", "description": "How many levels to expand (1-4). Default 2." }
               },
               "required": ["path"]
@@ -35,7 +35,8 @@ public static class PlannerTools
             {
               "type": "object",
               "properties": {
-                "pattern": { "type": "string", "description": "Glob pattern relative to the project root." }
+                "pattern": { "type": "string", "description": "Glob pattern relative to the project root (relative to the given path when that is outside the project)." },
+                "path": { "type": "string", "description": "Optional directory to search in (default: the project root). May be an absolute path outside the project (read-only)." }
               },
               "required": ["pattern"]
             }
@@ -48,7 +49,8 @@ public static class PlannerTools
               "properties": {
                 "query": { "type": "string", "description": "Text to search for, or a regular expression when regex is true." },
                 "glob": { "type": "string", "description": "Optional glob limiting which files are searched, e.g. \"**/*.js\"." },
-                "regex": { "type": "boolean", "description": "Treat query as a .NET regular expression." }
+                "regex": { "type": "boolean", "description": "Treat query as a .NET regular expression." },
+                "path": { "type": "string", "description": "Optional directory to search in (default: the project root). May be an absolute path outside the project (read-only)." }
               },
               "required": ["query"]
             }
@@ -59,7 +61,7 @@ public static class PlannerTools
             {
               "type": "object",
               "properties": {
-                "path": { "type": "string", "description": "File path relative to the project root." },
+                "path": { "type": "string", "description": "File path relative to the project root, or an absolute path anywhere on this machine to read a file outside the project." },
                 "startLine": { "type": "integer", "description": "First line to read (1-based)." },
                 "endLine": { "type": "integer", "description": "Last line to read (inclusive)." }
               },
@@ -133,7 +135,7 @@ public static class PlannerTools
                     "properties": {
                       "id": { "type": "string", "description": "Short id: T1, T2, ..." },
                       "title": { "type": "string" },
-                      "file": { "type": "string", "description": "Target file relative to the project root." },
+                      "file": { "type": "string", "description": "Target file relative to the project root. Files can only be changed inside the project root." },
                       "action": { "type": "string", "enum": ["edit", "create"] },
                       "instruction": { "type": "string", "description": "Self-contained instruction for the executor." },
                       "focus": {
@@ -147,7 +149,7 @@ public static class PlannerTools
                       },
                       "context": {
                         "type": "array",
-                        "description": "Read-only excerpts from other files the executor must see.",
+                        "description": "Read-only excerpts from other files the executor must see (the files may also lie outside the project, given as absolute paths).",
                         "items": {
                           "type": "object",
                           "properties": {

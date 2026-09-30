@@ -54,12 +54,10 @@ connection string LocalDB default.
 |---|---|
 | `Proxy/ProtocolAdapter.cs` | Mengubah request Anthropic / OpenAI chat / OpenAI Responses / Gemini ke bentuk kanonik (gaya Anthropic) dan menentukan path 9router per format. |
 | `Proxy/ClaudeRequestInspector.cs` | Memilah request kanonik: kandidat orkestrasi vs passthrough; ambil working directory, sesi, prompt, riwayat. |
-| `Implementations/ProjectService.cs` | `ResolveSessionAsync`: gerbang per sesi (project `.sln`/`.slnx` atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. |
-| `Workspace/SolutionLocator.cs` | Mencari solution dari working directory, scan rekursif, daftar folder yang layak ditelusuri, membaca isi `.sln`/`.slnx`. |
+| `Implementations/ProjectService.cs` | `ResolveSessionAsync`: gerbang per sesi (project atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. Identitas project = `RootPath`. |
+| `Workspace/ProjectLocator.cs` | Tabel marker (`.git`, manifest per ekosistem), penentuan root dari working directory (repo terdekat → penghimpun paling luar → manifest terdekat), folder yang diblokir (drive/Home/sistem), scan rekursif, daftar manifest & stack, daftar folder build per stack. |
 | `Orchestration/ThreadOrchestrator.cs` | Alur utama thread: project → planner → eksekusi → wrapper → memory, status & error. |
-| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner per backend (loop tool 9router / Claude Code CLI), failover antar node planner, definisi tool (JSON schema). |
-| `Planner/ClaudeCliRunner.cs`, `ClaudeCliPlanner.cs` | Menjalankan `claude -p` (stream-json), argumen read-only, file `--mcp-config` sementara. |
-| `Planner/PlannerSessionRegistry.cs` + `API/Controllers/McpPlannerController.cs` | Server MCP minimal (`/mcp/planner/{token}`) untuk memory & `submit_plan`; daftar session id CLI untuk menolak loop ke proxy. |
+| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema). |
 | `Orchestration/ThreadPlan.cs`, `PlanValidator.cs` | Model rencana dan aturan validasinya. |
 | `Orchestration/ExecutionEngine.cs` | Penjadwalan DAG paralel, pemilihan executor, skip dependensi gagal. |
 | `Orchestration/ExecutorAgent.cs` | Menyusun input executor, retry, menerapkan edit di bawah lock. |
@@ -68,7 +66,7 @@ connection string LocalDB default.
 | `Orchestration/SessionHandoff.cs`, `TranscriptDigest.cs`, `Implementations/ClaudeHookConfig.cs`, `API/Controllers/ClaudeHooksController.cs` | Context Keeper untuk `/clear`: hook `SessionEnd`/`SessionStart`, ringkasan transcript, penulisan blok `hooks` di settings Claude Code. |
 | `Orchestration/AgentPrompts.cs` | **Semua prompt peran** (planner, executor, wrapper, memory, context keeper). |
 | `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; teks progres untuk Claude Code. |
-| `Workspace/*` | Sandbox path, tool baca repo, parser & applier SEARCH/REPLACE, I/O teks (BOM/line ending), diff, pencari solution. |
+| `Workspace/*` | Sandbox path, tool baca repo, parser & applier SEARCH/REPLACE, I/O teks (BOM/line ending), diff, pencari project. |
 | `API/Infrastructure/AgentProxyHandler.cs` | Logika proxy bersama semua format: auth, klasifikasi, orkestrasi, passthrough ke 9router. |
 | `API/Infrastructure/AnthropicSseWriter.cs`, `ClientStreamWriters.cs` | Menulis balasan orkestrasi (stream, non-stream, error) dalam format Anthropic, OpenAI chat, OpenAI Responses, atau Gemini. |
 | `Background/TelegramPollingWorker.cs`, `Telegram/TelegramBotRuntime.cs` | Long polling `getUpdates` bot Telegram, mulai ulang saat setting Telegram disimpan, backoff saat offline, status untuk kartu Setting. |

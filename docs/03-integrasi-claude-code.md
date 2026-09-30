@@ -8,7 +8,7 @@ opsional) variabel:
 | `ANTHROPIC_BASE_URL` | `http://localhost:5225` | Semua request Claude Code dikirim ke AiThread, bukan ke Anthropic. |
 | `ANTHROPIC_AUTH_TOKEN` | Proxy API key, atau `aithread-local` bila kosong | Dikirim sebagai `Authorization: Bearer`. Kredensial Anthropic Anda tidak ikut terkirim ke proxy. |
 | `API_TIMEOUT_MS` | `1800000` (30 menit) | Satu thread bisa memakan beberapa menit; default Claude Code (10 menit) bisa terlalu pendek. |
-| `ANTHROPIC_CUSTOM_HEADERS` | `X-AiThread-Solution: <path .sln>` | Hanya untuk cakupan per project. Mengikat sesi ke solution yang tepat. |
+| `ANTHROPIC_CUSTOM_HEADERS` | `X-AiThread-Project: <folder root project>` | Hanya untuk cakupan per project. Mengikat sesi ke project yang tepat. |
 
 ## Cara A — dari UI (disarankan)
 
@@ -16,22 +16,21 @@ opsional) variabel:
 
 Hanya sesi Claude Code yang dibuka di project tersebut yang melewati AiThread.
 
-1. **Project** → *Telusuri…* → cari `.sln`/`.slnx` (navigasi folder atau *Scan* sub-folder) → centang →
-   *Daftarkan terpilih*. Bisa juga menempel path di kolom lalu *Daftarkan*.
-   Project juga terdaftar otomatis pada prompt pertama sesi Claude Code yang dibuka di folder solution.
+1. **Project** → *Telusuri…* → cari folder project (navigasi folder atau *Scan* sub-folder; folder project bertanda
+   stack atau <kbd>git</kbd>) → centang → *Daftarkan terpilih*. Bisa juga menempel path folder di kolom lalu *Daftarkan*.
+   Project juga terdaftar otomatis pada prompt pertama sesi Claude Code yang dibuka di folder project.
 2. Paling cepat: di tabel **Project**, nyalakan switch kolom **AiThread** pada project tersebut (matikan untuk
    mengembalikan). Switch memakai URL proxy default (alamat http aplikasi).
 3. Atau lewat menu **CLI** → kartu *Claude Code* → nyalakan switch project di daftar *Per project*. URL proxy yang
    ditulis diatur di kolom *URL proxy AiThread* di bagian atas halaman; *Yang akan ditulis* menampilkan pratinjaunya.
 4. Buka sesi Claude Code baru di project itu agar berlaku.
 
-File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder project = folder yang berisi
-`.sln`/`.slnx` (tertera di kotak status). `settings.local.json` adalah setting lokal Claude Code dan biasanya
-di-*gitignore*.
+File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder project = folder root project
+(tertera di kotak status). `settings.local.json` adalah setting lokal Claude Code dan biasanya di-*gitignore*.
 
 > Claude Code membaca `.claude/settings.local.json` dari folder tempat Anda menjalankannya. Jika Anda biasa membuka
-> Claude Code di folder lain (mis. root repo, sedangkan `.sln` ada di `src/`), gunakan [Cara B](#cara-b--manual)
-> dan letakkan file di folder tersebut.
+> Claude Code di sub-folder project atau di folder lain, gunakan [Cara B](#cara-b--manual) dan letakkan file di
+> folder tersebut.
 
 ### Global
 
@@ -39,9 +38,10 @@ Semua sesi Claude Code di komputer ini melewati AiThread. Di menu **CLI**, nyala
 Code (ada konfirmasi). File yang ditulis:
 `%USERPROFILE%\.claude\settings.json`.
 
-Hanya sesi yang dibuka di dalam project `.sln`/`.slnx` yang diorkestrasi. Sesi di folder lain (project non-.NET,
-folder catatan, dll.) **diabaikan**: prompt-nya diteruskan langsung ke 9router dengan model passthrough, sehingga
-Claude Code tetap bekerja seperti biasa di sana.
+Hanya sesi yang dibuka di dalam sebuah project yang diorkestrasi, yaitu folder yang berisi `.git` atau file build
+(`.sln`, `pom.xml`, `package.json`, `go.mod`, dst.; lihat [Cek sesi](07-cara-kerja.md#2-cek-sesi-project-atau-bukan)).
+Sesi di folder lain (folder kosong, folder catatan, dll.) **diabaikan**: prompt-nya diteruskan langsung ke 9router
+dengan model passthrough, sehingga Claude Code tetap bekerja seperti biasa di sana, tanpa memory.
 
 ### Status yang ditampilkan
 
@@ -66,23 +66,24 @@ Tambahkan ke `.claude/settings.local.json` di folder tempat Anda menjalankan `cl
     "ANTHROPIC_BASE_URL": "http://localhost:5225",
     "ANTHROPIC_AUTH_TOKEN": "aithread-local",
     "API_TIMEOUT_MS": "1800000",
-    "ANTHROPIC_CUSTOM_HEADERS": "X-AiThread-Solution: D:\\Source\\MyApp\\MyApp.sln"
+    "ANTHROPIC_CUSTOM_HEADERS": "X-AiThread-Project: D:\\Source\\MyApp"
   }
 }
 ```
 
 - Ganti `aithread-local` dengan Proxy API key bila Anda mengisinya di Setting.
-- `ANTHROPIC_CUSTOM_HEADERS` opsional. Tanpa header ini, AiThread mencari `.sln`/`.slnx` dari working directory
-  sesi. Alternatif lain: `X-AiThread-Cwd: <folder>` untuk menetapkan working directory.
+- `ANTHROPIC_CUSTOM_HEADERS` opsional. Tanpa header ini, AiThread menentukan project dari working directory sesi
+  (folder itu atau folder induknya). Alternatif lain: `X-AiThread-Cwd: <folder>` untuk menetapkan working directory.
+  Header lama `X-AiThread-Solution` (path `.sln`) tetap diterima; foldernya dipakai sebagai petunjuk project.
 
 ## Verifikasi
 
 1. **Tutup lalu buka sesi Claude Code baru** — env hanya dibaca saat sesi dimulai.
-2. Ketik prompt sederhana, mis. "jelaskan struktur solution ini".
+2. Ketik prompt sederhana, mis. "jelaskan struktur project ini".
 3. Jawaban harus diawali baris seperti:
 
    ```
-   **AiThread** · `MyApp.sln` · thread `5e469b54`
+   **AiThread** · `MyApp` · thread `5e469b54`
    🧠 Planner `…` menganalisis project & menyusun rencana…
    ```
 
@@ -93,7 +94,8 @@ Jika jawaban datang tanpa baris `**AiThread**`, lihat [Troubleshooting](08-troub
 ## Mengembalikan
 
 - UI: menu **CLI** → matikan switch yang sama (atau switch **AiThread** di tabel Project). Kunci AiThread
-  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `API_TIMEOUT_MS`, dan header `X-AiThread-Solution`) dihapus;
+  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `API_TIMEOUT_MS`, dan header `X-AiThread-Project`, atau
+  `X-AiThread-Solution` dari versi lama) dihapus;
   isi lain dibiarkan.
 - Manual: hapus kunci-kunci tersebut, atau pulihkan dari file `*.aithread-backup`.
 
@@ -156,7 +158,7 @@ pun (Claude, GPT, Gemini, …) — jadi model yang dipakai tidak harus sama deng
 | Gemini native | `POST /v1beta/models/{model}:generateContent` dan `:streamGenerateContent` | Gemini CLI |
 
 Aturan orkestrasi sama untuk semuanya: request diorkestrasi bila membawa `tools`, pesan terakhirnya dari user (bukan
-hasil tool), dan sesinya berasal dari project `.sln`/`.slnx`; balasannya dikirim dalam format klien itu sendiri
+hasil tool), dan sesinya berasal dari sebuah project (folder dengan `.git` atau file build); balasannya dikirim dalam format klien itu sendiri
 (stream maupun non-stream). Selain itu request diteruskan ke endpoint 9router yang sama dengan model passthrough.
 
 **Codex CLI** — `~/.codex/config.toml` (Codex hanya memakai `wire_api = "responses"`):
@@ -189,7 +191,7 @@ tanpa menyentuh baris lain di file itu:
 # >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
 ANTHROPIC_BASE_URL=http://localhost:5225
 ANTHROPIC_API_KEY=aithread-local
-ANTHROPIC_CUSTOM_HEADERS=X-AiThread-Solution: D:\Source\MyApp\MyApp.sln
+ANTHROPIC_CUSTOM_HEADERS=X-AiThread-Project: D:\Source\MyApp
 # <<< AiThread <<<
 ```
 
@@ -224,7 +226,7 @@ providers:
 **Membantu AiThread mengenali sesi.** Working directory dicari dari header `X-AiThread-Cwd`, lalu dari teks request:
 `Primary working directory:` (Claude Code), `<cwd>…</cwd>` (Codex), `I'm currently working in the directory:`
 (Gemini CLI), atau `Current working directory:` / `Working directory:` / `Current directory:` / `cwd:`. Bila klien Anda
-tidak mengirim salah satunya, set header `X-AiThread-Cwd` (atau `X-AiThread-Solution`). Id sesi dibaca dari header
+tidak mengirim salah satunya, set header `X-AiThread-Cwd` (atau `X-AiThread-Project`). Id sesi dibaca dari header
 `X-AiThread-Session`, `x-claude-code-session-id`, `session_id` (Codex) atau `x-session-id`, dari `prompt_cache_key`
 (OpenAI), atau dari `metadata.user_id`; tanpa id sesi, keputusan project diingat per working directory.
 
@@ -237,8 +239,7 @@ tidak mengirim salah satunya, set header `X-AiThread-Cwd` (atau `X-AiThread-Solu
 ## Catatan
 
 - Selama diarahkan ke AiThread, sesi Claude Code itu **tidak** memakai akun Anthropic Anda; semua model berasal dari
-  9router. Pengecualian: node Planner backend *Claude Code CLI* menjalankan `claude -p` dengan login CLI di mesin
-  AiThread, sehingga memakai kuota akun itu. Transcript-nya tersimpan sebagai sesi terpisah di folder project yang sama.
+  9router.
 - Usage yang dikembalikan untuk jawaban orkestrasi adalah estimasi ukuran konteks, dilaporkan sebagai
   `cache_read_input_tokens` (`input_tokens` = 0). Claude Code tetap menghitung sisa konteks dengan benar, sementara
   pelacak biaya yang membaca transcript (burn rate, ccusage, dll.) tidak menghitungnya sebagai input Opus penuh.

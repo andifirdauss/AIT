@@ -1,10 +1,11 @@
 namespace AiThread.Common.DTOs;
 
+// Stacks are detected from the manifests in the root folder (".NET", "Java (Maven)", "Node.js", ...); they are not stored.
 public record ProjectDto(
     Guid Id,
     string Name,
-    string SolutionPath,
     string RootPath,
+    IReadOnlyList<string> Stacks,
     string? Summary,
     DateTime CreatedAt,
     DateTime LastSeenAt,
@@ -15,9 +16,10 @@ public record ProjectDto(
 
 public record ProjectSessionDto(string SessionId, int ThreadCount, DateTime FirstSeenAt, DateTime LastSeenAt);
 
+// Modules are the manifest files found below the root (src/Web/Web.csproj, services/api/pom.xml, ...).
 public record ProjectDetailDto(
     ProjectDto Project,
-    IReadOnlyList<string> SolutionProjects,
+    IReadOnlyList<string> Modules,
     IReadOnlyList<ProjectSessionDto> Sessions);
 
 public record RegisterProjectRequest(string Path);
@@ -26,23 +28,24 @@ public record RegisterProjectsRequest(IReadOnlyList<string> Paths);
 
 public record RegisterProjectsResultDto(int Registered, int AlreadyRegistered, IReadOnlyList<string> Errors);
 
-// A folder in the solution browser. HasSolution is only computed when the listing is small enough.
-public record FolderEntryDto(string Name, string Path, bool HasSolution);
+// A folder in the project browser. IsProject is only computed when the listing is small enough.
+public record FolderEntryDto(string Name, string Path, bool IsProject, IReadOnlyList<string> Stacks);
 
-public record SolutionFileDto(string Name, string Path, string Directory, bool IsRegistered, Guid? ProjectId);
+// A project root found by browsing or scanning; Path is the root folder.
+public record ProjectCandidateDto(string Name, string Path, IReadOnlyList<string> Stacks, bool IsRegistered, Guid? ProjectId);
 
 // Path is null for the top level, where Folders lists the drives.
 public record FolderBrowseDto(
     string? Path,
     string? Parent,
     IReadOnlyList<FolderEntryDto> Folders,
-    IReadOnlyList<SolutionFileDto> Solutions,
+    IReadOnlyList<ProjectCandidateDto> Projects,
     IReadOnlyList<FolderEntryDto> QuickLocations);
 
-public record SolutionScanDto(
+public record ProjectScanDto(
     string Root,
     int Depth,
-    IReadOnlyList<SolutionFileDto> Solutions,
+    IReadOnlyList<ProjectCandidateDto> Projects,
     int FoldersScanned,
     bool Truncated,
     long ElapsedMs);

@@ -89,13 +89,28 @@ public class ClaudeRequestInspectorTests
         var headers = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
             [ClaudeRequestInspector.WorkingDirectoryHeader] = @"E:\Other",
-            [ClaudeRequestInspector.SolutionHeader] = @"E:\Other\Other.slnx"
+            [ClaudeRequestInspector.ProjectHeader] = @"E:\Other"
         };
 
         var info = ClaudeRequestInspector.Inspect(body, headers, 100);
 
         Assert.Equal(@"E:\Other", info.WorkingDirectory);
-        Assert.Equal(@"E:\Other\Other.slnx", info.SolutionHint);
+        Assert.Equal(@"E:\Other", info.ProjectHint);
+    }
+
+    [Fact]
+    public void Legacy_solution_header_is_still_read_as_project_hint()
+    {
+        var body = MainAgentRequest([new JsonObject { ["role"] = "user", ["content"] = "go" }]);
+        var headers = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            [ClaudeRequestInspector.LegacySolutionHeader] = @"E:\Other\Other.slnx"
+        };
+
+        Assert.Equal(@"E:\Other\Other.slnx", ClaudeRequestInspector.Inspect(body, headers, 100).ProjectHint);
+
+        headers[ClaudeRequestInspector.ProjectHeader] = @"E:\Other";
+        Assert.Equal(@"E:\Other", ClaudeRequestInspector.Inspect(body, headers, 100).ProjectHint);
     }
 
     [Fact]
@@ -287,9 +302,9 @@ public class ClaudeRequestInspectorTests
         var body = MainAgentRequest(
         [
             new JsonObject { ["role"] = "user", ["content"] = "Add a description column" },
-            Reply($"{ThreadAnchor.Line("MyApp.sln", first)}\n🧠 Planner …\n\n---\n\nDone."),
+            Reply($"{ThreadAnchor.Line("MyApp", first)}\n🧠 Planner …\n\n---\n\nDone."),
             new JsonObject { ["role"] = "user", ["content"] = "Also validate it" },
-            Reply($"{ThreadAnchor.Line("MyApp.sln", second)}\n\n---\n\nValidated."),
+            Reply($"{ThreadAnchor.Line("MyApp", second)}\n\n---\n\nValidated."),
             new JsonObject { ["role"] = "user", ["content"] = "quick question outside AiThread" },
             Reply("An answer that did not go through AiThread."),
             new JsonObject { ["role"] = "user", ["content"] = "Now add a unit test" }

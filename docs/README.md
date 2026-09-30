@@ -23,7 +23,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
    dengan menu dan ikon tray — [AiThread.exe standalone](01-instalasi.md#6-aithreadexe-standalone-tanpa-net).
 3. **Setting** → isi URL & API key 9router → *Test koneksi* → *Simpan* — [Konfigurasi](02-konfigurasi.md).
 4. **Node** → tambahkan 1 Planner, minimal 1 Executor, 1 Wrapper.
-5. **Project** → *Telusuri…* untuk mencari dan mendaftarkan `.sln`/`.slnx` project Anda, lalu
+5. **Project** → *Telusuri…* untuk mencari dan mendaftarkan folder project Anda (bahasa apa pun), lalu
    menu **CLI** → nyalakan switch Claude Code (atau oh-my-pi) — [Integrasi Claude Code](03-integrasi-claude-code.md).
 6. Buka sesi Claude Code **baru** di folder project dan beri perintah seperti biasa — [Penggunaan](04-penggunaan.md).
 7. *(Opsional)* **Setting → Telegram** untuk mengirim prompt dari HP saat laptop ditinggal —
@@ -58,7 +58,8 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | **Node** | Konfigurasi satu pekerja AI: peran, model 9router, temperature, max token, batas paralel. |
 | **Combo** | Model gabungan di 9router yang otomatis fallback antar provider. Bisa dipilih seperti model biasa. |
 | **Passthrough** | Request Claude Code yang tidak diorkestrasi (judul sesi, compact, cek kuota, sesi di luar project) dan diteruskan langsung ke 9router. |
-| **Sesi diabaikan** | Sesi Claude Code yang working directory-nya bukan bagian project `.sln`/`.slnx`. Semua prompt-nya dilewatkan apa adanya — tidak ada planner/executor. |
+| **Project** | Folder root yang berisi `.git` atau file build (`.sln`, `pom.xml`, `package.json`, `go.mod`, …). Identitas unik sebuah codebase; memory terikat padanya. |
+| **Sesi diabaikan** | Sesi yang working directory-nya bukan bagian sebuah project (tidak ada marker). Semua prompt-nya dilewatkan apa adanya — tidak ada planner/executor, project, maupun memory. |
 | **Short memory** | Memory baru, disimpan di Garnet (server protokol Redis di dalam AiThread) selama ±24 jam. |
 | **Long memory** | Memory yang sudah dipindah dari short memory ke database. |
 | **Project memory / Knowledge memory** | Pengetahuan khusus satu project / pola umum yang berguna lintas project. |
