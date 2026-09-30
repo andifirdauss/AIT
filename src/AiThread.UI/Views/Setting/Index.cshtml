@@ -5,7 +5,7 @@
 <div class="page-header">
     <div>
         <h1>Setting</h1>
-        <p class="page-subtitle">Koneksi 9router, perilaku proxy, dan pengarahan Claude Code ke AiThread.</p>
+        <p class="page-subtitle">Koneksi 9router, perilaku proxy, dan Telegram.</p>
     </div>
 </div>
 
@@ -44,21 +44,21 @@
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" id="orchestrationEnabled" />
                         <label class="form-check-label" for="orchestrationEnabled">Orkestrasi aktif (planner → executor → wrapper)</label>
-                        <div class="form-text">Jika mati, AiThread hanya meneruskan request Claude Code ke 9router.</div>
+                        <div class="form-text">Jika mati, AiThread hanya meneruskan request CLI ke 9router.</div>
                     </div>
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" id="streamProgress" />
-                        <label class="form-check-label" for="streamProgress">Tampilkan progres (rencana, tugas, tool planner) di Claude Code</label>
+                        <label class="form-check-label" for="streamProgress">Tampilkan progres (rencana, tugas, tool planner) di CLI</label>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label small" for="passthroughModel">Model passthrough</label>
                         <select class="form-select" id="passthroughModel"></select>
-                        <div class="form-text">Untuk request pendukung Claude Code (judul sesi, compact, dsb.) yang tidak diorkestrasi.</div>
+                        <div class="form-text">Untuk request pendukung CLI (judul sesi, compact, dsb.) yang tidak diorkestrasi.</div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small" for="proxyKey">Proxy API key (ANTHROPIC_AUTH_TOKEN)</label>
+                        <label class="form-label small" for="proxyKey">Proxy API key (ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY)</label>
                         <div class="input-group">
                             <input type="text" class="form-control mono" id="proxyKey" placeholder="Kosong = terima semua request lokal" />
                             <button type="button" class="btn btn-outline-secondary" id="btnGenerateKey">Generate</button>
@@ -92,63 +92,13 @@
 
         <div class="col-xl-6">
             <div class="card">
-                <div class="card-header">Integrasi Claude Code</div>
+                <div class="card-header">Integrasi CLI</div>
                 <div class="card-body">
-                    <p class="small text-secondary">AiThread memanfaatkan blok <span class="mono">env</span> di <span class="mono">settings.json</span> Claude Code agar semua prompt diarahkan ke proxy ini. Pilih cakupan:</p>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="claudeScope" id="scopeProject" value="Project" checked />
-                            <label class="form-check-label" for="scopeProject">Per project — <span class="mono">&lt;project&gt;/.claude/settings.local.json</span> (disarankan)</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="claudeScope" id="scopeUser" value="User" />
-                            <label class="form-check-label" for="scopeUser">Global — <span class="mono">~/.claude/settings.json</span> (semua sesi Claude Code)</label>
-                        </div>
-                    </div>
-                    <div class="mb-3" id="claudeProjectGroup">
-                        <label class="form-label small" for="claudeProject">Project</label>
-                        <select class="form-select" id="claudeProject"></select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small" for="proxyUrl">URL proxy AiThread</label>
-                        <input type="url" class="form-control mono" id="proxyUrl" />
-                        <div class="form-text">Gunakan alamat HTTP — Claude Code (Node) tidak mempercayai sertifikat development ASP.NET.</div>
-                    </div>
-
-                    <div class="alert small" id="claudeStatus">Memuat status…</div>
-
-                    <label class="form-label small">Blok yang akan ditulis</label>
-                    <pre class="code-block mb-3" id="claudePreview"></pre>
-
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-primary" id="btnApplyClaude">Terapkan ke Claude Code</button>
-                        <button type="button" class="btn btn-outline-danger" id="btnRevertClaude">Kembalikan</button>
-                    </div>
-                    <p class="small text-secondary mt-3 mb-0">
-                        Backup file asli disimpan sekali sebagai <span class="mono">*.aithread-backup</span>. Buka sesi Claude Code baru setelah menerapkan.
-                        Cakupan per project juga mengirim header <span class="mono">X-AiThread-Solution</span> sehingga sesi selalu terikat ke solution yang benar.
+                    <p class="small text-secondary mb-2">
+                        Mengarahkan Claude Code atau oh-my-pi ke proxy ini (global atau per project), termasuk hook Context Keeper
+                        untuk <span class="mono">/clear</span>, kini ada di menu <strong>CLI</strong>.
                     </p>
-
-                    <hr />
-                    <h3 class="h6">Context Keeper untuk <span class="mono">/clear</span></h3>
-                    <p class="small text-secondary">
-                        Hook HTTP resmi Claude Code (<span class="mono">SessionEnd</span> + <span class="mono">SessionStart</span>). Saat Anda menjalankan
-                        <span class="mono">/clear</span>, AiThread meringkas sesi lama dan menyisipkan ringkasannya ke sesi baru, sehingga konteks bisa sering
-                        dibersihkan tanpa kehilangan alur. Berlaku juga untuk sesi yang <em>tidak</em> diarahkan ke proxy. Memakai cakupan, project, dan URL di atas.
-                    </p>
-                    <div class="alert small" id="hooksStatus">Memuat status…</div>
-                    <details class="mb-3">
-                        <summary class="small">Blok yang akan ditulis</summary>
-                        <pre class="code-block mt-2 mb-0" id="hooksPreview"></pre>
-                    </details>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-primary" id="btnApplyHooks">Pasang hook</button>
-                        <button type="button" class="btn btn-outline-danger" id="btnRevertHooks">Lepas hook</button>
-                    </div>
-                    <p class="small text-secondary mt-3 mb-0">
-                        Setelah <span class="mono">/clear</span>, Claude Code menunggu ringkasan maksimal ±40 detik. AiThread harus berjalan; bila tidak,
-                        sesi baru tetap dimulai (tanpa ringkasan).
-                    </p>
+                    <a class="btn btn-primary btn-sm" asp-controller="Cli" asp-action="Index">Buka menu CLI</a>
                 </div>
             </div>
         </div>
