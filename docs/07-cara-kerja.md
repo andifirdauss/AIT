@@ -48,7 +48,7 @@ Bila pengecekan gagal (mis. database mati), prompt juga diteruskan tanpa orkestr
 
 Planner menerima **brief**:
 
-- permintaan terbaru lengkap (termasuk konteks yang disisipkan Claude Code seperti isi `CLAUDE.md`), maks 40.000 karakter;
+- permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter; lalu, terpisah, konteks yang disisipkan Claude Code (isi `CLAUDE.md`, reminder, file yang dilampirkan), maks 30.000 karakter. Bila melebihi batas, yang dibuang adalah bagian tengah; awal dan akhir teks tetap ada;
 - **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AiThread sebelumnya (lihat
   [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
 - percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
