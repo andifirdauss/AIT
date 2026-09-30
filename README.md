@@ -72,6 +72,10 @@ Agar AiThread tetap hidup walau browser, terminal, atau Visual Studio ditutup, j
 
 Detail: [docs/01-instalasi.md](docs/01-instalasi.md#5-menjalankan-di-background).
 
+Tanpa .NET SDK: `.\scripts\publish-exe.ps1 -Zip` membuat `dist\AiThread\AiThread.exe` standalone. Dijalankan
+tanpa argumen, exe menampilkan menu (Web UI, Sembunyikan ke Tray, log, restart, port, autostart); `AiThread.exe help`
+menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithreadexe-standalone-tanpa-net).
+
 1. **Setting** → isi URL 9router (mis. `http://localhost:20128`) dan API key dari dashboard 9router → *Test koneksi* → *Simpan*.
 2. **Node** → tambahkan minimal satu Planner, satu Executor, dan satu Wrapper. Model/combo diambil dari `/v1/models` 9router.
    - Planner: model terkuat yang mendukung *tool calling*.
