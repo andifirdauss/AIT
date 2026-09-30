@@ -24,7 +24,7 @@ Claude Code ──(ANTHROPIC_BASE_URL)──► AiThread /v1/messages
                                           ▼
                                Wrapper → balasan ke Claude Code (streaming)
                                           ▼
-                          Memory extractor → short memory (Redis)
+                          Memory extractor → short memory (Garnet)
 ```
 
 ## Kenapa akurat walau konteks executor kecil
@@ -49,13 +49,15 @@ serta perbandingan "waktu nyata" vs "jika sekuensial".
 
 - .NET SDK 10
 - SQL Server — default ke LocalDB `(localdb)\MSSQLLocalDB` (ubah `ConnectionStrings:Default` bila perlu)
-- Redis — `docker compose up -d redis` (tanpa Redis, memory langsung disimpan ke database)
 - 9router — `npm install -g 9router` lalu `9router` (dashboard di http://localhost:20128)
+
+Redis/Docker tidak diperlukan: short memory memakai [Garnet](https://microsoft.github.io/garnet/) (server protokol
+Redis dari Microsoft) yang berjalan di dalam proses AiThread — lihat
+[docs/01-instalasi.md](docs/01-instalasi.md#1-short-memory-garnet).
 
 ## Menjalankan
 
 ```powershell
-docker compose up -d redis
 dotnet run --project src/AiThread.UI --launch-profile http   # http://localhost:5225
 ```
 
@@ -101,7 +103,7 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 |---|---|
 | Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
 | Project | Project yang terbaca (unik per `.sln`/`.slnx`), sesi Claude Code per project, penelusur & scan `.sln`/`.slnx`, registrasi manual |
-| Memory | Short memory (Redis, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
+| Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
 | Node | Planner / executor / wrapper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan |
 | Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, integrasi `settings.json` Claude Code, bot Telegram |
 
@@ -130,7 +132,7 @@ lalu folder induk. Ditemukan → project didaftarkan otomatis pada prompt pertam
 
 - Setelah thread selesai, wrapper model menyarikan maksimal 5 memory: **label** (keyword, dipindai planner tanpa
   membaca isi) dan **deskripsi**.
-- **Short memory** disimpan di Redis tanpa TTL; worker konsolidasi (tiap 10 menit) memindahkan yang berumur
+- **Short memory** disimpan di Garnet (protokol Redis, di dalam AiThread, tahan restart/crash) tanpa TTL; worker konsolidasi (tiap 10 menit) memindahkan yang berumur
   > 24 jam ke **long memory** di database dengan id yang sama (idempoten).
 - Planner menerima indeks label (relevan dengan prompt + short memory terbaru) dan bisa memanggil `search_memory` /
   `read_memory`.
@@ -144,7 +146,7 @@ lalu folder induk. Ditemukan → project didaftarkan otomatis pada prompt pertam
 - REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/threads`, `/api/dashboard`, `/api/telegram`.
 
 Konfigurasi infrastruktur ada di `src/AiThread.UI/appsettings.json` (connection string, `AiThread:ShortMemoryHours`,
-interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executor).
+interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executor, `AiThread:EmbeddedRedis`).
 
 ## Catatan penting
 

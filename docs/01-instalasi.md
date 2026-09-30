@@ -6,21 +6,30 @@
 |---|---|---|---|
 | .NET SDK 10 | Ya | `dotnet --list-sdks` | Solusi menargetkan `net10.0`. |
 | SQL Server | Ya | `sqllocaldb info` | Default memakai LocalDB `(localdb)\MSSQLLocalDB` (terpasang bersama Visual Studio). |
-| Redis | Disarankan | `docker ps` | Untuk short memory. Tanpa Redis aplikasi tetap jalan; memory langsung disimpan ke database. |
+| Redis / Docker | Tidak | — | Short memory memakai Garnet yang berjalan di dalam AiThread (lihat langkah 1). |
 | Node.js + 9router | Ya | `9router --help` | Sumber semua model AI. |
 | Git | Disarankan | `git --version` | Executor menulis langsung ke file project; git memudahkan meninjau/membatalkan. |
 
-## 1. Redis
+## 1. Short memory (Garnet)
 
-Dari root repo:
+Tidak ada yang perlu di-install. AiThread menjalankan [Garnet](https://microsoft.github.io/garnet/) (server
+protokol Redis dari Microsoft) di dalam prosesnya sendiri, di port dari `ConnectionStrings:Redis` (default
+`localhost:6379`) dan hanya bisa diakses dari komputer ini. Tambahan RAM ±30 MB.
 
-```powershell
-docker compose up -d redis
-```
+- Data: `%LOCALAPPDATA%\AiThread\garnet\<port>`. Setiap penulisan dicatat ke *append-only file* sebelum
+  dikonfirmasi, jadi short memory tidak hilang walau AiThread dimatikan paksa atau crash. Checkpoint tiap jam
+  memangkas file itu.
+- Instance lain (mis. untuk uji coba) cukup memakai port lain di `ConnectionStrings:Redis`; data-nya otomatis
+  terpisah.
+- Bila port itu sudah dipakai program lain (mis. container Docker `aithread-redis` lama), Garnet tidak dijalankan
+  dan AiThread memakai server yang sudah ada di port itu (tercatat sebagai peringatan di log).
+- Redis eksternal: set `AiThread:EmbeddedRedis:Enabled` = `false` dan arahkan `ConnectionStrings:Redis` ke server
+  tersebut (format StackExchange.Redis, mis. `myhost:6379,password=rahasia`).
 
-`docker-compose.yml` menjalankan `redis:7-alpine` di port `6379` dengan persistensi *append-only*, sehingga
-short memory tidak hilang saat container di-restart. Untuk Redis lain, ubah `ConnectionStrings:Redis`
-(format StackExchange.Redis, mis. `myhost:6379,password=rahasia`).
+**Pindah dari Docker Redis.** Short memory yang masih ada di container lama tidak dipindahkan otomatis. Sebelum
+mematikan container, buka menu **Memory** dan klik **→ DB** pada short memory yang ingin disimpan (atau biarkan
+container hidup ±24 jam agar worker memindahkannya). Setelah itu: `docker rm -f aithread-redis` dan
+`docker volume rm ai-multi-agent_aithread-redis` (cek nama volume dengan `docker volume ls`).
 
 ## 2. 9router
 
@@ -97,8 +106,8 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 | Stop | Lewat `POST /api/system/shutdown`: thread yang sedang berjalan dibatalkan dan dicatat (maks. ±15 detik), lalu proses keluar. Bila tidak berhenti dalam 45 detik, proses dihentikan paksa. |
 | Mati mendadak | Logoff, crash, atau dihentikan paksa: saat start berikutnya, thread yang tertinggal ditandai *Cancelled* dengan pesan *AiThread berhenti saat thread ini berjalan.* |
 
-Redis (Docker) dan 9router tetap dijalankan terpisah dan harus hidup. AiThread menyambung ulang otomatis bila
-keduanya baru menyala setelah AiThread.
+9router tetap dijalankan terpisah dan harus hidup; AiThread menyambung ulang otomatis bila 9router baru menyala
+setelah AiThread. Short memory (Garnet) ikut berjalan di dalam proses AiThread.
 
 ## 6. Verifikasi
 
@@ -124,6 +133,10 @@ Bagian `AiThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di
 | `ExecutorFullFileMaxLines` | `400` | File sampai sepanjang ini dikirim utuh ke executor; file lebih besar dikirim sebagai potongan. |
 | `Telegram:ApiBaseUrl` | `https://api.telegram.org` | Endpoint Bot API untuk [prompt dari Telegram](11-telegram.md) (token bot diatur di menu Setting). |
 | `Telegram:PollTimeoutSeconds` | `50` | Lama satu long poll `getUpdates` menunggu pesan baru (1–50). |
+| `EmbeddedRedis:Enabled` | `true` | Jalankan Garnet di dalam AiThread untuk short memory. `false` = pakai Redis eksternal di `ConnectionStrings:Redis`. |
+| `EmbeddedRedis:DataDirectory` | *(kosong)* | Lokasi data Garnet. Kosong = `%LOCALAPPDATA%\AiThread\garnet\<port>`. |
+| `EmbeddedRedis:MemorySize` | `16m` | Batas RAM log Garnet. Record tertua di luar batas ini dibuang, jadi jangan diperkecil (satu short memory ±1 KB). |
+| `EmbeddedRedis:CheckpointIntervalMinutes` | `60` | Interval checkpoint yang memangkas *append-only file*. |
 
 Restart aplikasi setelah mengubah `appsettings.json`.
 
