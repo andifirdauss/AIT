@@ -4,8 +4,6 @@
   const el = id => document.getElementById(id);
   let settings = null;
 
-  const scope = () => document.querySelector('input[name="claudeScope"]:checked').value;
-
   function fill(s) {
     settings = s;
     el('routerUrl').value = s.nineRouterBaseUrl;
@@ -21,7 +19,6 @@
     el('executorMaxRetries').value = s.executorMaxRetries;
     el('maxParallelTasks').value = s.maxParallelTasks;
     el('requestTimeout').value = s.requestTimeoutSeconds;
-    if (!el('proxyUrl').value) el('proxyUrl').value = s.proxyBaseUrl;
   }
 
   async function loadModels(selected) {
@@ -38,23 +35,11 @@
     select.value = selected || '';
   }
 
-  async function loadProjects() {
-    try {
-      const projects = await api.get('/api/projects');
-      el('claudeProject').innerHTML = projects.length
-        ? projects.map(p => `<option value="${p.id}">${escapeHtml(p.name)} — ${escapeHtml(p.rootPath)}</option>`).join('')
-        : '<option value="">Belum ada project terdaftar (daftarkan di menu Project)</option>';
-    } catch {
-      el('claudeProject').innerHTML = '<option value="">Project tidak dapat dimuat</option>';
-    }
-  }
-
   async function load() {
     try {
       const s = await api.get('/api/settings');
       fill(s);
-      await Promise.all([loadModels(s.passthroughModel), loadProjects(), showStoredStatus()]);
-      syncScope();
+      await Promise.all([loadModels(s.passthroughModel), showStoredStatus()]);
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -94,7 +79,7 @@
     const bytes = new Uint8Array(24);
     crypto.getRandomValues(bytes);
     el('proxyKey').value = 'ait-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-    toast('Key baru dibuat. Simpan setting, lalu terapkan ulang ke Claude Code.', 'info');
+    toast('Key baru dibuat. Simpan setting, lalu matikan dan aktifkan lagi CLI di menu CLI agar key baru tertulis.', 'info');
   });
 
   el('settingForm').addEventListener('submit', async event => {
@@ -124,136 +109,10 @@
         el('routerTestResult').innerHTML = '';
       }
       await loadModels(settings.passthroughModel);
-      refreshClaude();
     } catch (error) {
       toast(error.message, 'error');
     }
   });
-
-  function claudeQuery() {
-    const params = new URLSearchParams({ scope: scope() });
-    if (scope() === 'Project' && el('claudeProject').value) params.set('projectId', el('claudeProject').value);
-    return params;
-  }
-
-  function renderClaude(status) {
-    const box = el('claudeStatus');
-    box.classList.remove('alert-success', 'alert-secondary', 'alert-warning');
-    if (status.pointsToAiThread) {
-      box.classList.add('alert-success');
-      box.innerHTML = `✓ Claude Code sudah diarahkan ke AiThread.<br><span class="mono">${escapeHtml(status.path)}</span>`;
-    } else if (status.currentBaseUrl) {
-      box.classList.add('alert-warning');
-      box.innerHTML = `ANTHROPIC_BASE_URL saat ini: <span class="mono">${escapeHtml(status.currentBaseUrl)}</span> (bukan AiThread).<br><span class="mono">${escapeHtml(status.path)}</span>`;
-    } else {
-      box.classList.add('alert-secondary');
-      box.innerHTML = `Belum diarahkan. ${status.fileExists ? 'File ada' : 'File akan dibuat'}: <span class="mono">${escapeHtml(status.path)}</span>`;
-    }
-    el('claudePreview').textContent = status.previewJson;
-  }
-
-  async function refreshClaude() {
-    if (scope() === 'Project' && !el('claudeProject').value) {
-      el('claudeStatus').className = 'alert alert-secondary small';
-      el('claudeStatus').textContent = 'Pilih project terlebih dahulu.';
-      el('claudePreview').textContent = '';
-      el('hooksStatus').className = 'alert alert-secondary small';
-      el('hooksStatus').textContent = 'Pilih project terlebih dahulu.';
-      el('hooksPreview').textContent = '';
-      return;
-    }
-    try {
-      renderClaude(await api.get(`/api/settings/claude?${claudeQuery()}`));
-    } catch (error) {
-      el('claudeStatus').className = 'alert alert-warning small';
-      el('claudeStatus').textContent = error.message;
-    }
-    refreshHooks();
-  }
-
-  // --- Context Keeper /clear hooks ---
-
-  function renderHooks(status) {
-    const box = el('hooksStatus');
-    box.classList.remove('alert-success', 'alert-secondary', 'alert-warning');
-    if (status.installed) {
-      box.classList.add('alert-success');
-      box.innerHTML = `✓ Hook /clear terpasang.<br><span class="mono">${escapeHtml(status.path)}</span>`;
-    } else if (status.installedBaseUrl) {
-      box.classList.add('alert-warning');
-      box.innerHTML = `Hook terpasang ke alamat lain: <span class="mono">${escapeHtml(status.installedBaseUrl)}</span> — pasang ulang untuk memperbarui.<br><span class="mono">${escapeHtml(status.path)}</span>`;
-    } else {
-      box.classList.add('alert-secondary');
-      box.innerHTML = `Belum terpasang: <span class="mono">${escapeHtml(status.path)}</span>`;
-    }
-    el('hooksPreview').textContent = status.previewJson;
-  }
-
-  async function refreshHooks() {
-    const params = claudeQuery();
-    if (el('proxyUrl').value.trim()) params.set('baseUrl', el('proxyUrl').value.trim());
-    try {
-      renderHooks(await api.get(`/api/settings/claude/hooks?${params}`));
-    } catch (error) {
-      el('hooksStatus').className = 'alert alert-warning small';
-      el('hooksStatus').textContent = error.message;
-    }
-  }
-
-  el('btnApplyHooks').addEventListener('click', async () => {
-    try {
-      renderHooks(await api.post('/api/settings/claude/hooks/apply', claudeBody()));
-      toast('Hook /clear terpasang. Berlaku untuk sesi Claude Code berikutnya.');
-    } catch (error) {
-      toast(error.message, 'error');
-    }
-  });
-
-  el('btnRevertHooks').addEventListener('click', async () => {
-    try {
-      renderHooks(await api.post('/api/settings/claude/hooks/revert', claudeBody()));
-      toast('Hook /clear AiThread dilepas.', 'info');
-    } catch (error) {
-      toast(error.message, 'error');
-    }
-  });
-
-  function syncScope() {
-    el('claudeProjectGroup').classList.toggle('d-none', scope() !== 'Project');
-    refreshClaude();
-  }
-
-  function claudeBody() {
-    return {
-      scope: scope(),
-      projectId: scope() === 'Project' ? (el('claudeProject').value || null) : null,
-      proxyBaseUrl: el('proxyUrl').value.trim(),
-      timeoutMs: null
-    };
-  }
-
-  el('btnApplyClaude').addEventListener('click', async () => {
-    if (scope() === 'User' && !confirm('Semua sesi Claude Code di komputer ini akan melewati AiThread. Lanjutkan?')) return;
-    try {
-      renderClaude(await api.post('/api/settings/claude/apply', claudeBody()));
-      toast('Claude Code diarahkan ke AiThread. Buka sesi baru agar berlaku.');
-    } catch (error) {
-      toast(error.message, 'error');
-    }
-  });
-
-  el('btnRevertClaude').addEventListener('click', async () => {
-    try {
-      renderClaude(await api.post('/api/settings/claude/revert', claudeBody()));
-      toast('Env AiThread dihapus dari settings Claude Code.', 'info');
-    } catch (error) {
-      toast(error.message, 'error');
-    }
-  });
-
-  document.querySelectorAll('input[name="claudeScope"]').forEach(r => r.addEventListener('change', syncScope));
-  el('claudeProject').addEventListener('change', refreshClaude);
-  el('proxyUrl').addEventListener('change', refreshHooks);
 
   // --- Telegram ---
 

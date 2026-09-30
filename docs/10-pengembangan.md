@@ -9,7 +9,7 @@ Konvensi kode dan penggunaan MCP ada di `CLAUDE.md` di root repo.
 | `src/AiThread.Common` | Entity, enum, DTO, `AiThreadOptions`. |
 | `src/AiThread.Data` | `AiThreadDbContext` (SQL Server via `IDbContextFactory`), migrasi EF, `RedisShortMemoryStore`, `EmbeddedRedisServer` (Garnet di dalam proses), `InProcessEventBus`. |
 | `src/AiThread.Service` | Service utama (`NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`, dll.), `Orchestration/`, `Workspace/`, `Proxy/`, `Background/`. |
-| `src/AiThread.API` | Controller REST `/api/*`, `AnthropicProxyController` (`/v1/*`), `StreamController` (SSE), infrastruktur. |
+| `src/AiThread.API` | Controller REST `/api/*`, controller proxy `AnthropicProxyController` / `OpenAiProxyController` / `GeminiProxyController` (`/v1/*`, `/v1beta/*`), `StreamController` (SSE), infrastruktur. |
 | `src/AiThread.UI` | Host ASP.NET Core MVC. View hanya kerangka; data dimuat oleh `wwwroot/js/pages/*.js` lewat `/api` + SSE. |
 | `tests/AiThread.Tests` | Unit test xUnit. |
 
@@ -52,7 +52,8 @@ connection string LocalDB default.
 
 | File | Tanggung jawab |
 |---|---|
-| `Proxy/ClaudeRequestInspector.cs` | Memilah request Claude Code: kandidat orkestrasi vs passthrough; ambil working directory, sesi, prompt, riwayat. |
+| `Proxy/ProtocolAdapter.cs` | Mengubah request Anthropic / OpenAI chat / OpenAI Responses / Gemini ke bentuk kanonik (gaya Anthropic) dan menentukan path 9router per format. |
+| `Proxy/ClaudeRequestInspector.cs` | Memilah request kanonik: kandidat orkestrasi vs passthrough; ambil working directory, sesi, prompt, riwayat. |
 | `Implementations/ProjectService.cs` | `ResolveSessionAsync`: gerbang per sesi (project `.sln`/`.slnx` atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. |
 | `Workspace/SolutionLocator.cs` | Mencari solution dari working directory, scan rekursif, daftar folder yang layak ditelusuri, membaca isi `.sln`/`.slnx`. |
 | `Orchestration/ThreadOrchestrator.cs` | Alur utama thread: project → planner → eksekusi → wrapper → memory, status & error. |
@@ -68,7 +69,8 @@ connection string LocalDB default.
 | `Orchestration/AgentPrompts.cs` | **Semua prompt peran** (planner, executor, wrapper, memory, context keeper). |
 | `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; teks progres untuk Claude Code. |
 | `Workspace/*` | Sandbox path, tool baca repo, parser & applier SEARCH/REPLACE, I/O teks (BOM/line ending), diff, pencari solution. |
-| `API/Infrastructure/AnthropicSseWriter.cs` | Menulis stream format Anthropic ke Claude Code. |
+| `API/Infrastructure/AgentProxyHandler.cs` | Logika proxy bersama semua format: auth, klasifikasi, orkestrasi, passthrough ke 9router. |
+| `API/Infrastructure/AnthropicSseWriter.cs`, `ClientStreamWriters.cs` | Menulis balasan orkestrasi (stream, non-stream, error) dalam format Anthropic, OpenAI chat, OpenAI Responses, atau Gemini. |
 | `Background/TelegramPollingWorker.cs`, `Telegram/TelegramBotRuntime.cs` | Long polling `getUpdates` bot Telegram, mulai ulang saat setting Telegram disimpan, backoff saat offline, status untuk kartu Setting. |
 | `Telegram/TelegramApi.cs` | Klien Bot API minimal: JSON dengan `Content-Length`, token dibaca dari runtime setting tiap panggilan, kirim ulang sebagai teks biasa bila HTML ditolak. HttpClient-nya tanpa logger karena token ada di URL. |
 | `Telegram/TelegramBot.cs` | Izin chat, perintah (`/projects`, `/status`, `/cancel`, `/diff`, `/new`), memulai thread (`ThreadSource.Telegram`, sesi `telegram:<chat>`, riwayat percakapan untuk planner). |

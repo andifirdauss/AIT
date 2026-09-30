@@ -73,7 +73,8 @@ Mengganti port:
 dotnet run --project src/AiThread.UI --no-launch-profile --urls http://localhost:6000
 ```
 
-Setelah port berubah, terapkan ulang integrasi Claude Code (lihat [Integrasi Claude Code](03-integrasi-claude-code.md)).
+Setelah port berubah, matikan lalu nyalakan lagi switch CLI yang aktif di menu **CLI** agar URL baru tertulis
+(lihat [Integrasi Claude Code](03-integrasi-claude-code.md)).
 
 ## 5. Menjalankan di background
 
