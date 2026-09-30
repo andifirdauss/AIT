@@ -41,7 +41,8 @@ public sealed class PlannerAgent(
     ClaudeCliPlanner cliPlanner,
     ContextKeeper contextKeeper)
 {
-    private const int MaxPromptChars = 40_000;
+    private const int MaxRequestChars = 40_000;
+    private const int MaxAttachedContextChars = 30_000;
     private const int MaxTextNudges = 2;
 
     public async Task<PlanningResult> PlanAsync(PlannerInput input, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
@@ -337,8 +338,17 @@ public sealed class PlannerAgent(
         var project = input.Project;
         var builder = new StringBuilder();
 
+        // Claude Code puts injected context (CLAUDE.md, reminders, attached files) before the developer's own words,
+        // so the request goes first and each part keeps its tail when clipped.
         builder.Append("# Developer request\n");
-        builder.Append(Limit(request.PromptContext ?? request.Prompt, MaxPromptChars)).Append("\n\n");
+        builder.Append(Limit(request.Prompt, MaxRequestChars)).Append("\n\n");
+
+        var attached = AttachedContext(request.PromptContext, request.Prompt);
+        if (attached is not null)
+        {
+            builder.Append("# Context sent with the request (reference only; act on the developer request above)\n");
+            builder.Append(Limit(attached, MaxAttachedContextChars)).Append("\n\n");
+        }
 
         // With a context pack the planner sees the summary plus only the turns the summary does not cover yet.
         var pack = request.Session?.Pack;
@@ -418,5 +428,19 @@ public sealed class PlannerAgent(
     private static bool Bool(JsonObject args, string name) =>
         args[name] is JsonValue v && (v.TryGetValue<bool>(out var b) ? b : v.TryGetValue<string>(out var s) && bool.TryParse(s, out var parsed) && parsed);
 
-    private static string Limit(string text, int max) => text.Length <= max ? text : text[..max] + "\n... (truncated)";
+    // Keeps the head and the tail: the developer's instruction usually sits at the end of a long message.
+    private static string Limit(string text, int max)
+    {
+        if (text.Length <= max) return text;
+        var head = max / 3;
+        var tail = max - head;
+        return text[..head] + $"\n... ({text.Length - max} chars truncated) ...\n" + text[^tail..];
+    }
+
+    private static string? AttachedContext(string? promptContext, string prompt)
+    {
+        if (string.IsNullOrWhiteSpace(promptContext)) return null;
+        var context = prompt.Length > 0 ? promptContext.Replace(prompt, string.Empty) : promptContext;
+        return string.IsNullOrWhiteSpace(context) ? null : context.Trim();
+    }
 }
