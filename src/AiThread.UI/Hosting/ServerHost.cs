@@ -26,6 +26,9 @@ public sealed class ServerHost : IAsyncDisposable
             // Installed exe: settings, wwwroot and docs sit beside the exe, whatever the working directory is.
             : WebApplication.CreateBuilder(new WebApplicationOptions { Args = args, ContentRootPath = AppContext.BaseDirectory });
 
+        // Added before the data layer reads the connection string; environment variables and the command line still win.
+        if (port is not null) builder.Configuration.AddJsonFile(AppPaths.UserSettingsFile, optional: true, reloadOnChange: false);
+
         if (port is not null) builder.WebHost.UseUrls($"http://localhost:{port}");
 
         // Claude Code resends the whole conversation on every turn; allow large request bodies.

@@ -1,0 +1,25 @@
+{
+    "name":  "aithread",
+    "version":  "1.0.0",
+    "description":  "AiThread: proxy, planner, dan orkestrasi multi-agent untuk Claude Code (Windows x64)",
+    "license":  "Apache-2.0",
+    "bin":  {
+                "aithread":  "bin/aithread.js"
+            },
+    "files":  [
+                  "bin",
+                  "README.md"
+              ],
+    "engines":  {
+                    "node":  "\u003e=18"
+                },
+    "os":  [
+               "win32"
+           ],
+    "cpu":  [
+                "x64"
+            ],
+    "optionalDependencies":  {
+                                 "aithread-win-x64":  "1.0.0"
+                             }
+}
