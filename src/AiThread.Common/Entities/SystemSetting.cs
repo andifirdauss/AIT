@@ -23,6 +23,12 @@ public class SystemSetting : BaseEntity
     public int MaxParallelTasks { get; set; } = 8;
     public int RequestTimeoutSeconds { get; set; } = 600;
 
+    // AiThread may run the project's own build command (dotnet build, npm run build, ...): as a planner tool and to
+    // verify the executors' changes, with up to MaxFixRounds rounds of fix tasks for the errors found.
+    public bool BuildEnabled { get; set; } = true;
+    public int BuildTimeoutSeconds { get; set; } = 300;
+    public int MaxFixRounds { get; set; } = 2;
+
     // Remote prompting through a Telegram bot. Long polling, so no public URL is needed.
     public bool TelegramEnabled { get; set; }
 

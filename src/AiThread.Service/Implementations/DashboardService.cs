@@ -42,7 +42,7 @@ public sealed class DashboardService(
                 threadsTotal = await db.Threads.CountAsync(cancellationToken);
                 threadsToday = await db.Threads.CountAsync(t => t.CreatedAt >= todayUtc, cancellationToken);
                 tokensToday = await db.Threads.Where(t => t.CreatedAt >= todayUtc)
-                    .SumAsync(t => (long)t.PlannerTokens + t.ExecutorTokens + t.WrapperTokens, cancellationToken);
+                    .SumAsync(t => (long)t.PlannerTokens + t.ExecutorTokens + t.ReviewerTokens + t.WrapperTokens, cancellationToken);
                 projectCount = await db.Projects.CountAsync(cancellationToken);
 
                 var recentOutcomes = await db.Threads.AsNoTracking()

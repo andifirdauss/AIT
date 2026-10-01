@@ -39,7 +39,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
 | 5 | [Panduan menu](05-menu.md) | Dashboard, detail thread, Project, Memory, Node, CLI, Setting |
 | 6 | [Memory](06-memory.md) | Short vs long memory, project vs knowledge memory, siklus hidup, pengelolaan |
-| 7 | [Cara kerja](07-cara-kerja.md) | Detail pipeline: klasifikasi request, planner, kontrak, validator, executor, wrapper |
+| 7 | [Cara kerja](07-cara-kerja.md) | Detail pipeline: klasifikasi request, planner, kontrak, validator, executor, verifikasi (build & reviewer), wrapper |
 | 8 | [Troubleshooting](08-troubleshooting.md) | Pesan error umum dan solusinya |
 | 9 | [Referensi API](09-referensi-api.md) | Endpoint proxy Anthropic, REST `/api`, event SSE |
 | 10 | [Pengembangan](10-pengembangan.md) | Struktur solusi, build, test, migrasi, titik ekstensi |

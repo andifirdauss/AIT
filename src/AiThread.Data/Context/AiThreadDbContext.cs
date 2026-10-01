@@ -60,6 +60,7 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.PlanSummary).HasMaxLength(2000);
             e.Property(x => x.PlannerModel).HasMaxLength(200);
             e.Property(x => x.WrapperModel).HasMaxLength(200);
+            e.Property(x => x.ReviewerModel).HasMaxLength(200);
             e.HasOne(x => x.Project).WithMany(p => p.Threads).HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.SessionId);

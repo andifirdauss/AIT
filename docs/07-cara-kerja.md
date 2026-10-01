@@ -74,11 +74,14 @@ Planner menerima **brief**:
   [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
 - percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
   ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
-- info project: nama, root, stack, folder tempat sesi dibuka (bila di bawah root), dan daftar file solution/build yang ditemukan;
+- info project: nama, root, stack, folder tempat sesi dibuka (bila di bawah root), daftar file solution/build yang ditemukan,
+  dan perintah build yang bisa dijalankan AiThread (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
 - struktur folder 2 tingkat (maks 200 entri);
 - indeks memory (id + label, maks 25).
 
-Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**. Path relatif dihitung dari
+Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**, kecuali `run_build` yang
+menjalankan build project (tidak mengubah kode; hanya ditawarkan bila *Build & verifikasi otomatis* menyala dan project
+punya perintah build). Path relatif dihitung dari
 root project; tool baca (`list_directory`, `find_files`, `search_text`, `read_file`) juga menerima **path absolut di luar
 root**, supaya planner bisa mengecek folder atau project lain ketika Anda memintanya (mis. "cek ke
 `D:/project/otherproject`"). Di luar root hasilnya ditampilkan dengan path absolut:
@@ -92,6 +95,7 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `search_memory(query)` | maks 25 label |
 | `read_memory(ids)` | deskripsi lengkap |
 | `read_thread(id)` | catatan lengkap thread sebelumnya di project ini (permintaan, rencana, tugas, balasan) |
+| `run_build(target?)` | build project, hasilnya status + setiap error `file(baris,kolom): kode: pesan` (maks 40). `target` = solution/project/manifest lain di dalam root. Dipakai bila Anda minta build atau memperbaiki error build |
 | `submit_plan(plan)` | mengakhiri planning |
 
 Folder `.git .vs .idea .nuget bin obj node_modules packages TestResults artifacts` dan `wwwroot/lib/` disembunyikan
@@ -200,16 +204,72 @@ Blok dengan SEARCH kosong berarti membuat file baru (isi lengkap di bagian REPLA
 
 Diff yang ditampilkan di detail thread dibangun dari blok-blok tersebut.
 
-## 5. Wrapper
+## 5. Verifikasi: build dan reviewer
 
-Wrapper menerima permintaan Anda, ringkasan rencana, kontrak, dan hasil setiap tugas (ringkasan, error, maks 60
-baris diff per tugas), lalu menulis balasan dalam bahasa permintaan Anda. Balasan di-stream ke Claude Code.
-Jika tidak ada wrapper aktif atau wrapper gagal, AiThread menyusun ringkasan otomatis (✅/❌/⏭️ per tugas).
+Setelah eksekusi, bila minimal satu tugas berhasil, AiThread memeriksa hasilnya (status thread *Verifikasi*). Tahap ini
+berjalan bila ada salah satu dari:
 
-## 6. Setelah thread
+- **perintah build**: *Build & verifikasi otomatis* menyala di Setting dan project punya perintah build;
+- **node Reviewer** aktif (yang prioritasnya terkecil dipakai).
+
+Perintah build dipilih dari manifest project, **bukan oleh model** (model hanya boleh memilih manifest lain di dalam
+root lewat `run_build`):
+
+| Stack | Perintah | Target default |
+|---|---|---|
+| .NET | `dotnet build <file> -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | `.sln`/`.slnx` paling dangkal, kalau tidak ada `.csproj`/`.fsproj`/`.vbproj` paling dangkal |
+| Node.js | `tsc --noEmit` (TypeScript lokal di `node_modules`), kalau tidak ada `npm run build` | `package.json` paling dangkal yang punya salah satunya |
+| Go | `go build ./...` | `go.mod` |
+| Rust | `cargo check --message-format short` | `Cargo.toml` |
+| Java (Maven) | `mvnw`/`mvn -q -B compile` | `pom.xml` |
+
+Stack lain (Python, PHP, Gradle, …) tidak punya perintah build; verifikasinya hanya lewat Reviewer bila ada.
+
+Satu putaran verifikasi:
+
+1. **Build** (bila ada perintahnya). Satu build per project pada satu waktu (dua build berebut `obj/`). Build
+   dihentikan beserta proses anaknya bila melewati *Timeout build* atau thread dibatalkan. Error dibaca dari output
+   (format MSBuild/Roslyn, tsc, Maven, dan `file:baris:kolom` untuk Go/Rust); bila tidak ada error yang dikenali,
+   120 baris terakhir output yang dipakai.
+2. **Reviewer** (bila ada node aktif). Ia menerima permintaan, rencana, kontrak, instruksi dan diff setiap tugas (maks
+   150 baris per tugas), dan hasil build, lalu menjawab JSON: disetujui, atau daftar masalah per file — kebutuhan yang
+   terlewat, nama yang tidak cocok antar file/kontrak, salah ketik, `using`/import yang kurang, dan penyebab error
+   build. Gaya, refactor, dan hal di luar permintaan tidak dilaporkan. Reviewer yang gagal dihubungi atau menjawab
+   bukan JSON hanya membuat review dilewati.
+3. **Tugas perbaikan**. Masalah dikelompokkan per file menjadi tugas `V<putaran>-<n>` (mis. `V1-1`) yang dikerjakan
+   executor seperti tugas biasa, dengan instruksi berisi error build (baris, kolom, kode, pesan), temuan reviewer, dan
+   instruksi tugas awal file itu sebagai konteks. *Focus* diarahkan ke awal file (tempat `using`/import) dan ke baris
+   setiap error atau baris yang dikutip reviewer. Lalu putaran berikutnya dimulai.
+
+Batas dan aturan:
+
+- Maksimal *Putaran perbaikan* putaran (default 2). Nilai `0` = hanya verifikasi dan laporkan.
+- Error build hanya diperbaiki otomatis di **file yang diubah thread ini**. Error di file lain (mungkin sudah ada
+  sebelum thread), di folder hasil generate, di luar root, atau tanpa file (mis. paket NuGet tidak ditemukan)
+  dilaporkan apa adanya. Reviewer tetap boleh menunjuk file lain bila jelas rusak akibat perubahan.
+- Error `MSB3021`/`MSB3026`/`MSB3027` (file output terkunci oleh aplikasi yang sedang berjalan) dianggap **lolos**:
+  kodenya berhasil dikompilasi.
+- Build yang timeout atau tidak bisa dijalankan (toolchain tidak terpasang) tidak diulang di putaran berikutnya.
+- Verifikasi berhenti bila tidak ada tugas perbaikan yang berhasil, atau masalah yang tersisa tidak bisa diperbaiki
+  otomatis.
+
+Hasilnya: **Lolos**, **Masih ada masalah**, atau **Tidak dapat dipastikan** (build tidak bisa jalan dan tidak ada
+review). Thread tetap *Selesai*; masalah yang tersisa dicatat di kolom error thread dan disebutkan wrapper. Detail
+setiap putaran tampil di kartu *Verifikasi* pada detail thread.
+
+## 6. Wrapper
+
+Wrapper menerima permintaan Anda, ringkasan rencana, kontrak, hasil setiap tugas termasuk tugas perbaikan (ringkasan,
+error, maks 60 baris diff per tugas), dan ringkasan verifikasi per putaran, lalu menulis balasan dalam bahasa
+permintaan Anda: apakah build lolos, apa kata reviewer, dan error yang masih tersisa. Balasan di-stream ke Claude Code.
+Jika tidak ada wrapper aktif atau wrapper gagal, AiThread menyusun ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
+verifikasi).
+
+## 7. Setelah thread
 
 - Status akhir: *Selesai* bila ada tugas yang berhasil (atau jawaban langsung), *Gagal* bila tidak ada.
-- Waktu, token per peran, dan setiap tugas tersimpan di database dan tampil di Dashboard.
+- Waktu (termasuk verifikasi), token per peran (planner, executor termasuk tugas perbaikan, reviewer, wrapper), dan
+  setiap tugas tersimpan di database dan tampil di Dashboard.
 - Ekstraksi memory berjalan di belakang — lihat [Memory](06-memory.md).
 - Untuk thread dari Claude Code (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
 
@@ -248,7 +308,11 @@ lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integras
   dan tidak bisa menyentuh folder yang disembunyikan. Pembacaan planner boleh keluar root (path absolut), jadi ia dapat
   membaca file apa pun yang bisa dibaca akun yang menjalankan AiThread, dan isinya dikirim ke model planner. Permintaan
   "cek" ke folder lain hanya menghasilkan jawaban; mengubah file di luar root tidak didukung.
-- Tidak ada eksekusi perintah shell.
+- Satu-satunya perintah yang dijalankan AiThread adalah **perintah build** project (tabel di
+  [Verifikasi](#5-verifikasi-build-dan-reviewer)), dengan program dan argumen tetap; model hanya memilih manifest di
+  dalam root. Build menjalankan apa pun yang didefinisikan project itu sendiri (target MSBuild, script `build` di
+  `package.json`, plugin Maven), jadi matikan *Build & verifikasi otomatis* untuk project yang tidak Anda percaya.
+  Tidak ada perintah shell lain (test, git, install paket, migrasi).
 - AiThread menulis ke folder mana pun yang dikirim sebagai working directory. Biarkan aplikasi hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin dapat diakses orang lain.
 - API key 9router disimpan terenkripsi dengan ASP.NET Core Data Protection.

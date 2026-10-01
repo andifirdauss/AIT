@@ -2,7 +2,8 @@
 
 Proxy untuk Claude Code yang memecah satu permintaan menjadi tugas-tugas sangat kecil:
 **planner** (model paling cerdas) merencanakan, banyak **executor** (model murah) mengerjakan secara paralel,
-lalu **wrapper** merangkum hasilnya untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
+AiThread membuild project dan (opsional) **reviewer** memeriksa hasilnya sampai lolos, lalu **wrapper** merangkum hasilnya
+untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
 
 > **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** — instalasi, konfigurasi, integrasi Claude Code,
 > penggunaan sehari-hari, memory, cara kerja, troubleshooting, dan referensi API.
@@ -11,7 +12,7 @@ lalu **wrapper** merangkum hasilnya untuk user. Semua model diakses lewat [9rout
 Claude Code ──(ANTHROPIC_BASE_URL)──► AiThread /v1/messages
                                           │
                   ┌───────────────────────┴───────────────────────┐
-                  │ Planner (tool loop, read-only)                 │
+                  │ Planner (tool loop, read-only + run_build)     │
                   │  list_directory · find_files · search_text     │
                   │  read_file · search_memory · read_memory       │
                   │  └─► submit_plan: summary + KONTRAK + tugas    │
@@ -21,6 +22,9 @@ Claude Code ──(ANTHROPIC_BASE_URL)──► AiThread /v1/messages
                  Executor   Executor  Executor  Executor   Executor  1 tugas = 1 file
                  (view)     (js)      (api)     (service)  (sql)     SEARCH/REPLACE, retry bila gagal
                      └──────────┴─────────┼─────────┴──────────┘
+                                          ▼
+                  Verifikasi: build (dotnet build, tsc, …) + Reviewer (opsional)
+                     error/temuan ─► tugas perbaikan V1-1… ─► cek ulang (maks 2 putaran)
                                           ▼
                                Wrapper → balasan ke Claude Code (streaming)
                                           ▼
@@ -81,8 +85,8 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    - Planner: model terkuat yang mendukung *tool calling*.
    - Executor: model murah & cepat; tambah beberapa node untuk menyebar beban. `Max paralel` dibatasi per node lintas semua thread.
    - Wrapper: model murah; juga dipakai untuk ekstraksi memory dan sebagai model passthrough default.
-3. Menu **CLI** → kartu *Claude Code* → nyalakan switch *Per project* (disarankan) atau *Global*. Kartu *oh-my-pi*
-   bekerja sama (menulis `.env` yang dibaca omp). Untuk Claude Code, ini menulis blok `env` ke `.claude/settings.local.json` (atau `~/.claude/settings.json`):
+   - Reviewer (opsional): model yang teliti; memeriksa hasil executor terhadap rencana, kontrak, dan hasil build.
+3. Menu **CLI** → kartu *Claude Code* → nyalakan switch *Per project* (disarankan) atau *Global*. Untuk Claude Code, ini menulis blok `env` ke `.claude/settings.local.json` (atau `~/.claude/settings.json`):
 
    ```json
    {
@@ -108,8 +112,8 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 | Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
 | Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual |
 | Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
-| Node | Planner / executor / wrapper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan |
-| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, integrasi `settings.json` Claude Code, bot Telegram |
+| Node | Planner / executor / reviewer / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan |
+| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, bot Telegram |
 
 ## Prompt dari Telegram
 
@@ -157,7 +161,8 @@ interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executo
 ## Catatan penting
 
 - Executor **menulis langsung ke file project**. Jalankan di repo git agar perubahan mudah ditinjau atau dibatalkan.
-- AiThread tidak menjalankan build/test/migrasi; langkah lanjutan disebutkan di ringkasan wrapper.
+- Satu-satunya perintah yang dijalankan AiThread adalah build project (bisa dimatikan di Setting); test, migrasi, dan
+  git tidak dijalankan — langkah lanjutan disebutkan di ringkasan wrapper.
 - Proxy dapat menulis file di folder mana pun yang dikirim sebagai working directory. Biarkan hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin diakses orang lain.
 - API key 9router dan token bot Telegram disimpan terenkripsi (ASP.NET Core Data Protection).

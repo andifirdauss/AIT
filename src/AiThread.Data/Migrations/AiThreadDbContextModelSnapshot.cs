@@ -249,10 +249,19 @@ namespace AiThread.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("BuildEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("BuildTimeoutSeconds")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("ExecutorMaxRetries")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxFixRounds")
                         .HasColumnType("int");
 
                     b.Property<int>("MaxParallelTasks")
@@ -403,6 +412,13 @@ namespace AiThread.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ReviewerModel")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ReviewerTokens")
+                        .HasColumnType("int");
+
                     b.Property<string>("SessionId")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -422,6 +438,12 @@ namespace AiThread.Data.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("VerificationJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("VerificationMs")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("WorkingDirectory")
                         .HasMaxLength(800)

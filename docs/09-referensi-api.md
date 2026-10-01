@@ -51,7 +51,7 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | Method | Path | Body / query |
 |---|---|---|
 | `GET` | `/api/settings` | — |
-| `PUT` | `/api/settings` | `nineRouterBaseUrl`, `nineRouterApiKey`, `clearNineRouterApiKey`, `proxyApiKey`, `passthroughModel`, `orchestrationEnabled`, `streamProgressToClient`, `plannerMaxSteps`, `executorMaxRetries`, `maxParallelTasks`, `requestTimeoutSeconds` |
+| `PUT` | `/api/settings` | `nineRouterBaseUrl`, `nineRouterApiKey`, `clearNineRouterApiKey`, `proxyApiKey`, `passthroughModel`, `orchestrationEnabled`, `streamProgressToClient`, `plannerMaxSteps`, `executorMaxRetries`, `maxParallelTasks`, `requestTimeoutSeconds`, `buildEnabled` (default `true`), `buildTimeoutSeconds` (30–3600, default 300), `maxFixRounds` (0–5, default 2) |
 | `POST` | `/api/settings/test-router` | `{ "baseUrl"?: "...", "apiKey"?: "..." }` — kosong = pakai nilai tersimpan |
 | `GET` | `/api/settings/claude?scope=User\|Project&projectId=` | status file settings Claude Code |
 | `POST` | `/api/settings/claude/apply` | `{ "scope": "Project", "projectId": "...", "proxyBaseUrl": "http://localhost:5225", "timeoutMs": null }` |
@@ -64,7 +64,8 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 
 ### CLI
 
-Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi`; id lain → `404`. `scope` = `Global` atau `Project`.
+Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi-provider`; id lain → `404`. `scope` = `Global` atau `Project`
+(`oh-my-pi-provider` hanya `Global`; `projectFile` di daftar CLI bernilai `null` dan `/projects` mengembalikan daftar kosong).
 
 | Method | Path | Body / query |
 |---|---|---|
@@ -80,7 +81,7 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi`; id lain → `404`.
 | `GET` | `/api/nodes` | — |
 | `GET` | `/api/nodes/pipeline` | — (`isReady`, jumlah per peran, `issues`) |
 | `GET` | `/api/nodes/{id}` | — |
-| `POST` | `/api/nodes` | `name`, `role`, `model`, `temperature`, `maxTokens`, `maxConcurrency`, `priority`, `systemPrompt`, `isActive` |
+| `POST` | `/api/nodes` | `name`, `role` (`Planner`, `Executor`, `Reviewer`, `Wrapper`, `ContextKeeper`), `model`, `temperature`, `maxTokens`, `maxConcurrency`, `priority`, `systemPrompt`, `isActive` |
 | `PUT` | `/api/nodes/{id}` | sama dengan POST |
 | `DELETE` | `/api/nodes/{id}` | — |
 | `POST` | `/api/nodes/{id}/test` | — (`success`, `reply`, `latencyMs`, `tokens`, `error`) |
@@ -115,7 +116,7 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi`; id lain → `404`.
 | Method | Path | Body / query |
 |---|---|---|
 | `GET` | `/api/threads` | `take` (default 30, maks 200), `projectId` |
-| `GET` | `/api/threads/{id}` | — (ringkasan, `planJson`, respons akhir, metrik, tugas) |
+| `GET` | `/api/threads/{id}` | — (ringkasan, `planJson`, respons akhir, metrik termasuk `reviewerModel`/`reviewerTokens`/`verificationMs`, tugas, `verificationJson`: `outcome` `passed`/`failed`/`unverified`, `command`, `reviewerModel`, `rounds[]` berisi `build` (`status`, `headline`, `errors[]`, …), `review` (`approved`, `summary`, `issues[]`, `error`), `fixTasks[]`, `unfixable[]`) |
 | `POST` | `/api/threads` | `{ "projectId": "...", "prompt": "..." }` → id thread, berjalan di belakang |
 | `POST` | `/api/threads/{id}/cancel` | — |
 | `GET` | `/api/dashboard/summary` | — |

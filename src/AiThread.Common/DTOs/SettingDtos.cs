@@ -14,6 +14,9 @@ public record SystemSettingDto(
     int ExecutorMaxRetries,
     int MaxParallelTasks,
     int RequestTimeoutSeconds,
+    bool BuildEnabled,
+    int BuildTimeoutSeconds,
+    int MaxFixRounds,
     string ProxyBaseUrl);
 
 public record UpdateSystemSettingRequest(
@@ -27,7 +30,10 @@ public record UpdateSystemSettingRequest(
     int PlannerMaxSteps,
     int ExecutorMaxRetries,
     int MaxParallelTasks,
-    int RequestTimeoutSeconds);
+    int RequestTimeoutSeconds,
+    bool BuildEnabled = true,
+    int BuildTimeoutSeconds = 300,
+    int MaxFixRounds = 2);
 
 public record ClaudeSettingsStatusDto(
     ClaudeSettingsScope Scope,

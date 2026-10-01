@@ -13,4 +13,7 @@ public sealed record RuntimeSettings(
     int MaxParallelTasks,
     int RequestTimeoutSeconds,
     bool TelegramEnabled = false,
-    string? TelegramBotToken = null);
+    string? TelegramBotToken = null,
+    bool BuildEnabled = true,
+    int BuildTimeoutSeconds = 300,
+    int MaxFixRounds = 2);

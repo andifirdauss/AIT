@@ -9,7 +9,7 @@ public record CliInfoDto(
     string Name,
     string Description,
     string GlobalPath,
-    string ProjectFile,
+    string? ProjectFile,
     string? Note);
 
 public record CliListDto(string ProxyBaseUrl, IReadOnlyList<CliInfoDto> Clis);

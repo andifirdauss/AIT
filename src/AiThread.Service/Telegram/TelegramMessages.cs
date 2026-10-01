@@ -64,7 +64,7 @@ public static class TelegramMessages
     }
 
     public static bool IsActive(ThreadStatus status) =>
-        status is ThreadStatus.Pending or ThreadStatus.Planning or ThreadStatus.Executing or ThreadStatus.Wrapping;
+        status is ThreadStatus.Pending or ThreadStatus.Planning or ThreadStatus.Executing or ThreadStatus.Verifying or ThreadStatus.Wrapping;
 
     public static string Help(string? activeProject) => Lines(
         "🧵 <b>AiThread</b> — prompt jarak jauh",
@@ -241,6 +241,7 @@ public static class TelegramMessages
         ThreadStatus.Pending => ("⏳", "Menunggu"),
         ThreadStatus.Planning => ("🧠", "Planning"),
         ThreadStatus.Executing => ("⚙️", "Eksekusi"),
+        ThreadStatus.Verifying => ("🔍", "Verifikasi"),
         ThreadStatus.Wrapping => ("📦", "Wrapping"),
         ThreadStatus.Completed when s.TasksFailed > 0 => ("⚠️", "Selesai sebagian"),
         ThreadStatus.Completed => ("✅", "Selesai"),

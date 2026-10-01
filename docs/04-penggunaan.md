@@ -33,6 +33,20 @@ Contoh untuk prompt *"Tambahkan kolom deskripsi di form user: field di UI, logic
    ✅ T1 `src/Web/Views/User/Index.cshtml` (1.8s, GLM Executor) — Added the txtDescription textarea after the name field.
    ✅ T4 `src/Service/UserService.cs` (3.3s, Combo Executor) — Added a 500-character limit for Description.
 ⏱️ Eksekusi selesai dalam 5.0s (total kerja executor 8.4s → 1.7x lebih cepat dari sekuensial)
+🔍 Verifikasi: build `dotnet build SampleApp.sln` + reviewer `cc/claude-sonnet`…
+🔨 Build `dotnet build SampleApp.sln`…
+   ❌ build gagal: 1 error (14.2s)
+      · src/Service/UserService.cs(48,13): CS0103: The name 'MaxDescriptionLength' does not exist in the current context
+🔎 Reviewer `cc/claude-sonnet` memeriksa hasil…
+   ⚠️ Reviewer menemukan 1 masalah: Konstanta batas panjang deskripsi belum dideklarasikan.
+      · `src/Service/UserService.cs` — MaxDescriptionLength is used but never declared.
+🛠️ Putaran perbaikan 1: 1 tugas…
+   • V1-1 `src/Service/UserService.cs` — Fix build errors and review findings
+   ✅ V1-1 `src/Service/UserService.cs` (2.1s, GLM Executor) — Declared MaxDescriptionLength = 500.
+🔨 Build `dotnet build SampleApp.sln`…
+   ✅ build berhasil (9.8s)
+🔎 Reviewer `cc/claude-sonnet` memeriksa hasil…
+   ✅ Reviewer: Semua layer memakai txtDescription/Description sesuai kontrak.
 📦 Wrapper `glm/glm-cheap` merangkum hasil…
 
 ---
@@ -47,6 +61,8 @@ Field **Deskripsi** sudah ditambahkan end-to-end. …
 | `📋 Rencana` dan `•` | Rencana yang sudah lolos validasi, satu baris per tugas. `(setelah T3)` = menunggu tugas lain. |
 | `✅` / `❌` / `⏭️` | Tugas berhasil / gagal (dengan alasan) / dilewati karena tugas yang ditunggunya gagal. |
 | `⏱️ … lebih cepat dari sekuensial` | Waktu nyata tahap eksekusi dibanding total waktu kerja semua executor. |
+| `🔍 Verifikasi`, `🔨 Build`, `🔎 Reviewer` | AiThread membuild project dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). Error ditampilkan maks 5 baris. |
+| `🛠️ Putaran perbaikan` dan `V1-1`, … | Error build dan temuan reviewer diserahkan ke executor sebagai tugas perbaikan, lalu dicek ulang. |
 | `---` lalu teks | Ringkasan wrapper — bagian yang perlu Anda baca. |
 
 Progres bisa disembunyikan lewat Setting → *Tampilkan progres di Claude Code*; ringkasan tetap tampil.
@@ -64,10 +80,12 @@ AiThread paling efektif untuk perubahan yang menyentuh beberapa file/layer sekal
 
 ## Yang tidak dilakukan AiThread
 
-- Tidak menjalankan build, test, migrasi, perintah shell, atau git. Langkah tersebut disebutkan di ringkasan.
+- Tidak menjalankan test, migrasi, git, instalasi paket, atau perintah shell lain. Satu-satunya perintah adalah
+  **build** project (bila *Build & verifikasi otomatis* menyala): Anda bisa meminta "build lalu perbaiki errornya",
+  dan setelah tiap perubahan AiThread membuild ulang sendiri. Langkah lain disebutkan di ringkasan.
 - Tidak memakai tool bawaan Claude Code: saat orkestrasi aktif, Claude Code berfungsi sebagai tampilan percakapan.
-  Untuk pekerjaan yang butuh menjalankan perintah, matikan *Orkestrasi aktif* sementara (Claude Code menjadi agen
-  biasa lewat 9router) atau kembalikan integrasi.
+  Untuk pekerjaan yang butuh menjalankan perintah selain build, matikan *Orkestrasi aktif* sementara (Claude Code
+  menjadi agen biasa lewat 9router) atau kembalikan integrasi.
 - Tidak meminta izin per edit — executor menulis langsung ke file. Kerjakan di repo git.
 
 ## Meninjau hasil
@@ -82,7 +100,7 @@ Status thread:
 
 | Status | Arti |
 |---|---|
-| Selesai | Planner menjawab langsung, atau minimal satu tugas berhasil (tugas lain yang gagal dicatat di kolom error). |
+| Selesai | Planner menjawab langsung, atau minimal satu tugas berhasil (tugas lain yang gagal, dan error build/temuan reviewer yang tersisa setelah verifikasi, dicatat di kolom error). |
 | Gagal | Tidak ada tugas berhasil, atau planner/9router gagal. Pesan penyebab tampil di Claude Code dan di detail thread. |
 | Dibatalkan | Dihentikan oleh Anda. |
 

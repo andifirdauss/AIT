@@ -51,13 +51,14 @@ public sealed class ThreadRecorder(
         }, thread.Id));
     }
 
-    public async Task<IReadOnlyList<ThreadTask>> CreateTasksAsync(ThreadPlan plan)
+    // firstOrder: fix tasks of the verification stage continue after the planned ones.
+    public async Task<IReadOnlyList<ThreadTask>> CreateTasksAsync(ThreadPlan plan, int firstOrder = 1)
     {
         var tasks = plan.Tasks.Select((t, i) => new ThreadTask
         {
             ThreadRunId = thread.Id,
             TaskKey = Truncate(t.Id, 20),
-            Order = i + 1,
+            Order = firstOrder + i,
             Title = Truncate(t.Title, 300),
             FilePath = Truncate(t.File, 800),
             Action = t.Action,

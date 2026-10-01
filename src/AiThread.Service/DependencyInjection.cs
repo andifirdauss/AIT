@@ -5,6 +5,7 @@ using AiThread.Service.Implementations.Cli;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Orchestration;
 using AiThread.Service.Telegram;
+using AiThread.Service.Verification;
 using AiThread.Service.Workspace;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -39,7 +40,7 @@ public static class DependencyInjection
         services.AddSingleton<IDashboardService, DashboardService>();
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
         services.AddSingleton<ICliIntegration, ClaudeCodeIntegration>();
-        services.AddSingleton<ICliIntegration, OhMyPiIntegration>();
+        services.AddSingleton<ICliIntegration>(sp => new OhMyPiProviderIntegration(sp.GetRequiredService<ISettingService>()));
         services.AddSingleton<ActivityLogQueue>();
         services.AddSingleton<IActivityLogService, ActivityLogService>();
         services.AddSingleton<IDocsService>(sp => new DocsService(DocsService.ResolveDirectory(
@@ -52,6 +53,9 @@ public static class DependencyInjection
         services.AddSingleton<PlannerAgent>();
         services.AddSingleton<ExecutorAgent>();
         services.AddSingleton<ExecutionEngine>();
+        services.AddSingleton<BuildRunner>();
+        services.AddSingleton<ReviewerAgent>();
+        services.AddSingleton<VerificationStage>();
         services.AddSingleton<WrapperAgent>();
         services.AddSingleton<MemoryExtractor>();
         services.AddSingleton<ContextKeeper>();

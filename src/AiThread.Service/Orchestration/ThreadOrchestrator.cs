@@ -6,6 +6,7 @@ using AiThread.Data.Context;
 using AiThread.Data.Messaging;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
+using AiThread.Service.Verification;
 using AiThread.Service.Workspace;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -13,7 +14,8 @@ using Microsoft.Extensions.Logging;
 
 namespace AiThread.Service.Orchestration;
 
-// planner (expensive, explores + plans) -> executors (cheap, parallel, one file each) -> wrapper (pools and reports).
+// planner (expensive, explores + plans) -> executors (cheap, parallel, one file each) -> verification (build and/or
+// reviewer, with fix rounds) -> wrapper (pools and reports).
 public sealed class ThreadOrchestrator(
     ISettingService settingService,
     INodeService nodeService,
@@ -24,6 +26,7 @@ public sealed class ThreadOrchestrator(
     ThreadRegistry registry,
     PlannerAgent plannerAgent,
     ExecutionEngine executionEngine,
+    VerificationStage verificationStage,
     WrapperAgent wrapperAgent,
     MemoryExtractor memoryExtractor,
     ContextKeeper contextKeeper,
@@ -167,7 +170,15 @@ public sealed class ThreadOrchestrator(
                 $"⏱️ Eksekusi selesai dalam {Seconds(execution.WallMs)} (total kerja executor {Seconds(execution.SumMs)} → {speedup:0.0}x lebih cepat dari sekuensial)",
                 cancellationToken);
 
-            // 3. Wrap
+            // 3. Verify: build and/or review, with fix rounds. From here on plan and execution include the fix tasks.
+            var verification = await VerifyAsync(request, project, plan, execution, executors, scope, settings, recorder, progress, cancellationToken);
+            if (verification is not null)
+            {
+                plan = verification.Plan;
+                execution = verification.Execution;
+            }
+
+            // 4. Wrap
             await recorder.UpdateThreadAsync(t =>
             {
                 t.Status = ThreadStatus.Wrapping;
@@ -179,7 +190,7 @@ public sealed class ThreadOrchestrator(
             var wrapTokens = 0;
             if (wrapper is null)
             {
-                finalText = WrapperAgent.FallbackSummary(plan, execution);
+                finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report);
                 await progress.FinalAsync(finalText, cancellationToken);
             }
             else
@@ -187,18 +198,18 @@ public sealed class ThreadOrchestrator(
                 await progress.LineAsync($"📦 Wrapper `{wrapper.Model}` merangkum hasil…", cancellationToken);
                 try
                 {
-                    (finalText, wrapTokens) = await wrapperAgent.WrapAsync(wrapper, request.Prompt, plan, execution,
+                    (finalText, wrapTokens) = await wrapperAgent.WrapAsync(wrapper, request.Prompt, plan, execution, verification?.ForModels,
                         delta => progress.FinalAsync(delta, cancellationToken), cancellationToken);
                     if (string.IsNullOrWhiteSpace(finalText))
                     {
-                        finalText = WrapperAgent.FallbackSummary(plan, execution);
+                        finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report);
                         await progress.FinalAsync(finalText, cancellationToken);
                     }
                 }
                 catch (NineRouterException ex)
                 {
                     recorder.Log(ActivityLevel.Warning, $"Wrapper gagal ({ex.Message}); memakai ringkasan otomatis.");
-                    finalText = WrapperAgent.FallbackSummary(plan, execution);
+                    finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report);
                     await progress.FinalAsync(finalText, cancellationToken);
                 }
             }
@@ -206,8 +217,10 @@ public sealed class ThreadOrchestrator(
 
             var succeeded = execution.Results.Count(r => r.Status == ThreadTaskStatus.Succeeded);
             var status = succeeded == 0 ? ThreadStatus.Failed : ThreadStatus.Completed;
-            await FinishAsync(recorder, status, finalText, total, wrapTokens, wrapClock.ElapsedMilliseconds,
-                succeeded < execution.Results.Count ? $"{execution.Results.Count - succeeded} tugas tidak berhasil." : null);
+            var notes = new List<string>();
+            if (succeeded < execution.Results.Count) notes.Add($"{execution.Results.Count - succeeded} tugas tidak berhasil.");
+            if (verification?.Report.Outcome == VerificationReport.Failed) notes.Add(VerificationNote(verification.Report));
+            await FinishAsync(recorder, status, finalText, total, wrapTokens, wrapClock.ElapsedMilliseconds, notes.Count > 0 ? string.Join(" ", notes) : null);
 
             recorder.Log(status == ThreadStatus.Completed ? ActivityLevel.Success : ActivityLevel.Error,
                 $"Thread selesai: {succeeded}/{execution.Results.Count} tugas berhasil dalam {Seconds(total.ElapsedMilliseconds)}.");
@@ -236,6 +249,70 @@ public sealed class ThreadOrchestrator(
         {
             registry.Complete(thread.Id);
         }
+    }
+
+    // Runs when something was changed and there is a way to check it: a build command (and building is allowed) or an
+    // active Reviewer node. Null when skipped. A crash in here only costs the verification, not the edits already made.
+    private async Task<VerificationResult?> VerifyAsync(
+        ThreadRequest request,
+        ProjectContext project,
+        ThreadPlan plan,
+        ExecutionSummary execution,
+        IReadOnlyList<AiNode> executors,
+        WorkspaceScope scope,
+        RuntimeSettings settings,
+        ThreadRecorder recorder,
+        ClientProgress progress,
+        CancellationToken cancellationToken)
+    {
+        if (!execution.Results.Any(r => r.Status == ThreadTaskStatus.Succeeded)) return null;
+
+        var reviewer = (await nodeService.GetActiveAsync(NodeRole.Reviewer, cancellationToken)).FirstOrDefault();
+        var build = settings.BuildEnabled ? BuildCommandResolver.Resolve(project.RootPath, project.Modules, null, out _) : null;
+        if (build is null && reviewer is null) return null;
+
+        await recorder.UpdateThreadAsync(t =>
+        {
+            t.Status = ThreadStatus.Verifying;
+            t.ReviewerModel = reviewer?.Model;
+        });
+        var what = string.Join(" + ", new[] { build is null ? null : $"build `{build.Display}`", reviewer is null ? null : $"reviewer `{reviewer.Model}`" }.OfType<string>());
+        await progress.LineAsync($"🔍 Verifikasi: {what}…", cancellationToken);
+
+        var clock = Stopwatch.StartNew();
+        try
+        {
+            var result = await verificationStage.RunAsync(
+                new VerificationInput(request, plan, execution, build, reviewer, executors, scope, settings, plan.Tasks.Count + 1),
+                recorder, progress, cancellationToken);
+            clock.Stop();
+
+            await recorder.UpdateThreadAsync(t =>
+            {
+                t.VerificationMs = clock.ElapsedMilliseconds;
+                t.VerificationJson = result.Report.ToJson();
+                t.ReviewerTokens = result.ReviewerTokens;
+                t.ExecutorTokens += result.ExecutorTokens;
+            });
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Verification of thread {ThreadId} crashed", recorder.Thread.Id);
+            recorder.Log(ActivityLevel.Error, $"Verifikasi gagal: {ex.Message}");
+            await progress.LineAsync($"   ⚠️ Verifikasi gagal: {ex.Message}", cancellationToken);
+            await recorder.UpdateThreadAsync(t => t.VerificationMs = clock.ElapsedMilliseconds);
+            return null;
+        }
+    }
+
+    private static string VerificationNote(VerificationReport report)
+    {
+        var last = report.Rounds.LastOrDefault();
+        var parts = new List<string>();
+        if (last?.Build is { Status: "failed" } build) parts.Add($"build masih gagal ({build.ErrorCount} error)");
+        if (last?.Review is { Error: null, Issues.Count: > 0 } review) parts.Add($"reviewer masih menemukan {review.Issues.Count} masalah");
+        return parts.Count == 0 ? "Verifikasi belum lolos." : $"Verifikasi: {string.Join(", ", parts)}.";
     }
 
     private async Task<ThreadResult> FailAsync(ThreadRecorder recorder, ClientProgress progress, Stopwatch total, string message)
@@ -285,7 +362,7 @@ public sealed class ThreadOrchestrator(
         _ = Task.Run(() => contextKeeper.UpdateAsync(thread, request, lifetime.ApplicationStopping), CancellationToken.None);
     }
 
-    private static int TotalTokens(ThreadRun thread) => thread.PlannerTokens + thread.ExecutorTokens + thread.WrapperTokens;
+    private static int TotalTokens(ThreadRun thread) => thread.PlannerTokens + thread.ExecutorTokens + thread.ReviewerTokens + thread.WrapperTokens;
 
     private static string Seconds(long milliseconds) => $"{milliseconds / 1000.0:0.0}s";
 

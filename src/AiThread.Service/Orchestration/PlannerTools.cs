@@ -13,9 +13,18 @@ public static class PlannerTools
     public const string SearchMemory = "search_memory";
     public const string ReadMemory = "read_memory";
     public const string ReadThread = "read_thread";
+    public const string RunBuild = "run_build";
     public const string SubmitPlan = "submit_plan";
 
-    public static JsonArray All() =>
+    // canBuild: build verification is enabled and the project has a build command AiThread can run.
+    public static JsonArray All(bool canBuild = false)
+    {
+        var tools = Investigation();
+        if (canBuild) tools.Insert(tools.Count - 1, RunBuildDefinition());
+        return tools;
+    }
+
+    private static JsonArray Investigation() =>
     [
         ChatMessages.Function(ListDirectory,
             "List files and folders under a directory (build output, VCS and third-party folders are hidden).",
@@ -105,6 +114,18 @@ public static class PlannerTools
     ];
 
     public static JsonArray SubmitOnly() => [SubmitPlanDefinition()];
+
+    private static JsonObject RunBuildDefinition() =>
+        ChatMessages.Function(RunBuild,
+            "Build the project with its standard build command (e.g. dotnet build of the solution) and return the result with every error as file(line,col): code: message. Use it when the developer asks to build or to fix build errors, or to see the current errors before planning fixes. Takes seconds to minutes; never call it in parallel with itself.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "target": { "type": "string", "description": "Optional solution, project or manifest file (or its folder) relative to the project root, e.g. \"src/Api/Api.csproj\". Default: the main solution or project." }
+              }
+            }
+            """));
 
     private static JsonObject SubmitPlanDefinition() =>
         ChatMessages.Function(SubmitPlan,

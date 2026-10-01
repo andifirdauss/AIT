@@ -49,18 +49,22 @@ foreach ($dir in $Platform, $Main) { Copy-Item (Join-Path $RepoRoot 'LICENSE') $
 if (Test-Path $Out) { Remove-Item $Out -Recurse -Force }
 New-Item -ItemType Directory -Path $Out | Out-Null
 
+# Pack both first so a failed publish never leaves dist\npm without the launcher tarball.
 foreach ($dir in $Platform, $Main) {
     Push-Location $dir
     try {
         & npm pack --pack-destination $Out --silent
         if ($LASTEXITCODE -ne 0) { throw "npm pack gagal di $dir." }
-        if ($Publish) {
-            & npm publish --access public
-            if ($LASTEXITCODE -ne 0) { throw "npm publish gagal di $dir." }
-        }
     }
     finally { Pop-Location }
 }
 
+# Platform package first: the launcher's optionalDependencies must already exist on the registry.
+if ($Publish) {
+    foreach ($tarball in "aithread-win-x64-$version.tgz", "aithread-$version.tgz") {
+        & npm publish (Join-Path $Out $tarball) --access public
+        if ($LASTEXITCODE -ne 0) { throw "npm publish $tarball gagal." }
+    }
+}
 Get-ChildItem $Out -Filter *.tgz | ForEach-Object { Write-Host ("{0}  {1} MB" -f $_.Name, [math]::Round($_.Length / 1MB, 1)) -ForegroundColor Green }
 Write-Host "Coba: npm i -g (Get-ChildItem $Out\aithread-win-x64-*.tgz) (Get-ChildItem $Out\aithread-$version.tgz)"

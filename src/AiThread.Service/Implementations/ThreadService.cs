@@ -50,7 +50,11 @@ public sealed class ThreadService(IDbContextFactory<AiThreadDbContext> dbFactory
             thread.WrappingMs,
             thread.WorkingDirectory,
             tasks.Select(ToTaskDto).ToList(),
-            thread.ContextPack);
+            thread.ContextPack,
+            thread.ReviewerModel,
+            thread.ReviewerTokens,
+            thread.VerificationMs,
+            thread.VerificationJson);
     }
 
     public bool Cancel(Guid id) => registry.Cancel(id);
@@ -74,7 +78,7 @@ public sealed class ThreadService(IDbContextFactory<AiThreadDbContext> dbFactory
         t.TotalMs,
         t.ExecutionWallMs,
         t.ExecutionSumMs,
-        t.PlannerTokens + t.ExecutorTokens + t.WrapperTokens,
+        t.PlannerTokens + t.ExecutorTokens + t.ReviewerTokens + t.WrapperTokens,
         t.CreatedAt,
         t.CompletedAt);
 }
