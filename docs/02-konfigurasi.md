@@ -40,6 +40,9 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 | Retry executor | 1 | 0–5 | Berapa kali executor boleh mencoba ulang bila editnya gagal diterapkan. |
 | Maks paralel | 8 | 1–64 | Batas tugas yang berjalan bersamaan **dalam satu thread**. |
 | Timeout (detik) | 600 | 30–3600 | Batas waktu satu panggilan model ke 9router. |
+| Build & verifikasi otomatis | aktif | — | AiThread boleh menjalankan perintah build project (`dotnet build`, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
+| Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. |
+| Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. |
 
 Klik **Simpan setting**. Setelah mengganti proxy API key, terapkan ulang integrasi Claude Code agar
 `ANTHROPIC_AUTH_TOKEN` ikut berubah.
@@ -62,19 +65,20 @@ restart. Progres di Telegram selalu tampil, tidak dipengaruhi saklar *Tampilkan 
 ## Menu Node
 
 Pipeline butuh minimal **1 Planner, 1 Executor, 1 Wrapper** yang aktif. Banner di atas halaman menunjukkan
-kesiapan pipeline beserta catatannya. Node **Context Keeper** opsional (lihat
-[Konteks sesi](07-cara-kerja.md#konteks-sesi-context-keeper)).
+kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
+[Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)) dan **Context Keeper** (lihat
+[Konteks sesi](07-cara-kerja.md#konteks-sesi-context-keeper)) opsional.
 
 ### Field node
 
 | Field | Default (UI) | Keterangan |
 |---|---|---|
 | Nama | — | Label bebas, tampil di progres dan detail thread. |
-| Role | Executor | Planner / Executor / Wrapper / Context Keeper. |
+| Role | Executor | Planner / Executor / Reviewer / Wrapper / Context Keeper. |
 | Model / combo | — | Dipilih dari `/v1/models` 9router, dikelompokkan: *Combo* dulu, lalu per provider. Jika 9router offline, muncul input teks untuk mengetik id model manual. |
-| Temperature | Planner 0.2 · Executor 0.1 · Wrapper 0.3 · Context Keeper 0.2 | 0–2. Kosongkan untuk nilai default yang sama. |
-| Max tokens | Planner 16384 · Executor 8192 · Wrapper 4096 · Context Keeper 4096 | 256–200000. Batas output per panggilan. |
-| Max paralel | Planner 2 · Executor 6 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
+| Temperature | Planner 0.2 · Executor 0.1 · Reviewer 0.1 · Wrapper 0.3 · Context Keeper 0.2 | 0–2. Kosongkan untuk nilai default yang sama. |
+| Max tokens | Planner 16384 · Executor 8192 · Reviewer 4096 · Wrapper 4096 · Context Keeper 4096 | 256–200000. Batas output per panggilan. |
+| Max paralel | Planner 2 · Executor 6 · Reviewer 2 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
 | Prioritas | 100 | Angka kecil diutamakan. |
 | Instruksi tambahan | kosong | Ditambahkan di akhir prompt bawaan peran, mis. konvensi coding tim. |
 | Aktif | aktif | Node nonaktif tidak dipakai. |
@@ -95,6 +99,9 @@ balasan — cara cepat memastikan model dan key benar.
   otomatis.
 - **Context Keeper**: node aktif dengan prioritas terkecil meringkas percakapan Claude Code setelah tiap thread.
   Tanpa node ini, Wrapper yang meringkas.
+- **Reviewer**: node aktif dengan prioritas terkecil memeriksa hasil executor (diff, kontrak, hasil build) di setiap
+  putaran verifikasi. Tanpa node ini, verifikasi hanya memakai build. Model yang teliti lebih penting daripada model
+  yang cepat: setiap temuannya memicu tugas perbaikan.
 
 ### Cara kerja *Max paralel*
 

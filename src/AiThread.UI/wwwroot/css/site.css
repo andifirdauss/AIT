@@ -316,8 +316,12 @@ body {
   .node-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-@media (min-width: 1400px) {
-  .node-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (min-width: 1200px) {
+  .node-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1600px) {
+  .node-columns { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 .node-card {
@@ -330,6 +334,7 @@ body {
 
 .role-Planner { border-left-color: #b180ff; }
 .role-Executor { border-left-color: var(--app-ok); }
+.role-Reviewer { border-left-color: #e0708a; }
 .role-Wrapper { border-left-color: var(--app-warn); }
 .role-ContextKeeper { border-left-color: #4fb8d8; }
 

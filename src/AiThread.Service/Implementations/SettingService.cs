@@ -53,6 +53,8 @@ public sealed class SettingService(
         EnsureRange(request.ExecutorMaxRetries, 0, 5, "Executor max retries");
         EnsureRange(request.MaxParallelTasks, 1, 64, "Max parallel tasks");
         EnsureRange(request.RequestTimeoutSeconds, 30, 3600, "Request timeout");
+        EnsureRange(request.BuildTimeoutSeconds, 30, 3600, "Build timeout");
+        EnsureRange(request.MaxFixRounds, 0, 5, "Putaran perbaikan");
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var entity = await LoadTrackedAsync(db, cancellationToken);
@@ -71,6 +73,9 @@ public sealed class SettingService(
         entity.ExecutorMaxRetries = request.ExecutorMaxRetries;
         entity.MaxParallelTasks = request.MaxParallelTasks;
         entity.RequestTimeoutSeconds = request.RequestTimeoutSeconds;
+        entity.BuildEnabled = request.BuildEnabled;
+        entity.BuildTimeoutSeconds = request.BuildTimeoutSeconds;
+        entity.MaxFixRounds = request.MaxFixRounds;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -152,7 +157,10 @@ public sealed class SettingService(
         entity.MaxParallelTasks,
         entity.RequestTimeoutSeconds,
         entity.TelegramEnabled,
-        Unprotect(entity.TelegramBotTokenProtected));
+        Unprotect(entity.TelegramBotTokenProtected),
+        entity.BuildEnabled,
+        entity.BuildTimeoutSeconds,
+        entity.MaxFixRounds);
 
     private TelegramSettingsDto ToTelegramDto(SystemSetting entity)
     {
@@ -175,6 +183,9 @@ public sealed class SettingService(
             entity.ExecutorMaxRetries,
             entity.MaxParallelTasks,
             entity.RequestTimeoutSeconds,
+            entity.BuildEnabled,
+            entity.BuildTimeoutSeconds,
+            entity.MaxFixRounds,
             proxyBaseUrl);
     }
 

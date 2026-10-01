@@ -83,6 +83,28 @@
                             <input type="number" class="form-control" id="requestTimeout" min="30" max="3600" required />
                         </div>
                     </div>
+
+                    <hr />
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="buildEnabled" />
+                        <label class="form-check-label" for="buildEnabled">Build & verifikasi otomatis</label>
+                        <div class="form-text">
+                            AiThread menjalankan perintah build bawaan project (<span class="mono">dotnet build</span>, <span class="mono">tsc</span>/<span class="mono">npm run build</span>,
+                            <span class="mono">go build</span>, <span class="mono">cargo check</span>, <span class="mono">mvn compile</span>): sebagai tool planner dan setelah executor selesai.
+                            Error build (dan temuan node Reviewer, bila ada) diserahkan ke executor sebagai tugas perbaikan.
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small" for="buildTimeout">Timeout build (detik)</label>
+                            <input type="number" class="form-control" id="buildTimeout" min="30" max="3600" required />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small" for="maxFixRounds">Putaran perbaikan</label>
+                            <input type="number" class="form-control" id="maxFixRounds" min="0" max="5" required />
+                        </div>
+                        <div class="col-md-6 form-text align-self-end">0 = hanya verifikasi dan laporkan, tanpa perbaikan otomatis.</div>
+                    </div>
                 </div>
                 <div class="card-footer text-end">
                     <button type="submit" class="btn btn-primary">Simpan setting</button>
@@ -95,7 +117,7 @@
                 <div class="card-header">Integrasi CLI</div>
                 <div class="card-body">
                     <p class="small text-secondary mb-2">
-                        Mengarahkan Claude Code atau oh-my-pi ke proxy ini (global atau per project), termasuk hook Context Keeper
+                        Mengarahkan Claude Code (dan oh-my-pi lewat provider AiThread) ke proxy ini (global atau per project), termasuk hook Context Keeper
                         untuk <span class="mono">/clear</span>, kini ada di menu <strong>CLI</strong>.
                     </p>
                     <a class="btn btn-primary btn-sm" asp-controller="Cli" asp-action="Index">Buka menu CLI</a>

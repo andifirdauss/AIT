@@ -183,45 +183,33 @@ $env:GEMINI_API_KEY = "aithread-local"   # Proxy API key bila diisi
 Nama model yang dikirim klien diabaikan pada passthrough dan tampil apa adanya pada balasan orkestrasi; model yang
 sebenarnya dipakai ditentukan Setting *Passthrough model* dan Node.
 
-**oh-my-pi (paling mudah: menu CLI)** — di menu **CLI**, nyalakan switch pada kartu *oh-my-pi (omp)*, global atau
-per project. AiThread menulis satu blok di file `.env` yang dibaca omp (`<project>/.env` atau `~/.omp/agent/.env`),
-tanpa menyentuh baris lain di file itu:
+**oh-my-pi (paling mudah: menu CLI)** — nyalakan switch *Global* pada kartu *oh-my-pi (omp) — provider
+AiThread*. AiThread menambah satu provider di `~/.omp/agent/models.yml` (hanya global; omp tidak punya `models.yml`
+per project), tanpa menyentuh provider lain:
 
-```dotenv
+```yaml
 # >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
-ANTHROPIC_BASE_URL=http://localhost:5225
-ANTHROPIC_API_KEY=aithread-local
-ANTHROPIC_CUSTOM_HEADERS=X-AiThread-Project: D:\Source\MyApp
+providers:
+  aithread:
+    baseUrl: "http://localhost:5225"
+    api: anthropic-messages
+    apiKey: "aithread-local"        # Proxy API key bila diisi di Setting
+    models:
+      - id: aithread
+        name: AiThread
+        contextWindow: 200000
+        maxTokens: 32000
 # <<< AiThread <<<
 ```
 
-Diuji dengan omp 18.4.4: omp memuat `.env` dari folder tempat ia dijalankan, mengirim request ke URL itu, dan sudah
-menyertakan id sesi serta working directory-nya sendiri, jadi sesi langsung dikenali dan diorkestrasi. Yang perlu
-diingat:
-
-- Ini hanya berlaku untuk provider **anthropic** bawaan omp. Untuk provider lain, pakai `models.yml` di bawah.
-- Jalankan omp dari folder yang berisi `.env` (biasanya root project); omp tidak mencari `.env` ke folder induk.
-- Bila `.env` Anda sudah memuat `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, atau `ANTHROPIC_CUSTOM_HEADERS` di luar
-  blok AiThread, AiThread menolak menulis (agar tidak bertabrakan) dan menyebut kuncinya.
-- Variabel yang sudah diekspor di shell selalu menang atas `.env`, dan login OAuth Anthropic di omp dipakai lebih dulu
-  daripada `ANTHROPIC_API_KEY`.
-- `.env` berisi kunci proxy lokal; jangan di-commit (tambahkan ke `.gitignore`).
-
-**oh-my-pi lewat `models.yml`** — `~/.omp/agent/models.yml`; pilih `api: anthropic-messages` (baseUrl
-`http://localhost:5225`) atau `api: openai-completions` (baseUrl `http://localhost:5225/v1`):
-
-```yaml
-providers:
-  aithread:
-    baseUrl: http://localhost:5225
-    api: anthropic-messages
-    apiKey: aithread-local          # Proxy API key bila diisi di Setting
-    headers:
-      X-AiThread-Cwd: D:\Source\MyApp   # opsional, lihat di bawah
-    models:
-      - id: <id model dari GET /v1/models>
-        name: AiThread
-```
+- Pilih model `aithread/aithread` lewat `/model` di omp (atau `omp --model aithread/aithread`). Provider Anthropic asli
+  tetap tersedia, jadi Anda bisa berpindah per sesi.
+- Bila `models.yml` sudah punya `providers:`, entri `aithread` disisipkan di bawahnya dengan indentasi yang sama.
+  AiThread menolak menulis bila `providers` berbentuk satu baris (`providers: { ... }`), bila sudah ada provider
+  `aithread` buatan Anda, atau bila masih ada `models.json` lama yang belum dimigrasi omp.
+- Project tetap dikenali dari working directory yang dikirim omp di setiap request.
+- Diuji dengan omp 18.4.4: omp mengirim `POST <baseUrl>/v1/messages?beta=true` dengan `Authorization: Bearer <apiKey>`.
+  Nilai `apiKey` yang sama dengan nama environment variable diganti isi variabel itu.
 
 **Membantu AiThread mengenali sesi.** Working directory dicari dari header `X-AiThread-Cwd`, lalu dari teks request:
 `Primary working directory:` (Claude Code), `<cwd>…</cwd>` (Codex), `I'm currently working in the directory:`

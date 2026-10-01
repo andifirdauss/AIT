@@ -98,10 +98,12 @@
         ${stateHtml(global.enabled, global.currentBaseUrl)}
       </div>
 
-      <div class="small fw-semibold mb-1">Per project</div>
+      ${cli.projectFile
+        ? `<div class="small fw-semibold mb-1">Per project</div>
       <div class="table-responsive mb-2">
         <table class="table table-sm align-middle mb-0"><tbody>${rows}</tbody></table>
-      </div>
+      </div>`
+        : '<p class="small text-secondary mb-2">Hanya global — CLI ini tidak punya file konfigurasi per project.</p>'}
 
       <details class="mb-2">
         <summary class="small">Yang akan ditulis ke ${escapeHtml(global.path)}</summary>
@@ -117,7 +119,8 @@
     const cli = clis.find(c => c.id === input.dataset.cli);
     const enabled = input.checked;
 
-    if (input.dataset.scope === 'Global' && enabled
+    // A CLI without project files only gains an extra provider; nothing is redirected, so no confirmation.
+    if (input.dataset.scope === 'Global' && enabled && cli.projectFile
         && !confirm(`Semua sesi ${cli.name} di komputer ini akan melewati AiThread. Lanjutkan?`)) {
       input.checked = false;
       return;

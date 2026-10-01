@@ -21,9 +21,13 @@ public class ThreadRun : BaseEntity
 
     public string? PlannerModel { get; set; }
     public string? WrapperModel { get; set; }
+    public string? ReviewerModel { get; set; }
     public int PlannerSteps { get; set; }
     public int PlannerTokens { get; set; }
+
+    // Includes the fix tasks of the verification stage.
     public int ExecutorTokens { get; set; }
+    public int ReviewerTokens { get; set; }
     public int WrapperTokens { get; set; }
 
     public long? PlanningMs { get; set; }
@@ -33,6 +37,12 @@ public class ThreadRun : BaseEntity
 
     // Sum of every executor duration — what a sequential pipeline would have cost.
     public long? ExecutionSumMs { get; set; }
+
+    // Build + review + fix rounds after execution; null when the stage did not run.
+    public long? VerificationMs { get; set; }
+
+    // VerificationReport as JSON: one entry per round with the build result and the reviewer's verdict.
+    public string? VerificationJson { get; set; }
 
     public long? WrappingMs { get; set; }
     public long? TotalMs { get; set; }
