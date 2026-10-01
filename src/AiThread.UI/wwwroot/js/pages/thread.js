@@ -49,16 +49,19 @@
     const s = detail.summary;
     const rows = [
       ['Planner', detail.plannerModel ? `<span class="mono">${escapeHtml(detail.plannerModel)}</span>` : '–'],
+      ['Reviewer', detail.reviewerModel ? `<span class="mono">${escapeHtml(detail.reviewerModel)}</span>` : '–'],
       ['Wrapper', detail.wrapperModel ? `<span class="mono">${escapeHtml(detail.wrapperModel)}</span>` : '–'],
       ['Langkah planner', fmt.number(detail.plannerSteps)],
       ['Planning', fmt.ms(detail.planningMs)],
       ['Eksekusi (nyata)', fmt.ms(s.executionWallMs)],
       ['Eksekusi (jika sekuensial)', fmt.ms(s.executionSumMs)],
       ['Speedup paralel', fmt.speedup(s.executionSumMs, s.executionWallMs)],
+      ['Verifikasi', fmt.ms(detail.verificationMs)],
       ['Wrapping', fmt.ms(detail.wrappingMs)],
       ['Total', fmt.ms(s.totalMs)],
       ['Token planner', fmt.number(detail.plannerTokens)],
       ['Token executor', fmt.number(detail.executorTokens)],
+      ['Token reviewer', fmt.number(detail.reviewerTokens)],
       ['Token wrapper', fmt.number(detail.wrapperTokens)]
     ];
     el('metrics').innerHTML = rows.map(([k, v]) => `<dt class="col-6 fw-normal text-secondary">${k}</dt><dd class="col-6 text-end mb-1">${v}</dd>`).join('');
@@ -66,6 +69,69 @@
     if (detail.error) {
       el('metrics').insertAdjacentHTML('beforeend', `<dt class="col-12 mt-2 text-danger fw-normal">${escapeHtml(detail.error)}</dt>`);
     }
+  }
+
+  const verificationOutcomes = {
+    passed: ['success', 'Lolos'],
+    failed: ['warning', 'Masih ada masalah'],
+    unverified: ['secondary', 'Tidak dapat dipastikan']
+  };
+  const buildIcons = { passed: '✅', locked: '✅', failed: '❌', timeout: '⏱️', error: '⚠️' };
+
+  function list(items) {
+    return `<ul class="small mb-1 ps-3">${items.join('')}</ul>`;
+  }
+
+  function roundHtml(r) {
+    const parts = [];
+    if (r.build) {
+      const b = r.build;
+      const more = b.errorCount > b.errors.length ? `\n… ${b.errorCount - b.errors.length} error lain` : '';
+      parts.push(`<div class="small">${buildIcons[b.status] || ''} ${escapeHtml(b.headline)}</div>`
+        + (b.errors.length ? `<pre class="code-block small mb-1">${escapeHtml(b.errors.join('\n') + more)}</pre>` : '')
+        + (b.output ? `<pre class="code-block small mb-1">${escapeHtml(b.output)}</pre>` : ''));
+    }
+    if (r.review) {
+      const v = r.review;
+      if (v.error) parts.push(`<div class="small">⚠️ Reviewer tidak memberi hasil: ${escapeHtml(v.error)}</div>`);
+      else if (!v.issues.length) parts.push(`<div class="small">✅ Reviewer: ${escapeHtml(v.summary || 'tidak ada masalah.')}</div>`);
+      else {
+        parts.push(`<div class="small">⚠️ Reviewer menemukan ${v.issues.length} masalah${v.summary ? `: ${escapeHtml(v.summary)}` : ''}</div>`
+          + list(v.issues.map(i => `<li><span class="mono">${escapeHtml(i.file)}</span> — ${escapeHtml(i.problem)}<div class="text-secondary">${escapeHtml(i.fix)}</div></li>`)));
+      }
+    }
+    if (r.unfixable?.length) {
+      parts.push('<div class="small text-secondary">Tidak bisa diperbaiki otomatis:</div>' + list(r.unfixable.map(u => `<li>${escapeHtml(u)}</li>`)));
+    }
+    if (r.fixTasks?.length) {
+      parts.push(`<div class="small">🛠️ Tugas perbaikan: ${r.fixTasks.map(k => `<span class="mono">${escapeHtml(k)}</span>`).join(', ')}</div>`);
+    }
+    return `<div class="border-top pt-2 mt-2"><div class="fw-semibold small mb-1">Putaran ${r.round}</div>${parts.join('')}</div>`;
+  }
+
+  function renderVerification() {
+    let report = null;
+    try {
+      report = detail.verificationJson ? JSON.parse(detail.verificationJson) : null;
+    } catch {
+      report = null;
+    }
+
+    const verifying = detail.summary.status === 'Verifying';
+    el('verificationCard').classList.toggle('d-none', !report && !verifying);
+    if (!report) {
+      el('verificationOutcome').innerHTML = verifying ? statusBadge('Verifying') : '';
+      el('verificationBody').innerHTML = verifying ? '<div class="text-secondary small">Build dan/atau review sedang berjalan…</div>' : '';
+      return;
+    }
+
+    const [color, label] = verificationOutcomes[report.outcome] || ['secondary', report.outcome];
+    el('verificationOutcome').innerHTML = `<span class="badge text-bg-${color}">${label}</span>`;
+    const head = [
+      report.command ? `Build: <span class="mono">${escapeHtml(report.command)}</span>` : 'Tanpa build',
+      report.reviewerModel ? `Reviewer: <span class="mono">${escapeHtml(report.reviewerModel)}</span>` : 'Tanpa reviewer'
+    ].join(' · ');
+    el('verificationBody').innerHTML = `<div class="small text-secondary">${head}</div>${(report.rounds || []).map(roundHtml).join('')}`;
   }
 
   function renderFinal() {
@@ -164,6 +230,7 @@
     renderHeader();
     renderPlan();
     renderMetrics();
+    renderVerification();
     renderFinal();
     renderTasks();
   }

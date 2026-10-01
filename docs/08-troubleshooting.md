@@ -122,6 +122,20 @@ folder yang sama menjadi satu project (yang terakhir dipakai), lengkap dengan th
 
 Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 
+## Build & verifikasi
+
+| Gejala | Arti | Solusi |
+|---|---|---|
+| `build tidak bisa dijalankan — 'dotnet' could not be started…` | Toolchain project (`dotnet`, `node`/`npm`, `go`, `cargo`, `mvn`) tidak ada di PATH proses AiThread. | Pasang toolchain-nya atau tambahkan ke PATH, lalu restart AiThread. Exe standalone tidak butuh .NET SDK untuk berjalan, tetapi membuild project .NET tetap membutuhkannya. |
+| `kompilasi berhasil, tetapi file output terkunci…` | `MSB3021`/`MSB3027`: aplikasi yang sedang berjalan (mis. project yang Anda debug) mengunci file di `bin/`. Kode sudah dikompilasi, jadi verifikasi dianggap lolos. | Tidak perlu tindakan. Hentikan aplikasinya bila ingin output terbaru tersalin. |
+| `build melewati batas waktu…` | Build lebih lama dari *Timeout build*; build dihentikan dan tidak diulang di putaran berikutnya. | Naikkan *Timeout build*. Build pertama (restore paket) biasanya paling lama. |
+| Build lambat di setiap putaran | Restore menunggu feed NuGet yang tidak terjangkau. | AiThread sudah mematikan audit kerentanan (`NuGetAudit=false`); periksa `nuget.config` bila restore masih menunggu feed. |
+| `… — in a file this thread did not change` | Error di file yang tidak diubah thread, mungkin sudah ada sebelumnya; tidak diperbaiki otomatis. | Minta secara eksplisit: "build lalu perbaiki semua error". Planner akan memanggil `run_build` dan merencanakan perbaikannya. |
+| `The build failed without a recognisable error message` | Output build tidak memuat format error yang dikenali (sering pada script `npm run build` khusus). | Lihat output di kartu *Verifikasi* detail thread. |
+| Verifikasi *Masih ada masalah* setelah semua putaran | Executor tidak berhasil memperbaiki dalam *Putaran perbaikan*. | Lanjutkan dengan prompt berikutnya (planner melihat thread sebelumnya), naikkan putaran perbaikan, atau pakai model executor yang lebih kuat. |
+| Reviewer terlalu cerewet atau memicu perubahan yang tidak diminta | Model reviewer melaporkan hal di luar permintaan. | Tambahkan batasan di *Instruksi tambahan* node Reviewer, ganti modelnya, atau nonaktifkan node itu (verifikasi tetap memakai build). |
+| Verifikasi tidak muncul | Tidak ada tugas yang berhasil, *Build & verifikasi otomatis* mati dan tidak ada node Reviewer, atau stack project tidak punya perintah build. | Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
+
 ## Redis & database
 
 **Kartu Redis *Tidak terhubung***

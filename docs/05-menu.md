@@ -33,9 +33,10 @@ tombol *Jeda*. Log debug berisi panggilan tool planner dan request passthrough.
 | Permintaan | Prompt Anda (tanpa blok `<system-reminder>` Claude Code). |
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
+| Verifikasi | Muncul bila build/reviewer berjalan. Hasil akhir (*Lolos* / *Masih ada masalah* / *Tidak dapat dipastikan*), perintah build, model reviewer, lalu per putaran: hasil build dan errornya, temuan reviewer, masalah yang tidak bisa diperbaiki otomatis, dan id tugas perbaikan (`V1-1`, …) yang tampil juga di tabel tugas. |
 | Hasil wrapper | Balasan yang diterima Claude Code. |
 | Konteks sesi dari Context Keeper | Ringkasan percakapan sampai thread ini (khusus thread dari Claude Code) — titik awal planner di prompt berikutnya pada chat yang sama. Muncul beberapa detik setelah thread selesai. |
-| Waktu & token | Model planner/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / wrapping / total, speedup, token per peran. |
+| Waktu & token | Model planner/reviewer/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / verifikasi / wrapping / total, speedup, token per peran. |
 | Aktivitas | Log thread ini, termasuk setiap panggilan tool planner dan penolakan validator. |
 
 ## Project
@@ -85,22 +86,24 @@ Lihat [Memory](06-memory.md) untuk konsepnya.
 
 ## Node
 
-Empat kolom: Planner, Executor, Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
+Lima kolom: Planner, Executor, Reviewer (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
 prioritas, instruksi tambahan, dengan tombol *Test*, *Edit*, *Hapus*. *Muat ulang model 9router* menyegarkan daftar
 model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-node).
 
 ## CLI
 
 Mengarahkan CLI coding ke proxy AiThread dengan satu switch, tanpa menyunting file konfigurasi CLI itu sendiri. Saat ini
-ada dua CLI: **Claude Code** dan **oh-my-pi (omp)**; CLI lain bisa ditambahkan dengan cara yang sama.
+ada dua kartu: **Claude Code** dan **oh-my-pi (omp) —
+provider AiThread** (`models.yml`, hanya global: omp mendapat provider `aithread` sendiri di samping Anthropic asli);
+CLI lain bisa ditambahkan dengan cara yang sama.
 
 - **URL proxy AiThread** di bagian atas: alamat yang ditulis ke konfigurasi CLI (default = alamat http aplikasi).
   Mengubahnya menyegarkan status semua switch.
 - Tiap CLI punya satu kartu berisi:
   - **Global** — semua sesi CLI itu di komputer ini (`~/.claude/settings.json` untuk Claude Code,
-    `~/.omp/agent/.env` untuk omp). Menyalakan meminta konfirmasi.
-  - **Per project** — satu switch per project terdaftar (`<project>/.claude/settings.local.json` atau
-    `<project>/.env`). Lencana *Aktif*, *Nonaktif*, atau *Mengarah ke alamat lain* (file menunjuk URL lain, mis. port
+    `~/.omp/agent/models.yml` untuk omp). Menyalakan meminta konfirmasi.
+  - **Per project** — satu switch per project terdaftar (`<project>/.claude/settings.local.json`;
+    tidak tersedia untuk omp). Lencana *Aktif*, *Nonaktif*, atau *Mengarah ke alamat lain* (file menunjuk URL lain, mis. port
     lama — matikan lalu nyalakan lagi).
   - *Yang akan ditulis*: pratinjau isi yang akan dituliskan.
 - Mematikan switch hanya menghapus yang ditulis AiThread; isi lain di file tetap. Backup file asli disimpan sekali
@@ -116,7 +119,7 @@ Detail tiap CLI: [Integrasi Claude Code](03-integrasi-claude-code.md) dan
 
 - **Koneksi 9router** — URL, API key, *Test koneksi* (tidak menyimpan) dan *Simpan*; baris status menunjukkan apakah key tersimpan dan diterima.
 - **Proxy & orkestrasi** — saklar orkestrasi & progres, model passthrough, proxy API key, batas planner/executor/
-  paralel/timeout.
+  paralel/timeout, serta *Build & verifikasi otomatis* dengan timeout build dan jumlah putaran perbaikan.
 - **Integrasi CLI** — hanya tautan ke menu [CLI](#cli), tempat integrasi Claude Code/omp dan hook Context Keeper diatur.
 - **Telegram** — token bot, aktif/nonaktif, status koneksi live, dan tabel chat (*Izinkan* / *Hapus* / *Cabut*).
 
