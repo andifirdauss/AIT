@@ -484,3 +484,8 @@ $RECYCLE.BIN/
 # Standalone exe output (scripts/publish-exe.ps1)
 dist/
 !src/AiThread.UI/Properties/PublishProfiles/standalone.pubxml
+
+# npm package payload (built by scripts/publish-npm.ps1)
+npm/platforms/*/bin/
+npm/aithread/LICENSE
+npm/platforms/*/LICENSE
