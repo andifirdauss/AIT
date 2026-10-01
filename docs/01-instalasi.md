@@ -155,6 +155,17 @@ atau tanpa terminal (mis. `dotnet run`, Visual Studio), exe berjalan sebagai hos
 Autostart exe (kunci `Run`) dan `scripts\aithread.ps1 autostart-on` (Task Scheduler) tidak perlu diaktifkan bersamaan;
 instance kedua mendeteksi yang pertama dan hanya membuka dashboard.
 
+### Lewat npm
+
+`.\scripts\publish-npm.ps1` membuat dua paket di `dist\npm`: `aithread-win-x64` (berisi `AiThread.exe`, ±60 MB) dan
+`aithread` (launcher kecil, `optionalDependencies` ke paket platform). Pasang dengan
+`npm i -g dist\npm\aithread-win-x64-<versi>.tgz dist\npm\aithread-<versi>.tgz`, lalu jalankan `aithread` (perintah dan
+opsinya sama dengan exe). `-Publish` menjalankan `npm publish` untuk kedua paket; versi diambil dari `<Version>` di
+`AiThread.UI.csproj`. Hanya Windows x64.
+
+Karena folder `node_modules` ditimpa saat update, ubah konfigurasi di `%LOCALAPPDATA%\AiThread\appsettings.json` (opsional,
+isi hanya kunci yang diganti); file ini menimpa `appsettings.json` di samping exe, juga untuk exe hasil `publish-exe.ps1`.
+
 ## 7. Verifikasi
 
 Buka **Dashboard**. Empat kartu status teratas harus:
