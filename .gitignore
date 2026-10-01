@@ -489,3 +489,4 @@ dist/
 npm/platforms/*/bin/
 npm/aithread/LICENSE
 npm/platforms/*/LICENSE
+!npm/aithread/bin/
