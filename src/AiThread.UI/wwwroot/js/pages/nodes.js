@@ -262,7 +262,7 @@
     }
   });
 
-  document.querySelector('.row.g-3').addEventListener('click', async event => {
+  document.querySelector('.node-columns').addEventListener('click', async event => {
     const button = event.target.closest('button');
     if (!button) return;
 
