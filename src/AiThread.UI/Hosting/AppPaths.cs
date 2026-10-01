@@ -11,6 +11,9 @@ public static class AppPaths
 
     public static string LogDir { get; } = Path.Combine(HomeDir, "logs");
 
+    // Optional overrides layered over the appsettings.json beside the exe; survives reinstalling or `npm update`.
+    public static string UserSettingsFile { get; } = Path.Combine(HomeDir, "appsettings.json");
+
     public static string CliSettingsFile { get; } = Path.Combine(HomeDir, "cli.json");
 
     public static string ExePath { get; } = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "AiThread.exe");
