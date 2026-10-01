@@ -295,6 +295,31 @@ body {
   font-size: 0.85em;
 }
 
+/* One column per role. Each column spans two rows of the shared grid (heading + text, then the cards) through a
+   subgrid, so the heading rows take the height of the longest description and the first card of every column starts
+   at the same height. */
+.node-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 1rem;
+  row-gap: 0.5rem;
+}
+
+.node-column {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 2;
+  row-gap: 0;
+}
+
+@media (min-width: 768px) {
+  .node-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1400px) {
+  .node-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
 .node-card {
   border-left: 3px solid var(--app-accent);
 }
