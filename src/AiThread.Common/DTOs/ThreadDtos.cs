@@ -57,6 +57,10 @@ public record ThreadDetailDto(
     long? WrappingMs,
     string? WorkingDirectory,
     IReadOnlyList<ThreadTaskDto> Tasks,
-    string? ContextPack = null);
+    string? ContextPack = null,
+    string? ReviewerModel = null,
+    int ReviewerTokens = 0,
+    long? VerificationMs = null,
+    string? VerificationJson = null);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);

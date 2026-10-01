@@ -5,6 +5,7 @@ using AiThread.Common.Entities;
 using AiThread.Common.Enums;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
+using AiThread.Service.Verification;
 using AiThread.Service.Workspace;
 
 namespace AiThread.Service.Orchestration;
@@ -28,7 +29,8 @@ public sealed class PlannerAgent(
     INineRouterService router,
     IMemoryService memoryService,
     NodeConcurrencyLimiter limiter,
-    ContextKeeper contextKeeper)
+    ContextKeeper contextKeeper,
+    BuildRunner buildRunner)
 {
     private const int MaxRequestChars = 40_000;
     private const int MaxAttachedContextChars = 30_000;
@@ -39,8 +41,9 @@ public sealed class PlannerAgent(
         if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
 
         var tools = new WorkspaceTools(input.Scope);
-        var brief = await BuildBriefAsync(input, tools, cancellationToken);
-        return await PlanWithRouterAsync(input, 0, brief, tools, recorder, progress, cancellationToken);
+        var build = input.Settings.BuildEnabled ? BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, null, out _) : null;
+        var brief = await BuildBriefAsync(input, tools, build, cancellationToken);
+        return await PlanWithRouterAsync(input, 0, brief, tools, build is not null, recorder, progress, cancellationToken);
     }
 
     private async Task<PlanningResult> PlanWithRouterAsync(
@@ -48,6 +51,7 @@ public sealed class PlannerAgent(
         int nodeIndex,
         string brief,
         WorkspaceTools tools,
+        bool canBuild,
         ThreadRecorder recorder,
         ClientProgress progress,
         CancellationToken cancellationToken)
@@ -78,7 +82,7 @@ public sealed class PlannerAgent(
                         {
                             Model = node.Model,
                             Messages = messages,
-                            Tools = lastStep ? PlannerTools.SubmitOnly() : PlannerTools.All(),
+                            Tools = lastStep ? PlannerTools.SubmitOnly() : PlannerTools.All(canBuild),
                             Temperature = node.Temperature ?? 0.2,
                             MaxTokens = node.MaxTokens
                         }, cancellationToken: cancellationToken);
@@ -208,6 +212,9 @@ public sealed class PlannerAgent(
                 case PlannerTools.ReadThread:
                     return new PlannerToolOutcome(await contextKeeper.ReadThreadAsync(input.Project.ProjectId, Str(args, "id") ?? string.Empty, cancellationToken), null);
 
+                case PlannerTools.RunBuild:
+                    return await RunBuildAsync(input, Str(args, "target"), recorder, progress, cancellationToken);
+
                 case PlannerTools.SubmitPlan:
                     return SubmitPlan(call.Arguments, input.Scope, recorder);
 
@@ -219,6 +226,19 @@ public sealed class PlannerAgent(
         {
             return new PlannerToolOutcome($"Error: {ex.Message}", null, true);
         }
+    }
+
+    private async Task<PlannerToolOutcome> RunBuildAsync(PlannerInput input, string? target, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
+    {
+        if (!input.Settings.BuildEnabled) return new PlannerToolOutcome("Error: building is disabled in the AiThread settings.", null, true);
+
+        var command = BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, target, out var error);
+        if (command is null) return new PlannerToolOutcome($"Error: {error}", null, true);
+
+        var result = await buildRunner.RunAsync(command, TimeSpan.FromSeconds(input.Settings.BuildTimeoutSeconds), cancellationToken);
+        recorder.Log(result.Passed ? ActivityLevel.Info : ActivityLevel.Warning, $"Planner → run_build `{command.Display}`: {BuildReport.Headline(result)}");
+        await progress.LineAsync($"     {(result.Passed ? "✅" : "❌")} {BuildReport.Headline(result)}", cancellationToken);
+        return new PlannerToolOutcome(BuildReport.Format(result, input.Scope), null);
     }
 
     private static PlannerToolOutcome SubmitPlan(string arguments, WorkspaceScope scope, ThreadRecorder recorder)
@@ -236,7 +256,7 @@ public sealed class PlannerAgent(
         return new PlannerToolOutcome("Plan accepted.", plan);
     }
 
-    private async Task<string> BuildBriefAsync(PlannerInput input, WorkspaceTools tools, CancellationToken cancellationToken)
+    private async Task<string> BuildBriefAsync(PlannerInput input, WorkspaceTools tools, BuildCommand? build, CancellationToken cancellationToken)
     {
         var request = input.Request;
         var project = input.Project;
@@ -279,6 +299,9 @@ public sealed class PlannerAgent(
             builder.Append("Manifests found (solution, build and package files):\n");
             foreach (var module in project.Modules.Take(60)) builder.Append("- ").Append(module).Append('\n');
         }
+        builder.Append(build is null
+            ? "Build: AiThread cannot build this project; mention build or test steps in the summary.\n"
+            : $"Build: `{build.Display}` (run_build). AiThread builds it again after the executors finish{(input.Settings.MaxFixRounds > 0 ? " and has the errors fixed" : string.Empty)}.\n");
         builder.Append("Tool paths are relative to the root. The read tools also accept absolute paths outside the root, for read-only checks; file changes are only possible inside the root.\n\n");
 
         builder.Append("## Structure (depth 2)\n");
@@ -325,6 +348,7 @@ public sealed class PlannerAgent(
         PlannerTools.SearchMemory => $"\"{Str(args, "query")}\"",
         PlannerTools.ReadMemory => $"{(args["ids"] as JsonArray)?.Count ?? 0} item",
         PlannerTools.ReadThread => $"`{Str(args, "id")}`",
+        PlannerTools.RunBuild => Str(args, "target") is { } target ? $"`{target}`" : string.Empty,
         _ => string.Empty
     };
 

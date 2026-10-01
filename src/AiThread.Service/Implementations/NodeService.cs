@@ -102,6 +102,7 @@ public sealed class NodeService(
         if (executors == 0) issues.Add("Belum ada node Executor aktif.");
         if (wrappers == 0) issues.Add("Belum ada node Wrapper aktif.");
         if (wrappers > 1) issues.Add("Lebih dari satu Wrapper aktif — yang dipakai adalah prioritas terkecil.");
+        if (Count(NodeRole.Reviewer) > 1) issues.Add("Lebih dari satu Reviewer aktif — yang dipakai adalah prioritas terkecil.");
 
         return new PipelineStatusDto(planners > 0 && executors > 0 && wrappers > 0, planners, executors, wrappers, issues);
     }

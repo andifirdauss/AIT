@@ -19,6 +19,9 @@
     el('executorMaxRetries').value = s.executorMaxRetries;
     el('maxParallelTasks').value = s.maxParallelTasks;
     el('requestTimeout').value = s.requestTimeoutSeconds;
+    el('buildEnabled').checked = s.buildEnabled;
+    el('buildTimeout').value = s.buildTimeoutSeconds;
+    el('maxFixRounds').value = s.maxFixRounds;
   }
 
   async function loadModels(selected) {
@@ -95,7 +98,10 @@
       plannerMaxSteps: Number(el('plannerMaxSteps').value),
       executorMaxRetries: Number(el('executorMaxRetries').value),
       maxParallelTasks: Number(el('maxParallelTasks').value),
-      requestTimeoutSeconds: Number(el('requestTimeout').value)
+      requestTimeoutSeconds: Number(el('requestTimeout').value),
+      buildEnabled: el('buildEnabled').checked,
+      buildTimeoutSeconds: Number(el('buildTimeout').value),
+      maxFixRounds: Number(el('maxFixRounds').value)
     };
     try {
       fill(await api.put('/api/settings', body));

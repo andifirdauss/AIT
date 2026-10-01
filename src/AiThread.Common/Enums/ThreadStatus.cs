@@ -8,5 +8,8 @@ public enum ThreadStatus
     Wrapping = 3,
     Completed = 4,
     Failed = 5,
-    Cancelled = 6
+    Cancelled = 6,
+
+    // Building the project and/or reviewing the changes, possibly with fix rounds; between Executing and Wrapping.
+    Verifying = 7
 }
