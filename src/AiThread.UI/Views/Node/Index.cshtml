@@ -15,25 +15,33 @@
 
 <div id="pipelineAlert" class="alert d-none" role="status"></div>
 
-<div class="row g-3">
-    <div class="col-md-6 col-xxl-3">
-        <h2 class="h6 text-uppercase text-secondary">Planner</h2>
-        <p class="small text-secondary">Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas. Planner aktif lain menjadi cadangan otomatis.</p>
+<div class="node-columns">
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Planner</h2>
+            <p class="small text-secondary">Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas. Planner aktif lain menjadi cadangan otomatis.</p>
+        </div>
         <div id="nodes-Planner"></div>
     </div>
-    <div class="col-md-6 col-xxl-3">
-        <h2 class="h6 text-uppercase text-secondary">Executor</h2>
-        <p class="small text-secondary">Model murah & cepat. Tiap tugas = satu file dengan konteks minimal; berjalan paralel.</p>
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Executor</h2>
+            <p class="small text-secondary">Model murah & cepat. Tiap tugas = satu file dengan konteks minimal; berjalan paralel.</p>
+        </div>
         <div id="nodes-Executor"></div>
     </div>
-    <div class="col-md-6 col-xxl-3">
-        <h2 class="h6 text-uppercase text-secondary">Wrapper</h2>
-        <p class="small text-secondary">Mengumpulkan hasil semua executor dan menyusun balasan ke user. Juga dipakai untuk ekstraksi memory.</p>
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Wrapper</h2>
+            <p class="small text-secondary">Mengumpulkan hasil semua executor dan menyusun balasan ke user. Juga dipakai untuk ekstraksi memory.</p>
+        </div>
         <div id="nodes-Wrapper"></div>
     </div>
-    <div class="col-md-6 col-xxl-3">
-        <h2 class="h6 text-uppercase text-secondary">Context Keeper</h2>
-        <p class="small text-secondary">Opsional. Meringkas percakapan Claude Code setelah tiap thread, sehingga planner mulai dari ringkasan kecil, bukan seluruh chat. Tanpa node ini, Wrapper yang meringkas.</p>
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Context Keeper</h2>
+            <p class="small text-secondary">Opsional. Meringkas percakapan Claude Code setelah tiap thread, sehingga planner mulai dari ringkasan kecil, bukan seluruh chat. Tanpa node ini, Wrapper yang meringkas.</p>
+        </div>
         <div id="nodes-ContextKeeper"></div>
     </div>
 </div>
