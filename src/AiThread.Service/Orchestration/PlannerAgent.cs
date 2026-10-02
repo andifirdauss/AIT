@@ -57,7 +57,7 @@ public sealed class PlannerAgent(
         CancellationToken cancellationToken)
     {
         var node = input.Nodes[nodeIndex];
-        var messages = new JsonArray { SystemMessage(node), ChatMessages.User(brief) };
+        var messages = new JsonArray { SystemMessage(node), ChatMessages.User(brief, input.Request.Images) };
 
         var maxSteps = input.Settings.PlannerMaxSteps;
         var tokens = 0;

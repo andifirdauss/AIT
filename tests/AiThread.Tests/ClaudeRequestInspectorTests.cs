@@ -324,6 +324,62 @@ public class ClaudeRequestInspectorTests
         Assert.Null(ClaudeRequestInspector.HistoryAfter(body, 5));
     }
 
+    [Fact]
+    public void Image_attached_to_the_active_turn_is_extracted()
+    {
+        var body = MainAgentRequest(
+        [
+            new JsonObject
+            {
+                ["role"] = "user",
+                ["content"] = new JsonArray
+                {
+                    new JsonObject { ["type"] = "text", ["text"] = "Field apa saja yang disable di sini?" },
+                    new JsonObject
+                    {
+                        ["type"] = "image",
+                        ["source"] = new JsonObject { ["type"] = "base64", ["media_type"] = "image/png", ["data"] = "aGVsbG8=" }
+                    }
+                }
+            }
+        ]);
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("Field apa saja yang disable di sini?", info.Prompt);
+        var image = Assert.Single(info.Images);
+        Assert.Equal("image/png", image.MediaType);
+        Assert.Equal("aGVsbG8=", image.Data);
+    }
+
+    [Fact]
+    public void Non_orchestratable_turn_has_no_images()
+    {
+        var body = new JsonObject
+        {
+            ["model"] = "claude-haiku-4-5",
+            ["system"] = "Generate a title",
+            ["messages"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["role"] = "user",
+                    ["content"] = new JsonArray
+                    {
+                        new JsonObject
+                        {
+                            ["type"] = "image",
+                            ["source"] = new JsonObject { ["type"] = "base64", ["media_type"] = "image/png", ["data"] = "aGVsbG8=" }
+                        }
+                    }
+                }
+            }
+        };
+
+        Assert.Empty(ClaudeRequestInspector.Inspect(body, NoHeaders, 100).Images);
+    }
+
     private static JsonObject Reply(string text) => new()
     {
         ["role"] = "assistant",
