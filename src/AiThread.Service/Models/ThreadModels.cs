@@ -2,6 +2,10 @@ using AiThread.Common.Enums;
 
 namespace AiThread.Service.Models;
 
+// An image attached to the active user turn (Claude Code/Codex/Gemini CLI vision input). Data is raw base64,
+// without a "data:" prefix.
+public sealed record ImageAttachment(string MediaType, string Data);
+
 public sealed record ThreadRequest(
     ThreadSource Source,
     // Clean request text (system reminders stripped) — stored, shown in the UI and given to the wrapper.
@@ -14,7 +18,9 @@ public sealed record ThreadRequest(
     Guid ProjectId,
     string? SessionId,
     // Claude Code only: what the context keeper knows about the earlier turns of this chat.
-    SessionContext? Session = null);
+    SessionContext? Session = null,
+    // Images attached to the active user turn, given to the planner alongside the brief.
+    IReadOnlyList<ImageAttachment>? Images = null);
 
 // ThreadIds are the AiThread threads found in the chat, oldest first. Pack is the context keeper's summary written
 // after PackThreadId, the latest of them that has one; turns after it reach the planner as ConversationContext.
