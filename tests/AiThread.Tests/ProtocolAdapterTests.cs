@@ -159,6 +159,55 @@ public class ProtocolAdapterTests
         Assert.Equal("tool_result turn", Inspect(ClientProtocol.GeminiGenerate, body, "gemini-2.5-pro").Reason);
     }
 
+    [Fact]
+    public void OpenAi_chat_image_url_data_uri_is_kept_as_an_image()
+    {
+        var body = JsonNode.Parse("""
+            {
+              "model": "gpt-5", "stream": true,
+              "tools": [{ "type": "function", "function": { "name": "bash" } }],
+              "messages": [
+                { "role": "user", "content": [
+                  { "type": "text", "text": "What's disabled here?" },
+                  { "type": "image_url", "image_url": { "url": "data:image/png;base64,aGVsbG8=" } }
+                ] }
+              ]
+            }
+            """)!.AsObject();
+
+        var info = Inspect(ClientProtocol.OpenAiChat, body);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("What's disabled here?", info.Prompt);
+        var image = Assert.Single(info.Images);
+        Assert.Equal("image/png", image.MediaType);
+        Assert.Equal("aGVsbG8=", image.Data);
+    }
+
+    [Fact]
+    public void Gemini_inline_data_part_is_kept_as_an_image()
+    {
+        var body = JsonNode.Parse("""
+            {
+              "tools": [{ "functionDeclarations": [{ "name": "run_shell_command" }] }],
+              "contents": [
+                { "role": "user", "parts": [
+                  { "text": "What's disabled here?" },
+                  { "inlineData": { "mimeType": "image/png", "data": "aGVsbG8=" } }
+                ] }
+              ]
+            }
+            """)!.AsObject();
+
+        var info = Inspect(ClientProtocol.GeminiGenerate, body, "gemini-2.5-pro");
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("What's disabled here?", info.Prompt);
+        var image = Assert.Single(info.Images);
+        Assert.Equal("image/png", image.MediaType);
+        Assert.Equal("aGVsbG8=", image.Data);
+    }
+
     [Theory]
     [InlineData(ClientProtocol.AnthropicMessages, "/v1/messages?beta=true")]
     [InlineData(ClientProtocol.OpenAiChat, "/v1/chat/completions?beta=true")]

@@ -104,7 +104,8 @@ public sealed class AgentProxyHandler(
             info.WorkingDirectory,
             project.ProjectId,
             info.SessionId,
-            session?.Context);
+            session?.Context,
+            info.Images);
 
         if (!info.Stream)
         {

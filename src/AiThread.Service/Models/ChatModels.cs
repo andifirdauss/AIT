@@ -30,6 +30,24 @@ public static class ChatMessages
 
     public static JsonObject User(string content) => new() { ["role"] = "user", ["content"] = content };
 
+    // OpenAI vision shape: content becomes a parts array when images are attached, plain text otherwise
+    // (plain text keeps working on models/routes that reject the array form for text-only turns).
+    public static JsonObject User(string content, IReadOnlyList<ImageAttachment>? images)
+    {
+        if (images is not { Count: > 0 }) return User(content);
+
+        var parts = new JsonArray { new JsonObject { ["type"] = "text", ["text"] = content } };
+        foreach (var image in images)
+        {
+            parts.Add(new JsonObject
+            {
+                ["type"] = "image_url",
+                ["image_url"] = new JsonObject { ["url"] = $"data:{image.MediaType};base64,{image.Data}" }
+            });
+        }
+        return new JsonObject { ["role"] = "user", ["content"] = parts };
+    }
+
     public static JsonObject Assistant(string? content, IReadOnlyList<ToolCall>? toolCalls = null)
     {
         var message = new JsonObject { ["role"] = "assistant", ["content"] = content };
