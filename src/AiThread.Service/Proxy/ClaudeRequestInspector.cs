@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using AiThread.Service.Models;
 using AiThread.Service.Orchestration;
 
 namespace AiThread.Service.Proxy;
@@ -21,7 +22,9 @@ public sealed record ClaudeRequestInfo(
     string? ConversationContext,
     int EstimatedInputTokens,
     // AiThread threads whose reply is still in the conversation, oldest first.
-    IReadOnlyList<ThreadAnchorRef> Anchors);
+    IReadOnlyList<ThreadAnchorRef> Anchors,
+    // Images attached to the active user turn (Claude Code/Codex/Gemini CLI vision input).
+    IReadOnlyList<ImageAttachment> Images);
 
 public sealed record ThreadAnchorRef(string ShortId, int MessageIndex);
 
@@ -97,7 +100,8 @@ public static partial class ClaudeRequestInspector
             promptContext,
             orchestratable ? BuildHistory(messages, 0, userIndex) : null,
             Math.Max(1, rawLength / 4),
-            orchestratable ? FindAnchors(messages, userIndex) : []);
+            orchestratable ? FindAnchors(messages, userIndex) : [],
+            orchestratable ? ExtractImages(userMessage?["content"]) : []);
     }
 
     // The conversation between the message at afterIndex and the active user turn, for when the context keeper's
@@ -233,6 +237,35 @@ public static partial class ClaudeRequestInspector
             }
         }
         return (builder.ToString(), hasToolResult);
+    }
+
+    // Up to this many images survive per turn, and each one up to this many base64 chars (~6 MB raw), so a chat
+    // full of screenshots cannot blow up the planner's request to 9router.
+    private const int MaxImages = 6;
+    private const int MaxImageBase64Chars = 8_000_000;
+
+    // Canonical (Anthropic-shape) image block: { type: "image", source: { type: "base64", media_type, data } }.
+    // ProtocolAdapter normalizes OpenAI/Gemini client images into this same shape before the inspector sees them.
+    private static IReadOnlyList<ImageAttachment> ExtractImages(JsonNode? content)
+    {
+        if (content is not JsonArray blocks) return [];
+
+        var images = new List<ImageAttachment>();
+        foreach (var block in blocks)
+        {
+            if (images.Count >= MaxImages) break;
+            if (!string.Equals(Str(block?["type"]), "image", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var source = block?["source"];
+            if (!string.Equals(Str(source?["type"]), "base64", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var mediaType = Str(source?["media_type"]);
+            var data = Str(source?["data"]);
+            if (string.IsNullOrEmpty(mediaType) || string.IsNullOrEmpty(data) || data.Length > MaxImageBase64Chars) continue;
+
+            images.Add(new ImageAttachment(mediaType, data));
+        }
+        return images;
     }
 
     private static string? Header(IReadOnlyDictionary<string, string?> headers, string name) =>

@@ -60,7 +60,7 @@ public static class ProtocolAdapter
                     messages.Add(Message("assistant", blocks));
                     break;
                 default:
-                    messages.Add(Message("user", [Text(PartsText(content))]));
+                    messages.Add(Message("user", PartsContent(content)));
                     break;
             }
         }
@@ -92,7 +92,7 @@ public static class ProtocolAdapter
                     case "message":
                         var role = Str(item?["role"]) ?? "user";
                         if (role is "system" or "developer") system.AppendLine(PartsText(item?["content"]));
-                        else messages.Add(Message(role == "assistant" ? "assistant" : "user", [Text(PartsText(item?["content"]))]));
+                        else messages.Add(Message(role == "assistant" ? "assistant" : "user", PartsContent(item?["content"])));
                         break;
                     case "function_call" or "custom_tool_call" or "local_shell_call":
                         messages.Add(Message("assistant", [ToolUse(Str(item?["name"]) ?? type)]));
@@ -127,8 +127,11 @@ public static class ProtocolAdapter
             {
                 var call = part?["functionCall"] ?? part?["function_call"];
                 var response = part?["functionResponse"] ?? part?["function_response"];
+                var inline = part?["inlineData"] ?? part?["inline_data"];
                 if (call is not null) blocks.Add(ToolUse(Str(call["name"])));
                 else if (response is not null) blocks.Add(ToolResult());
+                else if (inline is not null && Str(inline["data"]) is { } inlineData && Str(inline["mimeType"] ?? inline["mime_type"]) is { } mimeType)
+                    blocks.Add(Image(mimeType, inlineData));
                 else if (Str(part?["text"]) is { } partText) blocks.Add(Text(partText));
             }
             var role = Str(content?["role"]) == "model" ? "assistant" : "user";
@@ -167,6 +170,14 @@ public static class ProtocolAdapter
 
     private static JsonObject ToolResult() => new() { ["type"] = "tool_result" };
 
+    // Canonical (Anthropic-shape) image block, same shape ClaudeRequestInspector reads regardless of which
+    // client protocol the image arrived on.
+    private static JsonObject Image(string mediaType, string data) => new()
+    {
+        ["type"] = "image",
+        ["source"] = new JsonObject { ["type"] = "base64", ["media_type"] = mediaType, ["data"] = data }
+    };
+
     // Chat/Responses content is either a string or a list of parts ({ type: text | input_text | output_text, text }).
     private static string PartsText(JsonNode? content)
     {
@@ -179,6 +190,55 @@ public static class ProtocolAdapter
             if (Str(part?["text"]) is { } text) builder.Append(text).Append('\n');
         }
         return builder.ToString();
+    }
+
+    // Same parts list as PartsText, but keeps attached images (data: URLs only — a remote image_url would need
+    // the proxy to fetch it, which it does not do) as canonical image blocks instead of dropping them.
+    private static JsonArray PartsContent(JsonNode? content)
+    {
+        var blocks = new JsonArray();
+        if (content is JsonValue value && value.TryGetValue<string>(out var plain))
+        {
+            blocks.Add(Text(plain));
+            return blocks;
+        }
+
+        if (content is JsonArray parts)
+        {
+            foreach (var part in parts)
+            {
+                if (Str(part?["text"]) is { } text)
+                {
+                    blocks.Add(Text(text));
+                    continue;
+                }
+
+                // OpenAI chat: { type: "image_url", image_url: { url } }. OpenAI Responses: { type: "input_image", image_url: "<url>" }.
+                var url = Str(part?["image_url"]?["url"]) ?? Str(part?["image_url"]);
+                if (url is not null && TryParseDataUrl(url, out var mediaType, out var data))
+                    blocks.Add(Image(mediaType, data));
+            }
+        }
+
+        if (blocks.Count == 0) blocks.Add(Text(string.Empty));
+        return blocks;
+    }
+
+    private static bool TryParseDataUrl(string url, out string mediaType, out string data)
+    {
+        mediaType = string.Empty;
+        data = string.Empty;
+        if (!url.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var comma = url.IndexOf(',');
+        if (comma < 0) return false;
+
+        var header = url[5..comma];
+        if (!header.EndsWith(";base64", StringComparison.OrdinalIgnoreCase)) return false;
+
+        mediaType = header[..^";base64".Length];
+        data = url[(comma + 1)..];
+        return mediaType.Length > 0 && data.Length > 0;
     }
 
     private static string? Str(JsonNode? node) =>
