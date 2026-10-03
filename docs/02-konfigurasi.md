@@ -12,8 +12,8 @@ Konfigurasi runtime disimpan di database dan diubah dari UI — tidak perlu rest
 | API key | Key dari dashboard 9router. Disimpan **terenkripsi**; setelah disimpan hanya ditampilkan tersamar (mis. `sk-abc••••1234`). Kosongkan field untuk mempertahankan key lama. |
 | Hapus API key tersimpan | Centang lalu *Simpan setting* untuk menghapus key. |
 
-Tombol **Test koneksi** memakai nilai di form **tanpa menyimpannya**. Setelah hasilnya benar, klik **Simpan**
-(di kartu yang sama) — hanya key yang tersimpan yang dipakai AiThread. Saat halaman dibuka, baris hasil menampilkan
+Tombol **Test koneksi** memakai nilai di form **tanpa menyimpannya**. Setelah hasilnya benar, klik **Simpan setting**
+— hanya key yang tersimpan yang dipakai AiThread. Saat halaman dibuka, baris hasil menampilkan
 status konfigurasi yang tersimpan.
 
 - `✓ Online · 12 ms · 48 model · 3 combo · API key OK` — siap dipakai.
@@ -40,16 +40,22 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 | Retry executor | 1 | 0–5 | Berapa kali executor boleh mencoba ulang bila editnya gagal diterapkan. |
 | Maks paralel | 8 | 1–64 | Batas tugas yang berjalan bersamaan **dalam satu thread**. |
 | Timeout (detik) | 600 | 30–3600 | Batas waktu satu panggilan model ke 9router. |
+
+### Build & verifikasi
+
+| Field | Default | Rentang | Keterangan |
+|---|---|---|---|
 | Build & verifikasi otomatis | aktif | — | AiThread boleh menjalankan perintah build project (`dotnet build`, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
 | Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. |
 | Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. |
 
-Klik **Simpan setting**. Setelah mengganti proxy API key, terapkan ulang integrasi Claude Code agar
+Tab *Koneksi 9router*, *Proxy & orkestrasi*, dan *Build & verifikasi* adalah satu form: **Simpan setting** di tab
+mana pun menyimpan ketiganya. Setelah mengganti proxy API key, terapkan ulang integrasi Claude Code agar
 `ANTHROPIC_AUTH_TOKEN` ikut berubah.
 
 ### Telegram
 
-Kartu di bagian bawah halaman Setting, untuk mengirim prompt dari HP — panduan lengkap di
+Tab terakhir halaman Setting (`/Setting#telegram`), untuk mengirim prompt dari HP — panduan lengkap di
 [Prompt dari Telegram](11-telegram.md).
 
 | Field | Default | Keterangan |

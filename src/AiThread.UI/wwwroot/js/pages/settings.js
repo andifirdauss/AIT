@@ -62,7 +62,7 @@
     const [keyText, keyProblem] = routerKeyState(r);
     const key = keyProblem ? `<span class="text-danger">${keyText}</span>` : keyText;
     const unsaved = keyTypedButNotSaved && !keyProblem
-      ? ' · <span class="text-warning">key ini belum disimpan — klik Simpan</span>'
+      ? ' · <span class="text-warning">key ini belum disimpan — klik Simpan setting</span>'
       : '';
     return `<span class="text-success">✓ Online</span> · ${r.latencyMs} ms · ${r.modelCount} model · ${r.comboCount} combo · ${key}${unsaved}`;
   }
@@ -85,8 +85,35 @@
     toast('Key baru dibuat. Simpan setting, lalu matikan dan aktifkan lagi CLI di menu CLI agar key baru tertulis.', 'info');
   });
 
+  // --- Tabs ---
+
+  const tabButtons = Array.from(document.querySelectorAll('#settingTabs [data-bs-toggle="tab"]'));
+
+  function showTab(name) {
+    const button = tabButtons.find(b => b.dataset.tab === name);
+    if (button) bootstrap.Tab.getOrCreateInstance(button).show();
+  }
+
+  // The hash keeps the open tab across reloads and lets other pages link to e.g. /Setting#telegram.
+  tabButtons.forEach(button => button.addEventListener('shown.bs.tab', () => {
+    history.replaceState(null, '', `#${button.dataset.tab}`);
+  }));
+  showTab(location.hash.slice(1));
+
+  // The form is novalidate because the browser cannot report an invalid field inside a hidden tab;
+  // open that field's tab first, then let the browser show its message.
+  function revealInvalidField(form) {
+    const invalid = Array.from(form.elements).find(f => f.willValidate && !f.checkValidity());
+    if (!invalid) return false;
+    const pane = invalid.closest('.tab-pane');
+    if (pane) showTab(tabButtons.find(b => b.dataset.bsTarget === `#${pane.id}`)?.dataset.tab);
+    invalid.reportValidity();
+    return true;
+  }
+
   el('settingForm').addEventListener('submit', async event => {
     event.preventDefault();
+    if (revealInvalidField(event.currentTarget)) return;
     const body = {
       nineRouterBaseUrl: el('routerUrl').value.trim(),
       nineRouterApiKey: el('routerKey').value.trim() || null,

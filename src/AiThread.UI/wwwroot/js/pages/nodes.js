@@ -17,26 +17,60 @@
 
   const modal = bootstrap.Modal.getOrCreateInstance(el('nodeModal'));
 
-  function nodeCard(n) {
-    return `<div class="card node-card role-${n.role} mb-2 ${n.isActive ? '' : 'inactive'}">
-      <div class="card-body py-2">
-        <div class="d-flex justify-content-between align-items-start gap-2">
-          <div>
-            <div class="fw-semibold">${escapeHtml(n.name)}
+  // Open by default; once someone folds the guide it stays folded on this browser.
+  const guide = el('nodeGuide');
+  try {
+    if (localStorage.getItem('aithread.nodeGuide') === 'closed') guide.open = false;
+  } catch {
+    // Storage unavailable: keep the default.
+  }
+  guide.addEventListener('toggle', () => {
+    try {
+      localStorage.setItem('aithread.nodeGuide', guide.open ? 'open' : 'closed');
+    } catch {
+      // Not remembered; harmless.
+    }
+  });
+
+  // Every line is single-line (long names/models are truncated, full text in the tooltip) so all cards share one
+  // height and line up across the role columns.
+  function nodeCardBody(n) {
+    const prompt = n.systemPrompt
+      ? ` · <span title="${escapeHtml(n.systemPrompt)}">📝 instruksi</span>`
+      : '';
+    return `<div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="node-card-title">
+            <div class="fw-semibold text-truncate" title="${escapeHtml(n.name)}">${escapeHtml(n.name)}
               ${n.isActive ? '' : '<span class="badge text-bg-secondary">nonaktif</span>'}</div>
-            <div class="mono small">${escapeHtml(n.model)}</div>
+            <div class="mono small text-truncate" title="${escapeHtml(n.model)}">${escapeHtml(n.model)}</div>
           </div>
-          <div class="btn-group btn-group-sm">
+          <div class="btn-group btn-group-sm flex-shrink-0">
             <button type="button" class="btn btn-outline-secondary" data-test="${n.id}">Test</button>
             <button type="button" class="btn btn-outline-secondary" data-edit="${n.id}">Edit</button>
             <button type="button" class="btn btn-outline-danger" data-delete="${n.id}">Hapus</button>
           </div>
         </div>
-        <div class="small text-secondary mt-1">
-          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}
-        </div>
-        ${n.systemPrompt ? `<div class="small mt-1 text-truncate-2" title="${escapeHtml(n.systemPrompt)}">📝 ${escapeHtml(n.systemPrompt)}</div>` : ''}
+        <div class="small text-secondary mt-1 text-truncate">
+          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}
+        </div>`;
+  }
+
+  function nodeCard(n) {
+    return `<div class="card node-card role-${n.role} mb-2 ${n.isActive ? '' : 'inactive'}">
+      <div class="card-body py-2">
+        ${nodeCardBody(n)}
         <div class="small mt-1" data-test-result="${n.id}"></div>
+      </div>
+    </div>`;
+  }
+
+  // The empty slot holds an invisible sample card so it is exactly as tall as a real one.
+  function emptyCard(role) {
+    const sample = { name: '-', model: '-', isActive: true, temperature: 0, maxTokens: 0, maxConcurrency: 0, priority: 0 };
+    return `<div class="card node-card node-empty mb-2">
+      <div class="card-body py-2">
+        <div class="node-empty-sample" aria-hidden="true">${nodeCardBody(sample)}</div>
+        <div class="node-empty-label small">Belum ada ${escapeHtml((roleLabels[role] || role).toLowerCase())}.</div>
       </div>
     </div>`;
   }
@@ -50,7 +84,7 @@
         const ofRole = list.filter(n => n.role === role);
         el(`nodes-${role}`).innerHTML = ofRole.length
           ? ofRole.map(nodeCard).join('')
-          : `<div class="card"><div class="empty-state small">Belum ada ${(roleLabels[role] || role).toLowerCase()}.</div></div>`;
+          : emptyCard(role);
       }
     } catch (error) {
       toast(error.message, 'error');
