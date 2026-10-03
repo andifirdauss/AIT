@@ -260,8 +260,33 @@
     });
   }
 
+  // The "what's new" bar stays hidden once dismissed, until the app version changes.
+  function initUpdateBar() {
+    const bar = document.getElementById('updateBar');
+    if (!bar) return;
+    const key = 'aithread.updateBar.dismissed';
+    const version = bar.dataset.version;
+    try {
+      if (localStorage.getItem(key) === version) {
+        bar.remove();
+        return;
+      }
+    } catch {
+      // Storage unavailable — show the bar every time.
+    }
+    bar.classList.remove('d-none');
+    bar.addEventListener('closed.bs.alert', () => {
+      try {
+        localStorage.setItem(key, version);
+      } catch {
+        // Storage unavailable — the dismissal just is not remembered.
+      }
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initThemeToggle();
+    initUpdateBar();
     refreshRouterPill();
     setInterval(refreshRouterPill, 20000);
   });
