@@ -38,6 +38,9 @@
     const prompt = n.systemPrompt
       ? ` · <span title="${escapeHtml(n.systemPrompt)}">📝 instruksi</span>`
       : '';
+    const skills = n.skills?.length
+      ? ` · <span title="${n.skills.length} skill: ${escapeHtml(n.skills.map(s => s.name).join(', '))}">🧩 ${n.skills.length}</span>`
+      : '';
     return `<div class="d-flex justify-content-between align-items-start gap-2">
           <div class="node-card-title">
             <div class="fw-semibold text-truncate" title="${escapeHtml(n.name)}">${escapeHtml(n.name)}
@@ -51,7 +54,7 @@
           </div>
         </div>
         <div class="small text-secondary mt-1 text-truncate">
-          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}
+          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}
         </div>`;
   }
 
@@ -253,6 +256,10 @@
     el('nodeRole').value = node?.role || role;
     el('nodePriority').value = node?.priority ?? 100;
     el('nodeSystemPrompt').value = node?.systemPrompt || '';
+    nodeSkills = (node?.skills || []).map(s => ({ ...s }));
+    el('nodeSkillPrompt').value = '';
+    el('nodeSkillSuggestions').innerHTML = '';
+    renderSkillChips();
     el('nodeActive').checked = node?.isActive ?? true;
     if (node) {
       el('nodeMaxTokens').value = node.maxTokens;
@@ -284,7 +291,8 @@
       maxConcurrency: Number(el('nodeConcurrency').value),
       priority: Number(el('nodePriority').value),
       systemPrompt: el('nodeSystemPrompt').value.trim() || null,
-      isActive: el('nodeActive').checked
+      isActive: el('nodeActive').checked,
+      skillIds: nodeSkills.map(s => s.id)
     };
     try {
       if (id) await api.put(`/api/nodes/${id}`, body);
@@ -330,10 +338,95 @@
     }
   });
 
+  // --- Skills: suggested by the skill orchestrator, picked by the user, saved as part of the node ---
+
+  const maxSkills = 10;
+  let nodeSkills = [];
+  let suggestions = [];
+
+  function renderSkillChips() {
+    el('nodeSkillChips').innerHTML = nodeSkills.length
+      ? nodeSkills.map((s, i) => `<span class="badge rounded-pill text-bg-primary d-inline-flex align-items-center gap-1" title="${escapeHtml(s.description || '')}">
+          🧩 ${escapeHtml(s.name)}
+          <button type="button" class="btn-close btn-close-white" style="font-size: .55rem" data-remove-skill="${i}" aria-label="Lepas ${escapeHtml(s.name)}"></button>
+        </span>`).join('')
+      : '<span class="small text-secondary">Belum ada skill.</span>';
+  }
+
+  el('nodeSkillChips').addEventListener('click', event => {
+    const button = event.target.closest('[data-remove-skill]');
+    if (!button) return;
+    nodeSkills.splice(Number(button.dataset.removeSkill), 1);
+    renderSkillChips();
+  });
+
+  function renderSuggestions() {
+    const target = el('nodeSkillSuggestions');
+    if (!suggestions.length) {
+      target.innerHTML = '<div class="small text-secondary">Tidak ada skill di gudang yang cocok. Coba tulis kebutuhan dengan kata lain, atau tambahkan sumber skill di <a href="/Setting#skills">Setting → Skill</a>.</div>';
+      return;
+    }
+    const items = suggestions.map((s, i) => {
+      const attached = nodeSkills.some(n => n.id === s.id);
+      return `<label class="list-group-item d-flex gap-2 align-items-start">
+        <input class="form-check-input mt-1" type="checkbox" data-suggestion="${i}" ${s.recommended || attached ? 'checked' : ''} ${attached ? 'disabled' : ''} />
+        <span>
+          <span class="fw-semibold">${escapeHtml(s.name)}</span>
+          <span class="small text-secondary">· ${escapeHtml(s.sourceName)} · cocok ${Math.round(s.score * 100)}%${attached ? ' · sudah terpasang' : ''}</span>
+          <span class="d-block small">${escapeHtml(s.reason || s.description)}</span>
+        </span>
+      </label>`;
+    }).join('');
+    target.innerHTML = `<div class="list-group list-group-flush border rounded mb-2">${items}</div>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDismissSkills">Tutup</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnApplySkills">Terapkan skill terpilih</button>
+      </div>`;
+  }
+
+  el('btnSuggestSkills').addEventListener('click', async () => {
+    const prompt = el('nodeSkillPrompt').value.trim();
+    if (!prompt) {
+      el('nodeSkillPrompt').focus();
+      return toast('Tulis dulu kebutuhan node, mis. "aku butuh kamu bisa menjadi engineer yang handal".', 'info');
+    }
+    const button = el('btnSuggestSkills');
+    button.disabled = true;
+    el('nodeSkillSuggestions').innerHTML = '<div class="small text-secondary">Skill Orchestrator sedang mencari di gudang skill…</div>';
+    try {
+      suggestions = await api.post('/api/skills/suggest', { prompt, role: el('nodeRole').value });
+      renderSuggestions();
+    } catch (error) {
+      suggestions = [];
+      el('nodeSkillSuggestions').innerHTML = `<div class="small text-danger">${escapeHtml(error.message)}</div>`;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  el('nodeSkillSuggestions').addEventListener('click', event => {
+    if (event.target.id === 'btnDismissSkills') {
+      suggestions = [];
+      el('nodeSkillSuggestions').innerHTML = '';
+    } else if (event.target.id === 'btnApplySkills') {
+      const picked = Array.from(el('nodeSkillSuggestions').querySelectorAll('input[data-suggestion]:checked:not(:disabled)'))
+        .map(input => suggestions[Number(input.dataset.suggestion)]);
+      const room = maxSkills - nodeSkills.length;
+      if (picked.length > room) toast(`Satu node maksimal ${maxSkills} skill — hanya ${Math.max(room, 0)} yang ditambahkan.`, 'info');
+      picked.slice(0, Math.max(room, 0)).forEach(s => nodeSkills.push({ id: s.id, name: s.name, description: s.description, sourceName: s.sourceName }));
+      renderSkillChips();
+      suggestions = [];
+      el('nodeSkillSuggestions').innerHTML = picked.length
+        ? '<div class="small text-success">Skill ditempel. Klik Simpan untuk menyimpan node.</div>'
+        : '';
+    }
+  });
+
   el('btnAddNode').addEventListener('click', () => openModal(null));
   el('btnRefreshModels').addEventListener('click', () => loadModels(true));
 
   loadNodes();
   loadModels();
+  // A pulled or deleted skill source can add or remove skills from nodes.
   stream('types=node', { 'node.changed': debounce(loadNodes, 300) });
 })();

@@ -20,5 +20,6 @@ public static class AppEventTypes
     public const string ProjectChanged = "project.changed";
     public const string NodeChanged = "node.changed";
     public const string TelegramChanged = "telegram.changed";
+    public const string SkillChanged = "skill.changed";
     public const string Ping = "ping";
 }

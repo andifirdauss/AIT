@@ -334,7 +334,7 @@ public sealed class NineRouterService(
         var content = new StringBuilder();
         var toolCalls = new SortedDictionary<int, ToolCallBuilder>();
         string? finishReason = null;
-        int promptTokens = 0, completionTokens = 0;
+        int promptTokens = 0, completionTokens = 0, cachedTokens = 0;
 
         while (await reader.ReadLineAsync(cancellationToken) is { } line)
         {
@@ -361,6 +361,7 @@ public sealed class NineRouterService(
             {
                 promptTokens = GetInt(usage["prompt_tokens"]) ?? promptTokens;
                 completionTokens = GetInt(usage["completion_tokens"]) ?? completionTokens;
+                cachedTokens = CachedTokensOf(usage) ?? cachedTokens;
             }
 
             if (chunk["choices"] is not JsonArray { Count: > 0 } choices) continue;
@@ -400,8 +401,16 @@ public sealed class NineRouterService(
             toolCalls.Values.Select((b, i) => b.Build(i)).Where(c => c.Name.Length > 0).ToList(),
             finishReason,
             promptTokens,
-            completionTokens);
+            completionTokens,
+            cachedTokens);
     }
+
+    // OpenAI reports cache hits as usage.prompt_tokens_details.cached_tokens; 9router's Claude translation adds
+    // cache_read_input_tokens. Both are already counted in prompt_tokens.
+    public static int? CachedTokensOf(JsonNode? usage) =>
+        GetInt(usage?["prompt_tokens_details"]?["cached_tokens"])
+        ?? GetInt(usage?["cache_read_input_tokens"])
+        ?? GetInt(usage?["cached_tokens"]);
 
     // Most providers send an explicit index; some translated streams only send ids, or neither on continuation chunks.
     private static int ResolveToolCallIndex(SortedDictionary<int, ToolCallBuilder> toolCalls, int? explicitIndex, string? id)
@@ -445,7 +454,8 @@ public sealed class NineRouterService(
             toolCalls,
             GetString(choice?["finish_reason"]),
             GetInt(root["usage"]?["prompt_tokens"]) ?? 0,
-            GetInt(root["usage"]?["completion_tokens"]) ?? 0);
+            GetInt(root["usage"]?["completion_tokens"]) ?? 0,
+            CachedTokensOf(root["usage"]) ?? 0);
     }
 
     private static string ExtractError(string body)

@@ -25,6 +25,9 @@ public class ThreadRun : BaseEntity
     public int PlannerSteps { get; set; }
     public int PlannerTokens { get; set; }
 
+    // Part of PlannerTokens served from the provider's prompt cache.
+    public int PlannerCachedTokens { get; set; }
+
     // Includes the fix tasks of the verification stage.
     public int ExecutorTokens { get; set; }
     public int ReviewerTokens { get; set; }

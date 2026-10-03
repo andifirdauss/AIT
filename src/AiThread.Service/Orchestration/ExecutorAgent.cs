@@ -22,7 +22,7 @@ public sealed record ExecutorOutcome(bool Success, string? Summary, string? Diff
 
 // Cheap model, tiny scope: one file, the instruction, the contract and a few excerpts. Its SEARCH/REPLACE
 // output is applied under a per-file lock against the file's current content; failures are fed back for a retry.
-public sealed class ExecutorAgent(INineRouterService router, FileLockProvider fileLocks, IOptions<AiThreadOptions> options)
+public sealed class ExecutorAgent(INineRouterService router, FileLockProvider fileLocks, NodePromptBuilder prompts, IOptions<AiThreadOptions> options)
 {
     private const int ExcerptMargin = 40;
     private const int MaxContextLinesPerRef = 250;
@@ -37,7 +37,7 @@ public sealed class ExecutorAgent(INineRouterService router, FileLockProvider fi
         var initial = await TextFileIo.ReadAsync(fullPath, cancellationToken);
         var messages = new JsonArray
         {
-            ChatMessages.System(AgentPrompts.WithNodeInstructions(AgentPrompts.Executor, job.Node.SystemPrompt)),
+            ChatMessages.System(await prompts.BuildAsync(AgentPrompts.Executor, job.Node, cancellationToken)),
             ChatMessages.User(await BuildTaskMessageAsync(job, initial, cancellationToken))
         };
 

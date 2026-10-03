@@ -161,3 +161,8 @@ menjelaskannya di jawaban dan tidak membuat tugas. Untuk mengerjakan project lai
 
 Setiap giliran, AiThread mengirim ke planner hingga 12 pesan terakhir percakapan (dipotong bila panjang) dan indeks
 memory project. Jadi "sekarang tambahkan juga di halaman detail" bisa dipahami tanpa mengulang konteks.
+
+Sesekali planner balik bertanya, misalnya bila permintaan bisa ditafsirkan dua cara yang hasilnya berbeda jauh.
+Balasan AiThread lalu berupa pertanyaan bernomor (status thread *Menunggu jawaban*); ketik nomor pilihan atau jawaban
+Anda sebagai prompt berikutnya, dan thread yang sama dilanjutkan. Lihat
+[Pertanyaan dari planner](07-cara-kerja.md#pertanyaan-dari-planner).
