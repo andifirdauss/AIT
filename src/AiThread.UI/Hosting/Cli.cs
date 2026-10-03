@@ -118,6 +118,9 @@ public static class Cli
         }
 
         LogFile.Redirect();
+        // Autostart starts this exe as a console app, so Windows opens an empty console window. Output already goes to the
+        // log file, so the console is released here and the window closes.
+        FreeConsole();
         var server = new ServerHost();
         try
         {
@@ -304,6 +307,9 @@ public static class Cli
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int MessageBox(nint hwnd, string text, string caption, uint type);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool FreeConsole();
 
     private sealed record Options(int? Port, bool Open, bool Follow, IReadOnlyList<string> Rest, string? Error)
     {

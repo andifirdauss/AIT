@@ -23,6 +23,12 @@ MCP server dikonfigurasi di [.mcp.json](.mcp.json). **Selalu utamakan MCP ini** 
 - Abaikan folder `bin/`, `obj/`, dan `wwwroot/lib/` (library pihak ketiga) saat menjelajah kode.
 - Teks UI dan pesan log untuk user dalam Bahasa Indonesia; prompt ke model AI dan pesan error tool planner dalam Bahasa Inggris.
 
+## Publish npm
+- Token npm ada di environment variable user `NPM_TOKEN` (Windows). **Jangan pernah menulis nilainya ke file repo, commit, atau chat.**
+- Sebelum `scripts/publish-npm.ps1 -Publish`, naikkan `<Version>` di `src/AiThread.UI/AiThread.UI.csproj` (npm menolak versi yang sudah ada). Skrip menyamakan versi `package.json`.
+- Publish memakai `.npmrc` sementara yang dibuat dari `NPM_TOKEN` lalu dihapus; jangan menyimpan `.npmrc` berisi token di folder repo.
+- Versi di registry dicek dengan `npm view aithread version`.
+
 ## Arsitektur singkat
 Lihat [README.md](README.md) dan [docs/](docs/README.md) untuk alur lengkap. Perbarui dokumen di `docs/` bila perilaku, default, atau endpoint berubah.
 - `AiThread.Common`: entity (`ThreadRun`, `ThreadTask`, `AiNode`, `Project`, `LongMemory`, `SystemSetting`, `ActivityLog`), enum, DTO.
