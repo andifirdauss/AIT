@@ -112,8 +112,8 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 | Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
 | Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual |
 | Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
-| Node | Planner / executor / reviewer / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan |
-| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, bot Telegram |
+| Node | Planner / executor / reviewer / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan, skill (dicarikan Skill Orchestrator dari gudang skill) |
+| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, bot Telegram, Skill Orchestrator & gudang skill |
 
 ## Prompt dari Telegram
 
@@ -122,6 +122,14 @@ token dari `@BotFather` → *Simpan Telegram*, kirim `/start` ke bot, lalu **Izi
 menjalankan thread di project aktif; progres tampil live di chat dan ringkasan wrapper dikirim saat selesai
 (`/projects`, `/status`, `/cancel`, `/diff`, `/new`). AiThread memakai long polling, jadi tidak perlu URL publik atau
 port forwarding. Detail: [docs/11-telegram.md](docs/11-telegram.md).
+
+## Skill untuk node
+
+**Setting → Skill**: pilih model Skill Orchestrator, tempel link repository skill (mis.
+`https://github.com/anthropics/skills`), lalu klik *Tarik skill*. Model memeriksa skill apa saja yang ada, lalu skill
+ditarik ke gudang lokal (offline). Di modal **Node**, tulis kebutuhan ("aku butuh kamu bisa menjadi engineer yang
+handal") lalu klik *Cari skill*. Skill yang cocok dicentang dan ditempel ke node, dan isinya ikut masuk ke system
+prompt node setiap kali node dipanggil. Detail: [docs/07-cara-kerja.md](docs/07-cara-kerja.md#skill-pada-node).
 
 ## Cara request Claude Code diperlakukan
 
@@ -152,8 +160,8 @@ diabaikan: tanpa orkestrasi, tanpa memory.
 
 - Proxy Anthropic: `POST /v1/messages`, `POST /v1/messages/count_tokens`, `GET /v1/models`
 - SSE: `GET /api/stream?types=log,router,thread` (prefix tipe event) atau `GET /api/stream?threadId={id}`.
-  Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `telegram.changed`, `ping`.
-- REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/threads`, `/api/dashboard`, `/api/telegram`.
+  Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `telegram.changed`, `skill.changed`, `ping`.
+- REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/threads`, `/api/dashboard`, `/api/telegram`, `/api/skills`.
 
 Konfigurasi infrastruktur ada di `src/AiThread.UI/appsettings.json` (connection string, `AiThread:ShortMemoryHours`,
 interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executor, `AiThread:EmbeddedRedis`).

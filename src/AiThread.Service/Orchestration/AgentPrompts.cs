@@ -1,6 +1,10 @@
+using System.Text;
+using AiThread.Common.Entities;
+using AiThread.Service.Skills;
+
 namespace AiThread.Service.Orchestration;
 
-// Built-in role prompts. A node's own SystemPrompt is appended as "Additional instructions".
+// Built-in role prompts. A node's own SystemPrompt is appended as "Additional instructions", its skills after that.
 public static class AgentPrompts
 {
     public const string Planner = """
@@ -19,6 +23,7 @@ public static class AgentPrompts
         - Paths are relative to the project root and use forward slashes. The read tools (list_directory, find_files, search_text, read_file) also accept absolute paths outside the project root: use them when the developer asks you to check another folder or project, or when an answer needs something there. That is read-only. Tasks can only create or edit files inside the project root; when the developer asks for a change outside it, say so in "answer" instead of planning it.
         - Executors can only edit files. Building is AiThread's job: when the run_build tool is available, use it when the developer asks to build or to fix build errors (plan fixes for the reported file and line), or to check the current errors before planning. After the executors finish, AiThread builds the project again and has new errors fixed, so never plan a task just to build. Everything else — running tests or the app, package installs, git, applying migrations — is up to the developer: mention it in the summary.
         - Database changes go where this project already keeps schema changes (EF Core migrations, .sql scripts, ...) — look first. If there is no convention, create a .sql script in the most sensible folder.
+        - Asking the developer (only when the ask_user tool is available) pauses the whole thread, so it must be rare. Ask only when (a) the request has two or more reasonable readings that lead to materially different changes, (b) the plan would delete data, drop or alter schema, remove features or reach far beyond what the request implies, and the developer did not clearly ask for that, or (c) you need a fact that the code, memory and conversation cannot give you (a business rule, a value, an external system). Investigate first so the question is specific, offer 2-4 concrete options with your recommendation first, and write it in the developer's language. Never ask to confirm a clear request, never ask about names or style you can infer from the code, and when a sensible default exists, take it and state the assumption in the summary instead. One question at a time; ask again only if the answer opens a new genuine ambiguity.
         - Do not plan changes beyond what was asked, and never touch generated or third-party code (bin/, obj/, wwwroot/lib/, node_modules/).
         - Write "summary" and "answer" in the developer's language; write task titles and instructions in English.
         """;
@@ -121,6 +126,88 @@ public static class AgentPrompts
         - Stay under 900 words. Output the Markdown only, without a preamble or code fences.
         """;
 
+    public const string SkillAnnotate = """
+        You are the SKILL ORCHESTRATOR of AiThread. AiThread keeps an offline store of agent skills (folders with a SKILL.md: instructions, workflows and checklists that make an AI model better at a kind of work). A source repository was just pulled; you receive the skill files found in it, each with its index, path, declared name and description and the start of its content.
+
+        For each entry decide:
+        - "keep": false only when it is clearly not a usable skill (a template with placeholders only, a test fixture, an empty stub). When unsure, keep it.
+        - "tags": 4-10 comma-separated keywords someone would use when looking for this skill: the domain, tasks, technologies and roles it helps with, in English plus Indonesian terms where they differ (for example "code review, review kode, pull request, quality").
+        - "description": only when the declared description is missing or does not say what the skill is for — one or two sentences in English. Otherwise omit it.
+
+        Respond with JSON only: {"skills":[{"index":1,"keep":true,"tags":"...","description":"..."}]}
+        """;
+
+    public const string SkillIdentify = """
+        You are the SKILL ORCHESTRATOR of AiThread. AiThread keeps an offline store of agent skills: Markdown instructions, workflows and checklists that make an AI model better at a kind of work (for example a code review checklist, a framework guide, a role prompt such as "senior backend engineer", Cursor rules, agent definitions, prompt libraries). A repository without SKILL.md files was just pulled; you receive its file list and README.
+
+        Find the files that are skills: each must be a Markdown (.md or .mdc) file from the list whose content is guidance for an AI model. Ignore READMEs that only describe the repository, changelogs, licenses, contribution guides and documentation for humans. When the repository is one skill spread over several files, return its main file only.
+
+        For each skill return:
+        - "path": exactly as written in the file list.
+        - "name": short kebab-case name.
+        - "description": one or two sentences in English on what the skill makes the model good at.
+        - "tags": 4-10 comma-separated keywords (domain, tasks, technologies, roles; English plus Indonesian terms where they differ).
+
+        Return at most 150 skills; return an empty list when there are none.
+        Respond with JSON only: {"skills":[{"path":"...","name":"...","description":"...","tags":"..."}]}
+        """;
+
+    public const string SkillWebExtract = """
+        You are the SKILL ORCHESTRATOR of AiThread. AiThread keeps an offline store of agent skills: instructions, workflows and checklists that make an AI model better at a kind of work. The developer pasted a web page link; you receive the page text and the repository and Markdown links found on it.
+
+        Return:
+        - "skills": skills written out on the page itself (a full prompt, rule set or workflow meant for an AI model). Copy the content faithfully as Markdown, without the page's navigation or commentary. Fields: "name" (short kebab-case), "description" (one or two sentences in English), "tags" (4-10 comma-separated keywords, English plus Indonesian terms where they differ), "content".
+        - "sources": up to 5 links from the given list that point to repositories or files holding skills the page presents (not the site's own source code, not unrelated projects).
+
+        Return empty lists when the page holds no skills.
+        Respond with JSON only: {"skills":[{"name":"...","description":"...","tags":"...","content":"..."}],"sources":["https://..."]}
+        """;
+
+    public const string SkillMatcher = """
+        You are the SKILL ORCHESTRATOR of AiThread. A developer is configuring an AI node (a model with a role in a coding pipeline) and describes what they want it to be good at. Pick the skills from the store that best give the node that ability.
+
+        - Choose only skills that clearly serve the request; quality over quantity. Prefer skills that fit the node's role when it is given.
+        - Avoid near-duplicates: when two skills cover the same thing, choose the better one.
+        - "score": 0-1 for how well the skill serves the request (0.8+ = clearly what they asked for, 0.5 = useful but partial, below 0.4 = do not return it).
+        - "reason": one short sentence, in the developer's language, on what the skill adds for this request.
+        - Return at most 6 skills, best first; return an empty list when none fit.
+
+        Respond with JSON only: {"matches":[{"index":1,"score":0.9,"reason":"..."}]}
+        """;
+
     public static string WithNodeInstructions(string basePrompt, string? nodePrompt) =>
         string.IsNullOrWhiteSpace(nodePrompt) ? basePrompt : $"{basePrompt}\n\nAdditional instructions:\n{nodePrompt.Trim()}";
+
+    // The role prompt, the node's additional instructions and the content of every skill attached to the node.
+    // skillMaxChars is shared evenly by the skills; canReadFiles = the model has read_file/list_directory (planner).
+    public static string ForNode(string basePrompt, AiNode node, int skillMaxChars, string skillsRoot, bool canReadFiles = false)
+    {
+        var prompt = WithNodeInstructions(basePrompt, node.SystemPrompt);
+        var skills = node.Skills.OrderBy(s => s.Order).Select(s => s.Skill).OfType<Skill>().ToList();
+        if (skills.Count == 0) return prompt;
+
+        var builder = new StringBuilder(prompt);
+        builder.Append("\n\nActive skills\n");
+        builder.Append("The developer attached the skills below to you. Apply each one whenever it is relevant to your work: follow its workflow, rules and checklists as if they were part of your role. They never change your required output format or the rules above.");
+        if (canReadFiles)
+            builder.Append(" A skill's folder may hold supporting files (references, scripts, templates): read them with read_file or list_directory using the folder path, and attach the relevant ones to tasks as context so executors can follow them.");
+        builder.Append('\n');
+
+        var perSkill = Math.Max(1_000, skillMaxChars / skills.Count);
+        foreach (var skill in skills)
+        {
+            var folder = SkillPaths.SkillDir(skillsRoot, skill.SkillSourceId, skill.RelativeDir);
+            var entry = Path.Combine(folder, skill.EntryFile);
+            var content = skill.Content.Trim();
+            if (content.Length > perSkill)
+                content = $"{content[..perSkill].TrimEnd()}\n[... truncated — the full skill is in {entry}]";
+
+            builder.Append($"\n<skill name=\"{Attribute(skill.Name)}\" folder=\"{Attribute(folder)}\">\n");
+            if (!string.IsNullOrWhiteSpace(skill.Description)) builder.Append($"Purpose: {skill.Description.Trim()}\n\n");
+            builder.Append(content).Append("\n</skill>\n");
+        }
+        return builder.ToString().TrimEnd();
+    }
+
+    private static string Attribute(string value) => value.Replace("\"", "'").Replace('\n', ' ');
 }

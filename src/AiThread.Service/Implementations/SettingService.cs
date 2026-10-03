@@ -76,6 +76,7 @@ public sealed class SettingService(
         entity.BuildEnabled = request.BuildEnabled;
         entity.BuildTimeoutSeconds = request.BuildTimeoutSeconds;
         entity.MaxFixRounds = request.MaxFixRounds;
+        entity.PlannerCanAsk = request.PlannerCanAsk;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -105,6 +106,21 @@ public sealed class SettingService(
         await db.SaveChangesAsync(cancellationToken);
         _cache = ToRuntime(entity);
         return ToTelegramDto(entity);
+    }
+
+    public async Task<RuntimeSettings> UpdateSkillsAsync(UpdateSkillSettingsRequest request, CancellationToken cancellationToken = default)
+    {
+        EnsureRange(request.MaxPromptChars, 4_000, 200_000, "Batas karakter skill per node");
+
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var entity = await LoadTrackedAsync(db, cancellationToken);
+        entity.SkillOrchestratorModel = string.IsNullOrWhiteSpace(request.Model) ? null : request.Model.Trim();
+        entity.SkillPromptMaxChars = request.MaxPromptChars;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+        _cache = ToRuntime(entity);
+        return _cache;
     }
 
     // Accepts what users typically paste from the 9router dashboard ("http://localhost:20128/v1").
@@ -160,7 +176,10 @@ public sealed class SettingService(
         Unprotect(entity.TelegramBotTokenProtected),
         entity.BuildEnabled,
         entity.BuildTimeoutSeconds,
-        entity.MaxFixRounds);
+        entity.MaxFixRounds,
+        entity.PlannerCanAsk,
+        entity.SkillOrchestratorModel,
+        entity.SkillPromptMaxChars);
 
     private TelegramSettingsDto ToTelegramDto(SystemSetting entity)
     {
@@ -186,7 +205,8 @@ public sealed class SettingService(
             entity.BuildEnabled,
             entity.BuildTimeoutSeconds,
             entity.MaxFixRounds,
-            proxyBaseUrl);
+            proxyBaseUrl,
+            entity.PlannerCanAsk);
     }
 
     private string? Unprotect(string? value)

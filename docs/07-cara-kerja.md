@@ -67,17 +67,21 @@ Bila pengecekan gagal (mis. database mati), prompt juga diteruskan tanpa orkestr
 
 ## 3. Planner
 
-Planner menerima **brief**:
+Planner menerima **brief**, disusun dari bagian paling stabil ke yang paling spesifik (agar prompt cache provider
+bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah semua bahan yang dirujuknya):
 
-- permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter; lalu, terpisah, konteks yang disisipkan Claude Code (isi `CLAUDE.md`, reminder, file yang dilampirkan), maks 30.000 karakter. Bila melebihi batas, yang dibuang adalah bagian tengah; awal dan akhir teks tetap ada;
-- **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AiThread sebelumnya (lihat
-  [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
-- percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
-  ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
-- info project: nama, root, stack, folder tempat sesi dibuka (bila di bawah root), daftar file solution/build yang ditemukan,
-  dan perintah build yang bisa dijalankan AiThread (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
-- struktur folder 2 tingkat (maks 200 entri);
-- indeks memory (id + label, maks 25).
+1. info project: nama, root, stack, folder tempat sesi dibuka (bila di bawah root), daftar file solution/build yang
+   ditemukan, dan perintah build yang bisa dijalankan AiThread (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
+2. struktur folder 2 tingkat (maks 200 entri);
+3. konteks yang disisipkan Claude Code (isi `CLAUDE.md`, reminder, file yang dilampirkan), maks 30.000 karakter;
+4. **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AiThread sebelumnya (lihat
+   [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
+5. percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
+   ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
+6. indeks memory (id + label, maks 25);
+7. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
+
+Bila sebuah bagian melebihi batas, yang dibuang adalah bagian tengahnya; awal dan akhir teks tetap ada.
 
 Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**, kecuali `run_build` yang
 menjalankan build project (tidak mengubah kode; hanya ditawarkan bila *Build & verifikasi otomatis* menyala dan project
@@ -96,11 +100,54 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `read_memory(ids)` | deskripsi lengkap |
 | `read_thread(id)` | catatan lengkap thread sebelumnya di project ini (permintaan, rencana, tugas, balasan) |
 | `run_build(target?)` | build project, hasilnya status + setiap error `file(baris,kolom): kode: pesan` (maks 40). `target` = solution/project/manifest lain di dalam root. Dipakai bila Anda minta build atau memperbaiki error build |
+| `ask_user(question, options?)` | menghentikan thread dengan satu pertanyaan ke developer (lihat [Pertanyaan dari planner](#pertanyaan-dari-planner)); hanya ditawarkan bila *Planner boleh bertanya* menyala dan prompt berasal dari sesi yang bisa menjawab |
 | `submit_plan(plan)` | mengakhiri planning |
 
 Folder `.git .vs .idea .nuget bin obj node_modules packages TestResults artifacts` dan `wwwroot/lib/` disembunyikan
-dari semua tool. Beberapa tool dalam satu putaran dijalankan paralel. Di putaran terakhir hanya `submit_plan` yang
-tersedia.
+dari semua tool. Beberapa tool dalam satu putaran dijalankan paralel. Daftar tool tidak berubah selama satu thread
+(mengubahnya membatalkan prompt cache). Di langkah terakhir planner diminta memanggil `submit_plan`; hanya bila ia
+mengabaikannya, satu langkah tambahan dijalankan dengan `submit_plan` sebagai satu-satunya tool.
+
+### Pertanyaan dari planner
+
+Seperti agen coding pada umumnya, planner bisa bertanya, tetapi **jarang**. Ia hanya bertanya bila:
+
+- permintaan punya dua tafsiran wajar atau lebih yang menghasilkan perubahan berbeda nyata;
+- rencananya akan menghapus data, mengubah/menghapus skema, membuang fitur, atau jauh melampaui permintaan, padahal
+  Anda tidak memintanya dengan jelas; atau
+- ia butuh fakta yang tidak ada di kode, memory, maupun percakapan (aturan bisnis, nilai, sistem eksternal).
+
+Permintaan yang jelas tidak pernah dikonfirmasi ulang; hal yang bisa ditebak dari kode (nama, gaya) diputuskan sendiri
+dan asumsinya disebut di ringkasan. Planner menyelidiki kode dulu agar pertanyaannya spesifik.
+
+1. Planner memanggil `ask_user` dengan pertanyaan dan 2–4 opsi (rekomendasinya di urutan pertama). Thread berhenti
+   dengan status **Menunggu jawaban**, dan balasannya adalah pertanyaan bernomor:
+
+   ```
+   ❓ Pertanyaan dari planner
+
+   Kolom Deskripsi wajib diisi atau opsional?
+
+   1. Opsional — NULL di database, tanpa validasi
+   2. Wajib — NOT NULL, validasi di service dan form
+
+   Balas dengan nomor pilihan atau tulis jawaban Anda sendiri.
+   ```
+
+2. **Pesan berikutnya di sesi yang sama adalah jawabannya**: angka (`2`) atau kalimat bebas. Thread yang sama
+   dilanjutkan; planner meneruskan percakapannya dari titik ia bertanya (tidak membaca ulang kode), lalu rencana,
+   eksekusi, dan wrapper berjalan seperti biasa. Wrapper dan reviewer melihat permintaan awal beserta klarifikasinya.
+3. Jawaban yang ternyata permintaan baru juga diterima apa adanya; planner menyesuaikan rencananya.
+
+Batasan:
+
+- Maks 2 pertanyaan per thread, satu per waktu, dan tidak di langkah terakhir planner.
+- Pertanyaan disimpan di memori proses: bila AiThread di-restart, atau tidak dijawab dalam **2 jam**, thread ditutup
+  sebagai *Dibatalkan* dan pesan berikutnya dijalankan sebagai thread baru (riwayat chat yang berisi pertanyaan tetap
+  terbaca planner). Tombol *Batalkan* di detail thread juga menutup thread yang menunggu jawaban.
+- Sesi dikenali dari id sesi klien (Claude Code, Codex, Telegram, …); klien yang tidak mengirim id sesi, dan prompt
+  dari Dashboard, tidak pernah ditanya. Prompt di project lain dalam sesi yang sama menutup pertanyaan yang tertunda.
+- Matikan lewat Setting → *Planner boleh bertanya* bila Anda ingin planner selalu memutuskan sendiri.
 
 ### Bentuk rencana
 
@@ -164,7 +211,7 @@ Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di l
 
 ### Yang dilihat executor
 
-1. Prompt peran executor (+ instruksi tambahan node).
+1. Prompt peran executor (+ instruksi tambahan node, + isi skill node; lihat [Skill pada node](#skill-pada-node)).
 2. Judul, aksi, dan path file target; instruksi; kontrak; ringkasan rencana (sebagai konteks saja).
 3. Potongan referensi dari `context` (maks 250 baris per potongan, total maks 40.000 karakter).
 4. Isi file target:
@@ -267,9 +314,10 @@ verifikasi).
 
 ## 7. Setelah thread
 
-- Status akhir: *Selesai* bila ada tugas yang berhasil (atau jawaban langsung), *Gagal* bila tidak ada.
-- Waktu (termasuk verifikasi), token per peran (planner, executor termasuk tugas perbaikan, reviewer, wrapper), dan
-  setiap tugas tersimpan di database dan tampil di Dashboard.
+- Status akhir: *Selesai* bila ada tugas yang berhasil (atau jawaban langsung), *Gagal* bila tidak ada. Thread yang
+  berhenti pada pertanyaan planner berstatus *Menunggu jawaban* sampai dijawab, dibatalkan, atau kedaluwarsa.
+- Waktu (termasuk verifikasi; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi cache-nya,
+  executor termasuk tugas perbaikan, reviewer, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
 - Ekstraksi memory berjalan di belakang — lihat [Memory](06-memory.md).
 - Untuk thread dari Claude Code (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
 
@@ -302,6 +350,36 @@ lama memulihkan ringkasannya. Pencarian dibatasi ke project yang sama dan thread
 Untuk sesi Claude Code biasa (termasuk yang tidak lewat proxy), Context Keeper juga bisa menjembatani `/clear`
 lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integrasi-claude-code.md#context-keeper-untuk-clear).
 
+## Skill pada node
+
+Skill adalah instruksi siap pakai (folder dengan `SKILL.md`, gaya Claude Code / Agent Skills) yang membuat model
+lebih mahir di satu jenis pekerjaan. AiThread menyimpannya di **gudang skill** offline dan menempelkannya ke node.
+
+1. **Menarik link** (Setting → Skill). Link dikenali lalu diunduh ke folder staging:
+   - GitHub/GitLab sebagai arsip ZIP, tanpa perlu git. Link `/tree/<ref>/<folder>` hanya mengambil folder itu.
+   - URL `.git` atau host git lain lewat `git clone --depth 1`, yang juga menjadi cadangan bila unduhan ZIP gagal.
+   - File `.md` diambil apa adanya.
+   - Halaman web: teks dan tautannya dibaca model.
+2. **Skill Orchestrator memeriksa isinya**, memakai model yang dipilih di tab Skill (default: node Planner aktif).
+   - Repository dengan `SKILL.md`: tiap skill diberi tag kata kunci, dan entri yang bukan skill dibuang.
+   - Repository tanpa `SKILL.md`: model menunjuk file Markdown mana yang merupakan skill (mis. `agents/*.md`, aturan Cursor).
+   - Halaman web: skill yang tertulis di halaman disimpan sebagai `SKILL.md`, dan hingga 5 repository yang ditautkan
+     ditarik sebagai sumber turunan.
+3. **Gudang** ada di `%LOCALAPPDATA%\AiThread\skills\<id sumber>` (ubah lewat `AiThread:SkillsDirectory`). Isi `SKILL.md`
+   juga disimpan di database. *Sync* menarik ulang sumber; skill yang sama (folder + file) tetap terpasang di node,
+   sedangkan skill yang hilang dari sumber dilepas dari node.
+4. **Memilih skill untuk node** (modal Node → *Cari skill*). Kebutuhan yang Anda tulis dicocokkan oleh Skill
+   Orchestrator dengan nama, deskripsi, dan tag semua skill (gudang besar disaring kata kunci dulu menjadi 150
+   kandidat). Hasilnya maks 6 saran dengan alasan; saran dengan skor ≥ 0,6 sudah tercentang. Yang dipilih tampil sebagai
+   chip dan tersimpan sebagai relasi node–skill (maks 10 per node), **bukan** teks di *Instruksi tambahan*.
+5. **Saat runtime**, system prompt node berisi prompt peran, lalu *Additional instructions*, lalu bagian
+   *Active skills*. Bagian itu memuat satu blok `<skill name="…" folder="…">` per skill, berisi isi lengkap
+   `SKILL.md`, dan model diminta menerapkan workflow serta checklist skill tersebut. Total isi skill dibatasi
+   *Batas karakter skill per node* (default 40.000, dibagi rata). Skill yang lebih panjang dipotong dengan penunjuk ke
+   file lengkapnya. Planner juga diberi tahu folder skill, sehingga file pendukung (referensi, script, template) bisa
+   ia baca dengan `read_file` dan ia lampirkan ke tugas sebagai `context` untuk executor. Ini berlaku untuk semua
+   peran: Planner, Executor, Reviewer, Wrapper, dan Context Keeper.
+
 ## Batas keamanan
 
 - Planner hanya bisa membaca; executor hanya bisa menulis file target tugasnya. Penulisan dibatasi ke root workspace
@@ -312,7 +390,11 @@ lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integras
   [Verifikasi](#5-verifikasi-build-dan-reviewer)), dengan program dan argumen tetap; model hanya memilih manifest di
   dalam root. Build menjalankan apa pun yang didefinisikan project itu sendiri (target MSBuild, script `build` di
   `package.json`, plugin Maven), jadi matikan *Build & verifikasi otomatis* untuk project yang tidak Anda percaya.
-  Tidak ada perintah shell lain (test, git, install paket, migrasi).
+  Tidak ada perintah shell lain (test, install paket, migrasi). Pengecualiannya `git clone --depth 1` saat menarik
+  sumber skill dari host git non-GitHub/GitLab (atau bila unduhan ZIP gagal). Clone ini memakai URL yang Anda tempel,
+  tanpa prompt kredensial, dan folder `.git`-nya dibuang.
+- Isi skill masuk ke system prompt model node. Tarik skill hanya dari sumber yang Anda percaya, karena skill bisa
+  mengarahkan perilaku model.
 - AiThread menulis ke folder mana pun yang dikirim sebagai working directory. Biarkan aplikasi hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin dapat diakses orang lain.
 - API key 9router disimpan terenkripsi dengan ASP.NET Core Data Protection.

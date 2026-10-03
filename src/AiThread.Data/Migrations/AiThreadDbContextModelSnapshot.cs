@@ -163,6 +163,24 @@ namespace AiThread.Data.Migrations
                     b.ToTable("LongMemories", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.NodeSkill", b =>
+                {
+                    b.Property<Guid>("AiNodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.HasKey("AiNodeId", "SkillId");
+
+                    b.HasIndex("SkillId");
+
+                    b.ToTable("NodeSkills", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -243,6 +261,123 @@ namespace AiThread.Data.Migrations
                     b.ToTable("SessionPacks", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.Skill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("EntryFile")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RelativeDir")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("SkillSourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Tags")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SkillSourceId", "RelativeDir", "EntryFile")
+                        .IsUnique();
+
+                    b.ToTable("Skills", (string)null);
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.SkillSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("LastPulledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ParentSourceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Ref")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SkillCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SubPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(800)
+                        .HasColumnType("nvarchar(800)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Url")
+                        .IsUnique();
+
+                    b.ToTable("SkillSources", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.SystemSetting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -282,6 +417,9 @@ namespace AiThread.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("PlannerCanAsk")
+                        .HasColumnType("bit");
+
                     b.Property<int>("PlannerMaxSteps")
                         .HasColumnType("int");
 
@@ -290,6 +428,13 @@ namespace AiThread.Data.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("RequestTimeoutSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SkillOrchestratorModel")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SkillPromptMaxChars")
                         .HasColumnType("int");
 
                     b.Property<bool>("StreamProgressToClient")
@@ -391,6 +536,9 @@ namespace AiThread.Data.Migrations
                     b.Property<string>("PlanSummary")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("PlannerCachedTokens")
+                        .HasColumnType("int");
 
                     b.Property<string>("PlannerModel")
                         .HasMaxLength(200)
@@ -573,6 +721,125 @@ namespace AiThread.Data.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.NodeSkill", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.AiNode", "AiNode")
+                        .WithMany("Skills")
+                        .HasForeignKey("AiNodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AiThread.Common.Entities.Skill", "Skill")
+                        .WithMany("Nodes")
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AiNode");
+
+                    b.Navigation("Skill");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.Skill", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.SkillSource", "SkillSource")
+                        .WithMany("Skills")
+                        .HasForeignKey("SkillSourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SkillSource");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.SystemSetting", b =>
+                {
+                    b.OwnsOne("AiThread.Common.Entities.MemoryStoreSetting", "LongMemoryStore", b1 =>
+                        {
+                            b1.Property<Guid>("SystemSettingId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("Database")
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)");
+
+                            b1.Property<string>("Host")
+                                .HasMaxLength(255)
+                                .HasColumnType("nvarchar(255)");
+
+                            b1.Property<string>("Options")
+                                .HasMaxLength(1000)
+                                .HasColumnType("nvarchar(1000)");
+
+                            b1.Property<string>("PasswordProtected")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int?>("Port")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("Provider")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
+
+                            b1.Property<string>("Username")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)");
+
+                            b1.HasKey("SystemSettingId");
+
+                            b1.ToTable("SystemSettings");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SystemSettingId");
+                        });
+
+                    b.OwnsOne("AiThread.Common.Entities.MemoryStoreSetting", "ShortMemoryStore", b1 =>
+                        {
+                            b1.Property<Guid>("SystemSettingId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("Database")
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)");
+
+                            b1.Property<string>("Host")
+                                .HasMaxLength(255)
+                                .HasColumnType("nvarchar(255)");
+
+                            b1.Property<string>("Options")
+                                .HasMaxLength(1000)
+                                .HasColumnType("nvarchar(1000)");
+
+                            b1.Property<string>("PasswordProtected")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int?>("Port")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("Provider")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
+
+                            b1.Property<string>("Username")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)");
+
+                            b1.HasKey("SystemSettingId");
+
+                            b1.ToTable("SystemSettings");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SystemSettingId");
+                        });
+
+                    b.Navigation("LongMemoryStore")
+                        .IsRequired();
+
+                    b.Navigation("ShortMemoryStore")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.TelegramChat", b =>
                 {
                     b.HasOne("AiThread.Common.Entities.Project", "ActiveProject")
@@ -604,9 +871,24 @@ namespace AiThread.Data.Migrations
                     b.Navigation("ThreadRun");
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.AiNode", b =>
+                {
+                    b.Navigation("Skills");
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.Project", b =>
                 {
                     b.Navigation("Threads");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.Skill", b =>
+                {
+                    b.Navigation("Nodes");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.SkillSource", b =>
+                {
+                    b.Navigation("Skills");
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.ThreadRun", b =>

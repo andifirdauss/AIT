@@ -15,4 +15,7 @@ public interface ISettingService
 
     // Only touches the Telegram fields; the token must already be verified by the caller.
     Task<TelegramSettingsDto> UpdateTelegramAsync(UpdateTelegramSettingsRequest request, CancellationToken cancellationToken = default);
+
+    // Only touches the skill orchestrator fields.
+    Task<RuntimeSettings> UpdateSkillsAsync(UpdateSkillSettingsRequest request, CancellationToken cancellationToken = default);
 }
