@@ -115,16 +115,53 @@ public sealed class SkillService(
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var skills = db.Skills.AsNoTracking();
-        foreach (var term in (query ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        var terms = (query ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var term in terms)
         {
             skills = skills.Where(s => s.Name.Contains(term) || s.Description.Contains(term)
-                                      || (s.Tags != null && s.Tags.Contains(term)) || s.SkillSource!.Name.Contains(term));
+                                      || (s.Tags != null && s.Tags.Contains(term)) || s.SkillSource!.Name.Contains(term)
+                                      || s.Content.Contains(term));
         }
 
-        return await skills
-            .OrderBy(s => s.SkillSource!.Name).ThenBy(s => s.Name)
-            .Select(s => new SkillDto(s.Id, s.SkillSourceId, s.SkillSource!.Name, s.Name, s.Description, s.Tags, s.RelativeDir, s.Nodes.Count))
+        var ordered = skills.OrderBy(s => s.SkillSource!.Name).ThenBy(s => s.Name);
+        if (terms.Length == 0)
+        {
+            return await ordered
+                .Select(s => new SkillDto(s.Id, s.SkillSourceId, s.SkillSource!.Name, s.Name, s.Description, s.Tags, s.RelativeDir, s.Nodes.Count))
+                .ToListAsync(cancellationToken);
+        }
+
+        // With a query, skills matched by name/description/tags come first; a content-only match carries a snippet.
+        var rows = await ordered
+            .Select(s => new { Dto = new SkillDto(s.Id, s.SkillSourceId, s.SkillSource!.Name, s.Name, s.Description, s.Tags, s.RelativeDir, s.Nodes.Count), s.Content })
             .ToListAsync(cancellationToken);
+        return rows
+            .Select(r => new { r.Dto, Rank = Rank(r.Dto, terms), Snippet = ContentSnippet(r.Content, terms) })
+            .OrderBy(r => r.Rank)
+            .Select(r => r.Dto with { Snippet = r.Rank > 1 ? r.Snippet : null })
+            .ToList();
+    }
+
+    private static int Rank(SkillDto skill, string[] terms)
+    {
+        if (terms.All(t => skill.Name.Contains(t, StringComparison.OrdinalIgnoreCase))) return 0;
+        var meta = $"{skill.Name} {skill.Description} {skill.Tags} {skill.SourceName}";
+        return terms.All(t => meta.Contains(t, StringComparison.OrdinalIgnoreCase)) ? 1 : 2;
+    }
+
+    private static string? ContentSnippet(string content, string[] terms, int radius = 70)
+    {
+        foreach (var term in terms)
+        {
+            var index = content.IndexOf(term, StringComparison.OrdinalIgnoreCase);
+            if (index < 0) continue;
+            var start = Math.Max(0, index - radius);
+            var end = Math.Min(content.Length, index + term.Length + radius);
+            var text = string.Join(' ', content[start..end].Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            return $"{(start > 0 ? "…" : string.Empty)}{text}{(end < content.Length ? "…" : string.Empty)}";
+        }
+
+        return null;
     }
 
     public async Task<SkillDetailDto?> GetSkillAsync(Guid id, CancellationToken cancellationToken = default)
