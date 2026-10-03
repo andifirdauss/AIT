@@ -169,6 +169,10 @@ body {
   background: transparent;
 }
 
+.setting-pane {
+  max-width: 960px;
+}
+
 .table-clickable tbody tr {
   cursor: pointer;
 }
@@ -330,6 +334,46 @@ body {
 
 .node-card.inactive {
   opacity: 0.55;
+}
+
+.node-guide > summary {
+  cursor: pointer;
+}
+
+.node-guide:not([open]) > summary {
+  border-bottom: 0;
+}
+
+.node-card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.node-card [data-test-result]:empty {
+  display: none;
+}
+
+.node-card.node-empty {
+  border-left-color: var(--bs-border-color-translucent);
+}
+
+.node-empty .card-body {
+  display: grid;
+}
+
+.node-empty-sample,
+.node-empty-label {
+  grid-area: 1 / 1;
+}
+
+.node-empty-sample {
+  visibility: hidden;
+}
+
+.node-empty-label {
+  align-self: center;
+  justify-self: center;
+  color: var(--bs-secondary-color);
 }
 
 .role-Planner { border-left-color: #b180ff; }
