@@ -16,4 +16,7 @@ public sealed record RuntimeSettings(
     string? TelegramBotToken = null,
     bool BuildEnabled = true,
     int BuildTimeoutSeconds = 300,
-    int MaxFixRounds = 2);
+    int MaxFixRounds = 2,
+    bool PlannerCanAsk = true,
+    string? SkillOrchestratorModel = null,
+    int SkillPromptMaxChars = 40_000);

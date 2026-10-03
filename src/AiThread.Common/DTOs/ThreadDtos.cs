@@ -61,6 +61,7 @@ public record ThreadDetailDto(
     string? ReviewerModel = null,
     int ReviewerTokens = 0,
     long? VerificationMs = null,
-    string? VerificationJson = null);
+    string? VerificationJson = null,
+    int PlannerCachedTokens = 0);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);

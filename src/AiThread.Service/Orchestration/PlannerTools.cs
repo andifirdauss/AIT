@@ -14,13 +14,17 @@ public static class PlannerTools
     public const string ReadMemory = "read_memory";
     public const string ReadThread = "read_thread";
     public const string RunBuild = "run_build";
+    public const string AskUser = "ask_user";
     public const string SubmitPlan = "submit_plan";
 
     // canBuild: build verification is enabled and the project has a build command AiThread can run.
-    public static JsonArray All(bool canBuild = false)
+    // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
+    // The list stays the same for the whole planner run so the provider's prompt cache keeps matching.
+    public static JsonArray All(bool canBuild = false, bool canAsk = false)
     {
         var tools = Investigation();
         if (canBuild) tools.Insert(tools.Count - 1, RunBuildDefinition());
+        if (canAsk) tools.Insert(tools.Count - 1, AskUserDefinition());
         return tools;
     }
 
@@ -124,6 +128,31 @@ public static class PlannerTools
               "properties": {
                 "target": { "type": "string", "description": "Optional solution, project or manifest file (or its folder) relative to the project root, e.g. \"src/Api/Api.csproj\". Default: the main solution or project." }
               }
+            }
+            """));
+
+    private static JsonObject AskUserDefinition() =>
+        ChatMessages.Function(AskUser,
+            "Ask the developer one clarifying question and pause until they answer; their reply comes back as this tool's result. Only for a genuine ambiguity, a risky change they did not clearly ask for, or a fact the code and memory cannot tell you. Investigate first. Never ask to confirm a clear request.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "question": { "type": "string", "description": "One specific question in the developer's language, with the context needed to answer it (what you found and why it matters)." },
+                "options": {
+                  "type": "array",
+                  "description": "2-4 concrete answers, your recommended one first. The developer may also answer in their own words.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": { "type": "string", "description": "Short answer, in the developer's language." },
+                      "description": { "type": "string", "description": "What choosing it means for the change." }
+                    },
+                    "required": ["label"]
+                  }
+                }
+              },
+              "required": ["question"]
             }
             """));
 

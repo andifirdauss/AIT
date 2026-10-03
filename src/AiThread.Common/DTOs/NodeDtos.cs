@@ -14,7 +14,8 @@ public record NodeDto(
     string? SystemPrompt,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt,
+    IReadOnlyList<NodeSkillDto>? Skills = null);
 
 public record SaveNodeRequest(
     string Name,
@@ -25,7 +26,8 @@ public record SaveNodeRequest(
     int MaxConcurrency,
     int Priority,
     string? SystemPrompt,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyList<Guid>? SkillIds = null);
 
 public record PipelineStatusDto(
     bool IsReady,

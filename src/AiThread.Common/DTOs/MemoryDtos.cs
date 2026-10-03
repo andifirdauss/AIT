@@ -28,6 +28,15 @@ public record MemoryQuery(
 
 public record SaveMemoryRequest(MemoryType Type, Guid? ProjectId, string Label, string Description);
 
-public record MemoryStatsDto(int ShortCount, int LongCount, int ProjectCount, int KnowledgeCount, bool RedisConnected);
+// RedisConnected is the state of the short memory store, whatever its provider (name kept for API compatibility).
+// ShortStore/LongStore name where each level is kept (menu Setting → Penyimpanan memory).
+public record MemoryStatsDto(
+    int ShortCount,
+    int LongCount,
+    int ProjectCount,
+    int KnowledgeCount,
+    bool RedisConnected,
+    string? ShortStore = null,
+    string? LongStore = null);
 
 public record PagedResult<T>(IReadOnlyList<T> Items, int Total, int Page, int PageSize);

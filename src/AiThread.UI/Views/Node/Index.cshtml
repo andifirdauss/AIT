@@ -50,6 +50,7 @@
         </div>
         <div class="small text-secondary mt-3">
             <span class="mono">📝 instruksi</span> = node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).
+            <span class="mono">🧩 n</span> = node memakai n skill dari gudang (Setting → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.
             Detail lengkap: <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">Docs → Konfigurasi</a>.
         </div>
     </div>
@@ -146,6 +147,21 @@
                     <div class="col-12">
                         <label class="form-label small" for="nodeSystemPrompt">Instruksi tambahan (opsional)</label>
                         <textarea class="form-control" id="nodeSystemPrompt" rows="3" placeholder="Ditambahkan ke prompt bawaan role, mis. konvensi coding tim."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="node-skills border rounded p-2">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="form-label small mb-0">Skill</span>
+                                <span class="small text-secondary" id="nodeSkillHint">Isi skill ditempel ke system prompt node, sesudah instruksi tambahan.</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1 mb-2" id="nodeSkillChips"></div>
+                            <label class="form-label small" for="nodeSkillPrompt">Butuh kemampuan apa? Skill Orchestrator mencarikan skill yang cocok dari gudang.</label>
+                            <div class="d-flex gap-2">
+                                <textarea class="form-control" id="nodeSkillPrompt" rows="2" maxlength="2000" placeholder="mis. aku butuh kamu bisa menjadi engineer yang handal"></textarea>
+                                <button type="button" class="btn btn-outline-primary text-nowrap align-self-start" id="btnSuggestSkills">Cari skill</button>
+                            </div>
+                            <div class="mt-2" id="nodeSkillSuggestions"></div>
+                        </div>
                     </div>
                     <div class="col-12">
                         <div class="form-check form-switch">

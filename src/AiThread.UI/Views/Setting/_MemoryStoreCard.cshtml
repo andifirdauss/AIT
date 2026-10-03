@@ -1,0 +1,76 @@
+@model (string Prefix, string Title, string Description, bool AllowRedis)
+@* One card per memory level; ids are prefixed (stm = short, ltm = long) and settings.js fills both the same way. *@
+@{
+    var prefix = Model.Prefix;
+}
+<div class="col-xl-6">
+    <div class="card h-100 memory-store" data-prefix="@prefix">
+        <div class="card-header d-flex flex-wrap align-items-center gap-2">
+            <span>@Model.Title</span>
+            <span class="ms-auto small" id="@(prefix)Status"></span>
+        </div>
+        <div class="card-body">
+            <p class="small text-secondary">@Model.Description</p>
+            <div class="mb-3">
+                <label class="form-label small" for="@(prefix)Provider">Provider</label>
+                <select class="form-select" id="@(prefix)Provider">
+                    @if (Model.AllowRedis)
+                    {
+                        <option value="Default">Bawaan — Garnet di dalam AiThread</option>
+                        <option value="Redis">Redis (server eksternal)</option>
+                    }
+                    else
+                    {
+                        <option value="Default">Bawaan — database utama AiThread</option>
+                    }
+                    <option value="SqlServer">SQL Server</option>
+                    <option value="PostgreSql">PostgreSQL</option>
+                    <option value="MySql">MySQL</option>
+                    <option value="Oracle">Oracle</option>
+                    <option value="Sqlite">SQLite (file lokal)</option>
+                </select>
+                <div class="form-text" id="@(prefix)Help"></div>
+            </div>
+            <div class="row g-2 mb-2" data-field="server">
+                <div class="col-8">
+                    <label class="form-label small" for="@(prefix)Host">Host</label>
+                    <input type="text" class="form-control mono" id="@(prefix)Host" placeholder="localhost" />
+                </div>
+                <div class="col-4">
+                    <label class="form-label small" for="@(prefix)Port">Port</label>
+                    <input type="number" class="form-control mono" id="@(prefix)Port" min="1" max="65535" />
+                </div>
+            </div>
+            <div class="mb-2" data-field="database">
+                <label class="form-label small" for="@(prefix)Database" id="@(prefix)DatabaseLabel">Database</label>
+                <input type="text" class="form-control mono" id="@(prefix)Database" />
+            </div>
+            <div class="row g-2 mb-2" data-field="credentials">
+                <div class="col-md-6">
+                    <label class="form-label small" for="@(prefix)Username">Username</label>
+                    <input type="text" class="form-control mono" id="@(prefix)Username" autocomplete="off" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small" for="@(prefix)Password">Password</label>
+                    <input type="password" class="form-control mono" id="@(prefix)Password" autocomplete="new-password" placeholder="Kosongkan untuk mempertahankan" />
+                </div>
+                <div class="col-12">
+                    <div class="form-text mt-0" id="@(prefix)PasswordHint"></div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="@(prefix)PasswordClear" />
+                        <label class="form-check-label small" for="@(prefix)PasswordClear">Hapus password tersimpan</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3" data-field="options">
+                <label class="form-label small" for="@(prefix)Options">Opsi tambahan</label>
+                <input type="text" class="form-control mono" id="@(prefix)Options" />
+                <div class="form-text" id="@(prefix)OptionsHint"></div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-memory-test="@prefix">Test koneksi</button>
+                <span class="small" id="@(prefix)TestResult"></span>
+            </div>
+        </div>
+    </div>
+</div>

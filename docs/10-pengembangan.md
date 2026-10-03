@@ -7,7 +7,7 @@ Konvensi kode dan penggunaan MCP ada di `CLAUDE.md` di root repo.
 | Project | Isi |
 |---|---|
 | `src/AiThread.Common` | Entity, enum, DTO, `AiThreadOptions`. |
-| `src/AiThread.Data` | `AiThreadDbContext` (SQL Server via `IDbContextFactory`), migrasi EF, `RedisShortMemoryStore`, `EmbeddedRedisServer` (Garnet di dalam proses), `InProcessEventBus`. |
+| `src/AiThread.Data` | `AiThreadDbContext` (SQL Server via `IDbContextFactory`), migrasi EF, `RedisShortMemoryStore`, `EmbeddedRedisServer` (Garnet di dalam proses), `Memory/` (store memory yang bisa diganti dari menu Setting: `SwitchableShortMemoryStore`, `LongMemoryStore`, `SqlShortMemoryStore`, `MemoryStoreConnection` untuk SQL Server/PostgreSQL/MySQL/Oracle/SQLite/Redis), `InProcessEventBus`. |
 | `src/AiThread.Service` | Service utama (`NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`, dll.), `Orchestration/`, `Workspace/`, `Proxy/`, `Background/`. |
 | `src/AiThread.API` | Controller REST `/api/*`, controller proxy `AnthropicProxyController` / `OpenAiProxyController` / `GeminiProxyController` (`/v1/*`, `/v1beta/*`), `StreamController` (SSE), infrastruktur. |
 | `src/AiThread.UI` | Host ASP.NET Core MVC. View hanya kerangka; data dimuat oleh `wwwroot/js/pages/*.js` lewat `/api` + SSE. |
@@ -27,9 +27,13 @@ Migrasi EF (tool lokal di `dotnet-tools.json`):
 
 ```powershell
 dotnet tool restore
-dotnet tool run dotnet-ef migrations add <NamaMigrasi> --project src/AiThread.Data --startup-project src/AiThread.Data
-dotnet tool run dotnet-ef migrations has-pending-model-changes --project src/AiThread.Data --startup-project src/AiThread.Data
+dotnet tool run dotnet-ef migrations add <NamaMigrasi> --context AiThreadDbContext --project src/AiThread.Data --startup-project src/AiThread.Data
+dotnet tool run dotnet-ef migrations has-pending-model-changes --context AiThreadDbContext --project src/AiThread.Data --startup-project src/AiThread.Data
 ```
+
+`--context` wajib karena `AiThread.Data` juga berisi `ShortMemoryDbContext` dan `LongMemoryDbContext` (store memory
+eksternal). Keduanya tidak punya migrasi: tabelnya dibuat oleh `MemorySchema` saat pertama dipakai, jadi perubahan pada
+`LongMemory` harus tetap kompatibel dengan tabel yang sudah ada di database eksternal.
 
 Instance background (`scripts/aithread.ps1`, lihat [Instalasi](01-instalasi.md#5-menjalankan-di-background))
 memakai hasil publish di `%LOCALAPPDATA%\AiThread\app`, jadi build/debug dari repo tetap bisa jalan — asalkan
@@ -57,7 +61,8 @@ connection string LocalDB default.
 | `Implementations/ProjectService.cs` | `ResolveSessionAsync`: gerbang per sesi (project atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. Identitas project = `RootPath`. |
 | `Workspace/ProjectLocator.cs` | Tabel marker (`.git`, manifest per ekosistem), penentuan root dari working directory (repo terdekat → penghimpun paling luar → manifest terdekat), folder yang diblokir (drive/Home/sistem), scan rekursif, daftar manifest & stack, daftar folder build per stack. |
 | `Orchestration/ThreadOrchestrator.cs` | Alur utama thread: project → planner → eksekusi → wrapper → memory, status & error. |
-| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema). |
+| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema), brief (urutan stabil → spesifik untuk prompt cache), jeda & lanjut pada `ask_user`. |
+| `Orchestration/PlannerQuestions.cs` | Pertanyaan planner: format teks bernomor, jawaban → hasil tool, `PendingQuestionStore` (per sesi, di memori, 2 jam), penutupan thread yang tidak dijawab. |
 | `Orchestration/ThreadPlan.cs`, `PlanValidator.cs` | Model rencana dan aturan validasinya. |
 | `Orchestration/ExecutionEngine.cs` | Penjadwalan DAG paralel, pemilihan executor, skip dependensi gagal. |
 | `Orchestration/ExecutorAgent.cs` | Menyusun input executor, retry, menerapkan edit di bawah lock. |

@@ -17,7 +17,7 @@ public sealed record ReviewResult(bool Approved, string? Summary, IReadOnlyList<
 
 // One call: the request, the plan and contract, every task's diff and the build result in; the problems that break
 // the request out, each phrased as an instruction an executor can apply to one file.
-public sealed class ReviewerAgent(INineRouterService router, NodeConcurrencyLimiter limiter)
+public sealed class ReviewerAgent(INineRouterService router, NodeConcurrencyLimiter limiter, NodePromptBuilder prompts)
 {
     public const int MaxIssues = 20;
     private const int MaxDiffLinesPerTask = 150;
@@ -32,6 +32,7 @@ public sealed class ReviewerAgent(INineRouterService router, NodeConcurrencyLimi
         string? buildReport,
         CancellationToken cancellationToken)
     {
+        var systemPrompt = await prompts.BuildAsync(AgentPrompts.Reviewer, node, cancellationToken);
         ChatCompletionResult result;
         using (await limiter.AcquireAsync(node, cancellationToken))
         {
@@ -40,7 +41,7 @@ public sealed class ReviewerAgent(INineRouterService router, NodeConcurrencyLimi
                 Model = node.Model,
                 Messages =
                 [
-                    ChatMessages.System(AgentPrompts.WithNodeInstructions(AgentPrompts.Reviewer, node.SystemPrompt)),
+                    ChatMessages.System(systemPrompt),
                     ChatMessages.User(BuildInput(userRequest, plan, tasks, results, buildReport))
                 ],
                 Temperature = node.Temperature ?? 0.1,

@@ -23,6 +23,9 @@ public class SystemSetting : BaseEntity
     public int MaxParallelTasks { get; set; } = 8;
     public int RequestTimeoutSeconds { get; set; } = 600;
 
+    // The planner may pause a thread with a clarifying question (ask_user) when the request is genuinely ambiguous.
+    public bool PlannerCanAsk { get; set; } = true;
+
     // AiThread may run the project's own build command (dotnet build, npm run build, ...): as a planner tool and to
     // verify the executors' changes, with up to MaxFixRounds rounds of fix tasks for the errors found.
     public bool BuildEnabled { get; set; } = true;
@@ -34,4 +37,15 @@ public class SystemSetting : BaseEntity
 
     // Encrypted like the 9router key; never exposed through the API.
     public string? TelegramBotTokenProtected { get; set; }
+
+    // Where short memory (default: embedded Garnet) and long memory (default: this database) are kept.
+    public MemoryStoreSetting ShortMemoryStore { get; set; } = new();
+    public MemoryStoreSetting LongMemoryStore { get; set; } = new();
+
+    // 9router model the skill orchestrator uses to analyse skill sources and suggest skills for a node.
+    // Null = the model of the first active Planner node.
+    public string? SkillOrchestratorModel { get; set; }
+
+    // Budget for the skill contents put in one node's system prompt.
+    public int SkillPromptMaxChars { get; set; } = 40_000;
 }

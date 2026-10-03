@@ -22,6 +22,7 @@ public sealed class ContextKeeper(
     INodeService nodeService,
     INineRouterService router,
     NodeConcurrencyLimiter limiter,
+    NodePromptBuilder prompts,
     IEventBus eventBus,
     IActivityLogService activityLog,
     ILogger<ContextKeeper> logger)
@@ -133,6 +134,7 @@ public sealed class ContextKeeper(
 
         try
         {
+            var systemPrompt = await prompts.BuildAsync(AgentPrompts.ContextKeeper, node, cancellationToken);
             ChatCompletionResult result;
             using (await limiter.AcquireAsync(node, cancellationToken))
             {
@@ -141,7 +143,7 @@ public sealed class ContextKeeper(
                     Model = node.Model,
                     Messages =
                     [
-                        ChatMessages.System(AgentPrompts.WithNodeInstructions(AgentPrompts.ContextKeeper, node.SystemPrompt)),
+                        ChatMessages.System(systemPrompt),
                         ChatMessages.User(input)
                     ],
                     Temperature = node.Temperature ?? 0.2,

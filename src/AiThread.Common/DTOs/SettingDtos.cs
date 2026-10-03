@@ -17,7 +17,8 @@ public record SystemSettingDto(
     bool BuildEnabled,
     int BuildTimeoutSeconds,
     int MaxFixRounds,
-    string ProxyBaseUrl);
+    string ProxyBaseUrl,
+    bool PlannerCanAsk = true);
 
 public record UpdateSystemSettingRequest(
     string NineRouterBaseUrl,
@@ -33,7 +34,8 @@ public record UpdateSystemSettingRequest(
     int RequestTimeoutSeconds,
     bool BuildEnabled = true,
     int BuildTimeoutSeconds = 300,
-    int MaxFixRounds = 2);
+    int MaxFixRounds = 2,
+    bool PlannerCanAsk = true);
 
 public record ClaudeSettingsStatusDto(
     ClaudeSettingsScope Scope,

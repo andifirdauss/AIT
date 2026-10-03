@@ -31,7 +31,7 @@
   function renderSummary(summary) {
     renderRouter(summary.router);
     setState('redis', summary.redisConnected, summary.redisConnected ? 'Terhubung' : 'Tidak terhubung',
-      summary.redisConnected ? `${summary.memory.shortCount} short memory aktif` : 'Memory baru disimpan langsung ke database.');
+      summary.redisConnected ? `${summary.memory.shortCount} short memory aktif · ${summary.memory.shortStore || ''}` : 'Memory baru disimpan langsung ke long memory.');
     setState('db', summary.databaseConnected, summary.databaseConnected ? 'Terhubung' : 'Tidak terhubung',
       summary.databaseConnected ? `${summary.memory.longCount} long memory · ${summary.threadsTotal} thread` : 'Periksa ConnectionStrings:Default.');
 

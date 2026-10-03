@@ -17,10 +17,10 @@
 
   // Short memories move to the database once they are older than the short-term window.
   function levelCell(m) {
-    if (m.level === 'Long') return '<span class="badge text-bg-secondary">Long · DB</span>';
+    if (m.level === 'Long') return '<span class="badge text-bg-secondary">Long</span>';
     const ageHours = (Date.now() - toDate(m.createdAt).getTime()) / 3600000;
     const left = Math.max(0, shortMemoryHours - ageHours);
-    return `<span class="badge text-bg-info">Short · Redis</span><div class="small text-secondary">±${left.toFixed(0)} jam lagi ke DB</div>`;
+    return `<span class="badge text-bg-info">Short</span><div class="small text-secondary">±${left.toFixed(0)} jam lagi ke long memory</div>`;
   }
 
   function row(m) {
@@ -47,8 +47,8 @@
       el('statProject').textContent = fmt.number(s.projectCount);
       el('statKnowledge').textContent = fmt.number(s.knowledgeCount);
       el('statRedis').innerHTML = s.redisConnected
-        ? '<span class="text-success">Redis terhubung</span>'
-        : '<span class="text-danger">Redis tidak terhubung — memory baru langsung ke DB</span>';
+        ? `<span class="text-success">Terhubung</span> · ${escapeHtml(s.shortStore || '')}`
+        : `<span class="text-danger">${escapeHtml(s.shortStore || 'Short memory')} tidak terhubung — memory baru langsung ke long memory</span>`;
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -103,7 +103,7 @@
     el('memoryProject').value = memory?.projectId || el('filterProject').value || (projects[0]?.id ?? '');
     el('memoryLabel').value = memory?.label || '';
     el('memoryDescription').value = memory?.description || '';
-    el('memoryModalTitle').textContent = memory ? `Memory · ${memory.level === 'Short' ? 'Short (Redis)' : 'Long (DB)'}` : 'Tambah memory (masuk ke short memory)';
+    el('memoryModalTitle').textContent = memory ? `Memory · ${memory.level === 'Short' ? 'Short' : 'Long'}` : 'Tambah memory (masuk ke short memory)';
     el('memoryMeta').textContent = memory
       ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? ` · dipindah ke DB ${fmt.dateTime(memory.promotedAt)}` : ''}`
       : '';

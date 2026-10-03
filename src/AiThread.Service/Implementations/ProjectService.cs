@@ -4,6 +4,7 @@ using AiThread.Common.DTOs;
 using AiThread.Common.Entities;
 using AiThread.Data.Cache;
 using AiThread.Data.Context;
+using AiThread.Data.Memory;
 using AiThread.Data.Messaging;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
@@ -16,6 +17,7 @@ namespace AiThread.Service.Implementations;
 public sealed class ProjectService(
     IDbContextFactory<AiThreadDbContext> dbFactory,
     IShortMemoryStore shortMemoryStore,
+    LongMemoryStore longMemoryStore,
     IEventBus eventBus,
     IActivityLogService activityLog,
     ILogger<ProjectService> logger) : IProjectService
@@ -99,15 +101,15 @@ public sealed class ProjectService(
             {
                 Project = p,
                 ThreadCount = p.Threads.Count(),
-                SessionCount = p.Threads.Where(t => t.SessionId != null).Select(t => t.SessionId).Distinct().Count(),
-                LongMemoryCount = db.LongMemories.Count(m => m.ProjectId == p.Id)
+                SessionCount = p.Threads.Where(t => t.SessionId != null).Select(t => t.SessionId).Distinct().Count()
             })
             .ToListAsync(cancellationToken);
 
         var shortCounts = await ShortMemoryCountsAsync();
+        var longCounts = await LongMemoryCountsAsync(null, cancellationToken);
         return rows.Select(r => ToDto(
             r.Project, r.ThreadCount, r.SessionCount,
-            r.LongMemoryCount + shortCounts.GetValueOrDefault(r.Project.Id))).ToList();
+            longCounts.GetValueOrDefault(r.Project.Id) + shortCounts.GetValueOrDefault(r.Project.Id))).ToList();
     }
 
     public async Task<ProjectDetailDto?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
@@ -123,10 +125,10 @@ public sealed class ProjectService(
             .ToListAsync(cancellationToken);
 
         var threadCount = await db.Threads.CountAsync(t => t.ProjectId == id, cancellationToken);
-        var longCount = await db.LongMemories.CountAsync(m => m.ProjectId == id, cancellationToken);
+        var longCounts = await LongMemoryCountsAsync(id, cancellationToken);
         var shortCounts = await ShortMemoryCountsAsync();
 
-        var dto = ToDto(project, threadCount, sessions.Count, longCount + shortCounts.GetValueOrDefault(id));
+        var dto = ToDto(project, threadCount, sessions.Count, longCounts.GetValueOrDefault(id) + shortCounts.GetValueOrDefault(id));
         return new ProjectDetailDto(dto, ProfileOf(project.RootPath).Modules, sessions.OrderByDescending(s => s.LastSeenAt).ToList());
     }
 
@@ -196,6 +198,20 @@ public sealed class ProjectService(
             catch (Exception ex)
             {
                 logger.LogWarning(ex, "Could not delete short memories of project {ProjectId}", id);
+            }
+        }
+
+        // In the main database the foreign key already removed them; an external long memory store has no such key.
+        if (longMemoryStore.IsExternal)
+        {
+            try
+            {
+                await using var memoryDb = await longMemoryStore.CreateAsync(cancellationToken);
+                await memoryDb.LongMemories.Where(m => m.ProjectId == id).ExecuteDeleteAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Could not delete long memories of project {ProjectId}", id);
             }
         }
 
@@ -390,7 +406,27 @@ public sealed class ProjectService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Could not read short memories from Redis.");
+            logger.LogWarning(ex, "Could not read short memories.");
+            return [];
+        }
+    }
+
+    // Long memory may live in another database, so it is counted separately; an outage there only hides the count.
+    private async Task<Dictionary<Guid, int>> LongMemoryCountsAsync(Guid? projectId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var db = await longMemoryStore.CreateAsync(cancellationToken);
+            var query = db.LongMemories.AsNoTracking().Where(m => m.ProjectId != null);
+            if (projectId is { } id) query = query.Where(m => m.ProjectId == id);
+            return await query
+                .GroupBy(m => m.ProjectId!.Value)
+                .Select(g => new { g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not count long memories.");
             return [];
         }
     }

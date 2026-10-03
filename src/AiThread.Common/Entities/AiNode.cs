@@ -23,4 +23,7 @@ public class AiNode : BaseEntity
     public string? SystemPrompt { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    // Skills from the skill store, put in the system prompt after the additional instructions.
+    public List<NodeSkill> Skills { get; set; } = [];
 }

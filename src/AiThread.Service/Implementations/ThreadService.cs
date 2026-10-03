@@ -2,13 +2,20 @@ using AiThread.Common.DTOs;
 using AiThread.Common.Entities;
 using AiThread.Common.Enums;
 using AiThread.Data.Context;
+using AiThread.Data.Messaging;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Orchestration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace AiThread.Service.Implementations;
 
-public sealed class ThreadService(IDbContextFactory<AiThreadDbContext> dbFactory, ThreadRegistry registry) : IThreadService
+public sealed class ThreadService(
+    IDbContextFactory<AiThreadDbContext> dbFactory,
+    ThreadRegistry registry,
+    PendingQuestionStore questions,
+    IEventBus eventBus,
+    ILogger<ThreadService> logger) : IThreadService
 {
     public async Task<IReadOnlyList<ThreadSummaryDto>> GetRecentAsync(int take, Guid? projectId, CancellationToken cancellationToken = default)
     {
@@ -54,10 +61,29 @@ public sealed class ThreadService(IDbContextFactory<AiThreadDbContext> dbFactory
             thread.ReviewerModel,
             thread.ReviewerTokens,
             thread.VerificationMs,
-            thread.VerificationJson);
+            thread.VerificationJson,
+            thread.PlannerCachedTokens);
     }
 
-    public bool Cancel(Guid id) => registry.Cancel(id);
+    // A running thread is cancelled through its token; one waiting on a planner question just stops waiting.
+    public bool Cancel(Guid id)
+    {
+        if (registry.Cancel(id)) return true;
+        if (!questions.Remove(id)) return false;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await UnansweredQuestions.CloseAsync(dbFactory, eventBus, [id], "Thread dibatalkan saat menunggu jawaban.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not close thread {ThreadId} that was waiting for an answer.", id);
+            }
+        });
+        return true;
+    }
 
     public static ThreadTaskDto ToTaskDto(ThreadTask t) => new(
         t.Id, t.TaskKey, t.Order, t.Title, t.FilePath, t.Action, t.Instruction, t.DependsOn, t.Status,

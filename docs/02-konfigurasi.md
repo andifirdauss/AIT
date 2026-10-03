@@ -34,6 +34,7 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 |---|---|---|---|
 | Orkestrasi aktif | aktif | — | Jika dimatikan, semua request Claude Code diteruskan ke 9router dengan *model passthrough* — Claude Code bekerja sebagai agen biasa. |
 | Tampilkan progres di Claude Code | aktif | — | Menampilkan langkah planner, rencana, dan status tiap tugas sebelum ringkasan akhir. Jika mati, hanya ringkasan yang tampil. |
+| Planner boleh bertanya | aktif | — | Planner boleh menghentikan thread dengan satu pertanyaan bernomor bila permintaan benar-benar ambigu, perubahannya berisiko dan tidak diminta, atau ada fakta yang tidak bisa ditemukan di kode/memory. Bukan konfirmasi tiap prompt. Lihat [Pertanyaan dari planner](07-cara-kerja.md#pertanyaan-dari-planner). |
 | Model passthrough | otomatis | — | Model untuk request pendukung (judul sesi, `/compact`, cek kuota). *Otomatis* = model node Wrapper aktif, lalu Executor. |
 | Proxy API key | kosong | — | Jika diisi, Claude Code wajib mengirimnya sebagai `ANTHROPIC_AUTH_TOKEN`. Tombol *Generate* membuat key acak. |
 | Langkah planner | 24 | 3–100 | Maksimal putaran tool planner. Di langkah terakhir planner dipaksa mengirim rencana. |
@@ -53,6 +54,22 @@ Tab *Koneksi 9router*, *Proxy & orkestrasi*, dan *Build & verifikasi* adalah sat
 mana pun menyimpan ketiganya. Setelah mengganti proxy API key, terapkan ulang integrasi Claude Code agar
 `ANTHROPIC_AUTH_TOKEN` ikut berubah.
 
+### Penyimpanan memory
+
+Tab `/Setting#memory`: satu kartu untuk short memory dan satu untuk long memory, disimpan lewat tombol sendiri
+**Simpan penyimpanan memory**. Perubahan langsung berlaku tanpa restart.
+
+| Field | Default | Keterangan |
+|---|---|---|
+| Provider | Bawaan | Short: Garnet bawaan, Redis, SQL Server, PostgreSQL, MySQL, Oracle, SQLite. Long: database utama, SQL Server, PostgreSQL, MySQL, Oracle, SQLite. |
+| Host / Port | kosong | Server database/Redis. Port kosong = port default provider. |
+| Database | kosong | Nama database; service name untuk Oracle; indeks untuk Redis; path file untuk SQLite. |
+| Username / Password | kosong | Password disimpan **terenkripsi**; kosongkan untuk mempertahankan password lama, atau centang *Hapus password tersimpan*. |
+| Opsi tambahan | kosong | Keyword connection string tambahan (mis. `SSL Mode=Require`). |
+| Salin memory yang ada | aktif | Menyalin memory dari store lama ke store baru saat provider/server diganti. Store lama tidak diubah. |
+
+Store yang tidak bisa dihubungi ditolak saat disimpan. Rincian per provider di [Memory](06-memory.md#penyimpanan-memory).
+
 ### Telegram
 
 Tab terakhir halaman Setting (`/Setting#telegram`), untuk mengirim prompt dari HP — panduan lengkap di
@@ -67,6 +84,22 @@ Tab terakhir halaman Setting (`/Setting#telegram`), untuk mengirim prompt dari H
 
 Tombol **Simpan Telegram** hanya menyimpan bagian ini (terpisah dari *Simpan setting*) dan langsung berlaku tanpa
 restart. Progres di Telegram selalu tampil, tidak dipengaruhi saklar *Tampilkan progres di Claude Code*.
+
+### Skill
+
+Tab `/Setting#skills` berisi Skill Orchestrator dan gudang skill offline. Cara kerjanya dijelaskan di
+[Skill pada node](07-cara-kerja.md#skill-pada-node).
+
+| Field | Default | Keterangan |
+|---|---|---|
+| Model Skill Orchestrator | otomatis | Model 9router yang memeriksa isi link saat skill ditarik dan yang mencarikan skill di modal Node. *Otomatis* = model node Planner aktif dengan prioritas terkecil. |
+| Batas karakter skill per node | 40000 | 4000–200000. Total isi skill yang ditempel ke system prompt satu node, dibagi rata antar skill. |
+| Sumber skill | — | Tempel link lalu klik **Tarik skill**. Formatnya: repository GitHub/GitLab (boleh `/tree/<branch>/<folder>`), `owner/repo`, URL `.git`, file `.md`, atau halaman web. Status: *Antre* → *Mengunduh…* → *Dianalisis AI…* → *Siap*/*Gagal*. **Sync** menarik ulang; **Hapus** membuang sumber, skill-nya, dan foldernya, serta melepas skill itu dari node. |
+| Gudang skill | — | Daftar skill dengan pencarian (nama, deskripsi, tag, sumber), jumlah node pemakai, dan tombol **Lihat** untuk isi serta file pendukungnya. |
+
+**Simpan Skill** hanya menyimpan model dan batas karakter. Sumber diproses satu per satu di latar belakang, dan status
+berubah langsung tanpa refresh. Folder gudang: `%LOCALAPPDATA%\AiThread\skills`, bisa diubah lewat
+`AiThread:SkillsDirectory` di `appsettings.json`.
 
 ## Menu Node
 
@@ -87,6 +120,7 @@ kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 | Max paralel | Planner 2 · Executor 6 · Reviewer 2 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
 | Prioritas | 100 | Angka kecil diutamakan. |
 | Instruksi tambahan | kosong | Ditambahkan di akhir prompt bawaan peran, mis. konvensi coding tim. |
+| Skill | kosong | Skill dari gudang (maks 10). Tulis kebutuhan di *Butuh kemampuan apa?* lalu klik **Cari skill**: Skill Orchestrator menyarankan skill yang cocok beserta alasannya, Anda centang, lalu **Terapkan** dan **Simpan**. Isi skill ditempel ke system prompt node setelah instruksi tambahan; field *Instruksi tambahan* tidak berubah. |
 | Aktif | aktif | Node nonaktif tidak dipakai. |
 
 Tombol **Test** mengirim prompt singkat ("Reply with exactly one word: pong") dan menampilkan latency, token, dan
@@ -127,8 +161,20 @@ Panggilan passthrough (request pendukung Claude Code) dan tombol *Test* tidak me
 
 ### Biaya token planner
 
-Planner bekerja lewat 9router (`/v1/chat/completions`, format OpenAI) tanpa prompt caching, sehingga setiap langkah
-mengirim ulang seluruh percakapan sebagai input penuh. Untuk menghemat:
+Planner bekerja lewat 9router (`/v1/chat/completions`, format OpenAI), dan setiap langkah mengirim ulang seluruh
+percakapan. Bagian yang sama dengan langkah sebelumnya dilayani dari **prompt cache** provider, yang jauh lebih murah
+daripada input baru:
+
+- Model Claude (termasuk `cc/…`): 9router memasang `cache_control` sendiri di tools, system prompt, dan pesan
+  assistant terakhir.
+- OpenAI, DeepSeek, Gemini, dan sejenisnya: caching prefix otomatis di sisi provider.
+
+AiThread menjaga awal percakapan tetap sama agar cache terus cocok: daftar tool planner tidak berubah selama satu
+thread, dan brief disusun dari bagian paling stabil (project, struktur) ke permintaan di akhir. Detail thread
+menampilkan porsinya, mis. *Token planner 120.000 (85% cache)*. Persentase 0 berarti provider tidak melaporkan cache
+atau tidak memakainya.
+
+Untuk menghemat lebih jauh:
 
 - Turunkan Setting → *Langkah planner*.
 - Hindari model langganan `cc/…` (Claude via 9router) untuk planner; pakai model/combo yang kuotanya longgar.

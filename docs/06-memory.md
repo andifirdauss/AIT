@@ -21,8 +21,8 @@ penjelasan.
 
 | Level | Penyimpanan | Umur |
 |---|---|---|
-| **Short** | Garnet di dalam AiThread (protokol Redis, tanpa TTL) | Sampai berumur `ShortMemoryHours` (default 24 jam). |
-| **Long** | Database (`LongMemories`) | Permanen sampai dihapus. |
+| **Short** | Default: Garnet di dalam AiThread (protokol Redis, tanpa TTL). Bisa diganti — lihat [Penyimpanan memory](#penyimpanan-memory). | Sampai berumur `ShortMemoryHours` (default 24 jam). |
+| **Long** | Default: tabel `LongMemories` di database utama. Bisa diganti — lihat [Penyimpanan memory](#penyimpanan-memory). | Permanen sampai dihapus. |
 
 ```
 thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
@@ -36,9 +36,39 @@ thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
   sebuah memory berumur 24 jam. Id tetap sama sehingga pemindahan aman diulang.
 - Short memory bertahan saat AiThread di-restart atau crash: Garnet mencatat setiap penulisan ke disk
   (`%LOCALAPPDATA%\AiThread\garnet\<port>`) sebelum dikonfirmasi.
-- **Short memory tidak tersedia** (mis. Garnet gagal start): memory baru langsung disimpan sebagai long memory
-  (tercatat di log sebagai peringatan).
+- **Short memory tidak tersedia** (mis. Garnet gagal start, atau server short memory eksternal mati): memory baru
+  langsung disimpan sebagai long memory (tercatat di log sebagai peringatan). Store database eksternal dicek ulang
+  tiap 15 detik dan otomatis dipakai lagi begitu kembali hidup.
 - Short memory dari project yang sudah dihapus berubah menjadi knowledge memory saat dipindah.
+
+## Penyimpanan memory
+
+Menu **Setting → Penyimpanan memory** (`/Setting#memory`) menentukan di mana tiap level disimpan. Perubahan langsung
+berlaku tanpa restart.
+
+| Provider | Short | Long | Field yang dipakai |
+|---|---|---|---|
+| Bawaan | Garnet di dalam AiThread (`ConnectionStrings:Redis`) | Database utama (`ConnectionStrings:Default`) | — |
+| Redis | ✓ | — | host, port (6379), database = indeks (opsional), username (ACL Redis 6+), password |
+| SQL Server | ✓ | ✓ | host, port (1433), database, username/password — username kosong = Windows authentication |
+| PostgreSQL | ✓ | ✓ | host, port (5432), database, username, password |
+| MySQL | ✓ | ✓ | host, port (3306), database, username, password |
+| Oracle | ✓ | ✓ | host, port (1521), database = service name (mis. `FREEPDB1`), username, password |
+| SQLite | ✓ | ✓ | database = path file (kosong = `%LOCALAPPDATA%\AiThread\memory.db`) |
+
+- **Opsi tambahan** ditambahkan ke connection string dan menimpa field di atas, mis. `SSL Mode=Require` (PostgreSQL),
+  `Encrypt=True` (SQL Server), atau `ssl=true` (Redis, dipisah koma). Keyword yang tidak dikenal ditolak saat disimpan.
+- **Test koneksi** memakai isi form tanpa menyimpan. Password kosong = memakai password tersimpan.
+- Saat **disimpan**, AiThread menghubungi store baru dan membuat database (bila belum ada dan user punya hak) serta
+  tabel `ShortMemories`/`LongMemories`. Store yang tidak bisa dihubungi ditolak, jadi setting lama tetap berlaku.
+  Database eksternal tidak memakai migrasi EF; tabel dibuat sendiri pada pemakaian pertama.
+- **Salin memory yang ada** (default aktif) menyalin memory dari store lama ke store baru berdasarkan id, jadi aman
+  diulang dan tidak menggandakan. Store lama tidak dihapus atau diubah. Tanpa salinan, memory lama tidak terlihat
+  sampai provider dikembalikan.
+- Password disimpan terenkripsi (ASP.NET Core Data Protection) dan tidak pernah dikirim balik ke browser.
+- Short dan long memory boleh memakai database yang sama; masing-masing punya tabel sendiri.
+- Long memory di database eksternal tidak punya foreign key ke `Projects`: nama project diambil dari database utama,
+  dan memory sebuah project dihapus oleh AiThread saat project dihapus.
 
 ## Kapan memory dibuat
 
@@ -82,4 +112,6 @@ Tips menulis memory manual:
 | `ConnectionStrings:Redis` | `localhost:6379` (port Garnet; lihat [Instalasi](01-instalasi.md#1-short-memory-garnet)) |
 | `AiThread:EmbeddedRedis:Enabled` | `true` |
 
-Perkiraan "±N jam lagi ke DB" di tabel Memory selalu dihitung dari 24 jam.
+Dua kunci terakhir hanya dipakai saat short memory memakai provider *Bawaan*.
+
+Perkiraan "±N jam lagi ke long memory" di tabel Memory selalu dihitung dari 24 jam.

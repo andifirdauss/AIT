@@ -14,6 +14,9 @@ public class AiThreadOptions
     // Files up to this many lines are sent to executors in full; larger files are sent as excerpts.
     public int ExecutorFullFileMaxLines { get; set; } = 400;
 
+    // Offline skill store (one folder per skill source). Empty = %LOCALAPPDATA%\AiThread\skills.
+    public string? SkillsDirectory { get; set; }
+
     public TelegramOptions Telegram { get; set; } = new();
 
     public EmbeddedRedisOptions EmbeddedRedis { get; set; } = new();

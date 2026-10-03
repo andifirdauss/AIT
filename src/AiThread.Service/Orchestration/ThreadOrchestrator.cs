@@ -30,20 +30,51 @@ public sealed class ThreadOrchestrator(
     WrapperAgent wrapperAgent,
     MemoryExtractor memoryExtractor,
     ContextKeeper contextKeeper,
+    PendingQuestionStore questions,
     IHostApplicationLifetime lifetime,
     ILogger<ThreadOrchestrator> logger) : IThreadOrchestrator
 {
     public async Task<ThreadResult> RunAsync(ThreadRequest request, IThreadObserver observer, CancellationToken cancellationToken)
     {
-        var prepared = await PrepareAsync(request, cancellationToken);
-        return await ExecuteAsync(prepared, request, observer, cancellationToken);
+        var prepared = await PrepareOrResumeAsync(request, cancellationToken);
+        return await ExecuteAsync(prepared, observer, cancellationToken);
     }
 
     public async Task<Guid> StartInBackgroundAsync(ThreadRequest request, CancellationToken cancellationToken)
     {
-        var prepared = await PrepareAsync(request, cancellationToken);
-        _ = Task.Run(() => ExecuteAsync(prepared, request, NullThreadObserver.Instance, lifetime.ApplicationStopping), CancellationToken.None);
+        var prepared = await PrepareOrResumeAsync(request, cancellationToken);
+        _ = Task.Run(() => ExecuteAsync(prepared, NullThreadObserver.Instance, lifetime.ApplicationStopping), CancellationToken.None);
         return prepared.Thread.Id;
+    }
+
+    // A prompt from a session whose thread is waiting on a planner question is the answer: that thread continues.
+    private async Task<PreparedThread> PrepareOrResumeAsync(ThreadRequest request, CancellationToken cancellationToken)
+    {
+        var pending = questions.TryTake(request.SessionId, request.ProjectId, out var stale);
+        if (stale is not null)
+            await UnansweredQuestions.CloseAsync(dbFactory, eventBus, [stale.ThreadId], "Pertanyaan planner tidak dijawab; prompt berikutnya dijalankan sebagai thread baru.");
+
+        if (pending is not null && await ResumeAsync(pending, request, cancellationToken) is { } resumed) return resumed;
+        return await PrepareAsync(request, cancellationToken);
+    }
+
+    private async Task<PreparedThread?> ResumeAsync(PendingQuestion pending, ThreadRequest request, CancellationToken cancellationToken)
+    {
+        ThreadRun? thread;
+        await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
+            thread = await db.Threads.AsNoTracking().FirstOrDefaultAsync(t => t.Id == pending.ThreadId, cancellationToken);
+        if (thread is not { Status: ThreadStatus.AwaitingInput }) return null;
+
+        var project = await projectService.GetContextAsync(pending.ProjectId, cancellationToken);
+        if (project is null) return null;
+
+        // Wrapper, reviewer and context keeper see the original request together with the clarification.
+        var clarified = request with
+        {
+            Prompt = $"{thread.Prompt}\n\n---\nAiThread asked: {pending.Question.Question}\nDeveloper answered: {request.Prompt}"
+        };
+        activityLog.Info("thread", $"Jawaban untuk pertanyaan planner diterima: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}", thread.Id, thread.ProjectId);
+        return new PreparedThread(thread, project, clarified, pending, request.Prompt);
     }
 
     private async Task<PreparedThread> PrepareAsync(ThreadRequest request, CancellationToken cancellationToken)
@@ -72,12 +103,13 @@ public sealed class ThreadOrchestrator(
             $"Thread baru dari {SourceLabel(request.Source)} · {project.Name}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}",
             thread.Id, thread.ProjectId);
 
-        return new PreparedThread(thread, project);
+        return new PreparedThread(thread, project, request);
     }
 
-    private async Task<ThreadResult> ExecuteAsync(PreparedThread prepared, ThreadRequest request, IThreadObserver observer, CancellationToken externalToken)
+    private async Task<ThreadResult> ExecuteAsync(PreparedThread prepared, IThreadObserver observer, CancellationToken externalToken)
     {
         var thread = prepared.Thread;
+        var request = prepared.Request;
         using var cancellation = registry.Register(thread.Id, externalToken);
         var cancellationToken = cancellation.Token;
         var recorder = new ThreadRecorder(dbFactory, eventBus, activityLog, thread);
@@ -113,15 +145,29 @@ public sealed class ThreadOrchestrator(
                 t.Status = ThreadStatus.Planning;
                 t.PlannerModel = planner.Model;
             });
-            await progress.LineAsync($"🧠 Planner `{planner.Model}` menganalisis project & menyusun rencana…", cancellationToken);
-
             var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
+            // A question needs a way back: a session to answer in, and not a dashboard run nobody is watching.
+            var canAsk = settings.PlannerCanAsk && request.Source != ThreadSource.Dashboard && !string.IsNullOrEmpty(request.SessionId);
+            var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk);
             var planClock = Stopwatch.StartNew();
-            var planning = await plannerAgent.PlanAsync(new PlannerInput(request, project, planners, scope, settings), recorder, progress, cancellationToken);
+            PlanningResult planning;
+            if (prepared.Resume is { } resume)
+            {
+                await progress.LineAsync($"💬 Jawaban diterima — planner `{planner.Model}` melanjutkan rencana…", cancellationToken);
+                planning = await plannerAgent.ResumeAsync(plannerInput, resume.Conversation, resume.Question.AnswerFor(prepared.Reply ?? string.Empty), recorder, progress, cancellationToken);
+            }
+            else
+            {
+                await progress.LineAsync($"🧠 Planner `{planner.Model}` menganalisis project & menyusun rencana…", cancellationToken);
+                planning = await plannerAgent.PlanAsync(plannerInput, recorder, progress, cancellationToken);
+            }
             planClock.Stop();
             planner = planning.Node;
 
-            var plan = planning.Plan;
+            if (planning.Pause is { } pause)
+                return await AwaitAnswerAsync(recorder, progress, project, request, planning, pause, planClock, total, cancellationToken);
+
+            var plan = planning.Plan!;
             await recorder.UpdateThreadAsync(t =>
             {
                 t.PlannerModel = planner.Model;
@@ -129,7 +175,8 @@ public sealed class ThreadOrchestrator(
                 t.PlanSummary = Truncate(plan.Summary, 2000);
                 t.PlannerSteps = planning.Steps;
                 t.PlannerTokens = planning.Tokens;
-                t.PlanningMs = planClock.ElapsedMilliseconds;
+                t.PlannerCachedTokens = planning.CachedTokens;
+                t.PlanningMs = (t.PlanningMs ?? 0) + planClock.ElapsedMilliseconds;
             });
 
             if (plan.Tasks.Count == 0)
@@ -251,6 +298,38 @@ public sealed class ThreadOrchestrator(
         }
     }
 
+    // The planner asked the developer something: the question is the reply, and the thread waits for the next prompt of
+    // the session. The database is updated before the question is registered, so an instant answer finds it waiting.
+    private async Task<ThreadResult> AwaitAnswerAsync(
+        ThreadRecorder recorder,
+        ClientProgress progress,
+        ProjectContext project,
+        ThreadRequest request,
+        PlanningResult planning,
+        PlannerPause pause,
+        Stopwatch planClock,
+        Stopwatch total,
+        CancellationToken cancellationToken)
+    {
+        var thread = recorder.Thread;
+        var text = pause.Question.ToText();
+        await progress.FinalAsync(text, cancellationToken);
+        await recorder.UpdateThreadAsync(t =>
+        {
+            t.Status = ThreadStatus.AwaitingInput;
+            t.PlannerModel = planning.Node.Model;
+            t.PlannerSteps = planning.Steps;
+            t.PlannerTokens = planning.Tokens;
+            t.PlannerCachedTokens = planning.CachedTokens;
+            t.PlanningMs = (t.PlanningMs ?? 0) + planClock.ElapsedMilliseconds;
+            t.FinalResponse = text;
+            t.TotalMs = (t.TotalMs ?? 0) + total.ElapsedMilliseconds;
+        });
+        questions.Add(thread.Id, project.ProjectId, request.SessionId!, pause.Question, pause.Conversation);
+        recorder.Log(ActivityLevel.Info, $"Planner bertanya ke developer; thread menunggu jawaban: {Truncate(pause.Question.Question.ReplaceLineEndings(" "), 200)}");
+        return new ThreadResult(thread.Id, ThreadStatus.AwaitingInput, progress.Transcript, TotalTokens(thread));
+    }
+
     // Runs when something was changed and there is a way to check it: a build command (and building is allowed) or an
     // active Reviewer node. Null when skipped. A crash in here only costs the verification, not the edits already made.
     private async Task<VerificationResult?> VerifyAsync(
@@ -331,7 +410,8 @@ public sealed class ThreadOrchestrator(
             t.WrapperTokens = wrapTokens;
             t.WrappingMs = wrappingMs;
             t.Error = error;
-            t.TotalMs = total.ElapsedMilliseconds;
+            // A thread resumed after a planner question already holds the time spent before it.
+            t.TotalMs = (t.TotalMs ?? 0) + total.ElapsedMilliseconds;
             t.CompletedAt = DateTime.UtcNow;
         });
 
@@ -376,5 +456,7 @@ public sealed class ThreadOrchestrator(
     private static string Truncate(string? value, int max) =>
         value is null ? string.Empty : value.Length <= max ? value : value[..max];
 
-    private sealed record PreparedThread(ThreadRun Thread, ProjectContext Project);
+    // Resume and Reply are set when the thread continues after a planner question; Request then carries the
+    // original request plus the clarification.
+    private sealed record PreparedThread(ThreadRun Thread, ProjectContext Project, ThreadRequest Request, PendingQuestion? Resume = null, string? Reply = null);
 }

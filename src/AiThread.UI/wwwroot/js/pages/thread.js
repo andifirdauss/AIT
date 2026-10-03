@@ -22,7 +22,7 @@
       detail.workingDirectory ? `<span class="mono">${escapeHtml(detail.workingDirectory)}</span>` : null
     ].filter(Boolean).join(' · ');
     el('threadPrompt').textContent = s.prompt;
-    el('btnCancel').classList.toggle('d-none', !isActiveStatus(s.status));
+    el('btnCancel').classList.toggle('d-none', !isActiveStatus(s.status) && s.status !== 'AwaitingInput');
   }
 
   function renderPlan() {
@@ -45,6 +45,14 @@
     }
   }
 
+  // The cached share is input the provider served from its prompt cache (cheaper than fresh input).
+  function plannerTokens() {
+    const total = detail.plannerTokens;
+    const cached = detail.plannerCachedTokens || 0;
+    if (!total || !cached) return fmt.number(total);
+    return `${fmt.number(total)} <span class="text-secondary small">(${Math.round(cached * 100 / total)}% cache)</span>`;
+  }
+
   function renderMetrics() {
     const s = detail.summary;
     const rows = [
@@ -59,7 +67,7 @@
       ['Verifikasi', fmt.ms(detail.verificationMs)],
       ['Wrapping', fmt.ms(detail.wrappingMs)],
       ['Total', fmt.ms(s.totalMs)],
-      ['Token planner', fmt.number(detail.plannerTokens)],
+      ['Token planner', plannerTokens()],
       ['Token executor', fmt.number(detail.executorTokens)],
       ['Token reviewer', fmt.number(detail.reviewerTokens)],
       ['Token wrapper', fmt.number(detail.wrapperTokens)]

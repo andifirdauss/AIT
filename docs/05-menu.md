@@ -10,7 +10,7 @@ sidebar menunjukkan status 9router; tombol *Ganti tema* beralih antara mode gela
 | Kartu | Isi |
 |---|---|
 | 9router | Online/Offline, latency, jumlah model & combo, status API key. Tombol *Cek ulang 9router* memaksa pengecekan. |
-| Short memory · Redis | Terhubung atau tidak, jumlah short memory aktif. |
+| Short memory | Terhubung atau tidak, jumlah short memory aktif, dan store yang dipakai (menu Setting → Penyimpanan memory). |
 | Database | Terhubung atau tidak, jumlah long memory dan thread. |
 | Pipeline node | Siap / belum lengkap, beserta catatannya. |
 
@@ -76,7 +76,7 @@ thread project ini, dan tautan ke memory-nya.
 
 Lihat [Memory](06-memory.md) untuk konsepnya.
 
-- **Statistik**: jumlah short (Redis) & long (DB), project & knowledge, status Redis.
+- **Statistik**: jumlah short & long memory, project & knowledge, status store short memory.
 - **Filter**: level, tipe, project, pencarian label/deskripsi. Datang dari halaman project? Filter project sudah terisi.
 - **Tabel**: level (short menampilkan perkiraan sisa jam sebelum pindah ke DB), tipe, project, label sebagai chip +
   cuplikan deskripsi, waktu dibuat & tautan thread sumber, jumlah dipakai (long memory).
@@ -87,7 +87,10 @@ Lihat [Memory](06-memory.md) untuk konsepnya.
 ## Node
 
 Lima kolom: Planner, Executor, Reviewer (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
-prioritas, penanda *📝 instruksi* bila ada instruksi tambahan (isinya di tooltip), dengan tombol *Test*, *Edit*, *Hapus*.
+prioritas, penanda *📝 instruksi* bila ada instruksi tambahan (isinya di tooltip), penanda *🧩 n* bila node memakai n skill
+(namanya di tooltip), dengan tombol *Test*, *Edit*, *Hapus*. Di modal node, bagian *Skill* menampilkan skill terpasang
+sebagai chip. Kolom *Butuh kemampuan apa?* + **Cari skill** meminta Skill Orchestrator mencarikan skill yang cocok
+dari gudang (lihat [Skill pada node](07-cara-kerja.md#skill-pada-node)).
 Panel *Panduan* di atas kolom menjelaskan arti angka-angka tersebut; panel bisa dilipat dan keadaannya diingat browser. *Muat ulang model 9router* menyegarkan daftar
 model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-node).
 
@@ -122,13 +125,19 @@ Halaman dibagi menjadi tab. Tab yang terbuka tercatat di URL (mis. `/Setting#tel
 refresh dan bisa ditautkan langsung.
 
 - **Koneksi 9router** (`#router`) — URL, API key, *Test koneksi* (tidak menyimpan); baris status menunjukkan apakah key tersimpan dan diterima.
-- **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi & progres, model passthrough, proxy API key (beserta tautan ke
+- **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, model passthrough, proxy API key (beserta tautan ke
   menu [CLI](#cli), tempat integrasi Claude Code/omp dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
 - **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
+- **Penyimpanan memory** (`#memory`) — provider short & long memory (bawaan, Redis, SQL Server, PostgreSQL, MySQL, Oracle, SQLite)
+  beserta host/port/database/username/password, *Test koneksi* per kartu, status live, dan opsi menyalin memory lama.
+  Disimpan terpisah lewat **Simpan penyimpanan memory**.
 - **Telegram** (`#telegram`) — token bot, aktif/nonaktif, status koneksi live, dan tabel chat (*Izinkan* / *Hapus* / *Cabut*).
+- **Skill** (`#skills`) — model Skill Orchestrator, batas karakter skill per node, sumber skill (tempel link →
+  **Tarik skill**, status live, *Sync* / *Hapus*), dan gudang skill dengan pencarian serta pratinjau isi. Disimpan
+  terpisah lewat **Simpan Skill**.
 
 Tiga tab pertama adalah satu form: **Simpan setting** di tab mana pun menyimpan isi ketiganya sekaligus, dan field
-yang tidak valid membuka tabnya sendiri. Tab Telegram disimpan terpisah lewat **Simpan Telegram**.
+yang tidak valid membuka tabnya sendiri. Tab Telegram dan Skill disimpan terpisah lewat tombolnya masing-masing.
 
 Detail di [Konfigurasi](02-konfigurasi.md) dan [Prompt dari Telegram](11-telegram.md).
 

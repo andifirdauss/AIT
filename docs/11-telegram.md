@@ -85,6 +85,10 @@ Seperti di Claude Code, prompt berikutnya membawa riwayat percakapan untuk plann
 (prompt + ringkasan) dari chat ini **di project yang sama**, dipotong bila panjang. Jadi "sekarang tambahkan juga di
 halaman detail" bisa dipahami tanpa mengulang konteks. Riwayat mulai dari nol setelah `/new` atau ganti project.
 
+Bila planner balik bertanya, hasilnya berupa pertanyaan bernomor dengan status ❓ *Menunggu jawaban*. Kirim nomor
+pilihan atau jawaban Anda sebagai pesan biasa; thread yang sama dilanjutkan. Lihat
+[Pertanyaan dari planner](07-cara-kerja.md#pertanyaan-dari-planner).
+
 ## Keamanan
 
 - Hanya **chat pribadi yang diizinkan** di menu Setting yang bisa menjalankan prompt. Pesan dari grup dan channel

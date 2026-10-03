@@ -157,5 +157,6 @@ public class OhMyPiProviderIntegrationTests : IDisposable
         public Task<SystemSettingDto> UpdateAsync(UpdateSystemSettingRequest request, string proxyBaseUrl, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TelegramSettingsDto> GetTelegramAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TelegramSettingsDto> UpdateTelegramAsync(UpdateTelegramSettingsRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RuntimeSettings> UpdateSkillsAsync(UpdateSkillSettingsRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

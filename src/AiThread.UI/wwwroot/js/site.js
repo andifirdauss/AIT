@@ -102,6 +102,7 @@
     Executing: ['primary', 'Eksekusi'],
     Verifying: ['info', 'Verifikasi'],
     Wrapping: ['info', 'Wrapping'],
+    AwaitingInput: ['warning', 'Menunggu jawaban'],
     Completed: ['success', 'Selesai'],
     Failed: ['danger', 'Gagal'],
     Cancelled: ['warning', 'Dibatalkan'],

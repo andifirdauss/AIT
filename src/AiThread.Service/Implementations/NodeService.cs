@@ -16,17 +16,19 @@ public sealed class NodeService(
     IEventBus eventBus,
     IActivityLogService activityLog) : INodeService
 {
+    public const int MaxSkillsPerNode = 10;
+
     public async Task<IReadOnlyList<NodeDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var nodes = await db.Nodes.AsNoTracking().ToListAsync(cancellationToken);
+        var nodes = await WithSkills(db.Nodes.AsNoTracking()).ToListAsync(cancellationToken);
         return nodes.OrderBy(n => n.Role).ThenBy(n => n.Priority).ThenBy(n => n.Name).Select(ToDto).ToList();
     }
 
     public async Task<NodeDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var node = await db.Nodes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+        var node = await WithSkills(db.Nodes.AsNoTracking()).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
         return node is null ? null : ToDto(node);
     }
 
@@ -36,11 +38,12 @@ public sealed class NodeService(
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var node = new AiNode();
         Apply(node, request);
+        await ApplySkillsAsync(db, node, request.SkillIds, cancellationToken);
         db.Nodes.Add(node);
         await db.SaveChangesAsync(cancellationToken);
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { node.Id, action = "created" }));
-        activityLog.Info("node", $"Node {node.Role} '{node.Name}' ditambahkan ({node.Model}).");
+        activityLog.Info("node", $"Node {node.Role} '{node.Name}' ditambahkan ({node.Model}){SkillNote(node)}.");
         return ToDto(node);
     }
 
@@ -48,15 +51,16 @@ public sealed class NodeService(
     {
         Validate(request);
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
+        var node = await WithSkills(db.Nodes).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
         if (node is null) return null;
 
         Apply(node, request);
+        await ApplySkillsAsync(db, node, request.SkillIds, cancellationToken);
         node.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { node.Id, action = "updated" }));
-        activityLog.Info("node", $"Node {node.Role} '{node.Name}' diperbarui ({node.Model}).");
+        activityLog.Info("node", $"Node {node.Role} '{node.Name}' diperbarui ({node.Model}){SkillNote(node)}.");
         return ToDto(node);
     }
 
@@ -77,7 +81,7 @@ public sealed class NodeService(
     public async Task<IReadOnlyList<AiNode>> GetActiveAsync(NodeRole role, CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Nodes.AsNoTracking()
+        return await WithSkills(db.Nodes.AsNoTracking())
             .Where(n => n.Role == role && n.IsActive)
             .OrderBy(n => n.Priority).ThenBy(n => n.Name)
             .ToListAsync(cancellationToken);
@@ -156,7 +160,36 @@ public sealed class NodeService(
         node.IsActive = request.IsActive;
     }
 
+    // Skills with their source, in prompt order: the agents read their content, the UI their names.
+    private static IQueryable<AiNode> WithSkills(IQueryable<AiNode> nodes) =>
+        nodes.Include(n => n.Skills.OrderBy(s => s.Order)).ThenInclude(s => s.Skill!).ThenInclude(s => s.SkillSource);
+
+    // null = leave the node's skills as they are (clients that do not know about skills).
+    private static async Task ApplySkillsAsync(AiThreadDbContext db, AiNode node, IReadOnlyList<Guid>? skillIds, CancellationToken cancellationToken)
+    {
+        if (skillIds is null) return;
+        var wanted = skillIds.Distinct().ToList();
+        if (wanted.Count > MaxSkillsPerNode)
+            throw new AppValidationException($"Satu node maksimal {MaxSkillsPerNode} skill — skill yang terlalu banyak membuat prompt boros dan tidak fokus.");
+
+        var skills = await db.Skills.Include(s => s.SkillSource).Where(s => wanted.Contains(s.Id)).ToListAsync(cancellationToken);
+        node.Skills.RemoveAll(ns => !wanted.Contains(ns.SkillId));
+        for (var order = 0; order < wanted.Count; order++)
+        {
+            var skill = skills.FirstOrDefault(s => s.Id == wanted[order]);
+            if (skill is null) continue; // removed from the store meanwhile
+            var existing = node.Skills.FirstOrDefault(ns => ns.SkillId == skill.Id);
+            if (existing is not null) existing.Order = order;
+            else node.Skills.Add(new NodeSkill { AiNodeId = node.Id, SkillId = skill.Id, Skill = skill, Order = order });
+        }
+    }
+
+    private static string SkillNote(AiNode node) => node.Skills.Count == 0 ? string.Empty : $", {node.Skills.Count} skill";
+
     private static NodeDto ToDto(AiNode n) => new(
         n.Id, n.Name, n.Role, n.Model, n.Temperature, n.MaxTokens, n.MaxConcurrency,
-        n.Priority, n.SystemPrompt, n.IsActive, n.CreatedAt, n.UpdatedAt);
+        n.Priority, n.SystemPrompt, n.IsActive, n.CreatedAt, n.UpdatedAt,
+        n.Skills.OrderBy(s => s.Order).Where(s => s.Skill is not null)
+            .Select(s => new NodeSkillDto(s.SkillId, s.Skill!.Name, s.Skill.Description, s.Skill.SkillSource?.Name ?? string.Empty))
+            .ToList());
 }
