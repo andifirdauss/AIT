@@ -93,7 +93,8 @@ public sealed partial class OhMyPiProviderIntegration(ISettingService settingSer
             $"    - id: {ModelId}",
             "      name: AiThread",
             "      contextWindow: 200000",
-            "      maxTokens: 32000"
+            "      maxTokens: 32000",
+            "      input: [text, image]"
         ];
     }
 
