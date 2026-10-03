@@ -87,7 +87,8 @@ Lihat [Memory](06-memory.md) untuk konsepnya.
 ## Node
 
 Lima kolom: Planner, Executor, Reviewer (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
-prioritas, instruksi tambahan, dengan tombol *Test*, *Edit*, *Hapus*. *Muat ulang model 9router* menyegarkan daftar
+prioritas, penanda *📝 instruksi* bila ada instruksi tambahan (isinya di tooltip), dengan tombol *Test*, *Edit*, *Hapus*.
+Panel *Panduan* di atas kolom menjelaskan arti angka-angka tersebut; panel bisa dilipat dan keadaannya diingat browser. *Muat ulang model 9router* menyegarkan daftar
 model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-node).
 
 ## CLI
@@ -117,11 +118,17 @@ Detail tiap CLI: [Integrasi Claude Code](03-integrasi-claude-code.md) dan
 
 ## Setting
 
-- **Koneksi 9router** — URL, API key, *Test koneksi* (tidak menyimpan) dan *Simpan*; baris status menunjukkan apakah key tersimpan dan diterima.
-- **Proxy & orkestrasi** — saklar orkestrasi & progres, model passthrough, proxy API key, batas planner/executor/
-  paralel/timeout, serta *Build & verifikasi otomatis* dengan timeout build dan jumlah putaran perbaikan.
-- **Integrasi CLI** — hanya tautan ke menu [CLI](#cli), tempat integrasi Claude Code/omp dan hook Context Keeper diatur.
-- **Telegram** — token bot, aktif/nonaktif, status koneksi live, dan tabel chat (*Izinkan* / *Hapus* / *Cabut*).
+Halaman dibagi menjadi tab. Tab yang terbuka tercatat di URL (mis. `/Setting#telegram`), jadi tetap sama setelah
+refresh dan bisa ditautkan langsung.
+
+- **Koneksi 9router** (`#router`) — URL, API key, *Test koneksi* (tidak menyimpan); baris status menunjukkan apakah key tersimpan dan diterima.
+- **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi & progres, model passthrough, proxy API key (beserta tautan ke
+  menu [CLI](#cli), tempat integrasi Claude Code/omp dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
+- **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
+- **Telegram** (`#telegram`) — token bot, aktif/nonaktif, status koneksi live, dan tabel chat (*Izinkan* / *Hapus* / *Cabut*).
+
+Tiga tab pertama adalah satu form: **Simpan setting** di tab mana pun menyimpan isi ketiganya sekaligus, dan field
+yang tidak valid membuka tabnya sendiri. Tab Telegram disimpan terpisah lewat **Simpan Telegram**.
 
 Detail di [Konfigurasi](02-konfigurasi.md) dan [Prompt dari Telegram](11-telegram.md).
 

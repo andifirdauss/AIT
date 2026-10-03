@@ -15,6 +15,46 @@
 
 <div id="pipelineAlert" class="alert d-none" role="status"></div>
 
+<details class="card mb-3 node-guide border-info-subtle bg-info-subtle" id="nodeGuide" open>
+    <summary class="card-header text-info-emphasis border-info-subtle">ⓘ Panduan: arti <span class="mono fw-normal">temp · token · paralel · prioritas</span> di card node</summary>
+    <div class="card-body">
+        <div class="row g-3 small">
+            <div class="col-md-6 col-xxl-3">
+                <div class="fw-semibold text-info-emphasis">temp — Temperature (0–2)</div>
+                <div class="text-secondary">
+                    Seberapa acak jawaban model. Rendah (0–0.3) = konsisten dan patuh format, cocok untuk planner & executor.
+                    Tinggi = lebih bervariasi. <span class="mono">default</span> = nilai bawaan peran.
+                </div>
+            </div>
+            <div class="col-md-6 col-xxl-3">
+                <div class="fw-semibold text-info-emphasis">token — Max tokens</div>
+                <div class="text-secondary">
+                    Batas panjang <em>output</em> satu panggilan model (bukan batas konteks input). Executor harus cukup untuk menulis
+                    seluruh editnya; naikkan bila muncul <span class="mono">Output was cut off (max tokens)</span>.
+                </div>
+            </div>
+            <div class="col-md-6 col-xxl-3">
+                <div class="fw-semibold text-info-emphasis">paralel — Max paralel</div>
+                <div class="text-secondary">
+                    Jumlah panggilan ke node ini yang boleh berjalan bersamaan, dihitung <strong>di semua thread</strong>.
+                    Executor 6 = maks 6 tugas serentak. Turunkan bila provider sering kena rate limit (429).
+                </div>
+            </div>
+            <div class="col-md-6 col-xxl-3">
+                <div class="fw-semibold text-info-emphasis">prioritas — angka kecil diutamakan</div>
+                <div class="text-secondary">
+                    Planner, Reviewer, Wrapper, Context Keeper: hanya node aktif dengan prioritas terkecil yang dipakai
+                    (planner lain menjadi cadangan otomatis). Executor: semua dipakai; prioritas menentukan urutan bila slot kosongnya sama.
+                </div>
+            </div>
+        </div>
+        <div class="small text-secondary mt-3">
+            <span class="mono">📝 instruksi</span> = node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).
+            Detail lengkap: <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">Docs → Konfigurasi</a>.
+        </div>
+    </div>
+</details>
+
 <div class="node-columns">
     <div class="node-column">
         <div>

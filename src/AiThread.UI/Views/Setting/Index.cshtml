@@ -5,178 +5,197 @@
 <div class="page-header">
     <div>
         <h1>Setting</h1>
-        <p class="page-subtitle">Koneksi 9router, perilaku proxy, dan Telegram.</p>
+        <p class="page-subtitle">Koneksi 9router, perilaku proxy, build & verifikasi, dan Telegram.</p>
     </div>
 </div>
 
-<form id="settingForm" autocomplete="off">
-    <div class="row g-3">
-        <div class="col-xl-6">
-            <div class="card mb-3">
-                <div class="card-header">Koneksi 9router</div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label small" for="routerUrl">Base URL</label>
-                        <input type="url" class="form-control mono" id="routerUrl" placeholder="http://localhost:20128" required />
-                        <div class="form-text">Endpoint 9router (dashboard default di port 20128). Akhiran <span class="mono">/v1</span> otomatis dibuang.</div>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label small" for="routerKey">API key</label>
-                        <input type="password" class="form-control mono" id="routerKey" placeholder="Kosongkan untuk mempertahankan key tersimpan" />
-                        <div class="form-text" id="routerKeyHint"></div>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="routerKeyClear" />
-                        <label class="form-check-label small" for="routerKeyClear">Hapus API key tersimpan</label>
-                    </div>
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestRouter">Test koneksi</button>
-                        <button type="submit" class="btn btn-primary btn-sm">Simpan</button>
-                        <span class="small" id="routerTestResult"></span>
-                    </div>
-                    <div class="form-text">Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan</strong> agar key dipakai AiThread.</div>
+<ul class="nav nav-tabs mb-3" id="settingTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="router-tab" data-bs-toggle="tab" data-bs-target="#tab-router" data-tab="router" type="button" role="tab" aria-controls="tab-router" aria-selected="true">Koneksi 9router</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="proxy-tab" data-bs-toggle="tab" data-bs-target="#tab-proxy" data-tab="proxy" type="button" role="tab" aria-controls="tab-proxy" aria-selected="false">Proxy & orkestrasi</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="build-tab" data-bs-toggle="tab" data-bs-target="#tab-build" data-tab="build" type="button" role="tab" aria-controls="tab-build" aria-selected="false">Build & verifikasi</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="telegram-tab" data-bs-toggle="tab" data-bs-target="#tab-telegram" data-tab="telegram" type="button" role="tab" aria-controls="tab-telegram" aria-selected="false">Telegram</button>
+    </li>
+</ul>
+
+@* One form spans the first three tabs so "Simpan" saves all of them; the Telegram tab has its own form. *@
+<form id="settingForm" class="tab-content" autocomplete="off" novalidate>
+    <div class="tab-pane active setting-pane" id="tab-router" role="tabpanel" aria-labelledby="router-tab" tabindex="0">
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small" for="routerUrl">Base URL</label>
+                    <input type="url" class="form-control mono" id="routerUrl" placeholder="http://localhost:20128" required />
+                    <div class="form-text">Endpoint 9router (dashboard default di port 20128). Akhiran <span class="mono">/v1</span> otomatis dibuang.</div>
                 </div>
+                <div class="mb-2">
+                    <label class="form-label small" for="routerKey">API key</label>
+                    <input type="password" class="form-control mono" id="routerKey" placeholder="Kosongkan untuk mempertahankan key tersimpan" />
+                    <div class="form-text" id="routerKeyHint"></div>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="routerKeyClear" />
+                    <label class="form-check-label small" for="routerKeyClear">Hapus API key tersimpan</label>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestRouter">Test koneksi</button>
+                    <span class="small" id="routerTestResult"></span>
+                </div>
+                <div class="form-text">Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan setting</strong> agar key dipakai AiThread.</div>
             </div>
-
-            <div class="card mb-3">
-                <div class="card-header">Proxy & orkestrasi</div>
-                <div class="card-body">
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="orchestrationEnabled" />
-                        <label class="form-check-label" for="orchestrationEnabled">Orkestrasi aktif (planner → executor → wrapper)</label>
-                        <div class="form-text">Jika mati, AiThread hanya meneruskan request CLI ke 9router.</div>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="streamProgress" />
-                        <label class="form-check-label" for="streamProgress">Tampilkan progres (rencana, tugas, tool planner) di CLI</label>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small" for="passthroughModel">Model passthrough</label>
-                        <select class="form-select" id="passthroughModel"></select>
-                        <div class="form-text">Untuk request pendukung CLI (judul sesi, compact, dsb.) yang tidak diorkestrasi.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label small" for="proxyKey">Proxy API key (ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY)</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control mono" id="proxyKey" placeholder="Kosong = terima semua request lokal" />
-                            <button type="button" class="btn btn-outline-secondary" id="btnGenerateKey">Generate</button>
-                        </div>
-                    </div>
-
-                    <div class="row g-2">
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small" for="plannerMaxSteps">Langkah planner</label>
-                            <input type="number" class="form-control" id="plannerMaxSteps" min="3" max="100" required />
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small" for="executorMaxRetries">Retry executor</label>
-                            <input type="number" class="form-control" id="executorMaxRetries" min="0" max="5" required />
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small" for="maxParallelTasks">Maks paralel</label>
-                            <input type="number" class="form-control" id="maxParallelTasks" min="1" max="64" required />
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small" for="requestTimeout">Timeout (detik)</label>
-                            <input type="number" class="form-control" id="requestTimeout" min="30" max="3600" required />
-                        </div>
-                    </div>
-
-                    <hr />
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" id="buildEnabled" />
-                        <label class="form-check-label" for="buildEnabled">Build & verifikasi otomatis</label>
-                        <div class="form-text">
-                            AiThread menjalankan perintah build bawaan project (<span class="mono">dotnet build</span>, <span class="mono">tsc</span>/<span class="mono">npm run build</span>,
-                            <span class="mono">go build</span>, <span class="mono">cargo check</span>, <span class="mono">mvn compile</span>): sebagai tool planner dan setelah executor selesai.
-                            Error build (dan temuan node Reviewer, bila ada) diserahkan ke executor sebagai tugas perbaikan.
-                        </div>
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small" for="buildTimeout">Timeout build (detik)</label>
-                            <input type="number" class="form-control" id="buildTimeout" min="30" max="3600" required />
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label small" for="maxFixRounds">Putaran perbaikan</label>
-                            <input type="number" class="form-control" id="maxFixRounds" min="0" max="5" required />
-                        </div>
-                        <div class="col-md-6 form-text align-self-end">0 = hanya verifikasi dan laporkan, tanpa perbaikan otomatis.</div>
-                    </div>
-                </div>
-                <div class="card-footer text-end">
-                    <button type="submit" class="btn btn-primary">Simpan setting</button>
-                </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">Simpan setting</button>
             </div>
         </div>
+    </div>
 
-        <div class="col-xl-6">
-            <div class="card">
-                <div class="card-header">Integrasi CLI</div>
-                <div class="card-body">
-                    <p class="small text-secondary mb-2">
-                        Mengarahkan Claude Code (dan oh-my-pi lewat provider AiThread) ke proxy ini (global atau per project), termasuk hook Context Keeper
-                        untuk <span class="mono">/clear</span>, kini ada di menu <strong>CLI</strong>.
-                    </p>
-                    <a class="btn btn-primary btn-sm" asp-controller="Cli" asp-action="Index">Buka menu CLI</a>
+    <div class="tab-pane setting-pane" id="tab-proxy" role="tabpanel" aria-labelledby="proxy-tab" tabindex="0">
+        <div class="card">
+            <div class="card-body">
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="orchestrationEnabled" />
+                    <label class="form-check-label" for="orchestrationEnabled">Orkestrasi aktif (planner → executor → wrapper)</label>
+                    <div class="form-text">Jika mati, AiThread hanya meneruskan request CLI ke 9router.</div>
                 </div>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="streamProgress" />
+                    <label class="form-check-label" for="streamProgress">Tampilkan progres (rencana, tugas, tool planner) di CLI</label>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small" for="passthroughModel">Model passthrough</label>
+                    <select class="form-select" id="passthroughModel"></select>
+                    <div class="form-text">Untuk request pendukung CLI (judul sesi, compact, dsb.) yang tidak diorkestrasi.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small" for="proxyKey">Proxy API key (ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY)</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control mono" id="proxyKey" placeholder="Kosong = terima semua request lokal" />
+                        <button type="button" class="btn btn-outline-secondary" id="btnGenerateKey">Generate</button>
+                    </div>
+                    <div class="form-text">
+                        Integrasi Claude Code / oh-my-pi dan hook Context Keeper diatur di menu <a asp-controller="Cli" asp-action="Index">CLI</a>.
+                        Setelah key diganti, matikan lalu nyalakan lagi integrasinya di sana agar key baru tertulis.
+                    </div>
+                </div>
+
+                <div class="row g-2">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="plannerMaxSteps">Langkah planner</label>
+                        <input type="number" class="form-control" id="plannerMaxSteps" min="3" max="100" required />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="executorMaxRetries">Retry executor</label>
+                        <input type="number" class="form-control" id="executorMaxRetries" min="0" max="5" required />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="maxParallelTasks">Maks paralel</label>
+                        <input type="number" class="form-control" id="maxParallelTasks" min="1" max="64" required />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="requestTimeout">Timeout (detik)</label>
+                        <input type="number" class="form-control" id="requestTimeout" min="30" max="3600" required />
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">Simpan setting</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane setting-pane" id="tab-build" role="tabpanel" aria-labelledby="build-tab" tabindex="0">
+        <div class="card">
+            <div class="card-body">
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="buildEnabled" />
+                    <label class="form-check-label" for="buildEnabled">Build & verifikasi otomatis</label>
+                    <div class="form-text">
+                        AiThread menjalankan perintah build bawaan project (<span class="mono">dotnet build</span>, <span class="mono">tsc</span>/<span class="mono">npm run build</span>,
+                        <span class="mono">go build</span>, <span class="mono">cargo check</span>, <span class="mono">mvn compile</span>): sebagai tool planner dan setelah executor selesai.
+                        Error build (dan temuan node Reviewer, bila ada) diserahkan ke executor sebagai tugas perbaikan.
+                    </div>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="buildTimeout">Timeout build (detik)</label>
+                        <input type="number" class="form-control" id="buildTimeout" min="30" max="3600" required />
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small" for="maxFixRounds">Putaran perbaikan</label>
+                        <input type="number" class="form-control" id="maxFixRounds" min="0" max="5" required />
+                    </div>
+                    <div class="col-md-6 form-text align-self-end">0 = hanya verifikasi dan laporkan, tanpa perbaikan otomatis.</div>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">Simpan setting</button>
             </div>
         </div>
     </div>
 </form>
 
-<div class="card mt-3" id="telegramCard">
-    <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <span>Telegram — prompt jarak jauh</span>
-        <span class="ms-auto small" id="telegramState"></span>
-    </div>
-    <div class="card-body">
-        <div class="row g-4">
-            <div class="col-lg-5">
-                <form id="telegramForm" autocomplete="off">
-                    <p class="small text-secondary">
-                        Kirim prompt ke AiThread dari HP lewat bot Telegram pribadi, misalnya saat laptop ditinggal di kantor/rumah.
-                        AiThread menarik pesan dari Telegram (long polling), jadi tidak perlu URL publik atau membuka port — cukup laptop menyala dan terhubung internet.
-                    </p>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="telegramEnabled" />
-                        <label class="form-check-label" for="telegramEnabled">Aktifkan bot Telegram</label>
-                    </div>
-                    <div class="mb-2">
-                        <label class="form-label small" for="telegramToken">Bot token</label>
-                        <input type="password" class="form-control mono" id="telegramToken" placeholder="Kosongkan untuk mempertahankan token tersimpan" />
-                        <div class="form-text" id="telegramTokenHint"></div>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="telegramTokenClear" />
-                        <label class="form-check-label small" for="telegramTokenClear">Hapus token tersimpan</label>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">Simpan Telegram</button>
-                    <ol class="small text-secondary mt-3 mb-0 ps-3">
-                        <li>Di Telegram, chat <span class="mono">@@BotFather</span> → <span class="mono">/newbot</span> → salin token.</li>
-                        <li>Tempel token di atas, aktifkan, lalu klik <strong>Simpan Telegram</strong>.</li>
-                        <li>Kirim <span class="mono">/start</span> ke bot Anda, lalu klik <strong>Izinkan</strong> pada chat Anda di tabel.</li>
-                        <li>Pilih project dengan <span class="mono">/projects</span>, lalu kirim prompt seperti biasa.</li>
-                    </ol>
-                </form>
+<div class="tab-content">
+    <div class="tab-pane" id="tab-telegram" role="tabpanel" aria-labelledby="telegram-tab" tabindex="0">
+        <div class="card" id="telegramCard">
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                <span>Telegram — prompt jarak jauh</span>
+                <span class="ms-auto small" id="telegramState"></span>
             </div>
-            <div class="col-lg-7">
-                <label class="form-label small">Chat</label>
-                <div class="table-responsive">
-                    <table class="table align-middle mb-2">
-                        <thead>
-                            <tr class="text-nowrap"><th>Chat</th><th>Status</th><th>Project aktif</th><th>Pesan terakhir</th><th></th></tr>
-                        </thead>
-                        <tbody id="telegramChatRows">
-                            <tr><td colspan="5" class="text-secondary small">Memuat…</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="form-text">
-                    Hanya chat pribadi yang <strong>diizinkan</strong> yang bisa menjalankan prompt — izinkan hanya akun Telegram Anda sendiri,
-                    karena prompt dapat mengubah file project di komputer ini. Chat lain yang mengirim pesan ke bot muncul di sini sebagai <em>menunggu izin</em>.
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <form id="telegramForm" autocomplete="off">
+                            <p class="small text-secondary">
+                                Kirim prompt ke AiThread dari HP lewat bot Telegram pribadi, misalnya saat laptop ditinggal di kantor/rumah.
+                                AiThread menarik pesan dari Telegram (long polling), jadi tidak perlu URL publik atau membuka port — cukup laptop menyala dan terhubung internet.
+                            </p>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="telegramEnabled" />
+                                <label class="form-check-label" for="telegramEnabled">Aktifkan bot Telegram</label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small" for="telegramToken">Bot token</label>
+                                <input type="password" class="form-control mono" id="telegramToken" placeholder="Kosongkan untuk mempertahankan token tersimpan" />
+                                <div class="form-text" id="telegramTokenHint"></div>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="telegramTokenClear" />
+                                <label class="form-check-label small" for="telegramTokenClear">Hapus token tersimpan</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm">Simpan Telegram</button>
+                            <ol class="small text-secondary mt-3 mb-0 ps-3">
+                                <li>Di Telegram, chat <span class="mono">@@BotFather</span> → <span class="mono">/newbot</span> → salin token.</li>
+                                <li>Tempel token di atas, aktifkan, lalu klik <strong>Simpan Telegram</strong>.</li>
+                                <li>Kirim <span class="mono">/start</span> ke bot Anda, lalu klik <strong>Izinkan</strong> pada chat Anda di tabel.</li>
+                                <li>Pilih project dengan <span class="mono">/projects</span>, lalu kirim prompt seperti biasa.</li>
+                            </ol>
+                        </form>
+                    </div>
+                    <div class="col-lg-7">
+                        <label class="form-label small">Chat</label>
+                        <div class="table-responsive">
+                            <table class="table align-middle mb-2">
+                                <thead>
+                                    <tr class="text-nowrap"><th>Chat</th><th>Status</th><th>Project aktif</th><th>Pesan terakhir</th><th></th></tr>
+                                </thead>
+                                <tbody id="telegramChatRows">
+                                    <tr><td colspan="5" class="text-secondary small">Memuat…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="form-text">
+                            Hanya chat pribadi yang <strong>diizinkan</strong> yang bisa menjalankan prompt — izinkan hanya akun Telegram Anda sendiri,
+                            karena prompt dapat mengubah file project di komputer ini. Chat lain yang mengirim pesan ke bot muncul di sini sebagai <em>menunggu izin</em>.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

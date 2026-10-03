@@ -24,7 +24,7 @@ NAT/firewall kantor.
 
 1. **Buat bot.** Di Telegram buka `@BotFather` → `/newbot` → isi nama dan username (harus berakhiran `bot`) →
    salin **token** (format `123456789:AAE…`). Perlakukan token seperti password.
-2. **Setting → kartu Telegram**: tempel token, centang *Aktifkan bot Telegram*, klik **Simpan Telegram**. Token
+2. **Setting → tab Telegram** (langsung: http://localhost:5225/Setting#telegram): tempel token, centang *Aktifkan bot Telegram*, klik **Simpan Telegram**. Token
    diverifikasi ke Telegram sebelum disimpan; badge berubah menjadi **Aktif · @nama_bot**.
 3. Di HP, buka bot Anda (klik `@nama_bot` di kartu, atau cari di Telegram) lalu tekan **Start**. Bot membalas bahwa
    chat belum diizinkan, beserta ID chat Anda.
