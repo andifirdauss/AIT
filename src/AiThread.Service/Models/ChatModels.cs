@@ -14,12 +14,14 @@ public sealed class ChatCompletionRequest
 
 public sealed record ToolCall(string Id, string Name, string Arguments);
 
+// CachedTokens is the part of PromptTokens served from the provider's prompt cache (0 when unknown).
 public sealed record ChatCompletionResult(
     string Content,
     IReadOnlyList<ToolCall> ToolCalls,
     string? FinishReason,
     int PromptTokens,
-    int CompletionTokens)
+    int CompletionTokens,
+    int CachedTokens = 0)
 {
     public int TotalTokens => PromptTokens + CompletionTokens;
 }

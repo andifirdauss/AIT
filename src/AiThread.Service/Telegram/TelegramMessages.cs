@@ -243,6 +243,7 @@ public static class TelegramMessages
         ThreadStatus.Executing => ("⚙️", "Eksekusi"),
         ThreadStatus.Verifying => ("🔍", "Verifikasi"),
         ThreadStatus.Wrapping => ("📦", "Wrapping"),
+        ThreadStatus.AwaitingInput => ("❓", "Menunggu jawaban"),
         ThreadStatus.Completed when s.TasksFailed > 0 => ("⚠️", "Selesai sebagian"),
         ThreadStatus.Completed => ("✅", "Selesai"),
         ThreadStatus.Failed => ("❌", "Gagal"),

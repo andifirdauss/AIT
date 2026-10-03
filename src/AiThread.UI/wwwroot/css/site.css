@@ -311,6 +311,9 @@ body {
 
 .node-column {
   display: grid;
+  /* A fixed track: an auto track grows with the longest nowrap card line and pushes the card into the next column. */
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   grid-template-rows: subgrid;
   grid-row: span 2;
   row-gap: 0;

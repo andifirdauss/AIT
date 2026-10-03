@@ -11,5 +11,9 @@ public enum ThreadStatus
     Cancelled = 6,
 
     // Building the project and/or reviewing the changes, possibly with fix rounds; between Executing and Wrapping.
-    Verifying = 7
+    Verifying = 7,
+
+    // The planner asked the developer a question (ask_user) and the thread waits for the next prompt of the same
+    // session, which resumes planning where it stopped.
+    AwaitingInput = 8
 }

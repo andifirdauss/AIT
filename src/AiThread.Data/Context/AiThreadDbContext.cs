@@ -1,11 +1,13 @@
 using AiThread.Common.Entities;
 using AiThread.Common.Enums;
+using AiThread.Data.Memory;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AiThread.Data.Context;
 
-public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : DbContext(options)
+public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : DbContext(options), ILongMemoryDb
 {
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<AiNode> Nodes => Set<AiNode>();
@@ -16,6 +18,9 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
     public DbSet<LongMemory> LongMemories => Set<LongMemory>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<TelegramChat> TelegramChats => Set<TelegramChat>();
+    public DbSet<SkillSource> SkillSources => Set<SkillSource>();
+    public DbSet<Skill> Skills => Set<Skill>();
+    public DbSet<NodeSkill> NodeSkills => Set<NodeSkill>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -31,6 +36,11 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.NineRouterBaseUrl).HasMaxLength(500).IsRequired();
             e.Property(x => x.ProxyApiKey).HasMaxLength(200);
             e.Property(x => x.PassthroughModel).HasMaxLength(200);
+            e.Property(x => x.SkillOrchestratorModel).HasMaxLength(200);
+            e.OwnsOne(x => x.ShortMemoryStore, ConfigureMemoryStore);
+            e.OwnsOne(x => x.LongMemoryStore, ConfigureMemoryStore);
+            e.Navigation(x => x.ShortMemoryStore).IsRequired();
+            e.Navigation(x => x.LongMemoryStore).IsRequired();
         });
 
         modelBuilder.Entity<AiNode>(e =>
@@ -118,6 +128,53 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.HasOne(x => x.ActiveProject).WithMany().HasForeignKey(x => x.ActiveProjectId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.ChatId).IsUnique();
         });
+
+        modelBuilder.Entity<SkillSource>(e =>
+        {
+            e.ToTable("SkillSources");
+            e.Property(x => x.Url).HasMaxLength(800).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Ref).HasMaxLength(200);
+            e.Property(x => x.SubPath).HasMaxLength(500);
+            e.Property(x => x.Error).HasMaxLength(2000);
+            e.HasIndex(x => x.Url).IsUnique();
+        });
+
+        modelBuilder.Entity<Skill>(e =>
+        {
+            e.ToTable("Skills");
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Tags).HasMaxLength(500);
+            e.Property(x => x.RelativeDir).HasMaxLength(500).IsRequired();
+            e.Property(x => x.EntryFile).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Content).IsRequired();
+            e.Property(x => x.ContentHash).HasMaxLength(64).IsRequired();
+            e.HasOne(x => x.SkillSource).WithMany(s => s.Skills).HasForeignKey(x => x.SkillSourceId).OnDelete(DeleteBehavior.Cascade);
+            // A folder may hold several skill files (e.g. agents/*.md), so the entry file is part of the key.
+            e.HasIndex(x => new { x.SkillSourceId, x.RelativeDir, x.EntryFile }).IsUnique();
+        });
+
+        modelBuilder.Entity<NodeSkill>(e =>
+        {
+            e.ToTable("NodeSkills");
+            e.HasKey(x => new { x.AiNodeId, x.SkillId });
+            e.HasOne(x => x.AiNode).WithMany(n => n.Skills).HasForeignKey(x => x.AiNodeId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Skill).WithMany(s => s.Nodes).HasForeignKey(x => x.SkillId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.SkillId);
+        });
+    }
+
+    // Columns ShortMemoryStore_* / LongMemoryStore_* of SystemSettings.
+    private static void ConfigureMemoryStore(OwnedNavigationBuilder<SystemSetting, MemoryStoreSetting> b)
+    {
+        b.Property(x => x.Provider).HasConversion<string>().HasMaxLength(20);
+        b.Property(x => x.Host).HasMaxLength(255);
+        b.Property(x => x.Database).HasMaxLength(500);
+        b.Property(x => x.Username).HasMaxLength(200);
+        b.Property(x => x.Options).HasMaxLength(1000);
     }
 }
 

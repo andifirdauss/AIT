@@ -4,6 +4,7 @@ using AiThread.Service.Implementations;
 using AiThread.Service.Implementations.Cli;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Orchestration;
+using AiThread.Service.Skills;
 using AiThread.Service.Telegram;
 using AiThread.Service.Verification;
 using AiThread.Service.Workspace;
@@ -27,6 +28,13 @@ public static class DependencyInjection
         // The bot token is part of every Telegram URL, so this client must never log request URIs.
         services.AddHttpClient(TelegramApi.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan).RemoveAllLoggers();
 
+        // GitHub's API refuses requests without a User-Agent.
+        services.AddHttpClient(SkillFetcher.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(5);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("AiThread-SkillOrchestrator");
+        });
+
         services.AddScoped<IHealthService, HealthService>();
 
         // Stateless or self-synchronized services backed by IDbContextFactory: safe as singletons,
@@ -36,6 +44,7 @@ public static class DependencyInjection
         services.AddSingleton<INodeService, NodeService>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IMemoryService, MemoryService>();
+        services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
         services.AddSingleton<IThreadService, ThreadService>();
         services.AddSingleton<IDashboardService, DashboardService>();
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
@@ -48,6 +57,7 @@ public static class DependencyInjection
             configuration["AiThread:DocsPath"])));
 
         services.AddSingleton<ThreadRegistry>();
+        services.AddSingleton(_ => new PendingQuestionStore(TimeProvider.System));
         services.AddSingleton<NodeConcurrencyLimiter>();
         services.AddSingleton<FileLockProvider>();
         services.AddSingleton<PlannerAgent>();
@@ -68,10 +78,24 @@ public static class DependencyInjection
         services.AddSingleton<TelegramBot>();
         services.AddSingleton<ITelegramService, TelegramService>();
 
+        services.AddSingleton<SkillPaths>();
+        services.AddSingleton<NodePromptBuilder>();
+        services.AddSingleton<SkillImportQueue>();
+        services.AddSingleton<SkillImportProgress>();
+        services.AddSingleton<SkillFetcher>();
+        services.AddSingleton<SkillAi>();
+        services.AddSingleton<SkillCatalogAgent>();
+        services.AddSingleton<SkillImporter>();
+        services.AddSingleton<ISkillService, SkillService>();
+        services.AddSingleton<ISkillOrchestrator, SkillOrchestrator>();
+
+        // First, so memory is read from the configured stores by everything that starts after it.
+        services.AddHostedService<MemoryStorageInitializer>();
         services.AddHostedService<ActivityLogWriter>();
         services.AddHostedService<RouterMonitorWorker>();
         services.AddHostedService<MemoryConsolidationWorker>();
         services.AddHostedService<TelegramPollingWorker>();
+        services.AddHostedService<SkillImportWorker>();
 
         // Registered last so it stops first: cancelled threads can still log through ActivityLogWriter.
         services.AddHostedService<ThreadLifecycleWorker>();

@@ -5,6 +5,7 @@ using AiThread.Common.Enums;
 using AiThread.Common.Options;
 using AiThread.Data.Cache;
 using AiThread.Data.Context;
+using AiThread.Data.Memory;
 using AiThread.Data.Messaging;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
@@ -16,7 +17,8 @@ namespace AiThread.Service.Implementations;
 
 public sealed partial class MemoryService(
     IDbContextFactory<AiThreadDbContext> dbFactory,
-    IShortMemoryStore shortStore,
+    SwitchableShortMemoryStore shortStore,
+    LongMemoryStore longStore,
     IEventBus eventBus,
     IActivityLogService activityLog,
     IOptions<AiThreadOptions> options,
@@ -51,13 +53,13 @@ public sealed partial class MemoryService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Redis write failed; storing memory directly as long memory.");
+                logger.LogWarning(ex, "Short memory write failed; storing memory directly as long memory.");
             }
         }
 
-        // Redis unavailable: keep the memory rather than losing it.
+        // Short memory store unavailable: keep the memory rather than losing it.
         var entity = await InsertLongAsync(record, cancellationToken);
-        activityLog.Warn("memory", $"Redis tidak tersedia — memory '{record.Label}' langsung disimpan sebagai long memory.", sourceThreadId, record.ProjectId);
+        activityLog.Warn("memory", $"Penyimpanan short memory tidak tersedia — memory '{record.Label}' langsung disimpan sebagai long memory.", sourceThreadId, record.ProjectId);
         Publish("created", entity.Id);
         return ToDto(entity, await ProjectNameAsync(entity.ProjectId, cancellationToken));
     }
@@ -71,7 +73,7 @@ public sealed partial class MemoryService(
             .Select(r => new MemoryIndexEntry(r.Id, MemoryLevel.Short, r.Type, r.Label, r.CreatedAt))
             .ToList();
 
-        await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
+        await using (var db = await longStore.CreateAsync(cancellationToken))
         {
             var longEntries = await db.LongMemories.AsNoTracking()
                 .Where(m => m.Type == MemoryType.Knowledge || (projectId != null && m.ProjectId == projectId))
@@ -125,11 +127,12 @@ public sealed partial class MemoryService(
         var remaining = idList.Except(results.Select(r => r.Id)).ToList();
         if (remaining.Count == 0) return results;
 
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var longs = await db.LongMemories.AsNoTracking().Include(m => m.Project)
+        await using var db = await longStore.CreateAsync(cancellationToken);
+        var longs = await db.LongMemories.AsNoTracking()
             .Where(m => remaining.Contains(m.Id))
             .ToListAsync(cancellationToken);
-        results.AddRange(longs.Select(m => ToDto(m, m.Project?.Name)));
+        var names = await ProjectNamesAsync(cancellationToken);
+        results.AddRange(longs.Select(m => ToDto(m, NameOf(names, m.ProjectId))));
 
         // Usage statistics help to spot memories worth keeping.
         await db.LongMemories.Where(m => remaining.Contains(m.Id)).ExecuteUpdateAsync(s => s
@@ -145,6 +148,7 @@ public sealed partial class MemoryService(
         var pageSize = query.PageSize <= 0 ? 50 : Math.Clamp(query.PageSize, 1, 200);
         var search = query.Search?.Trim();
         var items = new List<MemoryItemDto>();
+        var names = await ProjectNamesAsync(cancellationToken);
 
         if (query.Level is null or MemoryLevel.Short)
         {
@@ -154,20 +158,19 @@ public sealed partial class MemoryService(
                 && (string.IsNullOrEmpty(search)
                     || r.Label.Contains(search, StringComparison.OrdinalIgnoreCase)
                     || r.Description.Contains(search, StringComparison.OrdinalIgnoreCase)));
-            var names = await ProjectNamesAsync(cancellationToken);
-            items.AddRange(shorts.Select(r => ToDto(r, r.ProjectId is { } pid ? names.GetValueOrDefault(pid) : null)));
+            items.AddRange(shorts.Select(r => ToDto(r, NameOf(names, r.ProjectId))));
         }
 
         if (query.Level is null or MemoryLevel.Long)
         {
-            await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-            var longQuery = db.LongMemories.AsNoTracking().Include(m => m.Project).AsQueryable();
+            await using var db = await longStore.CreateAsync(cancellationToken);
+            var longQuery = db.LongMemories.AsNoTracking().AsQueryable();
             if (query.Type is { } type) longQuery = longQuery.Where(m => m.Type == type);
             if (query.ProjectId is { } projectId) longQuery = longQuery.Where(m => m.ProjectId == projectId);
             if (!string.IsNullOrEmpty(search)) longQuery = longQuery.Where(m => m.Label.Contains(search) || m.Description.Contains(search));
 
             var longs = await longQuery.OrderByDescending(m => m.CreatedAt).Take(page * pageSize + 500).ToListAsync(cancellationToken);
-            items.AddRange(longs.Select(m => ToDto(m, m.Project?.Name)));
+            items.AddRange(longs.Select(m => ToDto(m, NameOf(names, m.ProjectId))));
         }
 
         var ordered = items.OrderByDescending(i => i.CreatedAt).ToList();
@@ -182,9 +185,9 @@ public sealed partial class MemoryService(
             return record is null ? null : await ToDtoAsync(record, cancellationToken);
         }
 
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        var entity = await db.LongMemories.AsNoTracking().Include(m => m.Project).FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-        return entity is null ? null : ToDto(entity, entity.Project?.Name);
+        await using var db = await longStore.CreateAsync(cancellationToken);
+        var entity = await db.LongMemories.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+        return entity is null ? null : ToDto(entity, await ProjectNameAsync(entity.ProjectId, cancellationToken));
     }
 
     public async Task<MemoryItemDto?> UpdateAsync(MemoryLevel level, Guid id, SaveMemoryRequest request, CancellationToken cancellationToken = default)
@@ -194,7 +197,7 @@ public sealed partial class MemoryService(
 
         if (level == MemoryLevel.Short)
         {
-            EnsureRedis();
+            EnsureShortStore();
             var record = await shortStore.GetAsync(id);
             if (record is null) return null;
 
@@ -204,7 +207,7 @@ public sealed partial class MemoryService(
             return await ToDtoAsync(updated, cancellationToken);
         }
 
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await using var db = await longStore.CreateAsync(cancellationToken);
         var entity = await db.LongMemories.FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
         if (entity is null) return null;
 
@@ -223,13 +226,13 @@ public sealed partial class MemoryService(
         bool deleted;
         if (level == MemoryLevel.Short)
         {
-            EnsureRedis();
+            EnsureShortStore();
             deleted = await shortStore.DeleteAsync(id);
         }
         else
         {
-            await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-            deleted = await db.LongMemories.Where(m => m.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
+            await using var db = await longStore.CreateAsync(cancellationToken);
+            deleted =await db.LongMemories.Where(m => m.Id == id).ExecuteDeleteAsync(cancellationToken) > 0;
         }
 
         if (deleted) Publish("deleted", id);
@@ -238,7 +241,7 @@ public sealed partial class MemoryService(
 
     public async Task<bool> PromoteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        EnsureRedis();
+        EnsureShortStore();
         var record = await shortStore.GetAsync(id);
         if (record is null) return false;
 
@@ -282,7 +285,7 @@ public sealed partial class MemoryService(
     public async Task<MemoryStatsDto> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         var shorts = await SafeShortAsync();
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await using var db = await longStore.CreateAsync(cancellationToken);
         var longByType = await db.LongMemories.AsNoTracking()
             .GroupBy(m => m.Type)
             .Select(g => new { Type = g.Key, Count = g.Count() })
@@ -291,19 +294,20 @@ public sealed partial class MemoryService(
         var longCount = longByType.Sum(x => x.Count);
         var projectCount = shorts.Count(r => r.Type == MemoryType.Project) + longByType.Where(x => x.Type == MemoryType.Project).Sum(x => x.Count);
         var knowledgeCount = shorts.Count(r => r.Type == MemoryType.Knowledge) + longByType.Where(x => x.Type == MemoryType.Knowledge).Sum(x => x.Count);
-        return new MemoryStatsDto(shorts.Count, longCount, projectCount, knowledgeCount, shortStore.IsConnected);
+        return new MemoryStatsDto(shorts.Count, longCount, projectCount, knowledgeCount, shortStore.IsConnected,
+            shortStore.Description, longStore.Description);
     }
 
     // Idempotent: the long row keeps the short memory id, so a retried consolidation never duplicates.
     private async Task<LongMemory> InsertLongAsync(ShortMemoryRecord record, CancellationToken cancellationToken)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        await using var db = await longStore.CreateAsync(cancellationToken);
         var existing = await db.LongMemories.FirstOrDefaultAsync(m => m.Id == record.Id, cancellationToken);
         if (existing is not null) return existing;
 
-        // The project may have been deleted while the memory waited in Redis.
+        // The project may have been deleted while the memory waited in short memory.
         var projectId = record.ProjectId;
-        if (projectId is { } pid && !await db.Projects.AnyAsync(p => p.Id == pid, cancellationToken)) projectId = null;
+        if (projectId is { } pid && !await ProjectExistsAsync(pid, cancellationToken)) projectId = null;
 
         var entity = new LongMemory
         {
@@ -330,14 +334,15 @@ public sealed partial class MemoryService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Could not read short memories from Redis.");
+            logger.LogWarning(ex, "Could not read short memories from {Store}.", shortStore.Description);
             return [];
         }
     }
 
-    private void EnsureRedis()
+    private void EnsureShortStore()
     {
-        if (!shortStore.IsConnected) throw new AppValidationException("Redis tidak terhubung — short memory tidak dapat diakses.");
+        if (!shortStore.IsConnected)
+            throw new AppValidationException($"Penyimpanan short memory ({shortStore.Description}) tidak terhubung — short memory tidak dapat diakses.");
     }
 
     private void Publish(string action, Guid? id) =>
@@ -347,6 +352,15 @@ public sealed partial class MemoryService(
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         return await db.Projects.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+    }
+
+    private static string? NameOf(Dictionary<Guid, string> names, Guid? projectId) =>
+        projectId is { } id ? names.GetValueOrDefault(id) : null;
+
+    private async Task<bool> ProjectExistsAsync(Guid projectId, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.Projects.AnyAsync(p => p.Id == projectId, cancellationToken);
     }
 
     private async Task<string?> ProjectNameAsync(Guid? projectId, CancellationToken cancellationToken)
