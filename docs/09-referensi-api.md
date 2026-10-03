@@ -158,7 +158,7 @@ Tab Skill di halaman Setting dan saran skill di modal Node — lihat [Skill pada
 | `POST` | `/api/skills/sources` | `{ "url": "https://github.com/anthropics/skills" }` — link tidak valid atau sudah ada → `400`; penarikan berjalan di latar belakang |
 | `POST` | `/api/skills/sources/{id}/sync` | — ; menarik ulang (`400` bila masih diproses) |
 | `DELETE` | `/api/skills/sources/{id}` | — ; menghapus sumber, skill-nya (dan lampirannya di node), serta foldernya |
-| `GET` | `/api/skills?query=` | daftar skill (`id`, `sourceId`, `sourceName`, `name`, `description`, `tags`, `relativeDir`, `nodeCount`); `query` mencari di nama, deskripsi, tag, sumber |
+| `GET` | `/api/skills?query=` | daftar skill (`id`, `sourceId`, `sourceName`, `name`, `description`, `tags`, `relativeDir`, `nodeCount`, `snippet`); `query` mencari di nama, deskripsi, tag, sumber, dan isi skill — hasil yang cocok di nama/deskripsi diurutkan duluan, yang hanya cocok di isi membawa `snippet` (potongan teks di sekitar kata kunci) |
 | `GET` | `/api/skills/{id}` | detail + `content`, `folder`, `entryFile`, `files[]`, `nodeNames[]` |
 | `POST` | `/api/skills/suggest` | `{ "prompt": "aku butuh kamu bisa menjadi engineer yang handal", "role": "Executor" }` → maks 6 saran (`id`, `name`, `description`, `sourceName`, `reason`, `score` 0–1, `recommended`). Gudang kosong → `400`; 9router gagal → `502`. |
 

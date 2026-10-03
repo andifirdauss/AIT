@@ -89,7 +89,8 @@ Lihat [Memory](06-memory.md) untuk konsepnya.
 Lima kolom: Planner, Executor, Reviewer (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
 prioritas, penanda *📝 instruksi* bila ada instruksi tambahan (isinya di tooltip), penanda *🧩 n* bila node memakai n skill
 (namanya di tooltip), dengan tombol *Test*, *Edit*, *Hapus*. Di modal node, bagian *Skill* menampilkan skill terpasang
-sebagai chip. Kolom *Butuh kemampuan apa?* + **Cari skill** meminta Skill Orchestrator mencarikan skill yang cocok
+sebagai chip. Kolom *Cari sendiri di gudang* membuka dropdown skill yang cocok dengan nama, deskripsi, tag, sumber,
+atau isi skill (potongan isi yang cocok ditampilkan); klik item untuk memasang/melepas. Kolom *Butuh kemampuan apa?* + **Cari skill** meminta Skill Orchestrator mencarikan skill yang cocok
 dari gudang (lihat [Skill pada node](07-cara-kerja.md#skill-pada-node)).
 Panel *Panduan* di atas kolom menjelaskan arti angka-angka tersebut; panel bisa dilipat dan keadaannya diingat browser. *Muat ulang model 9router* menyegarkan daftar
 model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-node).

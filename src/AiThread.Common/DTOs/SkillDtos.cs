@@ -31,7 +31,8 @@ public record SkillDto(
     string Description,
     string? Tags,
     string RelativeDir,
-    int NodeCount);
+    int NodeCount,
+    string? Snippet = null);
 
 public record SkillDetailDto(
     Guid Id,

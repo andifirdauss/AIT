@@ -120,7 +120,7 @@ kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 | Max paralel | Planner 2 · Executor 6 · Reviewer 2 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
 | Prioritas | 100 | Angka kecil diutamakan. |
 | Instruksi tambahan | kosong | Ditambahkan di akhir prompt bawaan peran, mis. konvensi coding tim. |
-| Skill | kosong | Skill dari gudang (maks 10). Tulis kebutuhan di *Butuh kemampuan apa?* lalu klik **Cari skill**: Skill Orchestrator menyarankan skill yang cocok beserta alasannya, Anda centang, lalu **Terapkan** dan **Simpan**. Isi skill ditempel ke system prompt node setelah instruksi tambahan; field *Instruksi tambahan* tidak berubah. |
+| Skill | kosong | Skill dari gudang (maks 10). Cari sendiri lewat dropdown *Cari sendiri di gudang* (cocok dengan nama, deskripsi, tag, atau isi skill; klik untuk memasang/melepas), atau tulis kebutuhan di *Butuh kemampuan apa?* lalu klik **Cari skill**: Skill Orchestrator menyarankan skill yang cocok beserta alasannya, Anda centang, lalu **Terapkan** dan **Simpan**. Isi skill ditempel ke system prompt node setelah instruksi tambahan; field *Instruksi tambahan* tidak berubah. |
 | Aktif | aktif | Node nonaktif tidak dipakai. |
 
 Tombol **Test** mengirim prompt singkat ("Reply with exactly one word: pong") dan menampilkan latency, token, dan

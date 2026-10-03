@@ -259,6 +259,8 @@
     nodeSkills = (node?.skills || []).map(s => ({ ...s }));
     el('nodeSkillPrompt').value = '';
     el('nodeSkillSuggestions').innerHTML = '';
+    el('nodeSkillSearch').value = '';
+    el('nodeSkillSearchResults').classList.remove('show');
     renderSkillChips();
     el('nodeActive').checked = node?.isActive ?? true;
     if (node) {
@@ -358,6 +360,96 @@
     if (!button) return;
     nodeSkills.splice(Number(button.dataset.removeSkill), 1);
     renderSkillChips();
+    if (el('nodeSkillSearchResults').classList.contains('show')) renderSearchResults();
+  });
+
+  // --- Manual search: dropdown over the skill store, matching name, description, tags, source and SKILL.md content ---
+
+  const maxSearchResults = 50;
+  let searchResults = [];
+  let searchTerms = [];
+  let searchSeq = 0;
+
+  function highlight(text, terms) {
+    const safe = escapeHtml(text || '');
+    if (!terms.length) return safe;
+    const pattern = terms.map(t => escapeHtml(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    return safe.replace(new RegExp(`(${pattern})`, 'gi'), '<mark class="px-0">$1</mark>');
+  }
+
+  function renderSearchResults(message) {
+    const target = el('nodeSkillSearchResults');
+    if (message) {
+      target.innerHTML = `<div class="dropdown-item-text small text-secondary">${message}</div>`;
+    } else if (!searchResults.length) {
+      target.innerHTML = searchTerms.length
+        ? '<div class="dropdown-item-text small text-secondary">Tidak ada skill yang cocok.</div>'
+        : '<div class="dropdown-item-text small text-secondary">Gudang skill kosong. Tambahkan sumber di <a href="/Setting#skills">Setting → Skill</a>.</div>';
+    } else {
+      const shown = searchResults.slice(0, maxSearchResults);
+      target.innerHTML = shown.map((s, i) => {
+        const attached = nodeSkills.some(n => n.id === s.id);
+        return `<button type="button" class="dropdown-item text-wrap border-bottom py-2 ${attached ? 'active' : ''}" data-search-result="${i}">
+          <span class="fw-semibold">${attached ? '✓ ' : ''}${highlight(s.name, searchTerms)}</span>
+          <span class="small text-secondary">· ${escapeHtml(s.sourceName)}${attached ? ' · terpasang (klik untuk melepas)' : ''}</span>
+          <span class="d-block small">${highlight(s.description, searchTerms)}</span>
+          ${s.snippet ? `<span class="d-block small text-secondary fst-italic">isi: ${highlight(s.snippet, searchTerms)}</span>` : ''}
+        </button>`;
+      }).join('') + (searchResults.length > shown.length
+        ? `<div class="dropdown-item-text small text-secondary">${searchResults.length - shown.length} skill lain — persempit kata kunci.</div>`
+        : '');
+    }
+    target.classList.add('show');
+  }
+
+  async function searchSkills() {
+    const query = el('nodeSkillSearch').value.trim();
+    const seq = ++searchSeq;
+    renderSearchResults('Mencari…');
+    try {
+      const results = await api.get(`/api/skills${query ? `?query=${encodeURIComponent(query)}` : ''}`);
+      if (seq !== searchSeq) return;
+      searchResults = results;
+      searchTerms = query.split(/\s+/).filter(Boolean);
+      renderSearchResults();
+    } catch (error) {
+      if (seq === searchSeq) renderSearchResults(`<span class="text-danger">${escapeHtml(error.message)}</span>`);
+    }
+  }
+
+  function closeSearch() {
+    el('nodeSkillSearchResults').classList.remove('show');
+  }
+
+  el('nodeSkillSearch').addEventListener('input', debounce(searchSkills, 250));
+  el('nodeSkillSearch').addEventListener('focus', searchSkills);
+  el('nodeSkillSearch').addEventListener('keydown', event => {
+    if (event.key === 'Escape' && el('nodeSkillSearchResults').classList.contains('show')) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeSearch();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+    }
+  });
+  el('nodeSkillSearchResults').addEventListener('mousedown', event => event.preventDefault());
+  el('nodeSkillSearchResults').addEventListener('click', event => {
+    const item = event.target.closest('[data-search-result]');
+    if (!item) return;
+    const skill = searchResults[Number(item.dataset.searchResult)];
+    const index = nodeSkills.findIndex(n => n.id === skill.id);
+    if (index >= 0) {
+      nodeSkills.splice(index, 1);
+    } else if (nodeSkills.length >= maxSkills) {
+      return toast(`Satu node maksimal ${maxSkills} skill.`, 'info');
+    } else {
+      nodeSkills.push({ id: skill.id, name: skill.name, description: skill.description, sourceName: skill.sourceName });
+    }
+    renderSkillChips();
+    renderSearchResults();
+  });
+  document.addEventListener('click', event => {
+    if (!el('nodeSkillSearchBox').contains(event.target)) closeSearch();
   });
 
   function renderSuggestions() {
