@@ -155,6 +155,11 @@
                                 <span class="small text-secondary" id="nodeSkillHint">Isi skill ditempel ke system prompt node, sesudah instruksi tambahan.</span>
                             </div>
                             <div class="d-flex flex-wrap gap-1 mb-2" id="nodeSkillChips"></div>
+                            <label class="form-label small" for="nodeSkillSearch">Cari sendiri di gudang — nama, deskripsi, tag, atau isi skill.</label>
+                            <div class="dropdown mb-2" id="nodeSkillSearchBox">
+                                <input type="search" class="form-control" id="nodeSkillSearch" autocomplete="off" placeholder="Ketik untuk mencari, mis. code review, TDD, debugging…" aria-controls="nodeSkillSearchResults" />
+                                <div class="dropdown-menu w-100 overflow-auto py-0" id="nodeSkillSearchResults" style="max-height: 320px"></div>
+                            </div>
                             <label class="form-label small" for="nodeSkillPrompt">Butuh kemampuan apa? Skill Orchestrator mencarikan skill yang cocok dari gudang.</label>
                             <div class="d-flex gap-2">
                                 <textarea class="form-control" id="nodeSkillPrompt" rows="2" maxlength="2000" placeholder="mis. aku butuh kamu bisa menjadi engineer yang handal"></textarea>
