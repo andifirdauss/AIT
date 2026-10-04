@@ -103,6 +103,7 @@ Status thread:
 | Selesai | Planner menjawab langsung, atau minimal satu tugas berhasil (tugas lain yang gagal, dan error build/temuan reviewer yang tersisa setelah verifikasi, dicatat di kolom error). |
 | Gagal | Tidak ada tugas berhasil, atau planner/9router gagal. Pesan penyebab tampil di Claude Code dan di detail thread. |
 | Dibatalkan | Dihentikan oleh Anda. |
+| Perubahan dibatalkan | Perubahan file thread ini sudah dikembalikan lewat **Batalkan perubahan file** (lihat di bawah). |
 
 ## Membatalkan
 
@@ -110,7 +111,49 @@ Status thread:
 - Atau buka detail thread → **Batalkan thread**.
 
 Tugas yang belum selesai dihentikan dan tidak menulis apa pun. Tugas yang **sudah** selesai sebelum pembatalan tetap
-tersimpan di file — periksa dengan `git status`.
+tersimpan di file. Untuk mengembalikannya, pakai **Batalkan perubahan file** (di bawah).
+
+## Mengulang tugas yang gagal
+
+Detail thread → **🔁 Ulangi yang gagal** (muncul bila thread sudah selesai, gagal, atau dibatalkan dan masih ada tugas
+rencana yang belum berhasil).
+
+- Rencana yang tersimpan dipakai lagi; **planner tidak dipanggil**, jadi tidak ada biaya planner.
+- Yang dijalankan ulang hanya tugas rencana yang gagal, dilewati, atau dibatalkan. Tugas yang sudah berhasil tidak
+  diulang, dan dependensi ke tugas itu dianggap terpenuhi.
+- Setelah itu verifikasi (build/reviewer) dan wrapper berjalan lagi atas seluruh hasil thread. Tugas perbaikan lama
+  yang tidak berhasil ditandai *Dilewati* karena digantikan oleh verifikasi baru.
+- Semuanya tercatat di thread yang sama; jumlahnya tampil di *Percobaan ulang* pada panel waktu & token.
+- Berguna setelah rate limit, setelah menambah node Executor yang tadinya belum ada, atau setelah memperbaiki
+  konfigurasi model.
+
+## Membatalkan perubahan file (rollback)
+
+Detail thread → **↩ Batalkan perubahan file** mengembalikan semua file yang diubah thread ini ke keadaan sebelum
+thread berjalan.
+
+Cara kerjanya:
+
+1. **Sebelum** executor menulis sebuah file untuk pertama kali dalam thread, isi aslinya disimpan di database apa
+   adanya (byte demi byte, termasuk encoding dan akhir baris). File yang belum ada dicatat sebagai "belum ada".
+   Penulisan berikutnya di thread yang sama (putaran perbaikan, percobaan ulang) tidak menimpa catatan ini.
+2. **Setelah** setiap penulisan, sidik jari (hash SHA-256) isi yang ditulis AiThread ikut dicatat.
+3. Tombol ini membuka pratinjau per file:
+   - *Dikembalikan ke isi asli*: isi file sekarang masih persis hasil thread ini.
+   - *Dihapus*: file dibuat oleh thread ini dan isinya belum diubah orang lain.
+   - *Sudah sama dengan aslinya*: tidak ada yang perlu dilakukan.
+   - *Sudah berubah lagi*: file diedit setelah thread ini (oleh Anda atau thread lain), atau dihapus.
+4. **Semua atau tidak sama sekali**: bila ada satu saja file *Sudah berubah lagi*, pembatalan ditolak dan **tidak ada
+   file yang disentuh**. Kembalikan file itu secara manual (mis. lewat git), atau batalkan dulu thread yang lebih baru,
+   lalu coba lagi.
+5. Setelah berhasil, status thread menjadi *Perubahan dibatalkan*. Thread itu tidak bisa diulang atau dibatalkan lagi.
+
+Batasan:
+
+- Hanya bisa saat thread tidak sedang berjalan.
+- Hanya mencakup file yang ditulis executor AiThread, bukan perubahan lain (mis. output build).
+- Folder yang dibuat thread untuk file baru tidak ikut dihapus.
+- Thread yang berjalan sebelum fitur ini ada tidak punya catatan, jadi tidak bisa dibatalkan.
 
 ## Menjalankan prompt dari Dashboard
 

@@ -9,6 +9,7 @@ using AiThread.Data.Messaging;
 using AiThread.Service;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
+using AiThread.Service.Orchestration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,8 +60,6 @@ public sealed class OrchestrationHarness : IAsyncDisposable
 
     public RecordingMemoryService Memory { get; } = new();
 
-    public IThreadOrchestrator Orchestrator => _services.GetRequiredService<IThreadOrchestrator>();
-
     private Action<SystemSetting>? ConfigureSettings { get; }
 
     // Build is off by default so tests never spawn a compiler; reviewer-driven verification still runs.
@@ -71,9 +70,19 @@ public sealed class OrchestrationHarness : IAsyncDisposable
         return harness;
     }
 
-    public async Task<AiNode> AddNodeAsync(NodeRole role, string model, int priority = 100)
+    public IThreadOrchestrator Orchestrator => _services.GetRequiredService<IThreadOrchestrator>();
+
+    public ThreadRollback Rollback => _services.GetRequiredService<ThreadRollback>();
+
+    public INodeService Nodes => _services.GetRequiredService<INodeService>();
+
+    public async Task<AiNode> AddNodeAsync(NodeRole role, string model, int priority = 100, bool isActive = true, Guid? fallbackNodeId = null)
     {
-        var node = new AiNode { Name = $"{role}-{model}", Role = role, Model = model, Priority = priority, MaxConcurrency = 4 };
+        var node = new AiNode
+        {
+            Name = $"{role}-{model}", Role = role, Model = model, Priority = priority, MaxConcurrency = 4,
+            IsActive = isActive, FallbackNodeId = fallbackNodeId
+        };
         await using var db = await CreateDbAsync();
         db.Nodes.Add(node);
         await db.SaveChangesAsync();
@@ -96,6 +105,14 @@ public sealed class OrchestrationHarness : IAsyncDisposable
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(30));
         var result = await Orchestrator.RunAsync(request, observer, timeout.Token);
+        return (result, observer);
+    }
+
+    public async Task<(ThreadResult Result, RecordingObserver Observer)> RetryAsync(Guid threadId)
+    {
+        var observer = new RecordingObserver();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var result = await Orchestrator.RetryAsync(threadId, observer, timeout.Token);
         return (result, observer);
     }
 

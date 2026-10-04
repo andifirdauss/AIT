@@ -24,6 +24,11 @@ public class AiNode : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
+    // Optional node of the same role that takes over a call this node cannot answer (rate limit, overload, timeout),
+    // after 9router's own retries. It may be inactive: a pure backup that gets no work of its own. Its own fallback
+    // forms a chain; cycles are rejected when saving.
+    public Guid? FallbackNodeId { get; set; }
+
     // Skills from the skill store, put in the system prompt after the additional instructions.
     public List<NodeSkill> Skills { get; set; } = [];
 }

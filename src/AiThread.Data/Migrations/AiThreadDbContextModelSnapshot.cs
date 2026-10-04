@@ -72,6 +72,9 @@ namespace AiThread.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("FallbackNodeId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -109,6 +112,8 @@ namespace AiThread.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FallbackNodeId");
 
                     b.HasIndex("Role", "IsActive");
 
@@ -500,6 +505,48 @@ namespace AiThread.Data.Migrations
                     b.ToTable("TelegramChats", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.ThreadFileSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AfterHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Existed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasMaxLength(800)
+                        .HasColumnType("nvarchar(800)");
+
+                    b.Property<byte[]>("OriginalContent")
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("OriginalHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("ThreadRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ThreadRunId", "FilePath")
+                        .IsUnique();
+
+                    b.ToTable("ThreadFileSnapshots", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.ThreadRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -560,12 +607,18 @@ namespace AiThread.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("ReviewerModel")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("ReviewerTokens")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("RolledBackAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("SessionId")
                         .HasMaxLength(100)
@@ -711,6 +764,14 @@ namespace AiThread.Data.Migrations
                     b.ToTable("ThreadTasks", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.AiNode", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.AiNode", null)
+                        .WithMany()
+                        .HasForeignKey("FallbackNodeId")
+                        .OnDelete(DeleteBehavior.NoAction);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.LongMemory", b =>
                 {
                     b.HasOne("AiThread.Common.Entities.Project", "Project")
@@ -848,6 +909,17 @@ namespace AiThread.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ActiveProject");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.ThreadFileSnapshot", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.ThreadRun", "ThreadRun")
+                        .WithMany()
+                        .HasForeignKey("ThreadRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ThreadRun");
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.ThreadRun", b =>

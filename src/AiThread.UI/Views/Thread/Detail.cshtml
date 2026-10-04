@@ -9,7 +9,41 @@
         <h1 class="mt-1">Thread <span class="mono text-secondary" id="threadShortId"></span> <span id="threadStatus"></span></h1>
         <p class="page-subtitle" id="threadMeta">Memuat…</p>
     </div>
-    <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCancel">Batalkan thread</button>
+    <div class="d-flex gap-2 flex-wrap justify-content-end">
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetry" title="Jalankan lagi tugas yang gagal, dilewati, atau dibatalkan memakai rencana yang sama (planner tidak dipanggil).">🔁 Ulangi yang gagal</button>
+        <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnRollback" title="Kembalikan semua file yang diubah thread ini ke isi sebelum thread berjalan.">↩ Batalkan perubahan file</button>
+        <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCancel">Batalkan thread</button>
+    </div>
+</div>
+
+<div class="modal fade" id="rollbackModal" tabindex="-1" aria-labelledby="rollbackModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rollbackModalTitle">Batalkan perubahan file</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-secondary">
+                    Sebelum executor menulis sebuah file untuk pertama kali, AiThread menyimpan isi aslinya. Pembatalan mengembalikan
+                    isi asli itu (atau menghapus file yang dibuat thread ini). Supaya pekerjaan lain tidak hilang, sebuah file hanya
+                    dikembalikan bila isinya <strong>masih persis</strong> hasil thread ini. Kalau ada satu saja file yang sudah berubah lagi
+                    (diedit developer atau thread lain), <strong>pembatalan ditolak seluruhnya</strong> dan tidak ada file yang disentuh.
+                </p>
+                <div id="rollbackReason"></div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>File</th><th>Yang akan terjadi</th></tr></thead>
+                        <tbody id="rollbackRows"><tr><td colspan="2" class="text-secondary">Memeriksa file…</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-warning" id="btnRollbackConfirm" disabled>Batalkan perubahan</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row g-3">
