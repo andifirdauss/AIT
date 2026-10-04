@@ -20,6 +20,9 @@ public interface INodeService
     // Active nodes of a role ordered by priority.
     Task<IReadOnlyList<AiNode>> GetActiveAsync(NodeRole role, CancellationToken cancellationToken = default);
 
+    // A node with its skills whether active or not: the fallback a failing node hands its call to.
+    Task<AiNode?> GetNodeAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<PipelineStatusDto> GetPipelineStatusAsync(CancellationToken cancellationToken = default);
 
     Task<NodeTestResultDto> TestAsync(Guid id, CancellationToken cancellationToken = default);

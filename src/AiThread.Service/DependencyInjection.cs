@@ -59,6 +59,8 @@ public static class DependencyInjection
         services.AddSingleton<ThreadRegistry>();
         services.AddSingleton(_ => new PendingQuestionStore(TimeProvider.System));
         services.AddSingleton<NodeConcurrencyLimiter>();
+        services.AddSingleton<NodeCaller>();
+        services.AddSingleton<ThreadRollback>();
         services.AddSingleton<FileLockProvider>();
         services.AddSingleton<PlannerAgent>();
         services.AddSingleton<ExecutorAgent>();

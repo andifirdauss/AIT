@@ -16,6 +16,17 @@ public sealed class ThreadRegistry
         return source;
     }
 
+    // Null when the thread is already registered: a retry or rollback must not start while it runs.
+    public CancellationTokenSource? TryRegister(Guid threadId, CancellationToken externalToken)
+    {
+        var source = CancellationTokenSource.CreateLinkedTokenSource(externalToken);
+        if (_running.TryAdd(threadId, source)) return source;
+        source.Dispose();
+        return null;
+    }
+
+    public bool IsRunning(Guid threadId) => _running.ContainsKey(threadId);
+
     public bool Cancel(Guid threadId)
     {
         if (!_running.TryGetValue(threadId, out var source)) return false;

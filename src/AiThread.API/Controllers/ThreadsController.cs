@@ -2,13 +2,14 @@ using AiThread.Common.DTOs;
 using AiThread.Common.Enums;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
+using AiThread.Service.Orchestration;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AiThread.API.Controllers;
 
 [ApiController]
 [Route("api/threads")]
-public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator) : ControllerBase
+public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, ThreadRollback rollback) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ThreadSummaryDto>>>> GetRecent([FromQuery] int take = 30, [FromQuery] Guid? projectId = null, CancellationToken cancellationToken = default) =>
@@ -43,4 +44,24 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
         threadService.Cancel(id)
             ? ApiResponse<bool>.Ok(true, "Pembatalan dikirim.")
             : NotFound(ApiResponse<bool>.Fail("Thread tidak sedang berjalan."));
+
+    // Runs the planned tasks that did not succeed again from the stored plan; progress arrives over SSE.
+    [HttpPost("{id:guid}/retry")]
+    public async Task<ActionResult<ApiResponse<Guid>>> Retry(Guid id, CancellationToken cancellationToken) =>
+        ApiResponse<Guid>.Ok(await orchestrator.RetryInBackgroundAsync(id, cancellationToken), "Tugas yang gagal dijalankan ulang.");
+
+    // What undoing the thread's file changes would do, file by file, without touching anything.
+    [HttpGet("{id:guid}/rollback")]
+    public async Task<ActionResult<ApiResponse<RollbackPreviewDto>>> RollbackPreview(Guid id, CancellationToken cancellationToken) =>
+        await rollback.PreviewAsync(id, cancellationToken) is { } preview
+            ? ApiResponse<RollbackPreviewDto>.Ok(preview)
+            : NotFound(ApiResponse<RollbackPreviewDto>.Fail("Thread tidak ditemukan."));
+
+    // Undoes the thread's file changes; refused as a whole (400) when any file changed after the thread.
+    [HttpPost("{id:guid}/rollback")]
+    public async Task<ActionResult<ApiResponse<RollbackResultDto>>> Rollback(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await rollback.RollbackAsync(id, cancellationToken);
+        return ApiResponse<RollbackResultDto>.Ok(result, $"Perubahan dibatalkan: {result.Restored} file dikembalikan, {result.Deleted} file dihapus.");
+    }
 }

@@ -9,10 +9,10 @@ namespace AiThread.Tests;
 // real services, a SQLite database and a real project folder; only the models are scripted (ScriptedRouter).
 public class ThreadOrchestratorTests
 {
-    private const string GreeterFile = "src/Greeter.cs";
-    private const string FarewellFile = "src/Farewell.cs";
+    internal const string GreeterFile = "src/Greeter.cs";
+    internal const string FarewellFile = "src/Farewell.cs";
 
-    private const string Greeter = """
+    internal const string Greeter = """
         namespace Demo;
 
         public class Greeter
@@ -22,8 +22,8 @@ public class ThreadOrchestratorTests
 
         """;
 
-    private const string HelloLine = """    public string Hello() => "Hi";""";
-    private const string HalloLine = """    public string Hello() => "Halo";""";
+    internal const string HelloLine = """    public string Hello() => "Hi";""";
+    internal const string HalloLine = """    public string Hello() => "Halo";""";
 
     [Fact]
     public async Task Plans_executes_dependent_tasks_wraps_and_extracts_memory()
@@ -206,11 +206,11 @@ public class ThreadOrchestratorTests
     }
 
     [Fact]
-    public async Task Rate_limited_planner_hands_over_to_the_next_one()
+    public async Task Rate_limited_planner_hands_over_to_its_fallback_node()
     {
         await using var harness = await CreateAsync(addNodes: false);
-        await harness.AddNodeAsync(NodeRole.Planner, "planner-main", priority: 1);
-        await harness.AddNodeAsync(NodeRole.Planner, "planner-backup", priority: 2);
+        var backup = await harness.AddNodeAsync(NodeRole.Planner, "planner-backup", priority: 2);
+        await harness.AddNodeAsync(NodeRole.Planner, "planner-main", priority: 1, fallbackNodeId: backup.Id);
         await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
         var router = harness.Router;
         router
@@ -340,7 +340,7 @@ public class ThreadOrchestratorTests
         Assert.NotNull(thread.CompletedAt);
     }
 
-    private static async Task<OrchestrationHarness> CreateAsync(bool addNodes = true)
+    internal static async Task<OrchestrationHarness> CreateAsync(bool addNodes = true)
     {
         var harness = await OrchestrationHarness.CreateAsync();
         harness.Project.Write(GreeterFile, Greeter);
@@ -348,7 +348,7 @@ public class ThreadOrchestratorTests
         return harness;
     }
 
-    private static PlanTask Step(string id, string file, string instruction, string action = "edit", params string[] dependsOn) => new()
+    internal static PlanTask Step(string id, string file, string instruction, string action = "edit", params string[] dependsOn) => new()
     {
         Id = id,
         Title = instruction,

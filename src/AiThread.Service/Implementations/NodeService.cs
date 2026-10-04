@@ -22,14 +22,15 @@ public sealed class NodeService(
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var nodes = await WithSkills(db.Nodes.AsNoTracking()).ToListAsync(cancellationToken);
-        return nodes.OrderBy(n => n.Role).ThenBy(n => n.Priority).ThenBy(n => n.Name).Select(ToDto).ToList();
+        var names = nodes.ToDictionary(n => n.Id, n => n.Name);
+        return nodes.OrderBy(n => n.Role).ThenBy(n => n.Priority).ThenBy(n => n.Name).Select(n => ToDto(n, names)).ToList();
     }
 
     public async Task<NodeDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var node = await WithSkills(db.Nodes.AsNoTracking()).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
-        return node is null ? null : ToDto(node);
+        return node is null ? null : ToDto(node, await FallbackNamesAsync(db, node, cancellationToken));
     }
 
     public async Task<NodeDto> CreateAsync(SaveNodeRequest request, CancellationToken cancellationToken = default)
@@ -38,13 +39,15 @@ public sealed class NodeService(
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var node = new AiNode();
         Apply(node, request);
+        await ValidateFallbackAsync(db, node, cancellationToken);
         await ApplySkillsAsync(db, node, request.SkillIds, cancellationToken);
         db.Nodes.Add(node);
         await db.SaveChangesAsync(cancellationToken);
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { node.Id, action = "created" }));
-        activityLog.Info("node", $"Node {node.Role} '{node.Name}' ditambahkan ({node.Model}){SkillNote(node)}.");
-        return ToDto(node);
+        var names = await FallbackNamesAsync(db, node, cancellationToken);
+        activityLog.Info("node", $"Node {node.Role} '{node.Name}' ditambahkan ({node.Model}){SkillNote(node)}{FallbackNote(node, names)}.");
+        return ToDto(node, names);
     }
 
     public async Task<NodeDto?> UpdateAsync(Guid id, SaveNodeRequest request, CancellationToken cancellationToken = default)
@@ -54,14 +57,27 @@ public sealed class NodeService(
         var node = await WithSkills(db.Nodes).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
         if (node is null) return null;
 
+        var previousRole = node.Role;
         Apply(node, request);
+        await ValidateFallbackAsync(db, node, cancellationToken);
         await ApplySkillsAsync(db, node, request.SkillIds, cancellationToken);
         node.UpdatedAt = DateTime.UtcNow;
+
+        // A node that changes role can no longer back up nodes of its old role.
+        var released = 0;
+        if (previousRole != node.Role)
+        {
+            var dependents = await db.Nodes.Where(n => n.FallbackNodeId == node.Id).ToListAsync(cancellationToken);
+            foreach (var dependent in dependents) dependent.FallbackNodeId = null;
+            released = dependents.Count;
+        }
         await db.SaveChangesAsync(cancellationToken);
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { node.Id, action = "updated" }));
-        activityLog.Info("node", $"Node {node.Role} '{node.Name}' diperbarui ({node.Model}){SkillNote(node)}.");
-        return ToDto(node);
+        var names = await FallbackNamesAsync(db, node, cancellationToken);
+        activityLog.Info("node", $"Node {node.Role} '{node.Name}' diperbarui ({node.Model}){SkillNote(node)}{FallbackNote(node, names)}." +
+                                 (released > 0 ? $" {released} node lain tidak lagi memakainya sebagai cadangan karena role berubah." : string.Empty));
+        return ToDto(node, names);
     }
 
     public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -70,6 +86,9 @@ public sealed class NodeService(
         var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
         if (node is null) return false;
 
+        // The foreign key does not null references itself (SQL Server forbids it on a self reference).
+        var dependents = await db.Nodes.Where(n => n.FallbackNodeId == id).ToListAsync(cancellationToken);
+        foreach (var dependent in dependents) dependent.FallbackNodeId = null;
         db.Nodes.Remove(node);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -85,6 +104,12 @@ public sealed class NodeService(
             .Where(n => n.Role == role && n.IsActive)
             .OrderBy(n => n.Priority).ThenBy(n => n.Name)
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<AiNode?> GetNodeAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await WithSkills(db.Nodes.AsNoTracking()).FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
     }
 
     public async Task<PipelineStatusDto> GetPipelineStatusAsync(CancellationToken cancellationToken = default)
@@ -158,7 +183,41 @@ public sealed class NodeService(
         node.Priority = request.Priority;
         node.SystemPrompt = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : request.SystemPrompt.Trim();
         node.IsActive = request.IsActive;
+        node.FallbackNodeId = request.FallbackNodeId;
     }
+
+    // Same role, not itself, and following the chain never comes back to this node.
+    private static async Task ValidateFallbackAsync(AiThreadDbContext db, AiNode node, CancellationToken cancellationToken)
+    {
+        if (node.FallbackNodeId is not { } fallbackId) return;
+        if (fallbackId == node.Id) throw new AppValidationException("Node tidak bisa menjadi cadangan untuk dirinya sendiri.");
+
+        var links = await db.Nodes.AsNoTracking()
+            .Select(n => new { n.Id, n.Name, n.Role, n.FallbackNodeId })
+            .ToDictionaryAsync(n => n.Id, cancellationToken);
+        if (!links.TryGetValue(fallbackId, out var fallback)) throw new AppValidationException("Node cadangan tidak ditemukan.");
+        if (fallback.Role != node.Role)
+            throw new AppValidationException($"Node cadangan harus ber-role {node.Role}, sedangkan '{fallback.Name}' ber-role {fallback.Role}.");
+
+        var path = new List<string> { node.Name };
+        var visited = new HashSet<Guid> { node.Id };
+        for (Guid? current = fallbackId; current is { } id && links.TryGetValue(id, out var link); current = link.FallbackNodeId)
+        {
+            path.Add(link.Name);
+            if (link.FallbackNodeId == node.Id || !visited.Add(id))
+                throw new AppValidationException($"Rantai cadangan berputar: {string.Join(" → ", path)} → {node.Name}. Pilih node cadangan lain.");
+        }
+    }
+
+    private static async Task<Dictionary<Guid, string>> FallbackNamesAsync(AiThreadDbContext db, AiNode node, CancellationToken cancellationToken)
+    {
+        if (node.FallbackNodeId is not { } id) return [];
+        var name = await db.Nodes.AsNoTracking().Where(n => n.Id == id).Select(n => n.Name).FirstOrDefaultAsync(cancellationToken);
+        return name is null ? [] : new Dictionary<Guid, string> { [id] = name };
+    }
+
+    private static string FallbackNote(AiNode node, IReadOnlyDictionary<Guid, string> names) =>
+        node.FallbackNodeId is { } id && names.TryGetValue(id, out var name) ? $", cadangan '{name}'" : string.Empty;
 
     // Skills with their source, in prompt order: the agents read their content, the UI their names.
     private static IQueryable<AiNode> WithSkills(IQueryable<AiNode> nodes) =>
@@ -186,10 +245,12 @@ public sealed class NodeService(
 
     private static string SkillNote(AiNode node) => node.Skills.Count == 0 ? string.Empty : $", {node.Skills.Count} skill";
 
-    private static NodeDto ToDto(AiNode n) => new(
+    private static NodeDto ToDto(AiNode n, IReadOnlyDictionary<Guid, string> names) => new(
         n.Id, n.Name, n.Role, n.Model, n.Temperature, n.MaxTokens, n.MaxConcurrency,
         n.Priority, n.SystemPrompt, n.IsActive, n.CreatedAt, n.UpdatedAt,
         n.Skills.OrderBy(s => s.Order).Where(s => s.Skill is not null)
             .Select(s => new NodeSkillDto(s.SkillId, s.Skill!.Name, s.Skill.Description, s.Skill.SkillSource?.Name ?? string.Empty))
-            .ToList());
+            .ToList(),
+        n.FallbackNodeId,
+        n.FallbackNodeId is { } id && names.TryGetValue(id, out var name) ? name : null);
 }
