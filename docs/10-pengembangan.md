@@ -11,7 +11,7 @@ Konvensi kode dan penggunaan MCP ada di `CLAUDE.md` di root repo.
 | `src/AiThread.Service` | Service utama (`NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`, dll.), `Orchestration/`, `Workspace/`, `Proxy/`, `Background/`. |
 | `src/AiThread.API` | Controller REST `/api/*`, controller proxy `AnthropicProxyController` / `OpenAiProxyController` / `GeminiProxyController` (`/v1/*`, `/v1beta/*`), `StreamController` (SSE), infrastruktur. |
 | `src/AiThread.UI` | Host ASP.NET Core MVC. View hanya kerangka; data dimuat oleh `wwwroot/js/pages/*.js` lewat `/api` + SSE. |
-| `tests/AiThread.Tests` | Unit test xUnit. |
+| `tests/AiThread.Tests` | Unit test xUnit, plus test end-to-end orkestrasi (`ThreadOrchestratorTests`): `OrchestrationHarness` memakai service layer asli di atas SQLite sementara dan folder project sementara, hanya model yang dipalsukan oleh `ScriptedRouter` (balasan per agen, executor per file). |
 
 Alur dependensi: `UI → API → Service → Data → Common`.
 
