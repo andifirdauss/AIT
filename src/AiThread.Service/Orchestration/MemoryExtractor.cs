@@ -11,10 +11,9 @@ namespace AiThread.Service.Orchestration;
 
 // After a thread finishes, distills reusable project/knowledge memories into short memory (Redis).
 public sealed class MemoryExtractor(
-    INineRouterService router,
+    NodeCaller caller,
     IMemoryService memoryService,
     IActivityLogService activityLog,
-    NodeConcurrencyLimiter limiter,
     ILogger<MemoryExtractor> logger)
 {
     private const int MaxMemories = 5;
@@ -25,24 +24,26 @@ public sealed class MemoryExtractor(
         {
             var existing = await memoryService.GetIndexAsync(thread.ProjectId, thread.Prompt, 40, cancellationToken);
 
-            // Counts against the node's Max paralel like any other call to it (usually the wrapper node).
-            ChatCompletionResult result;
-            using (await limiter.AcquireAsync(node, cancellationToken))
+            // Counts against the node's Max paralel like any other call to it (usually the wrapper node), and falls
+            // back like it.
+            var input = BuildInput(thread, plan, execution, finalText, existing);
+            var reply = await caller.ChatAsync(node, candidate => Task.FromResult(new ChatCompletionRequest
             {
-                result = await router.ChatAsync(new ChatCompletionRequest
-                {
-                    Model = node.Model,
-                    Messages =
-                    [
-                        ChatMessages.System(AgentPrompts.MemoryExtractor),
-                        ChatMessages.User(BuildInput(thread, plan, execution, finalText, existing))
-                    ],
-                    Temperature = 0.2,
-                    MaxTokens = Math.Min(node.MaxTokens, 4096)
-                }, cancellationToken: cancellationToken);
-            }
+                Model = candidate.Model,
+                Messages =
+                [
+                    ChatMessages.System(AgentPrompts.MemoryExtractor),
+                    ChatMessages.User(input)
+                ],
+                Temperature = 0.2,
+                MaxTokens = Math.Min(candidate.MaxTokens, 4096)
+            }), cancellationToken, onSwitch: s =>
+            {
+                activityLog.Warn("memory", $"Ekstraksi memory: `{s.From.Model}` tidak tersedia ({s.Reason}), beralih ke `{s.To.Model}`.", thread.Id, thread.ProjectId);
+                return Task.CompletedTask;
+            });
 
-            var memories = Parse(result.Content);
+            var memories = Parse(reply.Result.Content);
             var saved = new List<MemoryItemDto>();
             foreach (var (type, label, description) in memories.Take(MaxMemories))
             {

@@ -10,8 +10,8 @@ using AiThread.Service.Workspace;
 
 namespace AiThread.Service.Orchestration;
 
-// Nodes are the active planners in priority order; the first one plans, the rest take over when it is rate limited or down.
-// CanAsk offers ask_user: the developer can answer (setting on, and a session the answer can come back through).
+// Nodes are the active planners in priority order; the first one plans, and its fallback chain (AiNode.FallbackNodeId)
+// takes over when it is rate limited or down. CanAsk offers ask_user: the developer can answer (setting on, and a session the answer can come back through).
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -29,11 +29,10 @@ public sealed record PlannerPause(PlannerQuestion Question, PlannerConversation 
 public sealed record PlannerToolOutcome(string Output, ThreadPlan? AcceptedPlan, bool IsError = false, PlannerQuestion? Question = null);
 
 // The expensive model explores the repository (read-only) and ends by calling submit_plan, through a 9router
-// tool-calling loop. Extra active planners are fallbacks for when the preferred one is rate limited or down.
+// tool-calling loop. The planner's fallback node continues the same conversation when it is rate limited or down.
 public sealed class PlannerAgent(
-    INineRouterService router,
+    NodeCaller caller,
     IMemoryService memoryService,
-    NodeConcurrencyLimiter limiter,
     ContextKeeper contextKeeper,
     BuildRunner buildRunner,
     NodePromptBuilder prompts)
@@ -57,6 +56,7 @@ public sealed class PlannerAgent(
         var run = new PlannerRun
         {
             Messages = [await SystemMessageAsync(input.Nodes[0], cancellationToken), ChatMessages.User(brief, input.Request.Images)],
+            Node = input.Nodes[0],
             CanBuild = build is not null,
             MaxSteps = input.Settings.PlannerMaxSteps
         };
@@ -75,15 +75,15 @@ public sealed class PlannerAgent(
         if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
 
         // The planner that asked, when it is still active; otherwise the preferred one takes the conversation over.
-        var nodeIndex = Math.Max(0, input.Nodes.ToList().FindIndex(n => n.Id == conversation.NodeId));
+        var node = input.Nodes.FirstOrDefault(n => n.Id == conversation.NodeId) ?? input.Nodes[0];
         var messages = conversation.Messages;
-        messages[0] = await SystemMessageAsync(input.Nodes[nodeIndex], cancellationToken);
+        messages[0] = await SystemMessageAsync(node, cancellationToken);
         messages.Add(ChatMessages.Tool(conversation.AskCallId, toolResult));
 
         var run = new PlannerRun
         {
             Messages = messages,
-            NodeIndex = nodeIndex,
+            Node = node,
             Step = conversation.Step,
             Tokens = conversation.Tokens,
             CachedTokens = conversation.CachedTokens,
@@ -103,7 +103,7 @@ public sealed class PlannerAgent(
         CancellationToken cancellationToken)
     {
         var messages = run.Messages;
-        var node = input.Nodes[run.NodeIndex];
+        var node = run.Node;
         var textReplies = 0;
 
         // The same tool list on every step: changing it invalidates the provider's prompt cache for the whole
@@ -118,38 +118,23 @@ public sealed class PlannerAgent(
             if (step == run.MaxSteps)
                 messages.Add(ChatMessages.User("You have reached the investigation limit. Call submit_plan now with the best plan you can make from what you already know."));
 
-            ChatCompletionResult result;
-            while (true)
+            // A slot is held only while the model answers, not while tools run, so concurrent threads share the planner.
+            // The conversation so far is plain OpenAI chat, so a fallback planner continues where this one stopped.
+            var current = node;
+            var reply = await caller.ChatAsync(current, async candidate =>
             {
-                try
+                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, cancellationToken);
+                return new ChatCompletionRequest
                 {
-                    // A slot is held only while the model answers, not while tools run, so concurrent threads share the planner.
-                    using (await limiter.AcquireAsync(node, cancellationToken))
-                    {
-                        result = await router.ChatAsync(new ChatCompletionRequest
-                        {
-                            Model = node.Model,
-                            Messages = messages,
-                            Tools = forcedStep ? PlannerTools.SubmitOnly() : allTools,
-                            Temperature = node.Temperature ?? 0.2,
-                            MaxTokens = node.MaxTokens
-                        }, cancellationToken: cancellationToken);
-                    }
-                    break;
-                }
-                catch (NineRouterException ex) when (ex.IsModelUnavailable)
-                {
-                    var nextIndex = run.NodeIndex + 1;
-                    if (nextIndex >= input.Nodes.Count) throw new OrchestrationException(ex.Message, ex);
-
-                    // The conversation so far is plain OpenAI chat, so the next planner continues where this one stopped.
-                    var next = input.Nodes[nextIndex];
-                    await AnnounceSwitchAsync(node, next, FailureReason(ex), ex.Message, recorder, progress, cancellationToken);
-                    run.NodeIndex = nextIndex;
-                    node = next;
-                    messages[0] = await SystemMessageAsync(node, cancellationToken);
-                }
-            }
+                    Model = candidate.Model,
+                    Messages = messages,
+                    Tools = forcedStep ? PlannerTools.SubmitOnly() : allTools,
+                    Temperature = candidate.Temperature ?? 0.2,
+                    MaxTokens = candidate.MaxTokens
+                };
+            }, cancellationToken, onSwitch: s => s.ReportAsync("Planner", recorder, progress, cancellationToken));
+            node = run.Node = reply.Node;
+            var result = reply.Result;
             run.Tokens += result.TotalTokens;
             run.CachedTokens += result.CachedTokens;
 
@@ -239,12 +224,6 @@ public sealed class PlannerAgent(
             .Select(o => new QuestionOption(o.Label!, o.Description))
             .ToList();
         return new PlannerToolOutcome(string.Empty, null, Question: new PlannerQuestion(question, options));
-    }
-
-    private static async Task AnnounceSwitchAsync(AiNode from, AiNode to, string reason, string message, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
-    {
-        recorder.Log(ActivityLevel.Warning, $"Planner `{from.Model}` gagal ({message}); dialihkan ke `{to.Model}`.");
-        await progress.LineAsync($"   ⚠️ Planner `{from.Model}` tidak tersedia ({reason}), beralih ke `{to.Model}`…", cancellationToken);
     }
 
     private async Task<PlannerToolOutcome> RunToolAsync(
@@ -427,14 +406,6 @@ public sealed class PlannerAgent(
     private async Task<JsonObject> SystemMessageAsync(AiNode node, CancellationToken cancellationToken) =>
         ChatMessages.System(await prompts.BuildAsync(AgentPrompts.Planner, node, cancellationToken, canReadFiles: true));
 
-    private static string FailureReason(NineRouterException ex) => ex.StatusCode switch
-    {
-        429 => "rate limit 429",
-        408 => "timeout",
-        { } code => $"HTTP {code}",
-        null => "tidak dapat dihubungi"
-    };
-
     private static string FormatIndex(IEnumerable<Common.DTOs.MemoryIndexEntry> entries) =>
         string.Concat(entries.Select(e =>
             $"- {e.Id} [{(e.Level == MemoryLevel.Short ? "short" : "long")}/{e.Type.ToString().ToLowerInvariant()}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n"));
@@ -487,7 +458,7 @@ public sealed class PlannerAgent(
     private sealed class PlannerRun
     {
         public required JsonArray Messages { get; init; }
-        public int NodeIndex { get; set; }
+        public required AiNode Node { get; set; }
         public int Step { get; set; }
         public int Tokens { get; set; }
         public int CachedTokens { get; set; }

@@ -62,7 +62,9 @@ public sealed class ThreadService(
             thread.ReviewerTokens,
             thread.VerificationMs,
             thread.VerificationJson,
-            thread.PlannerCachedTokens);
+            thread.PlannerCachedTokens,
+            thread.RetryCount,
+            thread.RolledBackAt);
     }
 
     // A running thread is cancelled through its token; one waiting on a planner question just stops waiting.

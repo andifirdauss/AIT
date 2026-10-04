@@ -1,0 +1,64 @@
+using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using AiThread.Common.Entities;
+using AiThread.Data.Context;
+using AiThread.Service.Workspace;
+using Microsoft.EntityFrameworkCore;
+
+namespace AiThread.Service.Orchestration;
+
+// Remembers every file of a thread as it was before the thread first wrote to it (ThreadFileSnapshot), plus the hash of
+// what the thread last wrote, so ThreadRollback can undo the thread and recognise files someone changed afterwards.
+// The executor calls it under the file's lock (FileLockProvider), so one file is never journaled twice at once.
+// Writes ignore cancellation: a write that happened must be recorded.
+public sealed class FileJournal(IDbContextFactory<AiThreadDbContext> dbFactory, Guid threadId, WorkspaceScope scope)
+{
+    private readonly ConcurrentDictionary<string, Guid> _snapshots = new(StringComparer.OrdinalIgnoreCase);
+
+    public Guid ThreadId => threadId;
+
+    public async Task BeforeWriteAsync(string fullPath)
+    {
+        var path = scope.ToRelative(fullPath);
+        if (_snapshots.ContainsKey(path)) return;
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+
+        // A retried thread keeps the snapshot of its first run: undoing it returns to the state before the thread.
+        var existing = await db.ThreadFileSnapshots
+            .Where(s => s.ThreadRunId == threadId && s.FilePath == path)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync();
+        if (existing is { } id)
+        {
+            _snapshots[path] = id;
+            return;
+        }
+
+        var bytes = File.Exists(fullPath) ? await File.ReadAllBytesAsync(fullPath) : null;
+        var snapshot = new ThreadFileSnapshot
+        {
+            ThreadRunId = threadId,
+            FilePath = path,
+            Existed = bytes is not null,
+            OriginalContent = bytes,
+            OriginalHash = bytes is null ? null : Hash(bytes)
+        };
+        db.ThreadFileSnapshots.Add(snapshot);
+        await db.SaveChangesAsync();
+        _snapshots[path] = snapshot.Id;
+    }
+
+    public async Task AfterWriteAsync(string fullPath)
+    {
+        if (!_snapshots.TryGetValue(scope.ToRelative(fullPath), out var id)) return;
+
+        var hash = Hash(await File.ReadAllBytesAsync(fullPath));
+        await using var db = await dbFactory.CreateDbContextAsync();
+        await db.ThreadFileSnapshots.Where(s => s.Id == id).ExecuteUpdateAsync(s => s
+            .SetProperty(x => x.AfterHash, hash)
+            .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
+    }
+
+    public static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes));
+}

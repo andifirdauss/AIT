@@ -23,6 +23,27 @@
     ].filter(Boolean).join(' · ');
     el('threadPrompt').textContent = s.prompt;
     el('btnCancel').classList.toggle('d-none', !isActiveStatus(s.status) && s.status !== 'AwaitingInput');
+
+    // The server decides in the end; these only hide buttons that cannot work.
+    const finished = ['Completed', 'Failed', 'Cancelled'].includes(s.status);
+    el('btnRetry').classList.toggle('d-none', !finished || !hasUnfinishedPlannedTasks());
+    el('btnRollback').classList.toggle('d-none', !finished || !detail.tasks.some(t => t.status === 'Succeeded'));
+    if (s.status === 'RolledBack' && detail.rolledBackAt) {
+      el('threadMeta').insertAdjacentHTML('beforeend', ` · <span class="text-warning">perubahan file dibatalkan ${fmt.dateTime(detail.rolledBackAt)}</span>`);
+    }
+  }
+
+  function planTasks() {
+    try {
+      return detail.planJson ? JSON.parse(detail.planJson).tasks || [] : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function hasUnfinishedPlannedTasks() {
+    const succeeded = new Set(detail.tasks.filter(t => t.status === 'Succeeded').map(t => t.taskKey.toLowerCase()));
+    return planTasks().some(t => !succeeded.has(String(t.id).toLowerCase()));
   }
 
   function renderPlan() {
@@ -67,6 +88,7 @@
       ['Verifikasi', fmt.ms(detail.verificationMs)],
       ['Wrapping', fmt.ms(detail.wrappingMs)],
       ['Total', fmt.ms(s.totalMs)],
+      ['Percobaan ulang', detail.retryCount ? `${fmt.number(detail.retryCount)}×` : '–'],
       ['Token planner', plannerTokens()],
       ['Token executor', fmt.number(detail.executorTokens)],
       ['Token reviewer', fmt.number(detail.reviewerTokens)],
@@ -271,6 +293,62 @@
       toast('Pembatalan dikirim.', 'info');
     } catch (error) {
       toast(error.message, 'error');
+    }
+  });
+
+  el('btnRetry').addEventListener('click', async () => {
+    if (!confirm('Jalankan lagi tugas yang gagal, dilewati, atau dibatalkan? Tugas yang sudah berhasil tidak diulang dan planner tidak dipanggil lagi.')) return;
+    el('btnRetry').disabled = true;
+    try {
+      await api.post(`/api/threads/${threadId}/retry`);
+      toast('Tugas yang gagal dijalankan ulang.', 'info');
+      outputs.clear();
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      el('btnRetry').disabled = false;
+    }
+  });
+
+  const rollbackModal = bootstrap.Modal.getOrCreateInstance(el('rollbackModal'));
+  const rollbackActions = {
+    restore: ['success', 'Dikembalikan ke isi asli'],
+    delete: ['success', 'Dihapus (dibuat oleh thread ini)'],
+    unchanged: ['secondary', 'Sudah sama dengan aslinya — tidak disentuh'],
+    conflict: ['danger', 'Sudah berubah lagi — menghalangi pembatalan']
+  };
+
+  el('btnRollback').addEventListener('click', async () => {
+    el('rollbackReason').innerHTML = '';
+    el('rollbackRows').innerHTML = '<tr><td colspan="2" class="text-secondary">Memeriksa file…</td></tr>';
+    el('btnRollbackConfirm').disabled = true;
+    rollbackModal.show();
+    try {
+      const preview = await api.get(`/api/threads/${threadId}/rollback`);
+      el('rollbackRows').innerHTML = preview.files.length
+        ? preview.files.map(f => {
+          const [color, label] = rollbackActions[f.action] || ['secondary', f.action];
+          return `<tr><td class="mono small">${escapeHtml(f.filePath)}</td>
+            <td><span class="badge text-bg-${color}">${escapeHtml(label)}</span>${f.problem ? `<div class="small text-secondary">${escapeHtml(f.problem)}</div>` : ''}</td></tr>`;
+        }).join('')
+        : '<tr><td colspan="2" class="text-secondary">Tidak ada file yang tercatat.</td></tr>';
+      el('rollbackReason').innerHTML = preview.reason ? `<div class="alert alert-warning small">${escapeHtml(preview.reason)}</div>` : '';
+      el('btnRollbackConfirm').disabled = !preview.canRollback;
+    } catch (error) {
+      el('rollbackRows').innerHTML = '';
+      el('rollbackReason').innerHTML = `<div class="alert alert-danger small">${escapeHtml(error.message)}</div>`;
+    }
+  });
+
+  el('btnRollbackConfirm').addEventListener('click', async () => {
+    el('btnRollbackConfirm').disabled = true;
+    try {
+      const result = await api.post(`/api/threads/${threadId}/rollback`);
+      rollbackModal.hide();
+      toast(`Perubahan dibatalkan: ${result.restored} file dikembalikan, ${result.deleted} file dihapus.`);
+      loadDetail();
+    } catch (error) {
+      el('rollbackReason').innerHTML = `<div class="alert alert-danger small">${escapeHtml(error.message)}</div>`;
     }
   });
 

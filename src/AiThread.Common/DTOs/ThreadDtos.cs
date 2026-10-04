@@ -62,6 +62,17 @@ public record ThreadDetailDto(
     int ReviewerTokens = 0,
     long? VerificationMs = null,
     string? VerificationJson = null,
-    int PlannerCachedTokens = 0);
+    int PlannerCachedTokens = 0,
+    int RetryCount = 0,
+    DateTime? RolledBackAt = null);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);
+
+// Action per file when undoing a thread: "restore" (put the original content back), "delete" (the thread created the
+// file), "unchanged" (nothing to undo) or "conflict" (changed again after the thread; Problem says how).
+public record RollbackFileDto(string FilePath, string Action, string? Problem);
+
+// CanRollback is false when Reason is set or any file is a conflict: undoing is all or nothing.
+public record RollbackPreviewDto(bool CanRollback, string? Reason, IReadOnlyList<RollbackFileDto> Files);
+
+public record RollbackResultDto(int Restored, int Deleted, IReadOnlyList<RollbackFileDto> Files);

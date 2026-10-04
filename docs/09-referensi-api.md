@@ -81,7 +81,7 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi-provider`; id lain �
 | `GET` | `/api/nodes` | — |
 | `GET` | `/api/nodes/pipeline` | — (`isReady`, jumlah per peran, `issues`) |
 | `GET` | `/api/nodes/{id}` | — |
-| `POST` | `/api/nodes` | `name`, `role` (`Planner`, `Executor`, `Reviewer`, `Wrapper`, `ContextKeeper`), `model`, `temperature`, `maxTokens`, `maxConcurrency`, `priority`, `systemPrompt`, `isActive`, `skillIds` (opsional, urutan = urutan di prompt, maks 10; tidak dikirim/`null` = skill node tidak diubah) |
+| `POST` | `/api/nodes` | `name`, `role` (`Planner`, `Executor`, `Reviewer`, `Wrapper`, `ContextKeeper`), `model`, `temperature`, `maxTokens`, `maxConcurrency`, `priority`, `systemPrompt`, `isActive`, `skillIds` (opsional, urutan = urutan di prompt, maks 10; tidak dikirim/`null` = skill node tidak diubah), `fallbackNodeId` (opsional; node ber-role sama, `null` = tanpa cadangan; 400 bila role beda, diri sendiri, atau rantai berputar) |
 | `PUT` | `/api/nodes/{id}` | sama dengan POST |
 | `DELETE` | `/api/nodes/{id}` | — |
 | `POST` | `/api/nodes/{id}/test` | — (`success`, `reply`, `latencyMs`, `tokens`, `error`) |
@@ -119,6 +119,9 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi-provider`; id lain �
 | `GET` | `/api/threads/{id}` | — (ringkasan, `planJson`, respons akhir, metrik termasuk `reviewerModel`/`reviewerTokens`/`verificationMs`, tugas, `verificationJson`: `outcome` `passed`/`failed`/`unverified`, `command`, `reviewerModel`, `rounds[]` berisi `build` (`status`, `headline`, `errors[]`, …), `review` (`approved`, `summary`, `issues[]`, `error`), `fixTasks[]`, `unfixable[]`) |
 | `POST` | `/api/threads` | `{ "projectId": "...", "prompt": "..." }` → id thread, berjalan di belakang |
 | `POST` | `/api/threads/{id}/cancel` | — |
+| `POST` | `/api/threads/{id}/retry` | — → id thread. Menjalankan ulang tugas rencana yang belum berhasil di belakang (tanpa planner). 400 bila thread sedang berjalan, sudah di-rollback, atau tidak ada yang perlu diulang. |
+| `GET` | `/api/threads/{id}/rollback` | — → pratinjau `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Tidak mengubah apa pun. |
+| `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. Semua atau tidak sama sekali: 400 tanpa menyentuh file bila ada `conflict`. |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
@@ -162,7 +165,7 @@ Tab Skill di halaman Setting dan saran skill di modal Node — lihat [Skill pada
 | `GET` | `/api/skills/{id}` | detail + `content`, `folder`, `entryFile`, `files[]`, `nodeNames[]` |
 | `POST` | `/api/skills/suggest` | `{ "prompt": "aku butuh kamu bisa menjadi engineer yang handal", "role": "Executor" }` → maks 6 saran (`id`, `name`, `description`, `sourceName`, `reason`, `score` 0–1, `recommended`). Gudang kosong → `400`; 9router gagal → `502`. |
 
-`GET /api/nodes` dan `GET /api/nodes/{id}` menyertakan `skills[]` (`id`, `name`, `description`, `sourceName`) sesuai urutan di prompt.
+`GET /api/nodes` dan `GET /api/nodes/{id}` menyertakan `skills[]` (`id`, `name`, `description`, `sourceName`) sesuai urutan di prompt, serta `fallbackNodeId` dan `fallbackNodeName`.
 
 ## SSE `/api/stream`
 

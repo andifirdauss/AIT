@@ -7,35 +7,36 @@ using AiThread.Service.Models;
 namespace AiThread.Service.Orchestration;
 
 // Pools every executor result and turns it into one reply for the developer.
-public sealed class WrapperAgent(INineRouterService router, NodeConcurrencyLimiter limiter, NodePromptBuilder prompts)
+public sealed class WrapperAgent(NodeCaller caller, NodePromptBuilder prompts)
 {
     private const int MaxDiffLinesPerTask = 60;
 
     // plan and execution include the verification fix tasks; verification is VerificationResult.ForModels.
-    public async Task<(string Text, int Tokens)> WrapAsync(
+    // Node is the wrapper that answered (a fallback when the given one was unavailable).
+    public async Task<(string Text, int Tokens, AiNode Node)> WrapAsync(
         AiNode node,
         string userRequest,
         ThreadPlan plan,
         ExecutionSummary execution,
         string? verification,
         Func<string, Task> onDelta,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<NodeSwitch, Task>? onSwitch = null)
     {
-        var systemPrompt = await prompts.BuildAsync(AgentPrompts.Wrapper, node, cancellationToken);
-        using var lease = await limiter.AcquireAsync(node, cancellationToken);
-        var result = await router.ChatAsync(new ChatCompletionRequest
+        var report = BuildReport(userRequest, plan, execution, verification);
+        var reply = await caller.ChatAsync(node, async candidate => new ChatCompletionRequest
         {
-            Model = node.Model,
+            Model = candidate.Model,
             Messages =
             [
-                ChatMessages.System(systemPrompt),
-                ChatMessages.User(BuildReport(userRequest, plan, execution, verification))
+                ChatMessages.System(await prompts.BuildAsync(AgentPrompts.Wrapper, candidate, cancellationToken)),
+                ChatMessages.User(report)
             ],
-            Temperature = node.Temperature ?? 0.3,
-            MaxTokens = node.MaxTokens
-        }, onDelta, cancellationToken);
+            Temperature = candidate.Temperature ?? 0.3,
+            MaxTokens = candidate.MaxTokens
+        }, cancellationToken, onDelta, onSwitch);
 
-        return (result.Content, result.TotalTokens);
+        return (reply.Result.Content, reply.Result.TotalTokens, reply.Node);
     }
 
     // Used when no wrapper is configured or the wrapper call fails, so the developer still gets the facts.

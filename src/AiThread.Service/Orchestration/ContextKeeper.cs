@@ -20,8 +20,7 @@ public sealed record ResolvedSession(SessionContext Context, int? PackMessageInd
 public sealed class ContextKeeper(
     IDbContextFactory<AiThreadDbContext> dbFactory,
     INodeService nodeService,
-    INineRouterService router,
-    NodeConcurrencyLimiter limiter,
+    NodeCaller caller,
     NodePromptBuilder prompts,
     IEventBus eventBus,
     IActivityLogService activityLog,
@@ -134,25 +133,24 @@ public sealed class ContextKeeper(
 
         try
         {
-            var systemPrompt = await prompts.BuildAsync(AgentPrompts.ContextKeeper, node, cancellationToken);
-            ChatCompletionResult result;
-            using (await limiter.AcquireAsync(node, cancellationToken))
+            var reply = await caller.ChatAsync(node, async candidate => new ChatCompletionRequest
             {
-                result = await router.ChatAsync(new ChatCompletionRequest
-                {
-                    Model = node.Model,
-                    Messages =
-                    [
-                        ChatMessages.System(systemPrompt),
-                        ChatMessages.User(input)
-                    ],
-                    Temperature = node.Temperature ?? 0.2,
-                    MaxTokens = node.MaxTokens
-                }, cancellationToken: cancellationToken);
-            }
+                Model = candidate.Model,
+                Messages =
+                [
+                    ChatMessages.System(await prompts.BuildAsync(AgentPrompts.ContextKeeper, candidate, cancellationToken)),
+                    ChatMessages.User(input)
+                ],
+                Temperature = candidate.Temperature ?? 0.2,
+                MaxTokens = candidate.MaxTokens
+            }, cancellationToken, onSwitch: s =>
+            {
+                activityLog.Warn("context", $"Context Keeper `{s.From.Model}` tidak tersedia ({s.Reason}), beralih ke `{s.To.Model}`.", threadId, projectId);
+                return Task.CompletedTask;
+            });
 
-            if (ContextPackBuilder.Clean(result.Content) is { } pack) return (pack, $"{node.Model}, {result.TotalTokens} token");
-            activityLog.Warn("context", $"Context Keeper `{node.Model}` tidak mengembalikan ringkasan; memakai ringkasan otomatis.", threadId, projectId);
+            if (ContextPackBuilder.Clean(reply.Result.Content) is { } pack) return (pack, $"{reply.Node.Model}, {reply.Result.TotalTokens} token");
+            activityLog.Warn("context", $"Context Keeper `{reply.Node.Model}` tidak mengembalikan ringkasan; memakai ringkasan otomatis.", threadId, projectId);
         }
         catch (NineRouterException ex)
         {

@@ -11,7 +11,9 @@ public sealed record ExecutionRequest(
     IReadOnlyList<ThreadTask> TaskEntities,
     IReadOnlyList<AiNode> Executors,
     WorkspaceScope Scope,
-    RuntimeSettings Settings);
+    RuntimeSettings Settings,
+    // Null when the changes need not be undoable (no thread to undo).
+    FileJournal? Journal = null);
 
 public sealed record TaskResult(string TaskKey, string File, ThreadTaskStatus Status, string? Summary, string? Diff, string? Error, long DurationMs, int Tokens);
 
@@ -116,6 +118,17 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
                 {
                     if (attempt > 1) recorder.TaskOutputReset(entity, $"\n--- attempt {attempt} ---\n");
                     await recorder.UpdateTaskAsync(entity, e => e.Attempts = attempt);
+                },
+                request.Journal,
+                async change =>
+                {
+                    await change.ReportAsync($"Executor {task.Id}", recorder, progress, cancellationToken);
+                    await recorder.UpdateTaskAsync(entity, e =>
+                    {
+                        e.NodeId = change.To.Id;
+                        e.NodeName = change.To.Name;
+                        e.Model = change.To.Model;
+                    });
                 }), cancellationToken);
 
             stopwatch.Stop();
@@ -136,8 +149,8 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
 
             var seconds = stopwatch.Elapsed.TotalSeconds.ToString("0.0");
             await progress.LineAsync(outcome.Success
-                ? $"   ✅ {task.Id} `{task.File}` ({seconds}s, {node.Name}) — {outcome.Summary}"
-                : $"   ❌ {task.Id} `{task.File}` ({seconds}s, {node.Name}) — {outcome.Error}", cancellationToken);
+                ? $"   ✅ {task.Id} `{task.File}` ({seconds}s, {entity.NodeName}) — {outcome.Summary}"
+                : $"   ❌ {task.Id} `{task.File}` ({seconds}s, {entity.NodeName}) — {outcome.Error}", cancellationToken);
             recorder.Log(outcome.Success ? ActivityLevel.Success : ActivityLevel.Error,
                 $"{task.Id} {task.File}: {(outcome.Success ? outcome.Summary : outcome.Error)}");
 

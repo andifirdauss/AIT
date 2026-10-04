@@ -33,8 +33,11 @@ mengirim ulang seluruh percakapan, jadi token input cepat menumpuk. Sebagian bes
 [Biaya token planner](02-konfigurasi.md#biaya-token-planner)), tetapi batas kuota per menit provider bisa tetap
 menghitung semua token input: satu thread planner `cc/claude-opus-…` dengan 10–20 langkah bisa memakai 0,2–1 juta
 token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya beserta porsi cache-nya. Solusi:
-- Tambahkan node Planner **kedua** (model/provider lain, prioritas lebih besar) dan biarkan aktif. AiThread otomatis
-  beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di progres.
+- Tambahkan node Planner **kedua** (model/provider lain; boleh nonaktif) dan pilih sebagai *Node cadangan* di form
+  planner utama. AiThread beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di
+  progres. Cara yang sama berlaku untuk executor, reviewer, dan wrapper (lihat
+  [Node cadangan](02-konfigurasi.md#node-cadangan)).
+- Thread yang sudah terlanjur gagal tidak perlu diulang dari awal: buka detail thread → **Ulangi yang gagal**.
 - Atau jadikan model planner sebuah **combo** 9router (mis. Claude → model lain) supaya fallback terjadi di 9router.
 - Kurangi slot node planner bila beberapa thread berjalan bersamaan, atau turunkan Setting → *Langkah planner*.
 

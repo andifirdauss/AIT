@@ -119,6 +119,7 @@ kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 | Max tokens | Planner 16384 · Executor 8192 · Reviewer 4096 · Wrapper 4096 · Context Keeper 4096 | 256–200000. Batas output per panggilan. |
 | Max paralel | Planner 2 · Executor 6 · Reviewer 2 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
 | Prioritas | 100 | Angka kecil diutamakan. |
+| Node cadangan | tidak ada | Node lain dengan **role yang sama** yang mengambil alih bila node ini tetap gagal setelah 9router mencoba ulang. Lihat [Node cadangan](#node-cadangan). |
 | Instruksi tambahan | kosong | Ditambahkan di akhir prompt bawaan peran, mis. konvensi coding tim. |
 | Skill | kosong | Skill dari gudang (maks 10). Cari sendiri lewat dropdown *Cari sendiri di gudang* (cocok dengan nama, deskripsi, tag, atau isi skill; klik untuk memasang/melepas), atau tulis kebutuhan di *Butuh kemampuan apa?* lalu klik **Cari skill**: Skill Orchestrator menyarankan skill yang cocok beserta alasannya, Anda centang, lalu **Terapkan** dan **Simpan**. Isi skill ditempel ke system prompt node setelah instruksi tambahan; field *Instruksi tambahan* tidak berubah. |
 | Aktif | aktif | Node nonaktif tidak dipakai. |
@@ -128,11 +129,9 @@ balasan — cara cepat memastikan model dan key benar.
 
 ### Aturan pemilihan node
 
-- **Planner**: node aktif dengan prioritas terkecil yang dipakai. Node Planner aktif lainnya menjadi cadangan
-  otomatis: bila planner utama kena rate limit (429), timeout, atau error 5xx setelah retry, planner berikutnya
-  (urut prioritas) mengambil alih dan investigasi dilanjutkan tanpa mengulang.
-- **Wrapper**: hanya satu yang dipakai — node aktif dengan prioritas terkecil. Node lain berfungsi sebagai cadangan
-  yang tinggal diaktifkan.
+- **Planner**: node aktif dengan prioritas terkecil yang dipakai. Bila ia kena rate limit, yang mengambil alih adalah
+  [node cadangan](#node-cadangan) yang dipilih untuknya, bukan otomatis planner aktif berikutnya.
+- **Wrapper**: hanya satu yang dipakai — node aktif dengan prioritas terkecil.
 - **Executor**: semua node aktif dipakai. Tiap tugas diberikan ke executor dengan slot kosong terbanyak, lalu
   prioritas terkecil, lalu bergiliran.
 - **Wrapper** juga dipakai untuk ekstraksi memory, dan menjadi model passthrough bila *Model passthrough* diset
@@ -142,6 +141,33 @@ balasan — cara cepat memastikan model dan key benar.
 - **Reviewer**: node aktif dengan prioritas terkecil memeriksa hasil executor (diff, kontrak, hasil build) di setiap
   putaran verifikasi. Tanpa node ini, verifikasi hanya memakai build. Model yang teliti lebih penting daripada model
   yang cepat: setiap temuannya memicu tugas perbaikan.
+
+### Node cadangan
+
+Setiap node bisa diberi satu **node cadangan** di form node (opsional). Alurnya:
+
+1. Panggilan ke node gagal dengan error yang berarti "model sedang tidak tersedia": rate limit **429**, timeout
+   **408**, atau error server **5xx**.
+2. 9router lebih dulu mencoba ulang dengan jeda (seperti sebelumnya).
+3. Bila tetap gagal, panggilan yang **sama** dikirim ke node cadangan. Untuk planner dan executor, percakapan
+   dilanjutkan dari titik terakhir, tidak diulang dari awal. Bila node cadangan juga gagal dan punya cadangan sendiri,
+   rantainya diikuti terus. Setiap node paling banyak dicoba sekali per panggilan.
+4. Peralihan tercatat di aktivitas dan progres, mis. *Executor T2 `model-a` tidak tersedia (rate limit 429), beralih
+   ke `model-b`…*. Kolom executor di tabel tugas menampilkan node yang benar-benar mengerjakan.
+
+Aturannya:
+
+- Node cadangan harus ber-role sama, tidak boleh node itu sendiri, dan rantainya tidak boleh berputar (A → B → A
+  ditolak saat menyimpan).
+- Node cadangan **boleh nonaktif**. Node nonaktif tidak menerima pekerjaan biasa, sehingga cocok sebagai cadangan murni
+  yang hanya dipakai saat dibutuhkan.
+- Error lain (mis. 400 request tidak valid, 401 key salah) tidak memicu peralihan, karena node lain kemungkinan besar
+  akan gagal dengan cara yang sama.
+- Berlaku untuk semua peran: Planner, Executor, Reviewer, Wrapper, Context Keeper, serta ekstraksi memory (memakai
+  node Wrapper).
+- Menghapus node, atau mengubah role-nya, otomatis melepasnya dari node lain yang memakainya sebagai cadangan.
+- Sebelum fitur ini ada, planner aktif otomatis menjadi cadangan satu sama lain. Saat update, migrasi mengisi node
+  cadangan planner yang sudah ada sesuai urutan prioritas, jadi perilakunya tetap sama dan sekarang bisa diubah.
 
 ### Cara kerja *Max paralel*
 
@@ -178,7 +204,7 @@ Untuk menghemat lebih jauh:
 
 - Turunkan Setting → *Langkah planner*.
 - Hindari model langganan `cc/…` (Claude via 9router) untuk planner; pakai model/combo yang kuotanya longgar.
-- Tambahkan node Planner kedua sebagai cadangan (lihat [Aturan pemilihan node](#aturan-pemilihan-node)).
+- Tambahkan node Planner kedua dan pilih sebagai [node cadangan](#node-cadangan) planner utama.
 
 ### Memilih model
 

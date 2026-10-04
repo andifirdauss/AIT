@@ -17,7 +17,7 @@ public sealed record ReviewResult(bool Approved, string? Summary, IReadOnlyList<
 
 // One call: the request, the plan and contract, every task's diff and the build result in; the problems that break
 // the request out, each phrased as an instruction an executor can apply to one file.
-public sealed class ReviewerAgent(INineRouterService router, NodeConcurrencyLimiter limiter, NodePromptBuilder prompts)
+public sealed class ReviewerAgent(NodeCaller caller, NodePromptBuilder prompts)
 {
     public const int MaxIssues = 20;
     private const int MaxDiffLinesPerTask = 150;
@@ -30,26 +30,23 @@ public sealed class ReviewerAgent(INineRouterService router, NodeConcurrencyLimi
         IReadOnlyList<PlanTask> tasks,
         IReadOnlyList<TaskResult> results,
         string? buildReport,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<NodeSwitch, Task>? onSwitch = null)
     {
-        var systemPrompt = await prompts.BuildAsync(AgentPrompts.Reviewer, node, cancellationToken);
-        ChatCompletionResult result;
-        using (await limiter.AcquireAsync(node, cancellationToken))
+        var input = BuildInput(userRequest, plan, tasks, results, buildReport);
+        var reply = await caller.ChatAsync(node, async candidate => new ChatCompletionRequest
         {
-            result = await router.ChatAsync(new ChatCompletionRequest
-            {
-                Model = node.Model,
-                Messages =
-                [
-                    ChatMessages.System(systemPrompt),
-                    ChatMessages.User(BuildInput(userRequest, plan, tasks, results, buildReport))
-                ],
-                Temperature = node.Temperature ?? 0.1,
-                MaxTokens = node.MaxTokens
-            }, cancellationToken: cancellationToken);
-        }
+            Model = candidate.Model,
+            Messages =
+            [
+                ChatMessages.System(await prompts.BuildAsync(AgentPrompts.Reviewer, candidate, cancellationToken)),
+                ChatMessages.User(input)
+            ],
+            Temperature = candidate.Temperature ?? 0.1,
+            MaxTokens = candidate.MaxTokens
+        }, cancellationToken, onSwitch: onSwitch);
 
-        return Parse(result.Content) with { Tokens = result.TotalTokens };
+        return Parse(reply.Result.Content) with { Tokens = reply.Result.TotalTokens };
     }
 
     public static string BuildInput(string userRequest, ThreadPlan plan, IReadOnlyList<PlanTask> tasks, IReadOnlyList<TaskResult> results, string? buildReport)
