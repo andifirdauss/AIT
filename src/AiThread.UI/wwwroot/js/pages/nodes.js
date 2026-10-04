@@ -41,6 +41,9 @@
     const skills = n.skills?.length
       ? ` · <span title="${n.skills.length} skill: ${escapeHtml(n.skills.map(s => s.name).join(', '))}">🧩 ${n.skills.length}</span>`
       : '';
+    const fallback = n.fallbackNodeName
+      ? ` · <span title="Node cadangan: ${escapeHtml(n.fallbackNodeName)}">↪ ${escapeHtml(n.fallbackNodeName)}</span>`
+      : '';
     return `<div class="d-flex justify-content-between align-items-start gap-2">
           <div class="node-card-title">
             <div class="fw-semibold text-truncate" title="${escapeHtml(n.name)}">${escapeHtml(n.name)}
@@ -54,7 +57,7 @@
           </div>
         </div>
         <div class="small text-secondary mt-1 text-truncate">
-          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}
+          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}${fallback}
         </div>`;
   }
 
@@ -242,6 +245,16 @@
     el('modelHint').textContent = `${models.length} model tersedia (${models.filter(m => m.isCombo).length} combo). Combo 9router otomatis fallback antar provider.${unknown}`;
   }
 
+  // Nodes of the same role, except the one being edited; inactive ones are listed too (pure backups).
+  function renderFallbackOptions(selected) {
+    const id = el('nodeId').value;
+    const role = el('nodeRole').value;
+    const candidates = [...nodes.values()].filter(n => n.role === role && n.id !== id);
+    el('nodeFallback').innerHTML = '<option value="">Tidak ada</option>' + candidates
+      .map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${escapeHtml(n.name)} — ${escapeHtml(n.model)}${n.isActive ? '' : ' (nonaktif)'}</option>`)
+      .join('');
+  }
+
   function applyRoleDefaults(role) {
     const d = defaults[role];
     el('nodeMaxTokens').value = d.maxTokens;
@@ -271,12 +284,14 @@
       applyRoleDefaults(el('nodeRole').value);
     }
     renderModelOptions(node?.model || '');
+    renderFallbackOptions(node?.fallbackNodeId || '');
     el('nodeModalTitle').textContent = node ? `Edit node · ${node.name}` : 'Tambah node';
     modal.show();
   }
 
   el('nodeRole').addEventListener('change', () => {
     if (!el('nodeId').value) applyRoleDefaults(el('nodeRole').value);
+    renderFallbackOptions(el('nodeFallback').value);
   });
 
   el('nodeForm').addEventListener('submit', async event => {
@@ -294,7 +309,8 @@
       priority: Number(el('nodePriority').value),
       systemPrompt: el('nodeSystemPrompt').value.trim() || null,
       isActive: el('nodeActive').checked,
-      skillIds: nodeSkills.map(s => s.id)
+      skillIds: nodeSkills.map(s => s.id),
+      fallbackNodeId: el('nodeFallback').value || null
     };
     try {
       if (id) await api.put(`/api/nodes/${id}`, body);

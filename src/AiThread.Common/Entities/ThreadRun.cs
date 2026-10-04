@@ -55,5 +55,10 @@ public class ThreadRun : BaseEntity
     // run of the same chat starts from it instead of the full history.
     public string? ContextPack { get; set; }
 
+    // Times the unfinished tasks of this thread were run again from its stored plan.
+    public int RetryCount { get; set; }
+
+    public DateTime? RolledBackAt { get; set; }
+
     public ICollection<ThreadTask> Tasks { get; set; } = [];
 }

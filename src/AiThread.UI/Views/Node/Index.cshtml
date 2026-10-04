@@ -145,6 +145,11 @@
                         <div class="form-text">kecil = diutamakan</div>
                     </div>
                     <div class="col-12">
+                        <label class="form-label small" for="nodeFallback">Node cadangan (opsional)</label>
+                        <select class="form-select" id="nodeFallback"></select>
+                        <div class="form-text">Kalau node ini tetap gagal (rate limit 429, server 5xx, timeout) setelah 9router mencoba ulang, panggilan yang sama dialihkan ke node cadangan. Hanya node dengan role yang sama yang bisa dipilih. Node cadangan boleh <em>nonaktif</em>: ia tidak menerima pekerjaan biasa dan baru dipakai saat dibutuhkan. Cadangan dari node cadangan ikut dipakai berantai.</div>
+                    </div>
+                    <div class="col-12">
                         <label class="form-label small" for="nodeSystemPrompt">Instruksi tambahan (opsional)</label>
                         <textarea class="form-control" id="nodeSystemPrompt" rows="3" placeholder="Ditambahkan ke prompt bawaan role, mis. konvensi coding tim."></textarea>
                     </div>

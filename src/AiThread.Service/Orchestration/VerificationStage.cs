@@ -17,7 +17,10 @@ public sealed record VerificationInput(
     IReadOnlyList<AiNode> Executors,
     WorkspaceScope Scope,
     RuntimeSettings Settings,
-    int NextTaskOrder);
+    int NextTaskOrder,
+    FileJournal? Journal = null,
+    // Number of the first round; a retried thread continues after its earlier rounds so fix task ids stay unique.
+    int FirstRound = 1);
 
 // Plan and Execution include the fix tasks, ready for the wrapper and memory extraction. ForModels describes the
 // rounds in English for the wrapper.
@@ -93,8 +96,9 @@ public sealed class VerificationStage(BuildRunner buildRunner, ReviewerAgent rev
         int executorTokens = 0, reviewerTokens = 0;
         long fixWallMs = 0, fixSumMs = 0;
 
-        for (var round = 1; ; round++)
+        for (var fixRound = 1; ; fixRound++)
         {
+            var round = input.FirstRound + fixRound - 1;
             var current = new VerificationRound { Round = round };
             report.Rounds.Add(current);
             forModels.Append($"\n## Round {round}\n");
@@ -117,7 +121,7 @@ public sealed class VerificationStage(BuildRunner buildRunner, ReviewerAgent rev
             if (input.Reviewer is { } reviewer)
             {
                 await progress.LineAsync($"🔎 Reviewer `{reviewer.Model}` memeriksa hasil…", cancellationToken);
-                review = await ReviewAsync(reviewer, input, tasks, results, build, cancellationToken);
+                review = await ReviewAsync(reviewer, input, tasks, results, build, recorder, progress, cancellationToken);
                 reviewerTokens += review.Tokens;
                 current.Review = new ReviewRoundReport { Approved = review.Approved, Summary = review.Summary, Issues = review.Issues.ToList(), Error = review.Error };
                 await ReportReviewAsync(review, round, recorder, progress, cancellationToken);
@@ -143,7 +147,7 @@ public sealed class VerificationStage(BuildRunner buildRunner, ReviewerAgent rev
                 forModels.Append("Not fixable automatically:\n").Append(string.Concat(fix.Unfixable.Select(u => $"- {u}\n")));
 
             report.Outcome = VerificationReport.Failed;
-            if (round > input.Settings.MaxFixRounds)
+            if (fixRound > input.Settings.MaxFixRounds)
             {
                 var note = input.Settings.MaxFixRounds == 0
                     ? "Perbaikan otomatis dimatikan (putaran perbaikan = 0); masalah dilaporkan apa adanya."
@@ -168,7 +172,7 @@ public sealed class VerificationStage(BuildRunner buildRunner, ReviewerAgent rev
             order += fix.Tasks.Count;
 
             await recorder.UpdateThreadAsync(t => t.Status = ThreadStatus.Executing);
-            var execution = await executionEngine.RunAsync(new ExecutionRequest(fixPlan, entities, input.Executors, input.Scope, input.Settings), recorder, progress, cancellationToken);
+            var execution = await executionEngine.RunAsync(new ExecutionRequest(fixPlan, entities, input.Executors, input.Scope, input.Settings, input.Journal), recorder, progress, cancellationToken);
             await recorder.UpdateThreadAsync(t => t.Status = ThreadStatus.Verifying);
 
             executorTokens += execution.Tokens;
@@ -196,12 +200,15 @@ public sealed class VerificationStage(BuildRunner buildRunner, ReviewerAgent rev
     }
 
     // A reviewer that cannot be reached or answers unreadably only costs the review, never the thread.
-    private async Task<ReviewResult> ReviewAsync(AiNode reviewer, VerificationInput input, IReadOnlyList<PlanTask> tasks, IReadOnlyList<TaskResult> results, BuildResult? build, CancellationToken cancellationToken)
+    private async Task<ReviewResult> ReviewAsync(
+        AiNode reviewer, VerificationInput input, IReadOnlyList<PlanTask> tasks, IReadOnlyList<TaskResult> results, BuildResult? build,
+        ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
         try
         {
             var buildText = build is null ? null : BuildReport.Format(build, input.Scope);
-            return await reviewerAgent.ReviewAsync(reviewer, input.Request.Prompt, input.Plan, tasks, results, buildText, cancellationToken);
+            return await reviewerAgent.ReviewAsync(reviewer, input.Request.Prompt, input.Plan, tasks, results, buildText, cancellationToken,
+                s => s.ReportAsync("Reviewer", recorder, progress, cancellationToken));
         }
         catch (NineRouterException ex)
         {

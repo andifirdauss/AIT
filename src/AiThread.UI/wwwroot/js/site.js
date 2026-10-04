@@ -106,6 +106,7 @@
     Completed: ['success', 'Selesai'],
     Failed: ['danger', 'Gagal'],
     Cancelled: ['warning', 'Dibatalkan'],
+    RolledBack: ['secondary', 'Perubahan dibatalkan'],
     Running: ['primary', 'Berjalan'],
     Succeeded: ['success', 'Berhasil'],
     Skipped: ['secondary', 'Dilewati']

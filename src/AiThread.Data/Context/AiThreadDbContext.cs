@@ -15,6 +15,7 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
     public DbSet<ThreadRun> Threads => Set<ThreadRun>();
     public DbSet<SessionPack> SessionPacks => Set<SessionPack>();
     public DbSet<ThreadTask> ThreadTasks => Set<ThreadTask>();
+    public DbSet<ThreadFileSnapshot> ThreadFileSnapshots => Set<ThreadFileSnapshot>();
     public DbSet<LongMemory> LongMemories => Set<LongMemory>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<TelegramChat> TelegramChats => Set<TelegramChat>();
@@ -50,6 +51,8 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Model).HasMaxLength(200).IsRequired();
             e.HasIndex(x => new { x.Role, x.IsActive });
+            // SQL Server refuses SET NULL on a self reference; NodeService clears references before deleting a node.
+            e.HasOne<AiNode>().WithMany().HasForeignKey(x => x.FallbackNodeId).OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Project>(e =>
@@ -98,6 +101,16 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.NodeName).HasMaxLength(100);
             e.Property(x => x.Model).HasMaxLength(200);
             e.HasOne(x => x.ThreadRun).WithMany(t => t.Tasks).HasForeignKey(x => x.ThreadRunId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ThreadFileSnapshot>(e =>
+        {
+            e.ToTable("ThreadFileSnapshots");
+            e.Property(x => x.FilePath).HasMaxLength(800).IsRequired();
+            e.Property(x => x.OriginalHash).HasMaxLength(64);
+            e.Property(x => x.AfterHash).HasMaxLength(64);
+            e.HasOne(x => x.ThreadRun).WithMany().HasForeignKey(x => x.ThreadRunId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ThreadRunId, x.FilePath }).IsUnique();
         });
 
         modelBuilder.Entity<LongMemory>(e =>

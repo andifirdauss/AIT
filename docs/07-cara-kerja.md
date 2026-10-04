@@ -206,7 +206,11 @@ Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di l
 - Tugas tanpa ketergantungan langsung berjalan; tugas lain mulai begitu semua `dependsOn`-nya **berhasil**. Jika
   salah satu gagal, tugas penunggu **dilewati**.
 - Dua batas berlaku bersamaan: *Maks paralel* (per thread) dan *Max paralel* tiap node (lintas semua thread).
-- Executor dipilih: slot kosong terbanyak → prioritas terkecil → bergiliran.
+- Executor dipilih: slot kosong terbanyak → prioritas terkecil → bergiliran. Bila executor itu tetap gagal (429/408/5xx)
+  setelah retry 9router, tugas dilanjutkan oleh [node cadangannya](02-konfigurasi.md#node-cadangan) (bila dipilih).
+- Sebelum menulis file untuk pertama kali, isi asli file dicatat agar thread bisa dibatalkan
+  ([rollback](04-penggunaan.md#membatalkan-perubahan-file-rollback)).
+  Setelah setiap penulisan, hash isi yang ditulis juga dicatat.
 - Waktu eksekusi = rantai tugas terpanjang. Dashboard membandingkannya dengan total waktu kerja executor (speedup).
 
 ### Yang dilihat executor

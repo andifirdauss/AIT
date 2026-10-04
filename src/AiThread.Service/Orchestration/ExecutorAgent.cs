@@ -16,13 +16,18 @@ public sealed record ExecutorJob(
     WorkspaceScope Scope,
     int MaxRetries,
     Func<string, Task> OnOutput,
-    Func<int, Task> OnAttempt);
+    Func<int, Task> OnAttempt,
+    // Records the file before and after each write, so the thread can be undone. Null = not undoable.
+    FileJournal? Journal = null,
+    // The executor's fallback node took over; later attempts stay on it.
+    Func<NodeSwitch, Task>? OnSwitch = null);
 
 public sealed record ExecutorOutcome(bool Success, string? Summary, string? Diff, string? Error, int Tokens, int Attempts);
 
 // Cheap model, tiny scope: one file, the instruction, the contract and a few excerpts. Its SEARCH/REPLACE
 // output is applied under a per-file lock against the file's current content; failures are fed back for a retry.
-public sealed class ExecutorAgent(INineRouterService router, FileLockProvider fileLocks, NodePromptBuilder prompts, IOptions<AiThreadOptions> options)
+// The caller (ExecutionEngine) holds a concurrency slot of job.Node; a fallback node gets its own slot per call.
+public sealed class ExecutorAgent(NodeCaller caller, FileLockProvider fileLocks, NodePromptBuilder prompts, IOptions<AiThreadOptions> options)
 {
     private const int ExcerptMargin = 40;
     private const int MaxContextLinesPerRef = 250;
@@ -44,6 +49,7 @@ public sealed class ExecutorAgent(INineRouterService router, FileLockProvider fi
         var tokens = 0;
         var maxAttempts = 1 + Math.Max(0, job.MaxRetries);
         string? lastError = null;
+        var node = job.Node;
 
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
@@ -52,13 +58,20 @@ public sealed class ExecutorAgent(INineRouterService router, FileLockProvider fi
             ChatCompletionResult result;
             try
             {
-                result = await router.ChatAsync(new ChatCompletionRequest
+                var current = node;
+                var reply = await caller.ChatAsync(current, async candidate =>
                 {
-                    Model = job.Node.Model,
-                    Messages = messages,
-                    Temperature = job.Node.Temperature ?? 0.1,
-                    MaxTokens = job.Node.MaxTokens
-                }, job.OnOutput, cancellationToken);
+                    if (candidate.Id != current.Id) messages[0] = ChatMessages.System(await prompts.BuildAsync(AgentPrompts.Executor, candidate, cancellationToken));
+                    return new ChatCompletionRequest
+                    {
+                        Model = candidate.Model,
+                        Messages = messages,
+                        Temperature = candidate.Temperature ?? 0.1,
+                        MaxTokens = candidate.MaxTokens
+                    };
+                }, cancellationToken, job.OnOutput, job.OnSwitch, slotHeld: current.Id == job.Node.Id);
+                node = reply.Node;
+                result = reply.Result;
             }
             catch (NineRouterException ex)
             {
@@ -108,7 +121,10 @@ public sealed class ExecutorAgent(INineRouterService router, FileLockProvider fi
         var applied = EditApplier.Apply(current, parsed.Blocks);
         if (!applied.Success) return (null, applied.Errors);
 
+        var journal = job.Journal;
+        if (journal is not null) await journal.BeforeWriteAsync(fullPath);
         await TextFileIo.WriteAsync(fullPath, applied.Content, current, CancellationToken.None);
+        if (journal is not null) await journal.AfterWriteAsync(fullPath);
         var diff = DiffBuilder.Build(job.Task.File, parsed.Blocks, applied.CreatesFile);
         var summary = parsed.Summary ?? $"{(applied.CreatesFile ? "Membuat" : "Mengubah")} {job.Task.File} ({parsed.Blocks.Count} blok).";
         return (new ExecutorOutcome(true, summary, diff, null, 0, 0), []);

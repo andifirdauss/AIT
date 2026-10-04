@@ -248,6 +248,7 @@ public static class TelegramMessages
         ThreadStatus.Completed => ("✅", "Selesai"),
         ThreadStatus.Failed => ("❌", "Gagal"),
         ThreadStatus.Cancelled => ("⛔", "Dibatalkan"),
+        ThreadStatus.RolledBack => ("↩️", "Perubahan dibatalkan"),
         _ => ("•", s.Status.ToString())
     };
 

@@ -15,8 +15,11 @@ public record NodeDto(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    IReadOnlyList<NodeSkillDto>? Skills = null);
+    IReadOnlyList<NodeSkillDto>? Skills = null,
+    Guid? FallbackNodeId = null,
+    string? FallbackNodeName = null);
 
+// FallbackNodeId: a node of the same role that takes over when this one is unavailable; null = none.
 public record SaveNodeRequest(
     string Name,
     NodeRole Role,
@@ -27,7 +30,8 @@ public record SaveNodeRequest(
     int Priority,
     string? SystemPrompt,
     bool IsActive,
-    IReadOnlyList<Guid>? SkillIds = null);
+    IReadOnlyList<Guid>? SkillIds = null,
+    Guid? FallbackNodeId = null);
 
 public record PipelineStatusDto(
     bool IsReady,
