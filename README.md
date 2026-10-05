@@ -39,7 +39,8 @@ atau executor JS membuat file baru karena tidak tahu file yang sudah ada. AiThre
 1. **Planner wajib membaca kode dulu** (tool read-only, boleh juga membaca path di luar root untuk pengecekan) sebelum `submit_plan`.
 2. **Kontrak**: semua nama yang dipakai lintas file (id elemen, properti DTO, parameter API, kolom DB, pesan validasi)
    ditetapkan sekali oleh planner dan dikirim ke setiap executor. Karena itu tugas bisa independen dan berjalan paralel.
-3. **Validator rencana**: file `edit` harus ada, file `create` belum ada, path perubahan tidak boleh keluar root atau masuk
+3. **Validator rencana**: file `edit`/`delete`/`move` harus ada, file `create` dan tujuan `move` belum ada, file yang
+   dihapus/dipindah tidak disentuh tugas lain, path perubahan tidak boleh keluar root atau masuk
    `bin/ obj/ wwwroot/lib/`, `dependsOn` tanpa siklus. Rencana yang salah dikembalikan ke planner untuk diperbaiki.
 4. **Executor hanya menerima**: satu file target (utuh, atau potongan di sekitar `focus` untuk file besar), instruksi,
    kontrak, dan potongan referensi dari file lain yang dipilih planner.

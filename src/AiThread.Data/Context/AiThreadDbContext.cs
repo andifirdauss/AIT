@@ -96,6 +96,7 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.Title).HasMaxLength(300).IsRequired();
             e.Property(x => x.FilePath).HasMaxLength(800).IsRequired();
             e.Property(x => x.Action).HasMaxLength(20).IsRequired();
+            e.Property(x => x.TargetPath).HasMaxLength(800);
             e.Property(x => x.DependsOn).HasMaxLength(300);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.NodeName).HasMaxLength(100);

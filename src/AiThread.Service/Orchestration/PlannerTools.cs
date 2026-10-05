@@ -186,8 +186,9 @@ public static class PlannerTools
                       "id": { "type": "string", "description": "Short id: T1, T2, ..." },
                       "title": { "type": "string" },
                       "file": { "type": "string", "description": "Target file relative to the project root. Files can only be changed inside the project root." },
-                      "action": { "type": "string", "enum": ["edit", "create"] },
-                      "instruction": { "type": "string", "description": "Self-contained instruction for the executor." },
+                      "action": { "type": "string", "enum": ["edit", "create", "delete", "move"], "description": "delete and move are done by AiThread without an executor; move keeps the content unchanged." },
+                      "to": { "type": "string", "description": "Only for action move: the destination path relative to the project root. It must not exist yet." },
+                      "instruction": { "type": "string", "description": "Self-contained instruction for the executor. For delete and move, a short reason is enough." },
                       "focus": {
                         "type": "array",
                         "description": "Line ranges of the target file around the change (needed for large files).",

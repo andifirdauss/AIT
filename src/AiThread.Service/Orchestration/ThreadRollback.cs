@@ -72,6 +72,7 @@ public sealed class ThreadRollback(
                     else if (action == Delete)
                     {
                         File.Delete(fullPath);
+                        FileOperations.PruneEmptyDirectories(Path.GetDirectoryName(fullPath)!, root);
                     }
                 }
 
@@ -151,6 +152,9 @@ public sealed class ThreadRollback(
                 return new RollbackFileDto(snapshot.FilePath, snapshot.Existed ? Restore : Delete, null);
             if (current == snapshot.OriginalHash)
                 return new RollbackFileDto(snapshot.FilePath, Unchanged, null);
+            // Deleted or moved away by the thread and still absent.
+            if (current is null && snapshot.Removed)
+                return new RollbackFileDto(snapshot.FilePath, Restore, null);
             return new RollbackFileDto(snapshot.FilePath, Conflict, current is null
                 ? "File sudah dihapus setelah diubah thread ini."
                 : "Isi file sudah berubah lagi setelah thread ini (diedit developer atau thread lain).");

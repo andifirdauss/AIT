@@ -172,6 +172,59 @@ public class ThreadRecoveryTests
     }
 
     [Fact]
+    public async Task Move_and_delete_run_without_a_model_and_rollback_brings_the_files_back()
+    {
+        const string movedFile = "src/Core/Greeting/Greeter.cs";
+        await using var harness = await CreateAsync();
+        var root = harness.Project.Root;
+        harness.Project.Write("src/Old.cs", "public class Old { }");
+        var greeter = await File.ReadAllBytesAsync(Path.Combine(root, "src", "Greeter.cs"));
+        var old = await File.ReadAllBytesAsync(Path.Combine(root, "src", "Old.cs"));
+
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan
+            {
+                Summary = "Pindahkan Greeter, ganti sapaan, hapus Old.",
+                Tasks =
+                [
+                    new PlanTask { Id = "T1", Title = "Move Greeter", File = GreeterFile, Action = "move", To = movedFile },
+                    Step("T2", movedFile, "Return \"Halo\" from Hello().", "edit", "T1"),
+                    new PlanTask { Id = "T3", Title = "Delete Old", File = "src/Old.cs", Action = "delete" }
+                ]
+            }))
+            .OnExecutor(movedFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+        var (result, observer) = await harness.RunAsync("Pindahkan Greeter ke Core/Greeting dan hapus Old");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Single(router.CallsTo(ScriptedAgent.Executor)); // only the edit needs a model
+        Assert.False(File.Exists(Path.Combine(root, "src", "Greeter.cs")));
+        Assert.False(File.Exists(Path.Combine(root, "src", "Old.cs")));
+        Assert.Contains(HalloLine, harness.ReadFile(movedFile));
+        Assert.Contains(observer.Lines, l => l.Contains($"`{GreeterFile} → {movedFile}`"));
+
+        await using (var db = await harness.CreateDbAsync())
+        {
+            var move = db.ThreadTasks.Single(t => t.ThreadRunId == result.ThreadId && t.TaskKey == "T1");
+            Assert.Equal((ThreadTaskStatus.Succeeded, movedFile, (string?)null), (move.Status, move.TargetPath, move.Model));
+        }
+
+        var preview = (await harness.Rollback.PreviewAsync(result.ThreadId))!;
+        Assert.True(preview.CanRollback, preview.Reason);
+        Assert.Equal(ThreadRollback.Restore, preview.Files.Single(f => f.FilePath == GreeterFile).Action);
+        Assert.Equal(ThreadRollback.Restore, preview.Files.Single(f => f.FilePath == "src/Old.cs").Action);
+        Assert.Equal(ThreadRollback.Delete, preview.Files.Single(f => f.FilePath == movedFile).Action);
+
+        var outcome = await harness.Rollback.RollbackAsync(result.ThreadId);
+
+        Assert.Equal((2, 1), (outcome.Restored, outcome.Deleted));
+        Assert.Equal(greeter, await File.ReadAllBytesAsync(Path.Combine(root, "src", "Greeter.cs")));
+        Assert.Equal(old, await File.ReadAllBytesAsync(Path.Combine(root, "src", "Old.cs")));
+        Assert.False(Directory.Exists(Path.Combine(root, "src", "Core")), "the folders the move created are removed again");
+    }
+
+    [Fact]
     public async Task Rollback_is_refused_as_a_whole_when_a_file_changed_afterwards()
     {
         await using var harness = await CreateAsync();
