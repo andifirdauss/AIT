@@ -54,7 +54,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | **Executor** | Node murah. Mengerjakan satu tugas = satu file. Banyak executor berjalan paralel. |
 | **Wrapper** | Node yang mengumpulkan semua hasil executor dan menulis balasan untuk Anda. |
 | **Kontrak** | Daftar nama yang dipakai lintas file (id elemen, properti DTO, parameter API, kolom DB) — wajib dipakai persis oleh semua executor. |
-| **Tugas** | Instruksi untuk satu file (`edit` atau `create`), bisa bergantung pada tugas lain (`dependsOn`). |
+| **Tugas** | Instruksi untuk satu file (`edit`, `create`, `delete`, atau `move`), bisa bergantung pada tugas lain (`dependsOn`). `delete` dan `move` dijalankan AiThread tanpa model. |
 | **Node** | Konfigurasi satu pekerja AI: peran, model 9router, temperature, max token, batas paralel. |
 | **Combo** | Model gabungan di 9router yang otomatis fallback antar provider. Bisa dipilih seperti model biasa. |
 | **Passthrough** | Request Claude Code yang tidak diorkestrasi (judul sesi, compact, cek kuota, sesi di luar project) dan diteruskan langsung ke 9router. |
