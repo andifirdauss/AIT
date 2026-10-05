@@ -533,6 +533,9 @@ namespace AiThread.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<bool>("Removed")
+                        .HasColumnType("bit");
+
                     b.Property<Guid>("ThreadRunId")
                         .HasColumnType("uniqueidentifier");
 
@@ -737,6 +740,10 @@ namespace AiThread.Data.Migrations
 
                     b.Property<string>("Summary")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TargetPath")
+                        .HasMaxLength(800)
+                        .HasColumnType("nvarchar(800)");
 
                     b.Property<string>("TaskKey")
                         .IsRequired()

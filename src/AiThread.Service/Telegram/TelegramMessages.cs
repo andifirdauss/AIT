@@ -148,7 +148,8 @@ public static class TelegramMessages
     public static string DiffHeader(Guid threadId, int files) => $"🧾 Perubahan thread <code>{ShortId(threadId)}</code> · {files} file";
 
     public static string DiffTask(ThreadTaskDto task) =>
-        $"{TaskIcon(task.Status)} <b>{Escape(task.TaskKey)}</b> <code>{Escape(ShortPath(task.FilePath))}</code>";
+        $"{TaskIcon(task.Status)} <b>{Escape(task.TaskKey)}</b> <code>{Escape(ShortPath(task.FilePath))}</code>" +
+        (task.TargetPath is null ? string.Empty : $" → <code>{Escape(ShortPath(task.TargetPath))}</code>");
 
     // The live message of a running thread: status, plan, one line per task and the planner's latest tool call.
     public static string ThreadProgress(ThreadDetailDto detail, string projectName, string? plannerActivity, DateTime now)

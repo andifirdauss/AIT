@@ -21,7 +21,8 @@ public sealed record ExecutionSummary(IReadOnlyList<TaskResult> Results, long Wa
 
 // Runs the task DAG: every task whose dependencies succeeded starts immediately, so the stage takes as long as
 // the slowest chain — not the sum of all tasks. Tasks whose dependency failed are skipped, not attempted.
-public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimiter limiter)
+// Delete and move tasks are done by FileOperations without a model.
+public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimiter limiter, FileOperations fileOperations)
 {
     private int _roundRobin;
 
@@ -55,7 +56,10 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
                         continue;
                     }
 
-                    running[RunTaskAsync(task, entities[task.Id], request, globalGate, recorder, progress, cancellationToken)] = task.Id;
+                    var run = task.IsFileOperation
+                        ? RunFileOperationAsync(task, entities[task.Id], request, recorder, progress, cancellationToken)
+                        : RunTaskAsync(task, entities[task.Id], request, globalGate, recorder, progress, cancellationToken);
+                    running[run] = task.Id;
                 }
             } while (progressed);
 
@@ -133,33 +137,75 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
 
             stopwatch.Stop();
             recorder.TaskOutput(entity, string.Empty, flush: true);
-
-            var status = outcome.Success ? ThreadTaskStatus.Succeeded : ThreadTaskStatus.Failed;
-            await recorder.UpdateTaskAsync(entity, e =>
-            {
-                e.Status = status;
-                e.Summary = outcome.Summary;
-                e.Diff = outcome.Diff;
-                e.Error = outcome.Error;
-                e.Tokens = outcome.Tokens;
-                e.Attempts = outcome.Attempts;
-                e.CompletedAt = DateTime.UtcNow;
-                e.DurationMs = stopwatch.ElapsedMilliseconds;
-            });
-
-            var seconds = stopwatch.Elapsed.TotalSeconds.ToString("0.0");
-            await progress.LineAsync(outcome.Success
-                ? $"   ✅ {task.Id} `{task.File}` ({seconds}s, {entity.NodeName}) — {outcome.Summary}"
-                : $"   ❌ {task.Id} `{task.File}` ({seconds}s, {entity.NodeName}) — {outcome.Error}", cancellationToken);
-            recorder.Log(outcome.Success ? ActivityLevel.Success : ActivityLevel.Error,
-                $"{task.Id} {task.File}: {(outcome.Success ? outcome.Summary : outcome.Error)}");
-
-            return new TaskResult(task.Id, task.File, status, outcome.Summary, outcome.Diff, outcome.Error, stopwatch.ElapsedMilliseconds, outcome.Tokens);
+            return await FinishAsync(task, entity, outcome, stopwatch, entity.NodeName, recorder, progress, cancellationToken);
         }
         finally
         {
             globalGate.Release();
         }
+    }
+
+    // No executor node and no global slot: a delete or move takes milliseconds.
+    private async Task<TaskResult> RunFileOperationAsync(
+        PlanTask task,
+        ThreadTask entity,
+        ExecutionRequest request,
+        ThreadRecorder recorder,
+        ClientProgress progress,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        await recorder.UpdateTaskAsync(entity, e =>
+        {
+            e.Status = ThreadTaskStatus.Running;
+            e.StartedAt = DateTime.UtcNow;
+        });
+
+        ExecutorOutcome outcome;
+        try
+        {
+            outcome = await fileOperations.RunAsync(task, request.Scope, request.Journal, cancellationToken);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            outcome = new ExecutorOutcome(false, null, null, ex.Message, 0, 1);
+        }
+
+        stopwatch.Stop();
+        return await FinishAsync(task, entity, outcome, stopwatch, "tanpa model", recorder, progress, cancellationToken);
+    }
+
+    private static async Task<TaskResult> FinishAsync(
+        PlanTask task,
+        ThreadTask entity,
+        ExecutorOutcome outcome,
+        Stopwatch stopwatch,
+        string? doneBy,
+        ThreadRecorder recorder,
+        ClientProgress progress,
+        CancellationToken cancellationToken)
+    {
+        var status = outcome.Success ? ThreadTaskStatus.Succeeded : ThreadTaskStatus.Failed;
+        await recorder.UpdateTaskAsync(entity, e =>
+        {
+            e.Status = status;
+            e.Summary = outcome.Summary;
+            e.Diff = outcome.Diff;
+            e.Error = outcome.Error;
+            e.Tokens = outcome.Tokens;
+            e.Attempts = outcome.Attempts;
+            e.CompletedAt = DateTime.UtcNow;
+            e.DurationMs = stopwatch.ElapsedMilliseconds;
+        });
+
+        var seconds = stopwatch.Elapsed.TotalSeconds.ToString("0.0");
+        await progress.LineAsync(outcome.Success
+            ? $"   ✅ {task.Id} `{task.Target}` ({seconds}s, {doneBy}) — {outcome.Summary}"
+            : $"   ❌ {task.Id} `{task.Target}` ({seconds}s, {doneBy}) — {outcome.Error}", cancellationToken);
+        recorder.Log(outcome.Success ? ActivityLevel.Success : ActivityLevel.Error,
+            $"{task.Id} {task.Target}: {(outcome.Success ? outcome.Summary : outcome.Error)}");
+
+        return new TaskResult(task.Id, task.File, status, outcome.Summary, outcome.Diff, outcome.Error, stopwatch.ElapsedMilliseconds, outcome.Tokens);
     }
 
     private static async Task<TaskResult> SkipAsync(PlanTask task, ThreadTask entity, string reason, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
@@ -170,7 +216,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
             e.Error = reason;
             e.CompletedAt = DateTime.UtcNow;
         });
-        await progress.LineAsync($"   ⏭️ {task.Id} `{task.File}` dilewati — {reason}", cancellationToken);
+        await progress.LineAsync($"   ⏭️ {task.Id} `{task.Target}` dilewati — {reason}", cancellationToken);
         return new TaskResult(task.Id, task.File, ThreadTaskStatus.Skipped, null, null, reason, 0, 0);
     }
 

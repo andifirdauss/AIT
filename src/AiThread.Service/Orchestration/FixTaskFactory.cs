@@ -61,7 +61,7 @@ public static class FixTaskFactory
         var tasks = new List<PlanTask>();
         foreach (var (relative, fileWork) in work)
         {
-            var original = earlierTasks.Where(t => string.Equals(t.File, relative, StringComparison.OrdinalIgnoreCase)).ToList();
+            var original = earlierTasks.Where(t => string.Equals(t.IsMove ? t.To : t.File, relative, StringComparison.OrdinalIgnoreCase)).ToList();
             tasks.Add(new PlanTask
             {
                 Id = $"V{round}-{tasks.Count + 1}",

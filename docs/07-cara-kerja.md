@@ -193,10 +193,15 @@ Batasan:
 Rencana ditolak dan dikembalikan ke planner (memakan satu langkah) bila:
 
 - lebih dari 40 tugas, atau `summary` kosong padahal ada tugas;
-- id tugas ganda, `instruction` kosong, `action` bukan `edit`/`create`;
-- path di luar root (perubahan hanya boleh di dalam root; membaca di luar root diperbolehkan), menunjuk folder, atau
-  berada di folder yang disembunyikan;
-- `edit` untuk file yang tidak ada, `create` untuk file yang sudah ada, atau dua tugas membuat file yang sama;
+- id tugas ganda, `instruction` kosong (kecuali untuk `delete`/`move`), `action` bukan `edit`/`create`/`delete`/`move`;
+- path (termasuk tujuan `to`) di luar root (perubahan hanya boleh di dalam root; membaca di luar root diperbolehkan),
+  menunjuk folder, atau berada di folder yang disembunyikan;
+- `edit` untuk file yang tidak ada, `create` untuk file yang sudah ada, atau dua tugas membuat/memindahkan file ke path
+  yang sama;
+- `delete`/`move` untuk file yang tidak ada; `move` tanpa `to`, ke file yang sudah ada, atau hanya mengubah huruf
+  besar/kecil;
+- file yang dihapus atau dipindahkan juga disentuh tugas lain. File hasil `move` boleh di-`edit` di path barunya asal
+  tugas itu bergantung (`dependsOn`) pada tugas `move`-nya;
 - `dependsOn` menunjuk tugas yang tidak ada, dirinya sendiri, atau membentuk siklus.
 
 Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di log aktivitas thread.
@@ -212,6 +217,21 @@ Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di l
   ([rollback](04-penggunaan.md#membatalkan-perubahan-file-rollback)).
   Setelah setiap penulisan, hash isi yang ditulis juga dicatat.
 - Waktu eksekusi = rantai tugas terpanjang. Dashboard membandingkannya dengan total waktu kerja executor (speedup).
+
+### Hapus dan pindah file
+
+Selain `edit` dan `create`, sebuah tugas bisa berupa:
+
+- `delete` — menghapus satu file;
+- `move` — memindahkan/me-rename satu file ke path `to`. Isinya tidak berubah (byte demi byte).
+
+Kedua aksi ini dijalankan **langsung oleh AiThread tanpa model** (tanpa token, tanpa node executor; di detail thread
+kolom node bertuliskan *tanpa model*), di bawah lock file yang sama dengan executor. Folder yang menjadi kosong setelah
+file diambil darinya ikut dihapus (tidak pernah root project). Bila isi file yang dipindahkan juga perlu berubah
+(namespace, import, nama class), planner menambah tugas `edit` di path baru yang bergantung pada tugas `move`; referensi
+ke file itu di file lain diubah lewat tugas `edit` masing-masing. Seperti penulisan executor, isi asli file dicatat
+dulu sehingga hapus dan pindah ikut dikembalikan saat
+[rollback](04-penggunaan.md#membatalkan-perubahan-file-rollback).
 
 ### Yang dilihat executor
 

@@ -49,14 +49,17 @@ public sealed class FileJournal(IDbContextFactory<AiThreadDbContext> dbFactory, 
         _snapshots[path] = snapshot.Id;
     }
 
+    // Also called after a delete or a move away: the file is then gone, and Removed tells ThreadRollback to restore it.
     public async Task AfterWriteAsync(string fullPath)
     {
         if (!_snapshots.TryGetValue(scope.ToRelative(fullPath), out var id)) return;
 
-        var hash = Hash(await File.ReadAllBytesAsync(fullPath));
+        var removed = !File.Exists(fullPath);
+        var hash = removed ? null : Hash(await File.ReadAllBytesAsync(fullPath));
         await using var db = await dbFactory.CreateDbContextAsync();
         await db.ThreadFileSnapshots.Where(s => s.Id == id).ExecuteUpdateAsync(s => s
             .SetProperty(x => x.AfterHash, hash)
+            .SetProperty(x => x.Removed, removed)
             .SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
     }
 
