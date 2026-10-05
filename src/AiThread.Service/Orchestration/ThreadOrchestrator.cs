@@ -197,7 +197,7 @@ public sealed class ThreadOrchestrator(
             foreach (var task in plan.Tasks)
             {
                 var dependencies = task.DependsOn is { Count: > 0 } deps ? $" (setelah {string.Join(", ", deps)})" : string.Empty;
-                await progress.LineAsync($"   • {task.Id} `{task.File}` — {task.Title}{dependencies}", cancellationToken);
+                await progress.LineAsync($"   • {task.Id} `{task.Target}` — {task.Title}{dependencies}", cancellationToken);
             }
             recorder.Log(ActivityLevel.Info, $"Rencana: {plan.Tasks.Count} tugas, {plan.Contract.Count} item kontrak. {plan.Summary}");
 
@@ -533,6 +533,7 @@ public sealed class ThreadOrchestrator(
         Title = task.Title,
         File = task.File,
         Action = task.Action,
+        To = task.To,
         Instruction = task.Instruction,
         Focus = task.Focus,
         Context = task.Context,
@@ -545,6 +546,7 @@ public sealed class ThreadOrchestrator(
         Title = row.Title,
         File = row.FilePath,
         Action = row.Action,
+        To = row.TargetPath,
         Instruction = row.Instruction
     };
 

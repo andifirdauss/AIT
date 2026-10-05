@@ -137,10 +137,12 @@ Cara kerjanya:
 1. **Sebelum** executor menulis sebuah file untuk pertama kali dalam thread, isi aslinya disimpan di database apa
    adanya (byte demi byte, termasuk encoding dan akhir baris). File yang belum ada dicatat sebagai "belum ada".
    Penulisan berikutnya di thread yang sama (putaran perbaikan, percobaan ulang) tidak menimpa catatan ini.
-2. **Setelah** setiap penulisan, sidik jari (hash SHA-256) isi yang ditulis AiThread ikut dicatat.
+2. **Setelah** setiap penulisan, sidik jari (hash SHA-256) isi yang ditulis AiThread ikut dicatat. File yang dihapus
+   atau dipindahkan thread (tugas `delete`/`move`) dicatat sebagai "dihapus thread".
 3. Tombol ini membuka pratinjau per file:
-   - *Dikembalikan ke isi asli*: isi file sekarang masih persis hasil thread ini.
-   - *Dihapus*: file dibuat oleh thread ini dan isinya belum diubah orang lain.
+   - *Dikembalikan ke isi asli*: isi file sekarang masih persis hasil thread ini, atau file dihapus/dipindahkan thread
+     ini dan path lamanya masih kosong.
+   - *Dihapus*: file dibuat (atau dipindahkan ke path ini) oleh thread ini dan isinya belum diubah orang lain.
    - *Sudah sama dengan aslinya*: tidak ada yang perlu dilakukan.
    - *Sudah berubah lagi*: file diedit setelah thread ini (oleh Anda atau thread lain), atau dihapus.
 4. **Semua atau tidak sama sekali**: bila ada satu saja file *Sudah berubah lagi*, pembatalan ditolak dan **tidak ada
@@ -151,8 +153,8 @@ Cara kerjanya:
 Batasan:
 
 - Hanya bisa saat thread tidak sedang berjalan.
-- Hanya mencakup file yang ditulis executor AiThread, bukan perubahan lain (mis. output build).
-- Folder yang dibuat thread untuk file baru tidak ikut dihapus.
+- Hanya mencakup file yang ditulis, dihapus, atau dipindahkan AiThread, bukan perubahan lain (mis. output build).
+- Folder yang menjadi kosong setelah file buatan thread dihapus ikut dihapus.
 - Thread yang berjalan sebelum fitur ini ada tidak punya catatan, jadi tidak bisa dibatalkan.
 
 ## Menjalankan prompt dari Dashboard

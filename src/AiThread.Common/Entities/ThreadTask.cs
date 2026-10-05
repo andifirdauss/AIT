@@ -13,6 +13,10 @@ public class ThreadTask : BaseEntity
     public string Title { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
     public string Action { get; set; } = "edit";
+
+    // Destination of a move task, relative to the project root; null for other actions.
+    public string? TargetPath { get; set; }
+
     public string Instruction { get; set; } = string.Empty;
 
     // Comma-separated task keys this task waits for.

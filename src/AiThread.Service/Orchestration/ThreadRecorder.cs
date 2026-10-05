@@ -62,6 +62,7 @@ public sealed class ThreadRecorder(
             Title = Truncate(t.Title, 300),
             FilePath = Truncate(t.File, 800),
             Action = t.Action,
+            TargetPath = t.To is null ? null : Truncate(t.To, 800),
             Instruction = t.Instruction,
             DependsOn = t.DependsOn is { Count: > 0 } deps ? Truncate(string.Join(",", deps), 300) : null,
             Status = ThreadTaskStatus.Pending

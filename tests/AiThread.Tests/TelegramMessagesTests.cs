@@ -83,7 +83,7 @@ public class TelegramMessagesTests
     }
 
     private static ThreadTaskDto TaskDto(string key, ThreadTaskStatus status, string title = "Tambah field") => new(
-        Guid.NewGuid(), key, 1, title, $"src/App/{key}.cs", "edit", "", null, status,
+        Guid.NewGuid(), key, 1, title, $"src/App/{key}.cs", "edit", null, "", null, status,
         null, null, 0, null, null, null, 0, null, null, null);
 
     private static ThreadDetailDto Detail(ThreadStatus status, IReadOnlyList<ThreadTaskDto> tasks) => new(

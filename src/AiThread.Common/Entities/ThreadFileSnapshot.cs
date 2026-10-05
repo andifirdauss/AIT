@@ -20,4 +20,7 @@ public class ThreadFileSnapshot : BaseEntity
     // was changed by someone else afterwards, and undoing it would lose that work.
     public string? OriginalHash { get; set; }
     public string? AfterHash { get; set; }
+
+    // True when the thread last left the file absent (a delete task, or the source of a move); undoing restores it.
+    public bool Removed { get; set; }
 }

@@ -170,16 +170,21 @@
     if (detail.contextPack) el('contextPack').innerHTML = md(detail.contextPack);
   }
 
+  // Delete and move tasks are done by AiThread itself, without a model.
+  const isFileOperation = t => t.action === 'delete' || t.action === 'move';
+  const taskPath = t => t.targetPath ? `${t.filePath} → ${t.targetPath}` : t.filePath;
+
   function taskDetailHtml(t) {
     const output = outputs.get(t.id) || '';
+    const outputHtml = isFileOperation(t) ? '' : `<div><span class="text-secondary small">Output model${t.attempts > 1 ? ` (${t.attempts} percobaan)` : ''}</span>
+        <pre class="code-block" data-output-for="${t.id}">${escapeHtml(output || (t.status === 'Pending' ? 'Menunggu giliran…' : 'Output live hanya tersedia selama halaman terbuka saat tugas berjalan.'))}</pre></div>`;
     return `<tr class="task-detail" data-detail-for="${t.id}"><td colspan="7" class="bg-body-tertiary">
       <div class="mb-2"><span class="text-secondary small">Instruksi</span><div class="pre-wrap small">${escapeHtml(t.instruction)}</div></div>
       ${t.dependsOn ? `<div class="mb-2 small"><span class="text-secondary">Bergantung pada:</span> ${escapeHtml(t.dependsOn)}</div>` : ''}
       ${t.summary ? `<div class="mb-2 small"><span class="text-secondary">Ringkasan:</span> ${escapeHtml(t.summary)}</div>` : ''}
       ${t.error ? `<div class="mb-2 small text-danger">${escapeHtml(t.error)}</div>` : ''}
       ${t.diff ? `<div class="mb-2"><span class="text-secondary small">Diff</span><pre class="code-block">${diffHtml(t.diff)}</pre></div>` : ''}
-      <div><span class="text-secondary small">Output model${t.attempts > 1 ? ` (${t.attempts} percobaan)` : ''}</span>
-        <pre class="code-block" data-output-for="${t.id}">${escapeHtml(output || (t.status === 'Pending' ? 'Menunggu giliran…' : 'Output live hanya tersedia selama halaman terbuka saat tugas berjalan.'))}</pre></div>
+      ${outputHtml}
     </td></tr>`;
   }
 
@@ -192,8 +197,8 @@
       ? list.map(t => `
         <tr data-task="${t.id}" style="cursor:pointer">
           <td class="mono">${escapeHtml(t.taskKey)}</td>
-          <td><div>${escapeHtml(t.title)}</div><div class="small text-secondary mono">${escapeHtml(t.action)} · ${escapeHtml(t.filePath)}</div></td>
-          <td class="small">${t.nodeName ? `${escapeHtml(t.nodeName)}<div class="text-secondary mono">${escapeHtml(t.model || '')}</div>` : '–'}</td>
+          <td><div>${escapeHtml(t.title)}</div><div class="small text-secondary mono">${escapeHtml(t.action)} · ${escapeHtml(taskPath(t))}</div></td>
+          <td class="small">${t.nodeName ? `${escapeHtml(t.nodeName)}<div class="text-secondary mono">${escapeHtml(t.model || '')}</div>` : isFileOperation(t) ? '<span class="text-secondary">tanpa model</span>' : '–'}</td>
           <td>${statusBadge(t.status)}${t.attempts > 1 ? `<div class="small text-secondary">${t.attempts}× percobaan</div>` : ''}</td>
           <td class="text-nowrap">${fmt.ms(t.durationMs)}</td>
           <td>${fmt.number(t.tokens)}</td>
@@ -225,7 +230,7 @@
       const width = Math.max(((e - s) / span) * 100, 0.8);
       return `<div class="timeline-row">
         <span class="mono">${escapeHtml(t.taskKey)}</span>
-        <div class="timeline-track" title="${escapeHtml(t.filePath)}"><div class="timeline-bar ${t.status}" style="left:${left}%;width:${width}%"></div></div>
+        <div class="timeline-track" title="${escapeHtml(taskPath(t))}"><div class="timeline-bar ${t.status}" style="left:${left}%;width:${width}%"></div></div>
         <span class="text-secondary text-end">${fmt.ms(t.durationMs ?? (e - s))}</span>
       </div>`;
     }).join('') + `<div class="small text-secondary mt-1">Rentang: ${fmt.ms(span)} — tugas yang overlap berjalan paralel.</div>`;

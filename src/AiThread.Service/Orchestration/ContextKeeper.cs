@@ -189,7 +189,7 @@ public sealed class ContextKeeper(
         var tasks = (await db.ThreadTasks.AsNoTracking()
                 .Where(t => ids.Contains(t.ThreadRunId))
                 .OrderBy(t => t.Order)
-                .Select(t => new { t.ThreadRunId, t.TaskKey, t.FilePath, t.Action, t.Title, t.Status, t.Summary, t.Error })
+                .Select(t => new { t.ThreadRunId, t.TaskKey, t.FilePath, t.TargetPath, t.Action, t.Title, t.Status, t.Summary, t.Error })
                 .ToListAsync(cancellationToken))
             .ToLookup(t => t.ThreadRunId);
 
@@ -205,7 +205,7 @@ public sealed class ContextKeeper(
                 t.Prompt,
                 t.PlanSummary,
                 t.PlanJson is not null && ThreadPlan.TryParse(t.PlanJson, out var plan, out _) && plan is not null ? plan.Contract : [],
-                tasks[t.Id].Select(x => new TurnTask(x.TaskKey, x.FilePath, x.Action, x.Title, x.Status.ToString(), x.Summary ?? x.Error)).ToList(),
+                tasks[t.Id].Select(x => new TurnTask(x.TaskKey, x.TargetPath is null ? x.FilePath : $"{x.FilePath} → {x.TargetPath}", x.Action, x.Title, x.Status.ToString(), x.Summary ?? x.Error)).ToList(),
                 t.FinalResponse,
                 t.Error));
         }

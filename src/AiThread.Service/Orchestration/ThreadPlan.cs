@@ -72,17 +72,40 @@ public sealed class ContractItem
 
 public sealed class PlanTask
 {
+    public const string Edit = "edit";
+    public const string Create = "create";
+    public const string Delete = "delete";
+    public const string Move = "move";
+
     public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string File { get; set; } = string.Empty;
-    public string Action { get; set; } = "edit";
+    public string Action { get; set; } = Edit;
+
+    // Destination of a move, relative to the project root.
+    public string? To { get; set; }
+
     public string Instruction { get; set; } = string.Empty;
     public List<LineRange>? Focus { get; set; }
     public List<ContextRef>? Context { get; set; }
     public List<string>? DependsOn { get; set; }
 
     [JsonIgnore]
-    public bool IsCreate => string.Equals(Action, "create", StringComparison.OrdinalIgnoreCase);
+    public bool IsCreate => string.Equals(Action, Create, StringComparison.OrdinalIgnoreCase);
+
+    [JsonIgnore]
+    public bool IsDelete => string.Equals(Action, Delete, StringComparison.OrdinalIgnoreCase);
+
+    [JsonIgnore]
+    public bool IsMove => string.Equals(Action, Move, StringComparison.OrdinalIgnoreCase);
+
+    // Delete and move are done by AiThread itself; no executor model is involved.
+    [JsonIgnore]
+    public bool IsFileOperation => IsDelete || IsMove;
+
+    // The file as shown to people and models: "a.cs → b.cs" for a move.
+    [JsonIgnore]
+    public string Target => IsMove && !string.IsNullOrWhiteSpace(To) ? $"{File} → {To}" : File;
 }
 
 public sealed class LineRange

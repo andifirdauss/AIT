@@ -67,7 +67,7 @@ public sealed class ReviewerAgent(NodeCaller caller, NodePromptBuilder prompts)
         {
             byId.TryGetValue(result.TaskKey, out var task);
             builder.Append($"\n## {result.TaskKey} · {task?.Title ?? result.File} — {result.Status}\n");
-            builder.Append($"File: {result.File} ({task?.Action ?? "edit"})\n");
+            builder.Append($"File: {task?.Target ?? result.File} ({task?.Action ?? "edit"})\n");
             if (task is not null)
             {
                 var instruction = task.Instruction.Trim();

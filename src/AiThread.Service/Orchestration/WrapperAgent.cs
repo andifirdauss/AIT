@@ -91,7 +91,7 @@ public sealed class WrapperAgent(NodeCaller caller, NodePromptBuilder prompts)
         {
             var task = plan.Tasks.LastOrDefault(t => t.Id == result.TaskKey);
             builder.Append($"\n## {result.TaskKey} · {task?.Title ?? result.File} — {result.Status}\n");
-            builder.Append($"File: {result.File} ({task?.Action ?? "edit"})\n");
+            builder.Append($"File: {task?.Target ?? result.File} ({task?.Action ?? "edit"})\n");
             if (result.Summary is not null) builder.Append($"Summary: {result.Summary}\n");
             if (result.Error is not null) builder.Append($"Error: {result.Error}\n");
             if (result.Diff is not null)

@@ -28,6 +28,7 @@ public record ThreadTaskDto(
     string Title,
     string FilePath,
     string Action,
+    string? TargetPath,
     string Instruction,
     string? DependsOn,
     ThreadTaskStatus Status,

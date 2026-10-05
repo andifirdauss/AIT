@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddSingleton<FileLockProvider>();
         services.AddSingleton<PlannerAgent>();
         services.AddSingleton<ExecutorAgent>();
+        services.AddSingleton<FileOperations>();
         services.AddSingleton<ExecutionEngine>();
         services.AddSingleton<BuildRunner>();
         services.AddSingleton<ReviewerAgent>();
