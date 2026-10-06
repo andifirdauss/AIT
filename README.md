@@ -111,10 +111,10 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 | Menu | Fungsi |
 |---|---|
 | Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
-| Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual |
-| Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi |
+| Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), **project key** untuk berbagi memory antar developer, stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual |
+| Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi. Tab **Bisnis**: wiki bisnis per modul (business memory) dengan editor, screenshot, dan riwayat versi |
 | Node | Planner / executor / reviewer / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan, skill (dicarikan Skill Orchestrator dari gudang skill) |
-| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, bot Telegram, Skill Orchestrator & gudang skill |
+| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, penyimpanan memory (short/long/bisnis) & penulis wiki bisnis, bot Telegram, Skill Orchestrator & gudang skill |
 
 ## Prompt dari Telegram
 
@@ -156,13 +156,20 @@ diabaikan: tanpa orkestrasi, tanpa memory.
 - Planner menerima indeks label (relevan dengan prompt + short memory terbaru) dan bisa memanggil `search_memory` /
   `read_memory`.
 - *Knowledge memory* tidak terikat project dan terlihat oleh semua project.
+- Memory project diikat ke **project key** (git remote, `.aithread/project.json`, atau key manual), bukan ke folder:
+  arahkan long memory semua developer ke database yang sama (Setting → Penyimpanan memory) agar memory sebuah project
+  terkumpul di satu tempat walau folder root tiap orang berbeda.
+- **Business memory**: secara berkala (default tiap 6 jam, atau tombol *Perbarui sekarang*) thread yang selesai
+  dirangkum AI menjadi wiki bisnis per modul — requirement, aturan bisnis, tabel status & validasi, dan screenshot
+  dari prompt. Bisa diedit manual (dengan riwayat versi), disimpan di store sendiri yang bisa dibagi, dan dibaca
+  planner sebelum mengubah perilaku sebuah modul. Detail: [docs/06-memory.md](docs/06-memory.md#business-memory-wiki-bisnis).
 
 ## API & SSE
 
 - Proxy Anthropic: `POST /v1/messages`, `POST /v1/messages/count_tokens`, `GET /v1/models`
 - SSE: `GET /api/stream?types=log,router,thread` (prefix tipe event) atau `GET /api/stream?threadId={id}`.
-  Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `telegram.changed`, `skill.changed`, `ping`.
-- REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/threads`, `/api/dashboard`, `/api/telegram`, `/api/skills`.
+  Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `telegram.changed`, `skill.changed`, `business.changed`, `ping`.
+- REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/business`, `/api/threads`, `/api/dashboard`, `/api/telegram`, `/api/skills`.
 
 Konfigurasi infrastruktur ada di `src/AiThread.UI/appsettings.json` (connection string, `AiThread:ShortMemoryHours`,
 interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executor, `AiThread:EmbeddedRedis`).
@@ -183,5 +190,5 @@ interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executo
 dotnet build AiThread.slnx
 dotnet test tests/AiThread.Tests
 dotnet tool restore
-dotnet tool run dotnet-ef migrations add <Nama> --project src/AiThread.Data --startup-project src/AiThread.Data
+dotnet tool run dotnet-ef migrations add <Nama> --context AiThreadDbContext --project src/AiThread.Data --startup-project src/AiThread.Data
 ```

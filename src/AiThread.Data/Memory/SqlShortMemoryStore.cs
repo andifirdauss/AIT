@@ -68,6 +68,8 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
         }
 
         row.ProjectId = record.ProjectId;
+        row.ProjectKey = record.ProjectKey;
+        row.ProjectName = record.ProjectName;
         row.Type = record.Type;
         row.Label = record.Label;
         row.Description = record.Description;
@@ -121,6 +123,7 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
             if (!_schemaReady)
             {
                 await MemorySchema.EnsureAsync(_connection, db, (c, ct) => c.ShortMemories.AnyAsync(ct), cancellationToken);
+                await MemorySchema.EnsureColumnsAsync<ShortMemoryRow>(db, cancellationToken, nameof(ShortMemoryRow.ProjectKey), nameof(ShortMemoryRow.ProjectName));
                 _schemaReady = true;
             }
             return db;
@@ -156,5 +159,5 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
     }
 
     private static ShortMemoryRecord ToRecord(ShortMemoryRow r) =>
-        new(r.Id, r.ProjectId, r.Type, r.Label, r.Description, r.SourceThreadId, r.CreatedAt);
+        new(r.Id, r.ProjectId, r.Type, r.Label, r.Description, r.SourceThreadId, r.CreatedAt, r.ProjectKey, r.ProjectName);
 }

@@ -1,6 +1,9 @@
 using AiThread.Common.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace AiThread.Data.Memory;
@@ -9,6 +12,58 @@ namespace AiThread.Data.Memory;
 // used because it does nothing once the database holds any table (another app's, or the other memory level's).
 public static class MemorySchema
 {
+    public const int ProjectKeyLength = 300;
+    public const int ProjectNameLength = 200;
+
+    // Columns added to a memory table after a release created it: a table made by an older version gets the missing
+    // ones (nullable) here, since external stores are not migrated. The SQL comes from the provider's own migrations
+    // generator, so it is valid on every supported database.
+    public static async Task EnsureColumnsAsync<TEntity>(DbContext db, CancellationToken cancellationToken, params string[] properties)
+        where TEntity : class
+    {
+        var entityType = db.Model.FindEntityType(typeof(TEntity))
+            ?? throw new InvalidOperationException($"{typeof(TEntity).Name} is not part of {db.GetType().Name}.");
+        var table = entityType.GetTableName() ?? throw new InvalidOperationException($"{typeof(TEntity).Name} has no table.");
+        var schema = entityType.GetSchema();
+        var storeObject = StoreObjectIdentifier.Table(table, schema);
+        var sql = db.GetService<ISqlGenerationHelper>();
+
+        List<MigrationOperation>? missing = null;
+        foreach (var name in properties)
+        {
+            var property = entityType.FindProperty(name)
+                ?? throw new InvalidOperationException($"{typeof(TEntity).Name}.{name} does not exist.");
+            var column = property.GetColumnName(storeObject) ?? name;
+
+            // Identifiers come from the EF model (not from input) and are delimited by the provider.
+            var probe = "SELECT " + sql.DelimitIdentifier(column) + " FROM " + sql.DelimitIdentifier(table, schema) + " WHERE 1 = 0";
+            try
+            {
+                await db.Database.ExecuteSqlRawAsync(probe, cancellationToken);
+                continue;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Column missing (a connection problem fails again below, with the provider's own message).
+            }
+
+            (missing ??= []).Add(new AddColumnOperation
+            {
+                Table = table,
+                Schema = schema,
+                Name = column,
+                ClrType = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType,
+                ColumnType = property.GetRelationalTypeMapping().StoreType,
+                MaxLength = property.GetMaxLength(),
+                IsNullable = true
+            });
+        }
+
+        if (missing is null) return;
+        foreach (var command in db.GetService<IMigrationsSqlGenerator>().Generate(missing))
+            await db.Database.ExecuteSqlRawAsync(command.CommandText, cancellationToken);
+    }
+
     public static async Task EnsureAsync<TContext>(
         MemoryStoreConnection connection,
         TContext db,

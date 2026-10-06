@@ -18,4 +18,6 @@ public interface ISettingService
 
     // Only touches the skill orchestrator fields.
     Task<RuntimeSettings> UpdateSkillsAsync(UpdateSkillSettingsRequest request, CancellationToken cancellationToken = default);
+
+    Task<RuntimeSettings> UpdateBusinessAsync(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken = default);
 }

@@ -60,5 +60,8 @@ public class ThreadRun : BaseEntity
 
     public DateTime? RolledBackAt { get; set; }
 
+    // When the business wiki writer summarized this thread into business memory; null = not yet.
+    public DateTime? BusinessDigestedAt { get; set; }
+
     public ICollection<ThreadTask> Tasks { get; set; } = [];
 }

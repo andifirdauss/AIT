@@ -21,6 +21,15 @@
   }
 
   // A folder marked as project without a recognized stack is a plain repository (.git only).
+  // The key that shares memory between the clones of a repository on every developer's machine.
+  function projectKeyBadge(p) {
+    if (p.keySource === 'Local') {
+      return '<div class="small"><span class="badge text-bg-warning" title="Memory project ini hanya ada di mesin ini. Tambah git remote, file .aithread/project.json, atau isi key manual di detail project.">key lokal — belum dibagi</span></div>';
+    }
+    const source = { File: '.aithread/project.json', Manual: 'manual', GitRemote: 'git remote' }[p.keySource] || p.keySource;
+    return `<div class="small text-secondary" title="Memory dibagi antar developer lewat key ini (${escapeHtml(source)})">🔑 <span class="mono">${escapeHtml(p.key)}</span></div>`;
+  }
+
   function stackBadges(stacks, gitFallback) {
     if (stacks?.length) return stacks.map(s => `<span class="badge text-bg-primary me-1">${escapeHtml(s)}</span>`).join('');
     return gitFallback ? '<span class="badge text-bg-secondary">git</span>' : '<span class="small text-secondary">–</span>';
@@ -29,14 +38,14 @@
   function row(p, status) {
     const missing = p.exists ? '' : ' <span class="badge text-bg-warning">folder hilang</span>';
     return `<tr data-href="/Project/Detail/${p.id}">
-      <td><div class="fw-semibold">${escapeHtml(p.name)}${missing}</div><div class="small text-secondary mono">${escapeHtml(p.rootPath)}</div></td>
+      <td><div class="fw-semibold">${escapeHtml(p.name)}${missing}</div><div class="small text-secondary mono">${escapeHtml(p.rootPath)}</div>${projectKeyBadge(p)}</td>
       ${integrationCell(p, status)}
       <td>${stackBadges(p.stacks, false)}</td>
       <td>${fmt.number(p.threadCount)}</td>
       <td>${fmt.number(p.sessionCount)}</td>
       <td><a href="/Memory?projectId=${p.id}">${fmt.number(p.memoryCount)}</a></td>
       <td class="text-nowrap" title="${fmt.dateTime(p.lastSeenAt)}">${fmt.relative(p.lastSeenAt)}</td>
-      <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-delete="${p.id}" data-name="${escapeHtml(p.name)}">Hapus</button></td>
+      <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-delete="${p.id}" data-name="${escapeHtml(p.name)}" data-local-key="${p.keySource === 'Local'}">Hapus</button></td>
     </tr>`;
   }
 
@@ -92,9 +101,12 @@
   el('projectRows').addEventListener('click', async event => {
     const button = event.target.closest('[data-delete]');
     if (!button) return;
-    if (!confirm(`Hapus project "${button.dataset.name}"? Riwayat thread tetap ada, tetapi memory project ini ikut terhapus.`)) return;
+    if (!confirm(`Hapus project "${button.dataset.name}"? Riwayat thread tetap ada; memory yang hanya ada di mesin ini ikut terhapus.`)) return;
+    // Memory in a shared store also belongs to the other developers of this project: kept unless asked.
+    const includeShared = button.dataset.localKey !== 'true'
+      && confirm('Jika memory disimpan di database bersama (Setting → Penyimpanan memory), hapus juga memory project ini di sana untuk SEMUA developer?\n\nOK = hapus juga · Batal = simpan untuk developer lain');
     try {
-      await api.del(`/api/projects/${button.dataset.delete}`);
+      await api.del(`/api/projects/${button.dataset.delete}${includeShared ? '?includeSharedMemory=true' : ''}`);
       toast('Project dihapus.');
       load();
     } catch (error) {

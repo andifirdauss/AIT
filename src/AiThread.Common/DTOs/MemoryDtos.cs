@@ -13,7 +13,8 @@ public record MemoryItemDto(
     Guid? SourceThreadId,
     DateTime CreatedAt,
     DateTime? PromotedAt,
-    int HitCount);
+    int HitCount,
+    string? ProjectKey = null);
 
 // Label-only view used by the planner to pick topics without reading descriptions.
 public record MemoryIndexEntry(Guid Id, MemoryLevel Level, MemoryType Type, string Label, DateTime CreatedAt);
