@@ -58,6 +58,29 @@
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
 
+    @* Asked once, the first time AiThread is opened, when no developer name is saved and git has no user.name (site.js). *@
+    <div class="modal fade" id="developerNameModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="developerNameTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" id="developerNameForm" autocomplete="off" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="developerNameTitle">Siapa nama Anda?</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary">
+                        Nama ini dicatat pada halaman wiki bisnis dan riwayat revisinya, supaya tim tahu siapa yang menulis atau mengubahnya
+                        bila memory dibagi antar developer. <span class="mono">git config user.name</span> tidak ditemukan di komputer ini, jadi
+                        AiThread menanyakannya sekali. Bisa diubah nanti di Setting → Penyimpanan memory.
+                    </p>
+                    <label class="form-label small" for="developerNameInput">Nama developer</label>
+                    <input type="text" class="form-control" id="developerNameInput" maxlength="200" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="developerNameSave">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

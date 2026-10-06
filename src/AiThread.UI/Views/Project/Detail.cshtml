@@ -23,6 +23,23 @@
 <div class="row g-3">
     <div class="col-xl-4">
         <div class="card mb-3">
+            <div class="card-header">Project key</div>
+            <div class="card-body">
+                <div class="mono fw-semibold text-break" id="projectKey">–</div>
+                <div class="small text-secondary mb-2" id="projectKeySource"></div>
+                <p class="small text-secondary mb-2">
+                    Memory dibagi antar developer berdasarkan key ini, walau folder root tiap orang berbeda. Urutannya:
+                    file <span class="mono">.aithread/project.json</span> (<span class="mono">{ "key": "eep" }</span>) di repository,
+                    key manual di bawah, lalu git remote <span class="mono">origin</span>.
+                </p>
+                <label class="form-label small text-secondary" for="manualKey">Key manual</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control mono" id="manualKey" maxlength="300" placeholder="mis. eep" />
+                    <button class="btn btn-outline-primary" type="button" id="btnSaveKey">Simpan</button>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3">
             <div class="card-header">Solution &amp; file build</div>
             <ul class="list-group list-group-flush small mono" id="projectModules"><li class="list-group-item text-secondary">Memuat…</li></ul>
         </div>

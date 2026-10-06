@@ -40,12 +40,13 @@ public static class DependencyInjection
         services.AddSingleton(sp => new RedisConnectionProvider(
             redisConnectionString, sp.GetRequiredService<ILogger<RedisConnectionProvider>>()));
 
-        // Where short and long memory live is a runtime setting (menu Setting); both start on the built-in stores
+        // Where short, long and business memory live is a runtime setting (menu Setting); all start on the built-in stores
         // and are switched by the service layer once the setting is loaded.
         services.AddSingleton(sp => new SwitchableShortMemoryStore(
             sp.GetRequiredService<RedisConnectionProvider>(), redisConnectionString, sp.GetRequiredService<ILoggerFactory>()));
         services.AddSingleton<IShortMemoryStore>(sp => sp.GetRequiredService<SwitchableShortMemoryStore>());
         services.AddSingleton<LongMemoryStore>();
+        services.AddSingleton<BusinessMemoryStore>();
 
         services.AddSingleton<IEventBus, InProcessEventBus>();
 

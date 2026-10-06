@@ -6,12 +6,24 @@
 <div class="page-header">
     <div>
         <h1>Memory</h1>
-        <p class="page-subtitle">Pengetahuan yang disarikan dari thread. Planner membaca <strong>label</strong> dulu (keyword), lalu deskripsi yang relevan saja.</p>
+        <p class="page-subtitle">Pengetahuan yang disarikan dari thread. Planner membaca <strong>label</strong> dulu (keyword), lalu deskripsi yang relevan saja. Memory project dibagi antar developer lewat <a href="/Project">project key</a>.</p>
     </div>
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsolidate">Konsolidasi sekarang</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btnAdd">Tambah memory</button>
-    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" id="memoryTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="memory-list-tab" data-bs-toggle="tab" data-bs-target="#tab-memory-list" data-tab="" type="button" role="tab" aria-controls="tab-memory-list" aria-selected="true">Short &amp; long memory</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="business-tab" data-bs-toggle="tab" data-bs-target="#tab-business" data-tab="bisnis" type="button" role="tab" aria-controls="tab-business" aria-selected="false">Bisnis (wiki)</button>
+    </li>
+</ul>
+
+<div class="tab-content">
+<div class="tab-pane active" id="tab-memory-list" role="tabpanel" aria-labelledby="memory-list-tab" tabindex="0">
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsolidate">Konsolidasi sekarang</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btnAdd">Tambah memory</button>
 </div>
 
 <div class="row g-3 mb-3">
@@ -64,6 +76,134 @@
         </div>
     </div>
 </div>
+</div>
+
+<div class="tab-pane" id="tab-business" role="tabpanel" aria-labelledby="business-tab" tabindex="0">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5 col-xl-4">
+                    <label class="form-label small text-secondary" for="bizProject">Project</label>
+                    <select class="form-select form-select-sm" id="bizProject"></select>
+                </div>
+                <div class="col-md-7 col-xl-8 d-flex flex-wrap gap-2 justify-content-md-end">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnBizDigest" title="Rangkum thread yang belum masuk wiki sekarang">Perbarui sekarang</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnBizNew">Halaman baru</button>
+                </div>
+            </div>
+            <div class="small text-secondary mt-2" id="bizInfo"></div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-4 col-xl-3">
+            <div class="card">
+                <div class="card-header d-flex align-items-center">
+                    <span>Modul</span>
+                    <input type="search" class="form-control form-control-sm ms-auto w-50" id="bizFilter" placeholder="Cari…" aria-label="Cari halaman" />
+                </div>
+                <div class="list-group list-group-flush small" id="bizPages"><div class="list-group-item text-secondary">Memuat…</div></div>
+            </div>
+        </div>
+        <div class="col-lg-8 col-xl-9">
+            <div class="card" id="bizView">
+                <div class="card-body empty-state" id="bizEmpty">
+                    Pilih halaman di kiri. Wiki bisnis dibangun otomatis dari pekerjaan developer (Setting → Penyimpanan memory → Business memory),
+                    dan bisa ditulis atau diperbaiki manual dengan <strong>Halaman baru</strong>.
+                </div>
+                <div class="d-none" id="bizPage">
+                    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                        <div class="me-auto small text-secondary" id="bizPageMeta"></div>
+                        <div class="form-check form-switch mb-0 small" title="Matikan untuk halaman yang dikurasi manual: penulis wiki AI tidak akan mengubahnya.">
+                            <input class="form-check-input" type="checkbox" role="switch" id="bizAutoUpdate" />
+                            <label class="form-check-label" for="bizAutoUpdate">Diperbarui AI</label>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBizHistory">Riwayat</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="btnBizEdit">Edit</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="btnBizDelete">Hapus</button>
+                    </div>
+                    <div class="card-body docs-body" id="bizContent"></div>
+                </div>
+            </div>
+
+            <form class="card d-none" id="bizEditor" autocomplete="off" novalidate>
+                <div class="card-header" id="bizEditorTitle">Halaman baru</div>
+                <div class="card-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <label class="form-label small" for="bizModule">Modul</label>
+                            <input type="text" class="form-control" id="bizModule" maxlength="100" placeholder="TO" required />
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label small" for="bizTitle">Judul</label>
+                            <input type="text" class="form-control" id="bizTitle" maxlength="200" placeholder="Transfer Order" required />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small" for="bizSummary">Ringkasan</label>
+                        <input type="text" class="form-control" id="bizSummary" maxlength="1000" placeholder="Satu-dua kalimat: modul ini untuk apa" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small" for="bizLabels">Label (keyword dipisah koma, untuk planner)</label>
+                        <input type="text" class="form-control" id="bizLabels" maxlength="500" placeholder="to, transfer order, mutasi, gudang" />
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <label class="form-label small mb-0" for="bizBody">Isi (Markdown — tabel didukung)</label>
+                        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="Mode editor">
+                            <button type="button" class="btn btn-outline-secondary active" id="btnBizWrite">Tulis</button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnBizPreview">Pratinjau</button>
+                        </div>
+                        <label class="btn btn-outline-secondary btn-sm mb-0" for="bizImageFile">Sisipkan gambar</label>
+                        <input type="file" class="d-none" id="bizImageFile" accept="image/png,image/jpeg,image/gif,image/webp" />
+                    </div>
+                    <textarea class="form-control mono small" id="bizBody" rows="22" required></textarea>
+                    <div class="card card-body docs-body d-none" id="bizPreview"></div>
+                    <div class="form-text">Tempel screenshot langsung (Ctrl+V) ke editor. Gambar disimpan di store business memory dan ditulis sebagai <span class="mono">![keterangan](asset:…)</span>.</div>
+                    <div class="row g-2 mt-1">
+                        <div class="col-md-8">
+                            <label class="form-label small" for="bizChangeNote">Catatan perubahan</label>
+                            <input type="text" class="form-control form-control-sm" id="bizChangeNote" maxlength="1000" placeholder="mis. Tambah aturan approval TO di atas 10 juta" />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="bizEditorAutoUpdate" checked />
+                                <label class="form-check-label small" for="bizEditorAutoUpdate">Boleh diperbarui AI</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary" id="btnBizCancel">Batal</button>
+                    <button type="submit" class="btn btn-primary" id="btnBizSave">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+<div class="modal fade" id="bizHistoryModal" tabindex="-1" aria-labelledby="bizHistoryTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bizHistoryTitle">Riwayat halaman</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-4"><div class="list-group small" id="bizRevisions"></div></div>
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="small text-secondary" id="bizRevisionMeta"></span>
+                            <button type="button" class="btn btn-outline-primary btn-sm ms-auto d-none" id="btnBizRestore">Pulihkan versi ini</button>
+                        </div>
+                        <div class="docs-body border rounded p-3" id="bizRevisionContent"><span class="text-secondary">Pilih versi.</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="memoryModal" tabindex="-1" aria-labelledby="memoryModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -109,4 +249,5 @@
 @section Scripts {
     <script>window.initialProjectId = '@(projectId?.ToString() ?? "")';</script>
     <script src="~/js/pages/memory.js" asp-append-version="true"></script>
+    <script src="~/js/pages/business.js" asp-append-version="true"></script>
 }

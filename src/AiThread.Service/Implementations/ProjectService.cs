@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using AiThread.Common.DTOs;
 using AiThread.Common.Entities;
+using AiThread.Common.Enums;
 using AiThread.Data.Cache;
 using AiThread.Data.Context;
 using AiThread.Data.Memory;
@@ -18,6 +19,7 @@ public sealed class ProjectService(
     IDbContextFactory<AiThreadDbContext> dbFactory,
     IShortMemoryStore shortMemoryStore,
     LongMemoryStore longMemoryStore,
+    ProjectMemoryKeys memoryKeys,
     IEventBus eventBus,
     IActivityLogService activityLog,
     ILogger<ProjectService> logger) : IProjectService
@@ -105,11 +107,8 @@ public sealed class ProjectService(
             })
             .ToListAsync(cancellationToken);
 
-        var shortCounts = await ShortMemoryCountsAsync();
-        var longCounts = await LongMemoryCountsAsync(null, cancellationToken);
-        return rows.Select(r => ToDto(
-            r.Project, r.ThreadCount, r.SessionCount,
-            longCounts.GetValueOrDefault(r.Project.Id) + shortCounts.GetValueOrDefault(r.Project.Id))).ToList();
+        var counts = await MemoryCountsAsync(rows.Select(r => r.Project).ToList(), null, cancellationToken);
+        return rows.Select(r => ToDto(r.Project, r.ThreadCount, r.SessionCount, counts.GetValueOrDefault(r.Project.Id))).ToList();
     }
 
     public async Task<ProjectDetailDto?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
@@ -125,10 +124,9 @@ public sealed class ProjectService(
             .ToListAsync(cancellationToken);
 
         var threadCount = await db.Threads.CountAsync(t => t.ProjectId == id, cancellationToken);
-        var longCounts = await LongMemoryCountsAsync(id, cancellationToken);
-        var shortCounts = await ShortMemoryCountsAsync();
+        var counts = await MemoryCountsAsync([project], project.ProjectKey, cancellationToken);
 
-        var dto = ToDto(project, threadCount, sessions.Count, longCounts.GetValueOrDefault(id) + shortCounts.GetValueOrDefault(id));
+        var dto = ToDto(project, threadCount, sessions.Count, counts.GetValueOrDefault(id));
         return new ProjectDetailDto(dto, ProfileOf(project.RootPath).Modules, sessions.OrderByDescending(s => s.LastSeenAt).ToList());
     }
 
@@ -176,48 +174,105 @@ public sealed class ProjectService(
         return new RegisterProjectsResultDto(added, existing, errors);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, bool includeSharedMemory = false, CancellationToken cancellationToken = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (project is null) return false;
 
-        db.Projects.Remove(project);
-        await db.SaveChangesAsync(cancellationToken);
-
-        foreach (var (key, decision) in _sessions)
-            if (decision.ProjectId == id) _sessions.TryRemove(key, out _);
-
-        if (shortMemoryStore.IsConnected)
+        // Another clone of the same repository is still registered here: the memory stays with it.
+        var key = project.ProjectKey;
+        var sibling = string.IsNullOrEmpty(key)
+            ? null
+            : await db.Projects.Where(p => p.Id != id && p.ProjectKey == key).Select(p => (Guid?)p.Id).FirstOrDefaultAsync(cancellationToken);
+        if (sibling is { } siblingId)
         {
             try
             {
-                foreach (var record in (await shortMemoryStore.GetAllAsync()).Where(r => r.ProjectId == id))
-                    await shortMemoryStore.DeleteAsync(record.Id);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Could not delete short memories of project {ProjectId}", id);
-            }
-        }
-
-        // In the main database the foreign key already removed them; an external long memory store has no such key.
-        if (longMemoryStore.IsExternal)
-        {
-            try
-            {
-                await using var memoryDb = await longMemoryStore.CreateAsync(cancellationToken);
-                await memoryDb.LongMemories.Where(m => m.ProjectId == id).ExecuteDeleteAsync(cancellationToken);
+                await memoryKeys.HandOverAsync(id, siblingId, cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogWarning(ex, "Could not delete long memories of project {ProjectId}", id);
+                logger.LogWarning(ex, "Could not hand the long memories of project {ProjectId} over to {SiblingId}", id, siblingId);
             }
         }
 
+        db.Projects.Remove(project);
+        await db.SaveChangesAsync(cancellationToken);
+
+        foreach (var (sessionKey, decision) in _sessions)
+            if (decision.ProjectId == id) _sessions.TryRemove(sessionKey, out _);
+
+        string outcome;
+        if (sibling is not null)
+        {
+            outcome = "memory-nya tetap dipakai clone lain dari repository yang sama";
+        }
+        else
+        {
+            await memoryKeys.DeleteAsync(id, key, includeSharedMemory, cancellationToken);
+            var sharedKept = !includeSharedMemory && !ProjectKeyResolver.IsLocal(key)
+                             && (memoryKeys.LongStoreIsShared || memoryKeys.ShortStoreIsShared);
+            outcome = sharedKept ? "memory di store central tetap disimpan untuk developer lain" : "beserta memory-nya";
+        }
+
         eventBus.Publish(AppEvent.Create(AppEventTypes.ProjectChanged, new { id, action = "deleted" }));
-        activityLog.Info("project", $"Project '{project.Name}' dihapus beserta memory-nya.", projectId: id);
+        eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = (Guid?)null, action = "deleted" }));
+        activityLog.Info("project", $"Project '{project.Name}' dihapus — {outcome}.", projectId: id);
         return true;
+    }
+
+    public async Task<ProjectDto?> SetKeyAsync(Guid id, string? key, CancellationToken cancellationToken = default)
+    {
+        if (key?.Trim().Length > ProjectKeyResolver.MaxKeyLength)
+            throw new AppValidationException($"Project key maksimal {ProjectKeyResolver.MaxKeyLength} karakter.");
+        var manualKey = ProjectKeyResolver.NormalizeKey(key);
+        if (ProjectKeyResolver.IsLocal(manualKey))
+            throw new AppValidationException($"Project key tidak boleh diawali '{ProjectKeyResolver.LocalPrefix}'.");
+
+        await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
+        {
+            var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+            if (project is null) return null;
+
+            project.ManualKey = manualKey;
+            var previous = ApplyKey(project);
+            project.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            await OnKeyChangedAsync(project, previous, cancellationToken);
+
+            if (manualKey is not null && project.ProjectKeySource == ProjectKeySource.File)
+                activityLog.Warn("project", $"Key manual '{manualKey}' untuk project {project.Name} disimpan, tetapi {ProjectKeyResolver.OverrideFile} di repository tetap dipakai ('{project.ProjectKey}').", projectId: id);
+            else
+                activityLog.Info("project", $"Project key {project.Name}: {project.ProjectKey} ({KeySourceName(project.ProjectKeySource)}).", projectId: id);
+        }
+
+        eventBus.Publish(AppEvent.Create(AppEventTypes.ProjectChanged, new { id, action = "updated" }));
+        return (await GetAllAsync(cancellationToken)).FirstOrDefault(p => p.Id == id);
+    }
+
+    public async Task RefreshKeysAsync(CancellationToken cancellationToken = default)
+    {
+        List<Project> projects;
+        var changed = new List<(Project Project, string Previous)>();
+        await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
+        {
+            projects = await db.Projects.ToListAsync(cancellationToken);
+            foreach (var project in projects)
+            {
+                var previous = ApplyKey(project);
+                if (previous != project.ProjectKey) changed.Add((project, previous));
+            }
+            if (changed.Count > 0) await db.SaveChangesAsync(cancellationToken);
+        }
+
+        foreach (var (project, previous) in changed) await OnKeyChangedAsync(project, previous, cancellationToken);
+        var filled = await memoryKeys.BackfillAsync(projects, cancellationToken);
+        if (filled > 0)
+        {
+            activityLog.Info("memory", $"{filled} memory lama diberi project key agar bisa dibagi antar developer.");
+            eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = (Guid?)null, action = "updated" }));
+        }
     }
 
     public async Task<FolderBrowseDto> BrowseAsync(string? path, CancellationToken cancellationToken = default)
@@ -304,7 +359,9 @@ public sealed class ProjectService(
         if (project is not null)
         {
             project.LastSeenAt = DateTime.UtcNow;
+            var previous = ApplyKey(project);
             await db.SaveChangesAsync(cancellationToken);
+            await OnKeyChangedAsync(project, previous, cancellationToken);
             return project;
         }
 
@@ -314,6 +371,7 @@ public sealed class ProjectService(
             RootPath = rootPath,
             LastSeenAt = DateTime.UtcNow
         };
+        ApplyKey(project);
         db.Projects.Add(project);
         try
         {
@@ -394,42 +452,90 @@ public sealed class ProjectService(
             if (decision.ExpiresAt <= now) _sessions.TryRemove(key, out _);
     }
 
-    private async Task<Dictionary<Guid, int>> ShortMemoryCountsAsync()
+    // Memory per project: everything under its key (from any developer) plus older rows that only carry its id.
+    // Long memory may live in another database, so an outage there only hides that part of the count.
+    private async Task<Dictionary<Guid, int>> MemoryCountsAsync(IReadOnlyList<Project> projects, string? onlyKey, CancellationToken cancellationToken)
     {
-        if (!shortMemoryStore.IsConnected) return [];
-        try
+        var byKey = new Dictionary<string, int>();
+        var byId = new Dictionary<Guid, int>();
+        void Count(string? key, Guid? id)
         {
-            return (await shortMemoryStore.GetAllAsync())
-                .Where(r => r.ProjectId is not null)
-                .GroupBy(r => r.ProjectId!.Value)
-                .ToDictionary(g => g.Key, g => g.Count());
+            if (key is not null) byKey[key] = byKey.GetValueOrDefault(key) + 1;
+            else if (id is { } value) byId[value] = byId.GetValueOrDefault(value) + 1;
         }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Could not read short memories.");
-            return [];
-        }
-    }
 
-    // Long memory may live in another database, so it is counted separately; an outage there only hides the count.
-    private async Task<Dictionary<Guid, int>> LongMemoryCountsAsync(Guid? projectId, CancellationToken cancellationToken)
-    {
+        if (shortMemoryStore.IsConnected)
+        {
+            try
+            {
+                foreach (var record in await shortMemoryStore.GetAllAsync()) Count(record.ProjectKey, record.ProjectId);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Could not read short memories.");
+            }
+        }
+
         try
         {
             await using var db = await longMemoryStore.CreateAsync(cancellationToken);
-            var query = db.LongMemories.AsNoTracking().Where(m => m.ProjectId != null);
-            if (projectId is { } id) query = query.Where(m => m.ProjectId == id);
-            return await query
-                .GroupBy(m => m.ProjectId!.Value)
-                .Select(g => new { g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken);
+            var query = db.LongMemories.AsNoTracking().Where(m => m.ProjectKey != null || m.ProjectId != null);
+            if (onlyKey is { Length: > 0 })
+            {
+                var ids = projects.Select(p => p.Id).ToList();
+                query = query.Where(m => m.ProjectKey == onlyKey || (m.ProjectKey == null && m.ProjectId.HasValue && ids.Contains(m.ProjectId.Value)));
+            }
+            var groups = await query
+                .GroupBy(m => new { m.ProjectKey, m.ProjectId })
+                .Select(g => new { g.Key.ProjectKey, g.Key.ProjectId, Count = g.Count() })
+                .ToListAsync(cancellationToken);
+            foreach (var group in groups)
+            {
+                if (group.ProjectKey is not null) byKey[group.ProjectKey] = byKey.GetValueOrDefault(group.ProjectKey) + group.Count;
+                else if (group.ProjectId is { } id) byId[id] = byId.GetValueOrDefault(id) + group.Count;
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Could not count long memories.");
-            return [];
         }
+
+        return projects.ToDictionary(
+            p => p.Id,
+            p => (string.IsNullOrEmpty(p.ProjectKey) ? 0 : byKey.GetValueOrDefault(p.ProjectKey)) + byId.GetValueOrDefault(p.Id));
     }
+
+    // Recomputes the project's key from its folder; returns the previous key. A folder that is gone keeps its key.
+    private static string ApplyKey(Project project)
+    {
+        var previous = project.ProjectKey;
+        if (!Directory.Exists(project.RootPath) && !string.IsNullOrEmpty(previous)) return previous;
+
+        var info = ProjectKeyResolver.Resolve(project.RootPath, project.ManualKey);
+        project.ProjectKey = info.Key;
+        project.ProjectKeySource = info.Source;
+        return previous;
+    }
+
+    private async Task OnKeyChangedAsync(Project project, string previous, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(previous) || previous == project.ProjectKey) return;
+
+        var moved = await memoryKeys.RekeyAsync(previous, project.ProjectKey, project.Name, cancellationToken);
+        activityLog.Info("project",
+            $"Project key {project.Name} berubah: {previous} → {project.ProjectKey} ({KeySourceName(project.ProjectKeySource)})"
+            + (moved > 0 ? $"; {moved} memory ikut dipindah." : "."),
+            projectId: project.Id);
+        if (moved > 0) eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = (Guid?)null, action = "updated" }));
+    }
+
+    private static string KeySourceName(ProjectKeySource source) => source switch
+    {
+        ProjectKeySource.File => ProjectKeyResolver.OverrideFile,
+        ProjectKeySource.Manual => "key manual",
+        ProjectKeySource.GitRemote => "git remote",
+        _ => "lokal, belum bisa dibagi"
+    };
 
     // Stacks and modules come from the manifests on disk; a short cache keeps the project list and every new thread
     // from walking the folder tree again.
@@ -504,12 +610,12 @@ public sealed class ProjectService(
     private ProjectContext ToContext(Project project)
     {
         var profile = ProfileOf(project.RootPath);
-        return new ProjectContext(project.Id, project.Name, project.RootPath, profile.Stacks, profile.Modules);
+        return new ProjectContext(project.Id, project.Name, project.RootPath, profile.Stacks, profile.Modules, project.ProjectKey);
     }
 
     private ProjectDto ToDto(Project p, int threadCount, int sessionCount, int memoryCount) => new(
         p.Id, p.Name, p.RootPath, ProfileOf(p.RootPath).Stacks, p.Summary, p.CreatedAt, p.LastSeenAt,
-        threadCount, sessionCount, memoryCount, Directory.Exists(p.RootPath));
+        threadCount, sessionCount, memoryCount, Directory.Exists(p.RootPath), p.ProjectKey, p.ProjectKeySource, p.ManualKey);
 
     private sealed record SessionDecision(Guid? ProjectId, DateTime ExpiresAt);
 

@@ -22,7 +22,15 @@ public interface IProjectService
 
     Task<RegisterProjectsResultDto> RegisterManyAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken = default);
 
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    // Memory in a shared (external) store belongs to every developer of the project and is kept unless
+    // includeSharedMemory; memory on this machine only is always removed.
+    Task<bool> DeleteAsync(Guid id, bool includeSharedMemory = false, CancellationToken cancellationToken = default);
+
+    // Sets the key typed in the Project menu (empty clears it); .aithread/project.json still wins over it.
+    Task<ProjectDto?> SetKeyAsync(Guid id, string? key, CancellationToken cancellationToken = default);
+
+    // Recomputes the key of every registered project and fills the key of memory written before keys existed.
+    Task RefreshKeysAsync(CancellationToken cancellationToken = default);
 
     // Folder browser for picking a project folder; an empty path lists the drives.
     Task<FolderBrowseDto> BrowseAsync(string? path, CancellationToken cancellationToken = default);

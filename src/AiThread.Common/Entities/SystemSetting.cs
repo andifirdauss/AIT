@@ -42,10 +42,23 @@ public class SystemSetting : BaseEntity
     public MemoryStoreSetting ShortMemoryStore { get; set; } = new();
     public MemoryStoreSetting LongMemoryStore { get; set; } = new();
 
+    // Where the business wiki (business memory) is kept; share it to build one wiki from every developer's work.
+    public MemoryStoreSetting BusinessMemoryStore { get; set; } = new();
+
     // 9router model the skill orchestrator uses to analyse skill sources and suggest skills for a node.
     // Null = the model of the first active Planner node.
     public string? SkillOrchestratorModel { get; set; }
 
     // Budget for the skill contents put in one node's system prompt.
     public int SkillPromptMaxChars { get; set; } = 40_000;
+
+    // Business memory: the finished threads are summarized into the business wiki every BusinessMemoryIntervalHours.
+    public bool BusinessMemoryEnabled { get; set; } = true;
+    public int BusinessMemoryIntervalHours { get; set; } = 6;
+
+    // 9router model of the business wiki writer. Null = the model of the first active Planner node.
+    public string? BusinessMemoryModel { get; set; }
+
+    // Name recorded on business pages and revisions. Null = the Windows user name.
+    public string? DeveloperName { get; set; }
 }

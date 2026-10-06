@@ -30,9 +30,12 @@ public sealed class LongMemoryDbContext(DbContextOptions<LongMemoryDbContext> op
             e.Ignore(x => x.Project);
             e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength);
+            e.Property(x => x.ProjectName).HasMaxLength(MemorySchema.ProjectNameLength);
             e.Property(x => x.Label).HasMaxLength(300).IsRequired();
             e.Property(x => x.Description).IsRequired();
             e.HasIndex(x => new { x.ProjectId, x.Type });
+            e.HasIndex(x => new { x.ProjectKey, x.Type });
         });
     }
 }
@@ -53,6 +56,8 @@ public sealed class ShortMemoryDbContext(DbContextOptions<ShortMemoryDbContext> 
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength);
+            e.Property(x => x.ProjectName).HasMaxLength(MemorySchema.ProjectNameLength);
             e.Property(x => x.Label).HasMaxLength(300).IsRequired();
             e.Property(x => x.Description).IsRequired();
             e.HasIndex(x => x.CreatedAt);
@@ -64,6 +69,8 @@ public sealed class ShortMemoryRow
 {
     public Guid Id { get; set; }
     public Guid? ProjectId { get; set; }
+    public string? ProjectKey { get; set; }
+    public string? ProjectName { get; set; }
     public MemoryType Type { get; set; }
     public string Label { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
