@@ -15,11 +15,14 @@ public record MemoryStoreDto(
 // Connected is the live state of the store currently in use; Description names it without secrets.
 public record MemoryStoreStatusDto(bool Connected, string Description);
 
+// BusinessMemory is where the business wiki is kept (relational stores only).
 public record MemoryStorageSettingsDto(
     MemoryStoreDto ShortMemory,
     MemoryStoreDto LongMemory,
     MemoryStoreStatusDto ShortStatus,
-    MemoryStoreStatusDto LongStatus);
+    MemoryStoreStatusDto LongStatus,
+    MemoryStoreDto BusinessMemory,
+    MemoryStoreStatusDto BusinessStatus);
 
 // Password empty and ClearPassword false = keep the stored password.
 public record SaveMemoryStoreRequest(
@@ -33,16 +36,19 @@ public record SaveMemoryStoreRequest(
     string? Options);
 
 // CopyExistingData copies the memories of a store being replaced into the new one; the old store is left untouched.
+// BusinessMemory null keeps the business memory store as it is (clients that predate it).
 public record UpdateMemoryStorageRequest(
     SaveMemoryStoreRequest ShortMemory,
     SaveMemoryStoreRequest LongMemory,
-    bool CopyExistingData = true);
+    bool CopyExistingData = true,
+    SaveMemoryStoreRequest? BusinessMemory = null);
 
 public record MemoryStorageUpdateResultDto(
     MemoryStorageSettingsDto Settings,
     int CopiedShort,
     int CopiedLong,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    int CopiedBusiness = 0);
 
 public record TestMemoryStoreRequest(MemoryLevel Level, SaveMemoryStoreRequest Store);
 

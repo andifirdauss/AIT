@@ -5,6 +5,7 @@ using AiThread.Common.Entities;
 using AiThread.Common.Enums;
 using AiThread.Data.Context;
 using AiThread.Data.Messaging;
+using AiThread.Service.Business;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
 using AiThread.Service.Verification;
@@ -96,6 +97,8 @@ public sealed class ThreadOrchestrator(
         await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
         {
             db.Threads.Add(thread);
+            // Kept until the business wiki writer has summarized the thread: a screenshot may belong on a page.
+            db.ThreadAttachments.AddRange(BusinessImages.FromPrompt(thread.Id, request.Images));
             await db.SaveChangesAsync(cancellationToken);
         }
 

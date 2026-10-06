@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AiThread.Data.Context;
 
-public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : DbContext(options), ILongMemoryDb
+public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb
 {
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<AiNode> Nodes => Set<AiNode>();
@@ -16,12 +16,16 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
     public DbSet<SessionPack> SessionPacks => Set<SessionPack>();
     public DbSet<ThreadTask> ThreadTasks => Set<ThreadTask>();
     public DbSet<ThreadFileSnapshot> ThreadFileSnapshots => Set<ThreadFileSnapshot>();
+    public DbSet<ThreadAttachment> ThreadAttachments => Set<ThreadAttachment>();
     public DbSet<LongMemory> LongMemories => Set<LongMemory>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<TelegramChat> TelegramChats => Set<TelegramChat>();
     public DbSet<SkillSource> SkillSources => Set<SkillSource>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<NodeSkill> NodeSkills => Set<NodeSkill>();
+    public DbSet<BusinessPage> BusinessPages => Set<BusinessPage>();
+    public DbSet<BusinessPageRevision> BusinessPageRevisions => Set<BusinessPageRevision>();
+    public DbSet<BusinessAsset> BusinessAssets => Set<BusinessAsset>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -38,10 +42,14 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.ProxyApiKey).HasMaxLength(200);
             e.Property(x => x.PassthroughModel).HasMaxLength(200);
             e.Property(x => x.SkillOrchestratorModel).HasMaxLength(200);
+            e.Property(x => x.BusinessMemoryModel).HasMaxLength(200);
+            e.Property(x => x.DeveloperName).HasMaxLength(200);
             e.OwnsOne(x => x.ShortMemoryStore, ConfigureMemoryStore);
             e.OwnsOne(x => x.LongMemoryStore, ConfigureMemoryStore);
+            e.OwnsOne(x => x.BusinessMemoryStore, ConfigureMemoryStore);
             e.Navigation(x => x.ShortMemoryStore).IsRequired();
             e.Navigation(x => x.LongMemoryStore).IsRequired();
+            e.Navigation(x => x.BusinessMemoryStore).IsRequired();
         });
 
         modelBuilder.Entity<AiNode>(e =>
@@ -60,7 +68,12 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.ToTable("Projects");
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
             e.Property(x => x.RootPath).HasMaxLength(800).IsRequired();
+            e.Property(x => x.ProjectKey).HasMaxLength(300).IsRequired();
+            e.Property(x => x.ProjectKeySource).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ManualKey).HasMaxLength(300);
             e.HasIndex(x => x.RootPath).IsUnique();
+            // Not unique: two clones of one repository on the same machine share their key.
+            e.HasIndex(x => x.ProjectKey);
         });
 
         modelBuilder.Entity<ThreadRun>(e =>
@@ -77,6 +90,17 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.HasOne(x => x.Project).WithMany(p => p.Threads).HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.SessionId);
+            e.HasIndex(x => new { x.Status, x.BusinessDigestedAt });
+        });
+
+        modelBuilder.Entity<ThreadAttachment>(e =>
+        {
+            e.ToTable("ThreadAttachments");
+            e.Property(x => x.MediaType).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Data).IsRequired();
+            e.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            e.HasOne(x => x.ThreadRun).WithMany().HasForeignKey(x => x.ThreadRunId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.ThreadRunId);
         });
 
         modelBuilder.Entity<SessionPack>(e =>
@@ -118,10 +142,13 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
         {
             e.ToTable("LongMemories");
             e.Property(x => x.Type).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ProjectKey).HasMaxLength(300);
+            e.Property(x => x.ProjectName).HasMaxLength(200);
             e.Property(x => x.Label).HasMaxLength(300).IsRequired();
             e.Property(x => x.Description).IsRequired();
             e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.ProjectId, x.Type });
+            e.HasIndex(x => new { x.ProjectKey, x.Type });
         });
 
         modelBuilder.Entity<ActivityLog>(e =>
@@ -179,9 +206,12 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.HasOne(x => x.Skill).WithMany(s => s.Nodes).HasForeignKey(x => x.SkillId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.SkillId);
         });
+
+        // Same mapping as an external business memory store (BusinessMemoryDbContext).
+        BusinessMemoryModel.Configure(modelBuilder);
     }
 
-    // Columns ShortMemoryStore_* / LongMemoryStore_* of SystemSettings.
+    // Columns ShortMemoryStore_* / LongMemoryStore_* / BusinessMemoryStore_* of SystemSettings.
     private static void ConfigureMemoryStore(OwnedNavigationBuilder<SystemSetting, MemoryStoreSetting> b)
     {
         b.Property(x => x.Provider).HasConversion<string>().HasMaxLength(20);

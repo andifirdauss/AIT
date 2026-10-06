@@ -5,7 +5,7 @@
 <div class="page-header">
     <div>
         <h1>Setting</h1>
-        <p class="page-subtitle">Koneksi 9router, perilaku proxy, build & verifikasi, penyimpanan memory, Telegram, dan gudang skill.</p>
+        <p class="page-subtitle">Koneksi 9router, perilaku proxy, build & verifikasi, penyimpanan memory & business memory, Telegram, dan gudang skill.</p>
     </div>
 </div>
 
@@ -161,7 +161,8 @@
         <form id="memoryStorageForm" autocomplete="off" novalidate>
             <div class="row g-3 mb-3">
                 <partial name="_MemoryStoreCard" model='("stm", "Short memory", "Memory baru dari tiap thread. Dipindah ke long memory setelah jendela short memory (default 24 jam) lewat.", true)' />
-                <partial name="_MemoryStoreCard" model='("ltm", "Long memory", "Memory permanen hasil konsolidasi short memory. Dibaca planner di setiap thread.", false)' />
+                <partial name="_MemoryStoreCard" model='("ltm", "Long memory", "Memory permanen hasil konsolidasi short memory. Dibaca planner di setiap thread. Arahkan semua developer ke database yang sama agar memory project terkumpul di satu tempat.", false)' />
+                <partial name="_MemoryStoreCard" model='("bzm", "Business memory (wiki bisnis)", "Halaman wiki bisnis per modul: requirement, aturan bisnis, status, validasi, dan screenshot. Arahkan semua developer ke database yang sama agar satu wiki dibangun dari pekerjaan semua orang.", false)' />
             </div>
             <div class="card">
                 <div class="card-body">
@@ -170,14 +171,48 @@
                         <label class="form-check-label" for="memoryCopyExisting">Salin memory yang ada ke penyimpanan baru saat provider/server diganti</label>
                     </div>
                     <div class="form-text">
-                        Saat disimpan, AiThread menguji koneksi dan membuat database/tabel <span class="mono">ShortMemories</span> atau <span class="mono">LongMemories</span> bila belum ada
-                        (user perlu hak membuat tabel). Penyimpanan lama tidak dihapus atau diubah. Tanpa salinan, memory lama tidak terlihat sampai provider dikembalikan.
-                        Password disimpan terenkripsi dan tidak pernah dikirim balik ke browser.
+                        Saat disimpan, AiThread menguji koneksi dan membuat database/tabel <span class="mono">ShortMemories</span>, <span class="mono">LongMemories</span>, atau
+                        <span class="mono">BusinessPages</span> (beserta revisi & gambarnya) bila belum ada (user perlu hak membuat tabel). Penyimpanan lama tidak dihapus atau diubah.
+                        Tanpa salinan, memory lama tidak terlihat sampai provider dikembalikan. Password disimpan terenkripsi dan tidak pernah dikirim balik ke browser.
+                        Memory dibagi antar developer berdasarkan <a href="/Project">project key</a> (git remote, <span class="mono">.aithread/project.json</span>, atau key manual), bukan folder root.
                     </div>
                 </div>
                 <div class="card-footer text-end">
                     <button type="submit" class="btn btn-primary" id="btnSaveMemoryStorage">Simpan penyimpanan memory</button>
                 </div>
+            </div>
+        </form>
+
+        <form class="card mt-3" id="businessSettingsForm" autocomplete="off" novalidate>
+            <div class="card-header">Business memory — penulis wiki bisnis</div>
+            <div class="card-body">
+                <p class="small text-secondary">
+                    Secara berkala, thread yang selesai dirangkum AI menjadi halaman wiki bisnis per modul (menu <a href="/Memory#bisnis">Memory → Bisnis</a>).
+                    Planner membaca halaman ini sebelum mengubah perilaku modulnya. Setiap developer merangkum thread miliknya sendiri; halaman yang sama aman ditulis bersamaan.
+                </p>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" role="switch" id="bizEnabled" />
+                    <label class="form-check-label" for="bizEnabled">Perbarui wiki bisnis otomatis</label>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label small" for="bizInterval">Interval (jam)</label>
+                        <input type="number" class="form-control" id="bizInterval" min="1" max="168" required />
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small" for="bizModel">Model penulis wiki</label>
+                        <select class="form-select" id="bizModel"></select>
+                        <div class="form-text">Model yang teliti dan bisa membaca gambar (untuk screenshot), mis. model planner.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small" for="bizDeveloper">Nama developer</label>
+                        <input type="text" class="form-control" id="bizDeveloper" maxlength="200" />
+                        <div class="form-text">Dicatat pada halaman & riwayat revisi. Kosong = <span class="mono">git config user.name</span> (atau user Windows bila git tidak punya).</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">Simpan business memory</button>
             </div>
         </form>
     </div>

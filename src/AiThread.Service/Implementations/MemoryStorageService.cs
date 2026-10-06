@@ -18,6 +18,7 @@ public sealed class MemoryStorageService(
     IDataProtectionProvider dataProtection,
     SwitchableShortMemoryStore shortStore,
     LongMemoryStore longStore,
+    BusinessMemoryStore businessStore,
     ILogger<MemoryStorageService> logger) : IMemoryStorageService
 {
     private const int CopyBatchSize = 200;
@@ -35,7 +36,9 @@ public sealed class MemoryStorageService(
             ToDto(entity.ShortMemoryStore),
             ToDto(entity.LongMemoryStore),
             new MemoryStoreStatusDto(shortStore.IsConnected, shortStore.Description),
-            new MemoryStoreStatusDto(await LongConnectedAsync(cancellationToken), longStore.Description));
+            new MemoryStoreStatusDto(await LongConnectedAsync(cancellationToken), longStore.Description),
+            ToDto(entity.BusinessMemoryStore),
+            new MemoryStoreStatusDto(await BusinessConnectedAsync(cancellationToken), businessStore.Description));
     }
 
     public async Task<MemoryStorageUpdateResultDto> UpdateAsync(UpdateMemoryStorageRequest request, CancellationToken cancellationToken = default)
@@ -53,8 +56,12 @@ public sealed class MemoryStorageService(
 
             var oldShort = ToConnection(entity.ShortMemoryStore);
             var oldLong = ToConnection(entity.LongMemoryStore);
+            var oldBusiness = ToConnection(entity.BusinessMemoryStore);
             var (shortSetting, newShort) = Normalize(request.ShortMemory, MemoryLevel.Short, entity.ShortMemoryStore);
             var (longSetting, newLong) = Normalize(request.LongMemory, MemoryLevel.Long, entity.LongMemoryStore);
+            var (businessSetting, newBusiness) = request.BusinessMemory is { } business
+                ? Normalize(business, MemoryLevel.Business, entity.BusinessMemoryStore)
+                : (Copy(entity.BusinessMemoryStore), oldBusiness);
 
             // Open (and create the table in) every new store before anything is saved, so a typo never leaves
             // AiThread pointing at a store it cannot use.
@@ -63,25 +70,30 @@ public sealed class MemoryStorageService(
             {
                 if (newShort != oldShort) targetShort = await OpenShortAsync(newShort);
                 if (newLong != oldLong) await EnsureLongAsync(newLong, cancellationToken);
+                if (newBusiness != oldBusiness) await EnsureBusinessAsync(newBusiness, cancellationToken);
 
                 var warnings = new List<string>();
-                int copiedShort = 0, copiedLong = 0;
+                int copiedShort = 0, copiedLong = 0, copiedBusiness = 0;
                 if (request.CopyExistingData)
                 {
                     if (targetShort is not null) copiedShort = await CopyShortAsync(oldShort, targetShort, warnings);
                     if (newLong != oldLong) copiedLong = await CopyLongAsync(oldLong, newLong, warnings, cancellationToken);
+                    if (newBusiness != oldBusiness) copiedBusiness = await CopyBusinessAsync(oldBusiness, newBusiness, warnings, cancellationToken);
                 }
 
                 Assign(entity.ShortMemoryStore, shortSetting);
                 Assign(entity.LongMemoryStore, longSetting);
+                Assign(entity.BusinessMemoryStore, businessSetting);
                 entity.UpdatedAt = DateTime.UtcNow;
                 await db.SaveChangesAsync(cancellationToken);
 
                 shortStore.Configure(newShort);
                 longStore.Configure(newLong);
-                logger.LogInformation("Memory storage: short = {Short}, long = {Long}.", shortStore.Description, longStore.Description);
+                businessStore.Configure(newBusiness);
+                logger.LogInformation("Memory storage: short = {Short}, long = {Long}, business = {Business}.",
+                    shortStore.Description, longStore.Description, businessStore.Description);
 
-                return new MemoryStorageUpdateResultDto(await GetAsync(cancellationToken), copiedShort, copiedLong, warnings);
+                return new MemoryStorageUpdateResultDto(await GetAsync(cancellationToken), copiedShort, copiedLong, warnings, copiedBusiness);
             }
             finally
             {
@@ -99,7 +111,12 @@ public sealed class MemoryStorageService(
         if (!Enum.IsDefined(request.Level)) throw new AppValidationException("Level memory tidak valid.");
 
         var entity = await LoadAsync(cancellationToken);
-        var saved = request.Level == MemoryLevel.Short ? entity.ShortMemoryStore : entity.LongMemoryStore;
+        var saved = request.Level switch
+        {
+            MemoryLevel.Short => entity.ShortMemoryStore,
+            MemoryLevel.Business => entity.BusinessMemoryStore,
+            _ => entity.LongMemoryStore
+        };
         var (_, connection) = Normalize(request.Store, request.Level, saved);
 
         if (connection.Provider != MemoryStoreProvider.Default)
@@ -131,7 +148,9 @@ public sealed class MemoryStorageService(
 
         Apply("short", () => shortStore.Configure(ToConnection(entity.ShortMemoryStore)));
         Apply("long", () => longStore.Configure(ToConnection(entity.LongMemoryStore)));
-        logger.LogInformation("Memory storage: short = {Short}, long = {Long}.", shortStore.Description, longStore.Description);
+        Apply("business", () => businessStore.Configure(ToConnection(entity.BusinessMemoryStore)));
+        logger.LogInformation("Memory storage: short = {Short}, long = {Long}, business = {Business}.",
+            shortStore.Description, longStore.Description, businessStore.Description);
 
         void Apply(string level, Action configure)
         {
@@ -149,11 +168,11 @@ public sealed class MemoryStorageService(
     // Validates the form of one level and resolves the password to keep.
     private (MemoryStoreSetting Setting, MemoryStoreConnection Connection) Normalize(SaveMemoryStoreRequest request, MemoryLevel level, MemoryStoreSetting saved)
     {
-        var levelName = level == MemoryLevel.Short ? "Short memory" : "Long memory";
+        var levelName = level switch { MemoryLevel.Short => "Short memory", MemoryLevel.Business => "Business memory", _ => "Long memory" };
         var provider = request.Provider;
         if (!Enum.IsDefined(provider)) throw new AppValidationException($"{levelName}: provider tidak valid.");
-        if (provider == MemoryStoreProvider.Redis && level == MemoryLevel.Long)
-            throw new AppValidationException("Long memory tidak bisa disimpan di Redis — pilih database.");
+        if (provider == MemoryStoreProvider.Redis && level != MemoryLevel.Short)
+            throw new AppValidationException($"{levelName} tidak bisa disimpan di Redis — pilih database.");
 
         if (provider == MemoryStoreProvider.Default) return (new MemoryStoreSetting(), MemoryStoreConnection.Default);
 
@@ -267,6 +286,81 @@ public sealed class MemoryStorageService(
         }
     }
 
+    private async Task EnsureBusinessAsync(MemoryStoreConnection connection, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var db = await businessStore.OpenAsync(connection, cancellationToken);
+            await db.BusinessPages.AnyAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new AppValidationException($"Business memory: tidak dapat terhubung — {MemoryStoreTester.ErrorMessage(ex)}");
+        }
+    }
+
+    // Inserts the pages, revisions and images the new store does not have yet (by id). A page whose project key and
+    // slug already exist there (the same wiki written by another developer) is left out, with its revisions.
+    private async Task<int> CopyBusinessAsync(MemoryStoreConnection from, MemoryStoreConnection to, List<string> warnings, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var source = await businessStore.OpenAsync(from, cancellationToken);
+            await using var target = await businessStore.OpenAsync(to, cancellationToken);
+
+            var pages = await source.BusinessPages.AsNoTracking().ToListAsync(cancellationToken);
+            if (pages.Count == 0) return 0;
+
+            var existingIds = (await target.BusinessPages.AsNoTracking().Select(p => p.Id).ToListAsync(cancellationToken)).ToHashSet();
+            var existingSlugs = (await target.BusinessPages.AsNoTracking().Select(p => new { p.ProjectKey, p.Slug }).ToListAsync(cancellationToken))
+                .Select(p => (p.ProjectKey, p.Slug)).ToHashSet();
+            var copy = pages.Where(p => !existingIds.Contains(p.Id) && !existingSlugs.Contains((p.ProjectKey, p.Slug))).ToList();
+            var skipped = pages.Count(p => !existingIds.Contains(p.Id)) - copy.Count;
+            if (skipped > 0) warnings.Add($"{skipped} halaman bisnis tidak disalin karena store baru sudah punya halaman dengan judul yang sama.");
+
+            foreach (var batch in copy.Chunk(CopyBatchSize))
+            {
+                var ids = batch.Select(p => p.Id).ToList();
+                target.BusinessPages.AddRange(batch);
+                target.BusinessPageRevisions.AddRange(await source.BusinessPageRevisions.AsNoTracking().Where(r => ids.Contains(r.PageId)).ToListAsync(cancellationToken));
+                await target.SaveChangesAsync(cancellationToken);
+            }
+
+            // Images one at a time: each may be several megabytes.
+            var existingAssets = (await target.BusinessAssets.AsNoTracking().Select(a => a.Id).ToListAsync(cancellationToken)).ToHashSet();
+            var assetIds = await source.BusinessAssets.AsNoTracking().Select(a => a.Id).ToListAsync(cancellationToken);
+            foreach (var assetId in assetIds.Where(id => !existingAssets.Contains(id)))
+            {
+                var asset = await source.BusinessAssets.AsNoTracking().FirstAsync(a => a.Id == assetId, cancellationToken);
+                target.BusinessAssets.Add(asset);
+                await target.SaveChangesAsync(cancellationToken);
+                target.ChangeTracker.Clear();
+            }
+            return copy.Count;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Business memory could not be copied to the new store.");
+            warnings.Add($"Business memory lama tidak dapat disalin (sebagian mungkin sudah tersalin): {MemoryStoreTester.ErrorMessage(ex)}");
+            return 0;
+        }
+    }
+
+    private async Task<bool> BusinessConnectedAsync(CancellationToken cancellationToken)
+    {
+        if (!businessStore.IsExternal) return await MainDatabaseConnectedAsync(cancellationToken);
+        try
+        {
+            await using var db = await businessStore.CreateAsync(cancellationToken);
+            await db.BusinessPages.AnyAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
     // Upserts by id, so copying twice (or back and forth) never duplicates.
     private async Task<int> CopyShortAsync(MemoryStoreConnection from, IShortMemoryStore to, List<string> warnings)
     {
@@ -299,7 +393,8 @@ public sealed class MemoryStorageService(
                 rows = await source.LongMemories.AsNoTracking().ToListAsync(cancellationToken);
             if (rows.Count == 0) return 0;
 
-            // The main database enforces the project foreign key; a project deleted meanwhile turns into knowledge.
+            // The main database enforces the project foreign key: a project not registered here is dropped from the
+            // row, which stays project memory through its key (older rows without a key turn into knowledge).
             HashSet<Guid> projects;
             await using (var main = await dbFactory.CreateDbContextAsync(cancellationToken))
                 projects = (await main.Projects.AsNoTracking().Select(p => p.Id).ToListAsync(cancellationToken)).ToHashSet();
@@ -316,7 +411,9 @@ public sealed class MemoryStorageService(
                     {
                         Id = row.Id,
                         ProjectId = projectId,
-                        Type = projectId is null ? MemoryType.Knowledge : row.Type,
+                        ProjectKey = row.ProjectKey,
+                        ProjectName = row.ProjectName,
+                        Type = projectId is null && row.ProjectKey is null ? MemoryType.Knowledge : row.Type,
                         Label = row.Label,
                         Description = row.Description,
                         SourceThreadId = row.SourceThreadId,
@@ -381,6 +478,17 @@ public sealed class MemoryStorageService(
 
     private static MemoryStoreDto ToDto(MemoryStoreSetting s) =>
         new(s.Provider, s.Host, s.Port, s.Database, s.Username, !string.IsNullOrEmpty(s.PasswordProtected), s.Options);
+
+    private static MemoryStoreSetting Copy(MemoryStoreSetting s) => new()
+    {
+        Provider = s.Provider,
+        Host = s.Host,
+        Port = s.Port,
+        Database = s.Database,
+        Username = s.Username,
+        PasswordProtected = s.PasswordProtected,
+        Options = s.Options
+    };
 
     private static void Assign(MemoryStoreSetting target, MemoryStoreSetting source)
     {
