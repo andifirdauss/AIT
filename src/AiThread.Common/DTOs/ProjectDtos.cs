@@ -1,6 +1,9 @@
+using AiThread.Common.Enums;
+
 namespace AiThread.Common.DTOs;
 
 // Stacks are detected from the manifests in the root folder (".NET", "Java (Maven)", "Node.js", ...); they are not stored.
+// Key identifies the project across machines (memory is shared by it); ManualKey is the one typed in the Project menu.
 public record ProjectDto(
     Guid Id,
     string Name,
@@ -12,7 +15,10 @@ public record ProjectDto(
     int ThreadCount,
     int SessionCount,
     int MemoryCount,
-    bool Exists);
+    bool Exists,
+    string Key,
+    ProjectKeySource KeySource,
+    string? ManualKey);
 
 public record ProjectSessionDto(string SessionId, int ThreadCount, DateTime FirstSeenAt, DateTime LastSeenAt);
 
@@ -23,6 +29,9 @@ public record ProjectDetailDto(
     IReadOnlyList<ProjectSessionDto> Sessions);
 
 public record RegisterProjectRequest(string Path);
+
+// Empty Key clears the manual key (the git remote or the local fallback is used again).
+public record SetProjectKeyRequest(string? Key);
 
 public record RegisterProjectsRequest(IReadOnlyList<string> Paths);
 

@@ -285,9 +285,51 @@
     });
   }
 
+  // First run: the developer name comes from git (user.name). Only without it is the name asked, once, and kept in the
+  // settings so it is never asked again on this machine.
+  async function initDeveloperName() {
+    const modalElement = document.getElementById('developerNameModal');
+    if (!modalElement) return;
+    let settings;
+    try {
+      settings = await api.get('/api/business/settings');
+    } catch {
+      return; // Server or database not ready; ask on a later page load.
+    }
+    if (settings.developerName || settings.gitUserName) return;
+
+    const input = document.getElementById('developerNameInput');
+    input.value = settings.effectiveDeveloperName || '';
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    modalElement.addEventListener('shown.bs.modal', () => input.select(), { once: true });
+    document.getElementById('developerNameForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const name = input.value.trim();
+      if (!name) {
+        input.classList.add('is-invalid');
+        return;
+      }
+      const button = document.getElementById('developerNameSave');
+      button.disabled = true;
+      try {
+        const saved = await api.put('/api/business/developer', { name });
+        modal.hide();
+        toast(`Halo, ${saved.developerName}!`);
+        document.dispatchEvent(new CustomEvent('aithread:developer-name', { detail: saved }));
+      } catch (error) {
+        toast(error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
+    input.addEventListener('input', () => input.classList.remove('is-invalid'));
+    modal.show();
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initThemeToggle();
     initUpdateBar();
+    initDeveloperName();
     refreshRouterPill();
     setInterval(refreshRouterPill, 20000);
   });

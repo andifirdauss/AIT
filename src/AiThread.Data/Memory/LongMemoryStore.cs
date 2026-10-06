@@ -1,3 +1,4 @@
+using AiThread.Common.Entities;
 using AiThread.Common.Enums;
 using AiThread.Data.Context;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,7 @@ public sealed class LongMemoryStore(IDbContextFactory<AiThreadDbContext> mainFac
                 if (!_schemaReady)
                 {
                     await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.LongMemories.AnyAsync(ct), cancellationToken);
+                    await MemorySchema.EnsureColumnsAsync<LongMemory>(db, cancellationToken, nameof(LongMemory.ProjectKey), nameof(LongMemory.ProjectName));
                     _schemaReady = true;
                 }
                 return db;

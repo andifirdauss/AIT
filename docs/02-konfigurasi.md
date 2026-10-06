@@ -56,12 +56,14 @@ mana pun menyimpan ketiganya. Setelah mengganti proxy API key, terapkan ulang in
 
 ### Penyimpanan memory
 
-Tab `/Setting#memory`: satu kartu untuk short memory dan satu untuk long memory, disimpan lewat tombol sendiri
-**Simpan penyimpanan memory**. Perubahan langsung berlaku tanpa restart.
+Tab `/Setting#memory`: satu kartu masing-masing untuk short memory, long memory, dan business memory (wiki bisnis),
+disimpan lewat tombol sendiri **Simpan penyimpanan memory**. Perubahan langsung berlaku tanpa restart. Untuk tim,
+arahkan **Long** dan **Business memory** semua developer ke database yang sama: memory dibagi per
+[project key](06-memory.md#berbagi-memory-antar-developer-project-key), bukan per folder root.
 
 | Field | Default | Keterangan |
 |---|---|---|
-| Provider | Bawaan | Short: Garnet bawaan, Redis, SQL Server, PostgreSQL, MySQL, Oracle, SQLite. Long: database utama, SQL Server, PostgreSQL, MySQL, Oracle, SQLite. |
+| Provider | Bawaan | Short: Garnet bawaan, Redis, SQL Server, PostgreSQL, MySQL, Oracle, SQLite. Long & business: database utama, SQL Server, PostgreSQL, MySQL, Oracle, SQLite. |
 | Host / Port | kosong | Server database/Redis. Port kosong = port default provider. |
 | Database | kosong | Nama database; service name untuk Oracle; indeks untuk Redis; path file untuk SQLite. |
 | Username / Password | kosong | Password disimpan **terenkripsi**; kosongkan untuk mempertahankan password lama, atau centang *Hapus password tersimpan*. |
@@ -69,6 +71,18 @@ Tab `/Setting#memory`: satu kartu untuk short memory dan satu untuk long memory,
 | Salin memory yang ada | aktif | Menyalin memory dari store lama ke store baru saat provider/server diganti. Store lama tidak diubah. |
 
 Store yang tidak bisa dihubungi ditolak saat disimpan. Rincian per provider di [Memory](06-memory.md#penyimpanan-memory).
+
+### Business memory
+
+Kartu di bawah penyimpanan memory (`/Setting#memory`), disimpan lewat **Simpan business memory**. Lihat
+[Business memory](06-memory.md#business-memory-wiki-bisnis).
+
+| Field | Default | Keterangan |
+|---|---|---|
+| Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memory → Bisnis tetap bisa dipakai saat nonaktif. |
+| Interval (jam) | 6 | 1–168. Jeda antar rangkuman otomatis. |
+| Model penulis wiki | otomatis | Model 9router penulis wiki; kosong = model node Planner aktif. Pilih model yang teliti dan bisa membaca gambar agar screenshot dari prompt ikut masuk halaman. |
+| Nama developer | `git config user.name` | Dicatat pada halaman dan riwayat revisi, supaya tim tahu siapa (AiThread siapa) yang mengubah. Kosong = `user.name` dari git config global (dibaca langsung dari `~/.gitconfig`); bila git juga tidak punya, AiThread menanyakannya sekali lewat popup saat UI pertama dibuka. |
 
 ### Telegram
 

@@ -82,7 +82,7 @@ public static class PlannerTools
             }
             """)),
         ChatMessages.Function(SearchMemory,
-            "Search memory labels (project facts and reusable knowledge) by keywords. Returns ids and labels only.",
+            "Search memory labels (project facts, reusable knowledge and the project's business wiki pages) by keywords. Returns ids and labels only.",
             Schema("""
             {
               "type": "object",
@@ -93,7 +93,7 @@ public static class PlannerTools
             }
             """)),
         ChatMessages.Function(ReadMemory,
-            "Read the full description of memories by id.",
+            "Read the full description of memories, or the content of business wiki pages, by id.",
             Schema("""
             {
               "type": "object",

@@ -154,5 +154,8 @@ public class NineRouterServiceTests
 
         public Task<RuntimeSettings> UpdateSkillsAsync(UpdateSkillSettingsRequest request, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public Task<RuntimeSettings> UpdateBusinessAsync(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

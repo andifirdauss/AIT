@@ -42,6 +42,7 @@ public sealed class OrchestrationHarness : IAsyncDisposable
             options.UseSqlite($"Data Source={Path.Combine(_dataDir, "aithread.db")};Pooling=False"));
         services.AddSingleton<IEventBus, InProcessEventBus>();
         services.AddSingleton<LongMemoryStore>();
+        services.AddSingleton<BusinessMemoryStore>();
         services.AddSingleton<IShortMemoryStore, EmptyShortMemoryStore>();
         services.AddSingleton<IHostApplicationLifetime>(_lifetime);
         services.AddServiceLayer(configuration);
@@ -124,6 +125,9 @@ public sealed class OrchestrationHarness : IAsyncDisposable
 
     public string ReadFile(string relativePath) =>
         File.ReadAllText(Path.Combine(Project.Root, relativePath.Replace('/', Path.DirectorySeparatorChar))).ReplaceLineEndings("\n");
+
+    // Any service of the real service layer, e.g. IProjectService or BusinessDigestRunner.
+    public T Service<T>() where T : notnull => _services.GetRequiredService<T>();
 
     public Task<AiThreadDbContext> CreateDbAsync() =>
         _services.GetRequiredService<IDbContextFactory<AiThreadDbContext>>().CreateDbContextAsync();

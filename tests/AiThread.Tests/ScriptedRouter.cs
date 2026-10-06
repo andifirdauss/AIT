@@ -15,6 +15,8 @@ public enum ScriptedAgent
     Reviewer,
     Wrapper,
     MemoryExtractor,
+    BusinessRouter,
+    BusinessWriter,
     Other
 }
 
@@ -138,6 +140,8 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.Reviewer, StringComparison.Ordinal)) return ScriptedAgent.Reviewer;
         if (system.StartsWith(AgentPrompts.Wrapper, StringComparison.Ordinal)) return ScriptedAgent.Wrapper;
         if (system.StartsWith(AgentPrompts.MemoryExtractor, StringComparison.Ordinal)) return ScriptedAgent.MemoryExtractor;
+        if (system.StartsWith(AgentPrompts.BusinessRouter, StringComparison.Ordinal)) return ScriptedAgent.BusinessRouter;
+        if (system.StartsWith(AgentPrompts.BusinessWriter, StringComparison.Ordinal)) return ScriptedAgent.BusinessWriter;
         return ScriptedAgent.Other;
     }
 }

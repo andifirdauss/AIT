@@ -61,20 +61,28 @@ Daftar codebase yang dikenal AiThread. Satu project = satu folder root, yaitu fo
   dalamnya lalu diorkestrasi dan punya memory). Drive, folder Home, dan folder sistem ditolak. Path file juga diterima
   (foldernya yang dipakai).
 - Registrasi diperlukan sebelum menerapkan integrasi CLI per project.
-- Kolom: nama & root, **AiThread**, stack, jumlah thread, sesi Claude Code, memory, terakhir dipakai. Badge
-  *folder hilang* muncul bila folder project sudah tidak ada.
+- Kolom: nama & root (beserta **project key** 🔑), **AiThread**, stack, jumlah thread, sesi Claude Code, memory,
+  terakhir dipakai. Badge *folder hilang* muncul bila folder project sudah tidak ada; badge *key lokal — belum dibagi*
+  berarti memory project ini belum bisa dibagi dengan developer lain (lihat [Project key](06-memory.md#berbagi-memory-antar-developer-project-key)).
 - **Switch AiThread**: menyala = `<project>/.claude/settings.local.json` mengarahkan Claude Code ke proxy ini. Menyalakan
   menulis blok `env` (sama dengan switch Claude Code per project di menu [CLI](#cli)); mematikan menghapus kunci AiThread
   saja, kunci lain di file tetap. Catatan *URL lain* berarti file mengarah ke alamat proxy lain (mis. port lama) —
   nyalakan ulang untuk memperbarui. Buka sesi Claude Code baru setelah mengubahnya.
-- **Hapus**: riwayat thread tetap ada (tanpa project), tetapi **semua memory project ini ikut terhapus**.
+- **Hapus**: riwayat thread tetap ada (tanpa project). Memory yang hanya ada di mesin ini ikut terhapus. Memory di
+  store bersama (database eksternal) tetap disimpan untuk developer lain, kecuali Anda mengiyakan konfirmasi kedua
+  *hapus juga untuk SEMUA developer*. Bila clone lain dari repository yang sama masih terdaftar, memory-nya pindah ke
+  clone itu.
 
-**Detail project**: stack, daftar file solution/build yang ditemukan di dalam project, sesi Claude Code (id sesi, jumlah thread, terakhir aktif),
-thread project ini, dan tautan ke memory-nya.
+**Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), daftar file
+solution/build yang ditemukan di dalam project, sesi Claude Code (id sesi, jumlah thread, terakhir aktif), thread
+project ini, dan tautan ke memory-nya.
 
 ## Memory
 
-Lihat [Memory](06-memory.md) untuk konsepnya.
+Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi dua tab: **Short & long memory** dan **Bisnis (wiki)**
+(`/Memory#bisnis`).
+
+Tab *Short & long memory*:
 
 - **Statistik**: jumlah short & long memory, project & knowledge, status store short memory.
 - **Filter**: level, tipe, project, pencarian label/deskripsi. Datang dari halaman project? Filter project sudah terisi.
@@ -83,6 +91,19 @@ Lihat [Memory](06-memory.md) untuk konsepnya.
 - **Aksi**: *Buka* (lihat/ubah), *→ DB* (pindahkan short ke long sekarang), *Hapus*.
 - **Tambah memory**: entri manual masuk sebagai short memory. Knowledge memory tidak terikat project.
 - **Konsolidasi sekarang**: memindahkan semua short memory yang sudah melewati masa simpan.
+
+Tab *Bisnis (wiki)* — lihat [Business memory](06-memory.md#business-memory-wiki-bisnis):
+
+- **Project**: pilih project; baris info menampilkan project key, jumlah thread yang menunggu dirangkum, waktu
+  rangkuman terakhir, dan store yang dipakai.
+- **Modul**: daftar halaman dikelompokkan per modul, dengan pencarian. 🔒 = halaman dikurasi manual (tidak diubah AI).
+- **Halaman**: isi wiki (tabel, aturan bernomor, screenshot), versi, siapa yang terakhir mengubah (AI/manual).
+  *Diperbarui AI* mengunci/membuka halaman dari penulis wiki AI; *Riwayat* menampilkan semua versi dan bisa
+  memulihkan salah satunya; *Edit* dan *Hapus*.
+- **Halaman baru / Edit**: modul, judul, ringkasan, label, isi Markdown dengan *Pratinjau*. Tempel screenshot
+  (Ctrl+V) atau *Sisipkan gambar* — gambar diunggah ke store dan disisipkan di posisi kursor. Bila halaman sudah diubah
+  orang lain sejak dibuka, penyimpanan ditolak (editor tetap terbuka) supaya perubahan siapa pun tidak tertimpa.
+- **Perbarui sekarang**: merangkum thread project ini yang belum masuk wiki tanpa menunggu jadwal.
 
 ## Node
 
@@ -129,9 +150,11 @@ refresh dan bisa ditautkan langsung.
 - **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, model passthrough, proxy API key (beserta tautan ke
   menu [CLI](#cli), tempat integrasi Claude Code/omp dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
 - **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
-- **Penyimpanan memory** (`#memory`) — provider short & long memory (bawaan, Redis, SQL Server, PostgreSQL, MySQL, Oracle, SQLite)
-  beserta host/port/database/username/password, *Test koneksi* per kartu, status live, dan opsi menyalin memory lama.
-  Disimpan terpisah lewat **Simpan penyimpanan memory**.
+- **Penyimpanan memory** (`#memory`) — provider short, long, dan business memory (bawaan, Redis untuk short saja,
+  SQL Server, PostgreSQL, MySQL, Oracle, SQLite) beserta host/port/database/username/password, *Test koneksi* per kartu,
+  status live, dan opsi menyalin memory lama. Disimpan terpisah lewat **Simpan penyimpanan memory**. Di bawahnya,
+  kartu **Business memory**: perbarui otomatis, interval (jam), model penulis wiki, dan nama developer — disimpan lewat
+  **Simpan business memory**.
 - **Telegram** (`#telegram`) — token bot, aktif/nonaktif, status koneksi live, dan tabel chat (*Izinkan* / *Hapus* / *Cabut*).
 - **Skill** (`#skills`) — model Skill Orchestrator, batas karakter skill per node, sumber skill (tempel link →
   **Tarik skill**, status live, *Sync* / *Hapus*), dan gudang skill dengan pencarian serta pratinjau isi. Disimpan

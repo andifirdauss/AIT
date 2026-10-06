@@ -343,6 +343,9 @@ verifikasi).
 - Waktu (termasuk verifikasi; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi cache-nya,
   executor termasuk tugas perbaikan, reviewer, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
 - Ekstraksi memory berjalan di belakang — lihat [Memory](06-memory.md).
+- Thread yang *Selesai* menunggu dirangkum ke wiki bisnis project oleh penulis wiki (berkala, default tiap 6 jam) —
+  lihat [Business memory](06-memory.md#business-memory-wiki-bisnis). Gambar yang dilampirkan di prompt disimpan
+  sampai saat itu, agar screenshot bisa masuk ke halaman modulnya.
 - Untuk thread dari Claude Code (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
 
 ## Konteks sesi (Context Keeper)

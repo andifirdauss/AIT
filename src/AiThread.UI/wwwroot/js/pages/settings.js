@@ -151,14 +151,16 @@
 
   // --- Penyimpanan memory ---
 
-  const memoryPrefixes = ['stm', 'ltm'];
+  const memoryPrefixes = ['stm', 'ltm', 'bzm'];
+  const memoryLevels = { stm: 'Short', ltm: 'Long', bzm: 'Business' };
   const sqlFields = ['server', 'database', 'credentials', 'options'];
   const memoryProviders = {
     Default: {
       fields: [],
       help: {
         stm: 'Server Garnet (protokol Redis) yang berjalan di dalam AiThread — tanpa instalasi apa pun.',
-        ltm: 'Tabel LongMemories di database utama AiThread (ConnectionStrings:Default).'
+        ltm: 'Tabel LongMemories di database utama AiThread (ConnectionStrings:Default) — hanya di komputer ini.',
+        bzm: 'Tabel BusinessPages di database utama AiThread — hanya di komputer ini. Pilih database bersama agar wiki dibangun dari semua developer.'
       }
     },
     Redis: {
@@ -217,7 +219,7 @@
 
   function fillMemoryStorage(m) {
     memoryStorage = m;
-    const stores = { stm: [m.shortMemory, m.shortStatus], ltm: [m.longMemory, m.longStatus] };
+    const stores = { stm: [m.shortMemory, m.shortStatus], ltm: [m.longMemory, m.longStatus], bzm: [m.businessMemory, m.businessStatus] };
     for (const prefix of memoryPrefixes) {
       const [store, status] = stores[prefix];
       memEl(prefix, 'Provider').value = store.provider;
@@ -265,7 +267,7 @@
     button.disabled = true;
     try {
       const r = await api.post('/api/settings/memory-storage/test', {
-        level: prefix === 'stm' ? 'Short' : 'Long',
+        level: memoryLevels[prefix],
         store: memoryStoreBody(prefix)
       });
       result.innerHTML = r.success
@@ -283,6 +285,7 @@
     const body = {
       shortMemory: memoryStoreBody('stm'),
       longMemory: memoryStoreBody('ltm'),
+      businessMemory: memoryStoreBody('bzm'),
       copyExistingData: el('memoryCopyExisting').checked
     };
     const button = el('btnSaveMemoryStorage');
@@ -291,8 +294,8 @@
     try {
       const result = await api.put('/api/settings/memory-storage', body);
       fillMemoryStorage(result.settings);
-      const copied = result.copiedShort + result.copiedLong > 0
-        ? ` ${result.copiedShort} short & ${result.copiedLong} long memory disalin.`
+      const copied = result.copiedShort + result.copiedLong + result.copiedBusiness > 0
+        ? ` ${result.copiedShort} short, ${result.copiedLong} long memory & ${result.copiedBusiness} halaman bisnis disalin.`
         : '';
       toast(`Penyimpanan memory tersimpan.${copied}`);
       result.warnings.forEach(warning => toast(warning, 'warning'));
@@ -301,6 +304,57 @@
     } finally {
       button.disabled = false;
       button.textContent = 'Simpan penyimpanan memory';
+    }
+  });
+
+  // --- Business memory ---
+
+  async function loadBusinessModels(selected) {
+    const select = el('bizModel');
+    let html = '<option value="">Otomatis — model node Planner</option>';
+    try {
+      const models = await api.get('/api/router/models');
+      if (selected && !models.some(m => m.id === selected)) html += `<option value="${escapeHtml(selected)}">${escapeHtml(selected)}</option>`;
+      html += models.map(m => `<option value="${escapeHtml(m.id)}">${m.isCombo ? '[combo] ' : ''}${escapeHtml(m.id)}</option>`).join('');
+    } catch {
+      if (selected) html += `<option value="${escapeHtml(selected)}">${escapeHtml(selected)}</option>`;
+    }
+    select.innerHTML = html;
+    select.value = selected || '';
+  }
+
+  async function fillBusinessSettings(s) {
+    el('bizEnabled').checked = s.enabled;
+    el('bizInterval').value = s.intervalHours;
+    el('bizDeveloper').value = s.developerName || '';
+    el('bizDeveloper').placeholder = s.gitUserName || s.effectiveDeveloperName || '';
+    await loadBusinessModels(s.model);
+  }
+
+  // Saved from the first-run popup while this page is open.
+  document.addEventListener('aithread:developer-name', event => { el('bizDeveloper').value = event.detail.developerName || ''; });
+
+  async function loadBusinessSettings() {
+    try {
+      await fillBusinessSettings(await api.get('/api/business/settings'));
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
+  el('businessSettingsForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const body = {
+      enabled: el('bizEnabled').checked,
+      intervalHours: Number(el('bizInterval').value),
+      model: el('bizModel').value || null,
+      developerName: el('bizDeveloper').value.trim() || null
+    };
+    try {
+      await fillBusinessSettings(await api.put('/api/business/settings', body));
+      toast('Setting business memory tersimpan.');
+    } catch (error) {
+      toast(error.message, 'error');
     }
   });
 
@@ -592,6 +646,7 @@
 
   load();
   loadMemoryStorage();
+  loadBusinessSettings();
   loadTelegram(false);
   loadSkillSettings();
   loadSkillSources();

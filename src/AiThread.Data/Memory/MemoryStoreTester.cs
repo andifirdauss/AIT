@@ -44,13 +44,18 @@ public static class MemoryStoreTester
             await using var db = new ShortMemoryDbContext(connection.BuildDbContextOptions<ShortMemoryDbContext>());
             exists = await MemorySchema.TableExistsAsync(connection, db, (c, ct) => c.ShortMemories.AnyAsync(ct), cancellationToken);
         }
+        else if (level == MemoryLevel.Business)
+        {
+            await using var db = new BusinessMemoryDbContext(connection.BuildDbContextOptions<BusinessMemoryDbContext>());
+            exists = await MemorySchema.TableExistsAsync(connection, db, (c, ct) => c.BusinessPages.AnyAsync(ct), cancellationToken);
+        }
         else
         {
             await using var db = new LongMemoryDbContext(connection.BuildDbContextOptions<LongMemoryDbContext>());
             exists = await MemorySchema.TableExistsAsync(connection, db, (c, ct) => c.LongMemories.AnyAsync(ct), cancellationToken);
         }
 
-        var table = level == MemoryLevel.Short ? "ShortMemories" : "LongMemories";
+        var table = level switch { MemoryLevel.Short => "ShortMemories", MemoryLevel.Business => "BusinessPages", _ => "LongMemories" };
         return exists
             ? $"Terhubung — tabel {table} sudah ada."
             : $"Terhubung — database/tabel {table} belum ada dan akan dibuat saat setting disimpan.";

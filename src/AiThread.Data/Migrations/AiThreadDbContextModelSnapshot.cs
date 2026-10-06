@@ -120,6 +120,181 @@ namespace AiThread.Data.Migrations
                     b.ToTable("Nodes", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.BusinessAsset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("PageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("SourceThreadId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PageId");
+
+                    b.HasIndex("ProjectKey", "Sha256");
+
+                    b.ToTable("BusinessAssets", (string)null);
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.BusinessPage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AutoUpdate")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Labels")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("LastEditKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ProjectName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Summary")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectKey", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("BusinessPages", (string)null);
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.BusinessPageRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ChangeNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EditKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceThreadIds")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PageId", "Version");
+
+                    b.ToTable("BusinessPageRevisions", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.LongMemory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -147,6 +322,14 @@ namespace AiThread.Data.Migrations
                     b.Property<Guid?>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ProjectKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ProjectName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime>("PromotedAt")
                         .HasColumnType("datetime2");
 
@@ -164,6 +347,8 @@ namespace AiThread.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProjectId", "Type");
+
+                    b.HasIndex("ProjectKey", "Type");
 
                     b.ToTable("LongMemories", (string)null);
                 });
@@ -198,10 +383,24 @@ namespace AiThread.Data.Migrations
                     b.Property<DateTime>("LastSeenAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("ManualKey")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ProjectKeySource")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("RootPath")
                         .IsRequired()
@@ -215,6 +414,8 @@ namespace AiThread.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ProjectKey");
 
                     b.HasIndex("RootPath")
                         .IsUnique();
@@ -395,8 +596,22 @@ namespace AiThread.Data.Migrations
                     b.Property<int>("BuildTimeoutSeconds")
                         .HasColumnType("int");
 
+                    b.Property<bool>("BusinessMemoryEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("BusinessMemoryIntervalHours")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BusinessMemoryModel")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("DeveloperName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("ExecutorMaxRetries")
                         .HasColumnType("int");
@@ -505,6 +720,42 @@ namespace AiThread.Data.Migrations
                     b.ToTable("TelegramChats", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.ThreadAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("ThreadRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ThreadRunId");
+
+                    b.ToTable("ThreadAttachments", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.ThreadFileSnapshot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -555,6 +806,9 @@ namespace AiThread.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("BusinessDigestedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2");
@@ -670,6 +924,8 @@ namespace AiThread.Data.Migrations
                     b.HasIndex("ProjectId");
 
                     b.HasIndex("SessionId");
+
+                    b.HasIndex("Status", "BusinessDigestedAt");
 
                     b.ToTable("Threads", (string)null);
                 });
@@ -821,6 +1077,46 @@ namespace AiThread.Data.Migrations
 
             modelBuilder.Entity("AiThread.Common.Entities.SystemSetting", b =>
                 {
+                    b.OwnsOne("AiThread.Common.Entities.MemoryStoreSetting", "BusinessMemoryStore", b1 =>
+                        {
+                            b1.Property<Guid>("SystemSettingId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<string>("Database")
+                                .HasMaxLength(500)
+                                .HasColumnType("nvarchar(500)");
+
+                            b1.Property<string>("Host")
+                                .HasMaxLength(255)
+                                .HasColumnType("nvarchar(255)");
+
+                            b1.Property<string>("Options")
+                                .HasMaxLength(1000)
+                                .HasColumnType("nvarchar(1000)");
+
+                            b1.Property<string>("PasswordProtected")
+                                .HasColumnType("nvarchar(max)");
+
+                            b1.Property<int?>("Port")
+                                .HasColumnType("int");
+
+                            b1.Property<string>("Provider")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("nvarchar(20)");
+
+                            b1.Property<string>("Username")
+                                .HasMaxLength(200)
+                                .HasColumnType("nvarchar(200)");
+
+                            b1.HasKey("SystemSettingId");
+
+                            b1.ToTable("SystemSettings");
+
+                            b1.WithOwner()
+                                .HasForeignKey("SystemSettingId");
+                        });
+
                     b.OwnsOne("AiThread.Common.Entities.MemoryStoreSetting", "LongMemoryStore", b1 =>
                         {
                             b1.Property<Guid>("SystemSettingId")
@@ -901,6 +1197,9 @@ namespace AiThread.Data.Migrations
                                 .HasForeignKey("SystemSettingId");
                         });
 
+                    b.Navigation("BusinessMemoryStore")
+                        .IsRequired();
+
                     b.Navigation("LongMemoryStore")
                         .IsRequired();
 
@@ -916,6 +1215,17 @@ namespace AiThread.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("ActiveProject");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.ThreadAttachment", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.ThreadRun", "ThreadRun")
+                        .WithMany()
+                        .HasForeignKey("ThreadRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ThreadRun");
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.ThreadFileSnapshot", b =>

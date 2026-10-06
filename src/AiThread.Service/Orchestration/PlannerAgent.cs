@@ -385,7 +385,7 @@ public sealed class PlannerAgent(
         builder.Append("# Memory index (labels only — call read_memory with ids to read the details)\n");
         var relevant = await memoryService.GetIndexAsync(project.ProjectId, request.Prompt, 20, cancellationToken);
         var recent = await memoryService.GetIndexAsync(project.ProjectId, null, 10, cancellationToken);
-        var index = relevant.Concat(recent.Where(r => r.Level == MemoryLevel.Short)).DistinctBy(e => e.Id).Take(25).ToList();
+        var index = relevant.Concat(recent.Where(r => r.Level is MemoryLevel.Short or MemoryLevel.Business)).DistinctBy(e => e.Id).Take(25).ToList();
         builder.Append(index.Count == 0 ? "(empty)\n" : FormatIndex(index)).Append('\n');
 
         builder.Append("# Developer request\n");
@@ -408,7 +408,7 @@ public sealed class PlannerAgent(
 
     private static string FormatIndex(IEnumerable<Common.DTOs.MemoryIndexEntry> entries) =>
         string.Concat(entries.Select(e =>
-            $"- {e.Id} [{(e.Level == MemoryLevel.Short ? "short" : "long")}/{e.Type.ToString().ToLowerInvariant()}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n"));
+            $"- {e.Id} [{e.Level.ToString().ToLowerInvariant()}/{e.Type.ToString().ToLowerInvariant()}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n"));
 
     private static string Describe(string tool, JsonObject args) => tool switch
     {

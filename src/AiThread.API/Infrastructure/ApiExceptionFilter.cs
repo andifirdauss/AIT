@@ -15,6 +15,7 @@ public sealed class ApiExceptionFilter : IExceptionFilter
 
         var (status, message) = context.Exception switch
         {
+            BusinessPageConflictException ex => (StatusCodes.Status409Conflict, ex.Message),
             AppValidationException ex => (StatusCodes.Status400BadRequest, ex.Message),
             NineRouterException ex => (StatusCodes.Status502BadGateway, ex.Message),
             OrchestrationException ex => (StatusCodes.Status409Conflict, ex.Message),

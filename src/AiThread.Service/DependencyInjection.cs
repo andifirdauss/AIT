@@ -1,5 +1,6 @@
 using AiThread.Common.Options;
 using AiThread.Service.Background;
+using AiThread.Service.Business;
 using AiThread.Service.Implementations;
 using AiThread.Service.Implementations.Cli;
 using AiThread.Service.Interfaces;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddSingleton<ISettingService, SettingService>();
         services.AddSingleton<INineRouterService, NineRouterService>();
         services.AddSingleton<INodeService, NodeService>();
+        services.AddSingleton<ProjectMemoryKeys>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IMemoryService, MemoryService>();
         services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
@@ -92,13 +94,21 @@ public static class DependencyInjection
         services.AddSingleton<ISkillService, SkillService>();
         services.AddSingleton<ISkillOrchestrator, SkillOrchestrator>();
 
+        services.AddSingleton<BusinessPageStore>();
+        services.AddSingleton<BusinessDigestCollector>();
+        services.AddSingleton<BusinessMemoryWriter>();
+        services.AddSingleton<BusinessDigestRunner>();
+        services.AddSingleton<IBusinessMemoryService, BusinessMemoryService>();
+
         // First, so memory is read from the configured stores by everything that starts after it.
         services.AddHostedService<MemoryStorageInitializer>();
+        services.AddHostedService<ProjectKeyBackfill>();
         services.AddHostedService<ActivityLogWriter>();
         services.AddHostedService<RouterMonitorWorker>();
         services.AddHostedService<MemoryConsolidationWorker>();
         services.AddHostedService<TelegramPollingWorker>();
         services.AddHostedService<SkillImportWorker>();
+        services.AddHostedService<BusinessMemoryWorker>();
 
         // Registered last so it stops first: cancelled threads can still log through ActivityLogWriter.
         services.AddHostedService<ThreadLifecycleWorker>();

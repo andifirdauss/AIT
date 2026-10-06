@@ -70,9 +70,17 @@ public class ProjectsController(
     public async Task<ActionResult<ApiResponse<ProjectScanDto>>> Scan([FromQuery] string path, [FromQuery] int depth = 4, CancellationToken cancellationToken = default) =>
         ApiResponse<ProjectScanDto>.Ok(await projectService.ScanAsync(path, depth, cancellationToken));
 
+    // Sets the key that identifies the project across machines (memory is shared by it); an empty key clears it.
+    [HttpPut("{id:guid}/key")]
+    public async Task<ActionResult<ApiResponse<ProjectDto>>> SetKey(Guid id, SetProjectKeyRequest request, CancellationToken cancellationToken) =>
+        await projectService.SetKeyAsync(id, request.Key, cancellationToken) is { } project
+            ? ApiResponse<ProjectDto>.Ok(project, $"Project key: {project.Key}.")
+            : NotFound(ApiResponse<ProjectDto>.Fail("Project tidak ditemukan."));
+
+    // Memory in a shared (external) store is kept for the other developers unless includeSharedMemory=true.
     [HttpDelete("{id:guid}")]
-    public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id, CancellationToken cancellationToken) =>
-        await projectService.DeleteAsync(id, cancellationToken)
+    public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id, [FromQuery] bool includeSharedMemory = false, CancellationToken cancellationToken = default) =>
+        await projectService.DeleteAsync(id, includeSharedMemory, cancellationToken)
             ? ApiResponse<bool>.Ok(true, "Project dihapus.")
             : NotFound(ApiResponse<bool>.Fail("Project tidak ditemukan."));
 }

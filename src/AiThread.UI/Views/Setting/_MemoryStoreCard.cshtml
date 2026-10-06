@@ -1,9 +1,9 @@
 @model (string Prefix, string Title, string Description, bool AllowRedis)
-@* One card per memory level; ids are prefixed (stm = short, ltm = long) and settings.js fills both the same way. *@
+@* One card per memory level; ids are prefixed (stm = short, ltm = long, bzm = business) and settings.js fills them the same way. *@
 @{
     var prefix = Model.Prefix;
 }
-<div class="col-xl-6">
+<div class="col-lg-6 col-xxl-4">
     <div class="card h-100 memory-store" data-prefix="@prefix">
         <div class="card-header d-flex flex-wrap align-items-center gap-2">
             <span>@Model.Title</span>

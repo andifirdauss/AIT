@@ -7,6 +7,7 @@ using AiThread.Data.Cache;
 using AiThread.Data.Context;
 using AiThread.Data.Memory;
 using AiThread.Data.Messaging;
+using AiThread.Service.Business;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
@@ -15,15 +16,22 @@ using Microsoft.Extensions.Options;
 
 namespace AiThread.Service.Implementations;
 
+// Project memory is scoped by Project.ProjectKey, so every clone of a repository (on any developer's machine, with
+// any root folder) reads and writes the same memory. Rows written before keys existed carry only ProjectId and still
+// match their own project. The project's business wiki pages are part of the planner's index too (MemoryType.Business),
+// read-only here: they are written by the business wiki writer and in the Memory menu.
 public sealed partial class MemoryService(
     IDbContextFactory<AiThreadDbContext> dbFactory,
     SwitchableShortMemoryStore shortStore,
     LongMemoryStore longStore,
+    BusinessMemoryStore businessStore,
     IEventBus eventBus,
     IActivityLogService activityLog,
     IOptions<AiThreadOptions> options,
     ILogger<MemoryService> logger) : IMemoryService
 {
+    private const int PlannerPageMaxChars = 15_000;
+
     private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "the", "and", "for", "with", "that", "this", "from", "into", "when", "then", "than", "are", "was", "will",
@@ -34,6 +42,8 @@ public sealed partial class MemoryService(
     public async Task<MemoryItemDto> AddShortAsync(SaveMemoryRequest request, Guid? sourceThreadId = null, CancellationToken cancellationToken = default)
     {
         Validate(request);
+        var projects = await LocalProjectsAsync(cancellationToken);
+        var owner = request.Type == MemoryType.Knowledge ? null : projects.Find(request.ProjectId);
         var record = new ShortMemoryRecord(
             Guid.NewGuid(),
             request.Type == MemoryType.Knowledge ? null : request.ProjectId,
@@ -41,7 +51,9 @@ public sealed partial class MemoryService(
             request.Label.Trim(),
             request.Description.Trim(),
             sourceThreadId,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            owner?.Key,
+            owner?.Name);
 
         if (shortStore.IsConnected)
         {
@@ -49,7 +61,7 @@ public sealed partial class MemoryService(
             {
                 await shortStore.SaveAsync(record);
                 Publish("created", record.Id);
-                return await ToDtoAsync(record, cancellationToken);
+                return ToDto(record, projects);
             }
             catch (Exception ex)
             {
@@ -61,28 +73,33 @@ public sealed partial class MemoryService(
         var entity = await InsertLongAsync(record, cancellationToken);
         activityLog.Warn("memory", $"Penyimpanan short memory tidak tersedia — memory '{record.Label}' langsung disimpan sebagai long memory.", sourceThreadId, record.ProjectId);
         Publish("created", entity.Id);
-        return ToDto(entity, await ProjectNameAsync(entity.ProjectId, cancellationToken));
+        return ToDto(entity, projects);
     }
 
     public async Task<IReadOnlyList<MemoryIndexEntry>> GetIndexAsync(Guid? projectId, string? query, int take, CancellationToken cancellationToken = default)
     {
-        bool InScope(MemoryType type, Guid? owner) => type == MemoryType.Knowledge || (projectId is not null && owner == projectId);
+        var scope = (await LocalProjectsAsync(cancellationToken)).Find(projectId);
 
         var entries = (await SafeShortAsync())
-            .Where(r => InScope(r.Type, r.ProjectId))
+            .Where(r => r.Type == MemoryType.Knowledge || (scope is not null && scope.Owns(r.ProjectKey, r.ProjectId)))
             .Select(r => new MemoryIndexEntry(r.Id, MemoryLevel.Short, r.Type, r.Label, r.CreatedAt))
             .ToList();
 
         await using (var db = await longStore.CreateAsync(cancellationToken))
         {
-            var longEntries = await db.LongMemories.AsNoTracking()
-                .Where(m => m.Type == MemoryType.Knowledge || (projectId != null && m.ProjectId == projectId))
+            var longEntries = await WhereVisible(db.LongMemories.AsNoTracking(), scope, includeKnowledge: true)
                 .Select(m => new MemoryIndexEntry(m.Id, MemoryLevel.Long, m.Type, m.Label, m.CreatedAt))
                 .ToListAsync(cancellationToken);
             entries.AddRange(longEntries);
         }
 
-        var keywords = Keywords(query);
+        // Business pages get their own share of the index, so many memories never push the project's wiki out.
+        var pages = Rank(await BusinessIndexAsync(scope, cancellationToken), Keywords(query), Math.Min(8, Math.Max(1, take / 3)));
+        return pages.Concat(Rank(entries, Keywords(query), take - pages.Count)).ToList();
+    }
+
+    private static List<MemoryIndexEntry> Rank(IEnumerable<MemoryIndexEntry> entries, IReadOnlyList<string> keywords, int take)
+    {
         if (keywords.Count == 0)
         {
             return entries
@@ -103,19 +120,41 @@ public sealed partial class MemoryService(
             .ToList();
     }
 
+    // The business wiki may live in another (shared) database; an outage there only hides the pages.
+    private async Task<IReadOnlyList<MemoryIndexEntry>> BusinessIndexAsync(ProjectScope? scope, CancellationToken cancellationToken)
+    {
+        if (scope?.Key is not { } key) return [];
+        try
+        {
+            await using var db = await businessStore.CreateAsync(cancellationToken);
+            var rows = await db.BusinessPages.AsNoTracking()
+                .Where(p => p.ProjectKey == key)
+                .Select(p => new { p.Id, p.Module, p.Title, p.Labels, p.CreatedAt, p.UpdatedAt })
+                .ToListAsync(cancellationToken);
+            return rows.Select(p => new MemoryIndexEntry(p.Id, MemoryLevel.Business, MemoryType.Business,
+                $"{p.Module} — {p.Title} (business wiki): {p.Labels}", p.UpdatedAt ?? p.CreatedAt)).ToList();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not read the business wiki index from {Store}.", businessStore.Description);
+            return [];
+        }
+    }
+
     public async Task<IReadOnlyList<MemoryItemDto>> GetManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
     {
         var idList = ids.Distinct().Take(50).ToList();
         if (idList.Count == 0) return [];
 
         var results = new List<MemoryItemDto>();
+        var projects = await LocalProjectsAsync(cancellationToken);
         if (shortStore.IsConnected)
         {
             foreach (var id in idList)
             {
                 try
                 {
-                    if (await shortStore.GetAsync(id) is { } record) results.Add(await ToDtoAsync(record, cancellationToken));
+                    if (await shortStore.GetAsync(id) is { } record) results.Add(ToDto(record, projects));
                 }
                 catch (Exception ex)
                 {
@@ -131,15 +170,40 @@ public sealed partial class MemoryService(
         var longs = await db.LongMemories.AsNoTracking()
             .Where(m => remaining.Contains(m.Id))
             .ToListAsync(cancellationToken);
-        var names = await ProjectNamesAsync(cancellationToken);
-        results.AddRange(longs.Select(m => ToDto(m, NameOf(names, m.ProjectId))));
+        results.AddRange(longs.Select(m => ToDto(m, projects)));
 
         // Usage statistics help to spot memories worth keeping.
         await db.LongMemories.Where(m => remaining.Contains(m.Id)).ExecuteUpdateAsync(s => s
             .SetProperty(m => m.HitCount, m => m.HitCount + 1)
             .SetProperty(m => m.LastAccessedAt, DateTime.UtcNow), cancellationToken);
 
+        remaining = remaining.Except(longs.Select(m => m.Id)).ToList();
+        if (remaining.Count > 0) results.AddRange(await BusinessPagesAsync(remaining, projects, cancellationToken));
         return results;
+    }
+
+    // Business wiki pages as the planner reads them: the label names the page, the description is the page itself
+    // with images replaced by their captions.
+    private async Task<IReadOnlyList<MemoryItemDto>> BusinessPagesAsync(IReadOnlyList<Guid> ids, LocalProjects projects, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var db = await businessStore.CreateAsync(cancellationToken);
+            var pages = await db.BusinessPages.AsNoTracking().Where(p => ids.Contains(p.Id)).ToListAsync(cancellationToken);
+            return pages.Select(p =>
+            {
+                var content = BusinessMarkdown.ForPlanner(p.Content);
+                if (content.Length > PlannerPageMaxChars) content = content[..PlannerPageMaxChars] + "\n… (page truncated)";
+                var (projectId, projectName) = Owner(projects, null, p.ProjectKey, p.ProjectName);
+                return new MemoryItemDto(p.Id, MemoryLevel.Business, MemoryType.Business, projectId, projectName,
+                    $"{p.Module} — {p.Title}", content, null, p.CreatedAt, p.UpdatedAt, 0, p.ProjectKey);
+            }).ToList();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Could not read business wiki pages from {Store}.", businessStore.Description);
+            return [];
+        }
     }
 
     public async Task<PagedResult<MemoryItemDto>> QueryAsync(MemoryQuery query, CancellationToken cancellationToken = default)
@@ -148,17 +212,21 @@ public sealed partial class MemoryService(
         var pageSize = query.PageSize <= 0 ? 50 : Math.Clamp(query.PageSize, 1, 200);
         var search = query.Search?.Trim();
         var items = new List<MemoryItemDto>();
-        var names = await ProjectNamesAsync(cancellationToken);
+        var projects = await LocalProjectsAsync(cancellationToken);
+
+        // A project filter matches every memory of the project key, whichever developer wrote it. An unknown project
+        // id still filters (to its own legacy rows) rather than showing everything.
+        var scope = query.ProjectId is { } filterId ? projects.Find(filterId) ?? ProjectScope.Unknown(filterId) : null;
 
         if (query.Level is null or MemoryLevel.Short)
         {
             var shorts = (await SafeShortAsync()).Where(r =>
                 (query.Type is null || r.Type == query.Type)
-                && (query.ProjectId is null || r.ProjectId == query.ProjectId)
+                && (scope is null || scope.Owns(r.ProjectKey, r.ProjectId))
                 && (string.IsNullOrEmpty(search)
                     || r.Label.Contains(search, StringComparison.OrdinalIgnoreCase)
                     || r.Description.Contains(search, StringComparison.OrdinalIgnoreCase)));
-            items.AddRange(shorts.Select(r => ToDto(r, NameOf(names, r.ProjectId))));
+            items.AddRange(shorts.Select(r => ToDto(r, projects)));
         }
 
         if (query.Level is null or MemoryLevel.Long)
@@ -166,11 +234,11 @@ public sealed partial class MemoryService(
             await using var db = await longStore.CreateAsync(cancellationToken);
             var longQuery = db.LongMemories.AsNoTracking().AsQueryable();
             if (query.Type is { } type) longQuery = longQuery.Where(m => m.Type == type);
-            if (query.ProjectId is { } projectId) longQuery = longQuery.Where(m => m.ProjectId == projectId);
+            if (scope is not null) longQuery = WhereVisible(longQuery, scope, includeKnowledge: false);
             if (!string.IsNullOrEmpty(search)) longQuery = longQuery.Where(m => m.Label.Contains(search) || m.Description.Contains(search));
 
             var longs = await longQuery.OrderByDescending(m => m.CreatedAt).Take(page * pageSize + 500).ToListAsync(cancellationToken);
-            items.AddRange(longs.Select(m => ToDto(m, NameOf(names, m.ProjectId))));
+            items.AddRange(longs.Select(m => ToDto(m, projects)));
         }
 
         var ordered = items.OrderByDescending(i => i.CreatedAt).ToList();
@@ -179,21 +247,24 @@ public sealed partial class MemoryService(
 
     public async Task<MemoryItemDto?> GetAsync(MemoryLevel level, Guid id, CancellationToken cancellationToken = default)
     {
+        var projects = await LocalProjectsAsync(cancellationToken);
         if (level == MemoryLevel.Short)
         {
             var record = shortStore.IsConnected ? await shortStore.GetAsync(id) : null;
-            return record is null ? null : await ToDtoAsync(record, cancellationToken);
+            return record is null ? null : ToDto(record, projects);
         }
 
         await using var db = await longStore.CreateAsync(cancellationToken);
         var entity = await db.LongMemories.AsNoTracking().FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-        return entity is null ? null : ToDto(entity, await ProjectNameAsync(entity.ProjectId, cancellationToken));
+        return entity is null ? null : ToDto(entity, projects);
     }
 
     public async Task<MemoryItemDto?> UpdateAsync(MemoryLevel level, Guid id, SaveMemoryRequest request, CancellationToken cancellationToken = default)
     {
         Validate(request);
+        var projects = await LocalProjectsAsync(cancellationToken);
         var projectId = request.Type == MemoryType.Knowledge ? null : request.ProjectId;
+        var owner = projects.Find(projectId);
 
         if (level == MemoryLevel.Short)
         {
@@ -201,10 +272,18 @@ public sealed partial class MemoryService(
             var record = await shortStore.GetAsync(id);
             if (record is null) return null;
 
-            var updated = record with { Type = request.Type, ProjectId = projectId, Label = request.Label.Trim(), Description = request.Description.Trim() };
+            var updated = record with
+            {
+                Type = request.Type,
+                ProjectId = projectId,
+                ProjectKey = projectId is null ? null : owner?.Key ?? record.ProjectKey,
+                ProjectName = projectId is null ? null : owner?.Name ?? record.ProjectName,
+                Label = request.Label.Trim(),
+                Description = request.Description.Trim()
+            };
             await shortStore.SaveAsync(updated);
             Publish("updated", id);
-            return await ToDtoAsync(updated, cancellationToken);
+            return ToDto(updated, projects);
         }
 
         await using var db = await longStore.CreateAsync(cancellationToken);
@@ -212,13 +291,16 @@ public sealed partial class MemoryService(
         if (entity is null) return null;
 
         entity.Type = request.Type;
-        entity.ProjectId = projectId;
+        // The main database enforces the project foreign key: only a project registered here can be referenced.
+        entity.ProjectId = owner?.Id;
+        entity.ProjectKey = projectId is null ? null : owner?.Key ?? entity.ProjectKey;
+        entity.ProjectName = projectId is null ? null : owner?.Name ?? entity.ProjectName;
         entity.Label = request.Label.Trim();
         entity.Description = request.Description.Trim();
         entity.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
         Publish("updated", id);
-        return ToDto(entity, await ProjectNameAsync(entity.ProjectId, cancellationToken));
+        return ToDto(entity, projects);
     }
 
     public async Task<bool> DeleteAsync(MemoryLevel level, Guid id, CancellationToken cancellationToken = default)
@@ -305,15 +387,20 @@ public sealed partial class MemoryService(
         var existing = await db.LongMemories.FirstOrDefaultAsync(m => m.Id == record.Id, cancellationToken);
         if (existing is not null) return existing;
 
-        // The project may have been deleted while the memory waited in short memory.
-        var projectId = record.ProjectId;
-        if (projectId is { } pid && !await ProjectExistsAsync(pid, cancellationToken)) projectId = null;
+        // The project may have been deleted while the memory waited in short memory. Its key keeps the memory with
+        // the project's other clones; without a key (older records) it turns into knowledge as before.
+        var projects = await LocalProjectsAsync(cancellationToken);
+        var owner = projects.Find(record.ProjectId);
+        var projectKey = record.Type == MemoryType.Knowledge ? null : record.ProjectKey ?? owner?.Key;
+        var projectId = owner?.Id ?? (projectKey is null ? null : projects.FindByKey(projectKey)?.Id);
 
         var entity = new LongMemory
         {
             Id = record.Id,
             ProjectId = projectId,
-            Type = projectId is null ? MemoryType.Knowledge : record.Type,
+            ProjectKey = projectKey,
+            ProjectName = projectKey is null ? null : record.ProjectName ?? owner?.Name,
+            Type = projectId is null && projectKey is null ? MemoryType.Knowledge : record.Type,
             Label = record.Label,
             Description = record.Description,
             SourceThreadId = record.SourceThreadId,
@@ -348,40 +435,54 @@ public sealed partial class MemoryService(
     private void Publish(string action, Guid? id) =>
         eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id, action }));
 
-    private async Task<Dictionary<Guid, string>> ProjectNamesAsync(CancellationToken cancellationToken)
+    private async Task<LocalProjects> LocalProjectsAsync(CancellationToken cancellationToken)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Projects.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+        var rows = await db.Projects.AsNoTracking()
+            .Select(p => new { p.Id, p.ProjectKey, p.Name })
+            .ToListAsync(cancellationToken);
+        return new LocalProjects(rows.Select(p => new ProjectScope(p.Id, string.IsNullOrEmpty(p.ProjectKey) ? null : p.ProjectKey, p.Name)).ToList());
     }
 
-    private static string? NameOf(Dictionary<Guid, string> names, Guid? projectId) =>
-        projectId is { } id ? names.GetValueOrDefault(id) : null;
-
-    private async Task<bool> ProjectExistsAsync(Guid projectId, CancellationToken cancellationToken)
+    // Memory of the scope's project key (written by any developer) plus, for rows written before keys existed, the
+    // memory of the project id itself.
+    private static IQueryable<LongMemory> WhereVisible(IQueryable<LongMemory> query, ProjectScope? scope, bool includeKnowledge)
     {
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Projects.AnyAsync(p => p.Id == projectId, cancellationToken);
+        if (scope is null) return includeKnowledge ? query.Where(m => m.Type == MemoryType.Knowledge) : query.Where(_ => false);
+
+        var key = scope.Key;
+        var id = scope.Id;
+        return includeKnowledge
+            ? query.Where(m => m.Type == MemoryType.Knowledge || (key != null && m.ProjectKey == key) || (m.ProjectKey == null && m.ProjectId == id))
+            : query.Where(m => (key != null && m.ProjectKey == key) || (m.ProjectKey == null && m.ProjectId == id));
     }
 
-    private async Task<string?> ProjectNameAsync(Guid? projectId, CancellationToken cancellationToken)
+    // The memory's project as known on this machine: its own project when registered here, else (memory written by
+    // another developer) this machine's clone of the same project, so the Memory menu can filter and edit it.
+    private static (Guid? Id, string? Name) Owner(LocalProjects projects, Guid? projectId, string? projectKey, string? projectName)
     {
-        if (projectId is null) return null;
-        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
-        return await db.Projects.AsNoTracking().Where(p => p.Id == projectId).Select(p => p.Name).FirstOrDefaultAsync(cancellationToken);
+        var local = projects.Find(projectId) ?? (projectKey is null ? null : projects.FindByKey(projectKey));
+        return local is null ? (projectId, projectName) : (local.Id, local.Name);
     }
 
-    private async Task<MemoryItemDto> ToDtoAsync(ShortMemoryRecord record, CancellationToken cancellationToken) =>
-        ToDto(record, await ProjectNameAsync(record.ProjectId, cancellationToken));
+    private static MemoryItemDto ToDto(ShortMemoryRecord r, LocalProjects projects)
+    {
+        var (projectId, projectName) = Owner(projects, r.ProjectId, r.ProjectKey, r.ProjectName);
+        return new MemoryItemDto(r.Id, MemoryLevel.Short, r.Type, projectId, projectName, r.Label, r.Description, r.SourceThreadId,
+            r.CreatedAt, null, 0, r.ProjectKey ?? projects.Find(r.ProjectId)?.Key);
+    }
 
-    private static MemoryItemDto ToDto(ShortMemoryRecord r, string? projectName) => new(
-        r.Id, MemoryLevel.Short, r.Type, r.ProjectId, projectName, r.Label, r.Description, r.SourceThreadId, r.CreatedAt, null, 0);
-
-    private static MemoryItemDto ToDto(LongMemory m, string? projectName) => new(
-        m.Id, MemoryLevel.Long, m.Type, m.ProjectId, projectName, m.Label, m.Description, m.SourceThreadId, m.CreatedAt, m.PromotedAt, m.HitCount);
+    private static MemoryItemDto ToDto(LongMemory m, LocalProjects projects)
+    {
+        var (projectId, projectName) = Owner(projects, m.ProjectId, m.ProjectKey, m.ProjectName);
+        return new MemoryItemDto(m.Id, MemoryLevel.Long, m.Type, projectId, projectName, m.Label, m.Description, m.SourceThreadId,
+            m.CreatedAt, m.PromotedAt, m.HitCount, m.ProjectKey ?? projects.Find(m.ProjectId)?.Key);
+    }
 
     private static void Validate(SaveMemoryRequest request)
     {
-        if (!Enum.IsDefined(request.Type)) throw new AppValidationException("Tipe memory tidak valid.");
+        if (!Enum.IsDefined(request.Type) || request.Type == MemoryType.Business)
+            throw new AppValidationException("Tipe memory tidak valid (business memory dikelola di tab Bisnis).");
         if (string.IsNullOrWhiteSpace(request.Label)) throw new AppValidationException("Label wajib diisi.");
         if (request.Label.Length > 300) throw new AppValidationException("Label maksimal 300 karakter.");
         if (string.IsNullOrWhiteSpace(request.Description)) throw new AppValidationException("Deskripsi wajib diisi.");
@@ -402,4 +503,28 @@ public sealed partial class MemoryService(
 
     [GeneratedRegex(@"[\p{L}\p{N}_]+")]
     private static partial Regex WordPattern();
+
+    // Key is null for a project registered before keys existed and not seen since (the startup backfill fills it).
+    private sealed record ProjectScope(Guid Id, string? Key, string Name)
+    {
+        public static ProjectScope Unknown(Guid id) => new(id, null, string.Empty);
+
+        public bool Owns(string? projectKey, Guid? projectId) =>
+            (Key is not null && projectKey == Key) || (projectKey is null && projectId == Id);
+    }
+
+    private sealed class LocalProjects(IReadOnlyList<ProjectScope> projects)
+    {
+        private readonly Dictionary<Guid, ProjectScope> _byId = projects.ToDictionary(p => p.Id);
+
+        // Several clones of one repository may be registered here; the first one stands for the key.
+        private readonly Dictionary<string, ProjectScope> _byKey = projects
+            .Where(p => p.Key is not null)
+            .GroupBy(p => p.Key!)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        public ProjectScope? Find(Guid? id) => id is { } value ? _byId.GetValueOrDefault(value) : null;
+
+        public ProjectScope? FindByKey(string key) => _byKey.GetValueOrDefault(key);
+    }
 }

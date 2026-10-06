@@ -6,5 +6,8 @@ public enum MemoryLevel
     Short = 1,
 
     // Stored in the database after consolidation.
-    Long = 2
+    Long = 2,
+
+    // The business wiki (business memory): its own store, never consolidated.
+    Business = 3
 }

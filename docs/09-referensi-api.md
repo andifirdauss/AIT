@@ -90,13 +90,14 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi-provider`; id lain �
 
 | Method | Path | Body |
 |---|---|---|
-| `GET` | `/api/projects` | — (tiap project: `name`, `rootPath`, `stacks[]`, `exists`, jumlah thread/sesi/memory) |
+| `GET` | `/api/projects` | — (tiap project: `name`, `rootPath`, `stacks[]`, `exists`, jumlah thread/sesi/memory, `key`, `keySource` = `File`/`Manual`/`GitRemote`/`Local`, `manualKey`) |
 | `GET` | `/api/projects/{id}` | — (`project`, `modules[]` = file solution/build di dalam project, `sessions[]`) |
 | `POST` | `/api/projects` | `{ "path": "D:\\Source\\MyApp" }` (folder; path di dalam project mendaftarkan project itu, path file memakai foldernya). `400` untuk drive, Home, atau folder sistem |
 | `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A", "D:\\Source\\B"] }` → `registered`, `alreadyRegistered`, `errors` |
 | `GET` | `/api/projects/browse?path=` | tanpa `path` = daftar drive. Hasil: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (root project di folder itu: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
 | `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Hasil: `root`, `projects[]` (bentuk sama dengan `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
-| `DELETE` | `/api/projects/{id}` | — (thread dipertahankan, memory project dihapus) |
+| `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — key manual (kosong/`null` = hapus); `.aithread/project.json` tetap menang. Memory di bawah key lokal lama ikut pindah |
+| `DELETE` | `/api/projects/{id}?includeSharedMemory=false` | thread dipertahankan; memory di mesin ini dihapus, memory di store bersama hanya bila `includeSharedMemory=true`; bila clone lain dengan key sama masih terdaftar, memory pindah ke clone itu |
 
 ### Memory
 
@@ -110,6 +111,34 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi-provider`; id lain �
 | `DELETE` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory/{id}/promote` | — (short → long) |
 | `POST` | `/api/memory/consolidate` | — (jumlah yang dipindah) |
+| `GET` | `/api/settings/memory-storage` | — (`shortMemory`, `longMemory`, `businessMemory` beserta status masing-masing; password tidak pernah dikembalikan) |
+| `PUT` | `/api/settings/memory-storage` | `{ "shortMemory": {…}, "longMemory": {…}, "businessMemory": {…}, "copyExistingData": true }` — `businessMemory` boleh dihilangkan (store tidak berubah). Hasil: `settings`, `copiedShort`, `copiedLong`, `copiedBusiness`, `warnings[]` |
+| `POST` | `/api/settings/memory-storage/test` | `{ "level": "Short"\|"Long"\|"Business", "store": {…} }` |
+
+Item memory membawa `projectKey`; `projectId`/`projectName` menunjuk project di mesin ini (clone lain dari project yang
+sama bila memory ditulis developer lain).
+
+### Business memory (wiki bisnis)
+
+Lihat [Business memory](06-memory.md#business-memory-wiki-bisnis). `projectId` selalu id project di mesin ini; halaman
+disimpan per project key.
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/business/projects/{projectId}` | — (`projectKey`, `keyIsShared`, `pages[]` tanpa isi, `pendingThreads`, `lastDigestAt`, `digestRunning`, `storeDescription`) |
+| `GET` | `/api/business/pages/{id}` | — (`page`, `content` Markdown, `html` siap tampil) |
+| `POST` | `/api/business/pages` | `{ "projectId": "...", "module": "TO", "title": "Transfer Order", "summary": "...", "labels": "to, transfer order", "content": "# …", "autoUpdate": true, "changeNote": "…" }` |
+| `PUT` | `/api/business/pages/{id}` | body sama + `version` (versi yang sedang diedit). Halaman sudah diubah orang lain → `409` |
+| `DELETE` | `/api/business/pages/{id}` | — ; beserta revisi dan gambar yang tidak dipakai halaman lain |
+| `GET` | `/api/business/pages/{id}/revisions` | — (`version`, `title`, `changeNote`, `author`, `editKind` = `Ai`/`Manual`/`Restore`, `sourceThreadIds[]`) |
+| `GET` | `/api/business/pages/{id}/revisions/{version}` | — (+ `content`) |
+| `POST` | `/api/business/pages/{id}/revisions/{version}/restore` | — ; menjadi versi baru |
+| `POST` | `/api/business/preview` | `{ "content": "# …" }` → HTML (sama dengan halaman tersimpan) |
+| `POST` | `/api/business/assets` | `{ "projectId": "...", "pageId": null, "data": "data:image/png;base64,…", "caption": "Form TO" }` — PNG/JPEG/GIF/WebP maks 5 MB (dicek dari isi file); gambar sama disimpan sekali per project. Hasil: `id`, `url` |
+| `GET` | `/api/business/assets/{id}` | file gambar (cache permanen) |
+| `POST` | `/api/business/digest?projectId=` | rangkum thread yang menunggu sekarang → `threads`, `pagesCreated`, `pagesUpdated`, `images`, `warnings[]`. `400` bila rangkuman lain sedang berjalan |
+| `GET` | `/api/business/settings` | — (`enabled`, `intervalHours`, `model`, `developerName`, `effectiveDeveloperName`) |
+| `PUT` | `/api/business/settings` | `{ "enabled": true, "intervalHours": 6, "model": null, "developerName": "Andi" }` |
 
 ### Thread & dashboard
 
@@ -191,6 +220,7 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `node.changed` | `id`, `action` |
 | `telegram.changed` | `action` (`status`, `created`, `allowed`, `deleted`, `project`); `id` chat untuk perubahan chat, `status` untuk perubahan status bot |
 | `skill.changed` | `sourceId`, `status` (status sumber), `action` (`added`, `deleted`) bila ada, `error` bila gagal |
+| `business.changed` | `action` (`created`, `updated`, `deleted`, `running`, `finished`, `settings`), `id` halaman dan/atau `projectKey` |
 | `ping` | — |
 
 Contoh di browser:

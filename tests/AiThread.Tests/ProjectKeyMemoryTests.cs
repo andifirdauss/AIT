@@ -1,0 +1,246 @@
+using AiThread.Common.DTOs;
+using AiThread.Common.Entities;
+using AiThread.Common.Enums;
+using AiThread.Common.Options;
+using AiThread.Data.Cache;
+using AiThread.Data.Context;
+using AiThread.Data.Memory;
+using AiThread.Data.Messaging;
+using AiThread.Service.Business;
+using AiThread.Service.Implementations;
+using AiThread.Service.Interfaces;
+using AiThread.Service.Workspace;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+
+namespace AiThread.Tests;
+
+// Memory is shared by every clone of a repository through Project.ProjectKey, whatever the root folder.
+public class ProjectKeyMemoryTests
+{
+    [Fact]
+    public async Task Clones_with_the_same_key_share_project_memory_and_others_do_not()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        var cloneA = harness.ProjectId;
+        var cloneB = await AddProjectAsync(harness, "EEP (clone B)", "github.com/org/eep");
+        var other = await AddProjectAsync(harness, "Other", "github.com/org/other");
+        await SetKeyAsync(harness, cloneA, "github.com/org/eep");
+
+        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, cloneA, "transfer order, approval", "TO above 10M needs approval."));
+        await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Knowledge, null, "cache, master data", "Cache master data for 5 minutes."));
+
+        Assert.Equal("github.com/org/eep", saved.ProjectKey);
+        Assert.Contains(await memory.Service.GetIndexAsync(cloneB, "approval", 10), e => e.Id == saved.Id);
+        Assert.DoesNotContain(await memory.Service.GetIndexAsync(other, "approval", 10), e => e.Id == saved.Id);
+        Assert.Single(await memory.Service.GetIndexAsync(other, "master", 10));
+
+        // After consolidation the long row keeps the key, so the other clone still sees it.
+        Assert.Equal(2, await memory.Service.ConsolidateAsync());
+        Assert.Contains(await memory.Service.GetIndexAsync(cloneB, "approval", 10), e => e.Id == saved.Id && e.Level == MemoryLevel.Long);
+        var filtered = await memory.Service.QueryAsync(new MemoryQuery(null, null, cloneB, null));
+        Assert.Equal(saved.Id, Assert.Single(filtered.Items).Id);
+    }
+
+    [Fact]
+    public async Task Planner_index_and_read_memory_include_the_business_wiki_of_the_key()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+        var other = await AddProjectAsync(harness, "Other", "github.com/org/other");
+        var page = await harness.Service<BusinessPageStore>().SaveAsync(new BusinessPageDraft(
+            null, "github.com/org/eep", "EEP", "TO", "Transfer Order", null, "to, transfer order, approval",
+            "# TO\n![Form TO](asset:3f2a1b9c-0000-4000-8000-000000000001)", true, null, BusinessEditKind.Ai, "dev", null, []), CancellationToken.None);
+
+        var entry = Assert.Single(await memory.Service.GetIndexAsync(harness.ProjectId, "approval", 25));
+        Assert.Equal((page.Id, MemoryLevel.Business, MemoryType.Business), (entry.Id, entry.Level, entry.Type));
+        Assert.Empty(await memory.Service.GetIndexAsync(other, "approval", 25));
+
+        var read = Assert.Single(await memory.Service.GetManyAsync([page.Id]));
+        Assert.Equal("TO — Transfer Order", read.Label);
+        Assert.Contains("[gambar: Form TO]", read.Description);
+    }
+
+    [Fact]
+    public async Task Memory_written_before_keys_existed_is_shared_after_the_backfill()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        var cloneB = await AddProjectAsync(harness, "EEP (clone B)", "github.com/org/eep");
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+
+        var legacyId = Guid.NewGuid();
+        await using (var db = await harness.CreateDbAsync())
+        {
+            db.LongMemories.Add(new LongMemory { Id = legacyId, ProjectId = harness.ProjectId, Type = MemoryType.Project, Label = "legacy", Description = "old row" });
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Contains(await memory.Service.GetIndexAsync(harness.ProjectId, "legacy", 10), e => e.Id == legacyId);
+        Assert.DoesNotContain(await memory.Service.GetIndexAsync(cloneB, "legacy", 10), e => e.Id == legacyId);
+
+        List<Project> projects;
+        await using (var db = await harness.CreateDbAsync()) projects = await db.Projects.AsNoTracking().ToListAsync();
+        Assert.Equal(1, await harness.Service<ProjectMemoryKeys>().BackfillAsync(projects, CancellationToken.None));
+
+        Assert.Contains(await memory.Service.GetIndexAsync(cloneB, "legacy", 10), e => e.Id == legacyId);
+    }
+
+    [Fact]
+    public async Task Machine_only_memory_follows_a_new_key_but_shared_memory_never_moves()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        var projects = harness.Service<IProjectService>();
+
+        await projects.RefreshKeysAsync();
+        var localKey = (await projects.GetDetailAsync(harness.ProjectId))!.Project.Key;
+        Assert.True(ProjectKeyResolver.IsLocal(localKey));
+        var memoryId = await AddLongMemoryAsync(harness, localKey);
+
+        var manual = await projects.SetKeyAsync(harness.ProjectId, "EEP");
+        Assert.Equal(("eep", ProjectKeySource.Manual), (manual!.Key, manual.KeySource));
+        Assert.Equal("eep", await LongMemoryKeyAsync(harness, memoryId));
+
+        // The team commits an override file: the project follows it, but memory under the shared key "eep" stays,
+        // since other developers' clones may still use that key.
+        harness.Project.Write(".aithread/project.json", """{ "key": "eep-core" }""");
+        await projects.RefreshKeysAsync();
+        var detail = (await projects.GetDetailAsync(harness.ProjectId))!.Project;
+        Assert.Equal(("eep-core", ProjectKeySource.File), (detail.Key, detail.KeySource));
+        Assert.Equal("eep", await LongMemoryKeyAsync(harness, memoryId));
+    }
+
+    [Fact]
+    public async Task Deleting_one_clone_hands_its_memory_to_the_other()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        var projects = harness.Service<IProjectService>();
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+        var cloneB = await AddProjectAsync(harness, "EEP (clone B)", "github.com/org/eep");
+        var memoryId = Guid.NewGuid();
+        await using (var db = await harness.CreateDbAsync())
+        {
+            db.LongMemories.Add(new LongMemory { Id = memoryId, ProjectId = harness.ProjectId, ProjectKey = "github.com/org/eep", Type = MemoryType.Project, Label = "l", Description = "d" });
+            await db.SaveChangesAsync();
+        }
+
+        Assert.True(await projects.DeleteAsync(harness.ProjectId));
+
+        await using (var db = await harness.CreateDbAsync())
+        {
+            var row = await db.LongMemories.AsNoTracking().SingleAsync(m => m.Id == memoryId);
+            Assert.Equal(cloneB, row.ProjectId);
+        }
+    }
+
+    [Fact]
+    public async Task Shared_store_keeps_project_memory_unless_asked()
+    {
+        using var workspace = new TempWorkspace();
+        var store = new LongMemoryStore(new UnusedMainDatabase());
+        store.Configure(new MemoryStoreConnection(MemoryStoreProvider.Sqlite, Database: Path.Combine(workspace.Root, "shared.db"), Options: "Pooling=False"));
+        var keys = new ProjectMemoryKeys(new NoShortMemory(), store, NullLogger<ProjectMemoryKeys>.Instance);
+        var projectId = Guid.NewGuid();
+        await using (var db = await store.CreateAsync())
+        {
+            db.LongMemories.Add(new LongMemory { Id = Guid.NewGuid(), ProjectKey = "github.com/org/eep", Type = MemoryType.Project, Label = "shared", Description = "d" });
+            db.LongMemories.Add(new LongMemory { Id = Guid.NewGuid(), ProjectKey = "local:abc", Type = MemoryType.Project, Label = "mine", Description = "d" });
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(0, await keys.DeleteAsync(projectId, "github.com/org/eep", includeShared: false, CancellationToken.None));
+        Assert.Equal(1, await keys.DeleteAsync(projectId, "local:abc", includeShared: false, CancellationToken.None));
+        Assert.Equal(1, await keys.DeleteAsync(projectId, "github.com/org/eep", includeShared: true, CancellationToken.None));
+    }
+
+    private static async Task<Guid> AddProjectAsync(OrchestrationHarness harness, string name, string key)
+    {
+        await using var db = await harness.CreateDbAsync();
+        var project = new Project { Name = name, RootPath = Path.Combine(harness.Project.Root, "..", Guid.NewGuid().ToString("N")), ProjectKey = key, ProjectKeySource = ProjectKeySource.GitRemote };
+        db.Projects.Add(project);
+        await db.SaveChangesAsync();
+        return project.Id;
+    }
+
+    private static async Task SetKeyAsync(OrchestrationHarness harness, Guid projectId, string key)
+    {
+        await using var db = await harness.CreateDbAsync();
+        await db.Projects.Where(p => p.Id == projectId).ExecuteUpdateAsync(s => s.SetProperty(p => p.ProjectKey, key));
+    }
+
+    private static async Task<Guid> AddLongMemoryAsync(OrchestrationHarness harness, string key)
+    {
+        await using var db = await harness.CreateDbAsync();
+        var row = new LongMemory { Id = Guid.NewGuid(), ProjectId = harness.ProjectId, ProjectKey = key, Type = MemoryType.Project, Label = "l", Description = "d" };
+        db.LongMemories.Add(row);
+        await db.SaveChangesAsync();
+        return row.Id;
+    }
+
+    private static async Task<string?> LongMemoryKeyAsync(OrchestrationHarness harness, Guid id)
+    {
+        await using var db = await harness.CreateDbAsync();
+        return await db.LongMemories.AsNoTracking().Where(m => m.Id == id).Select(m => m.ProjectKey).SingleAsync();
+    }
+
+    // The real MemoryService over the harness's main database, with short memory in a SQLite file.
+    private sealed class MemoryFixture : IDisposable
+    {
+        private readonly RedisConnectionProvider _redis;
+        private readonly SwitchableShortMemoryStore _short;
+
+        private MemoryFixture(RedisConnectionProvider redis, SwitchableShortMemoryStore shortStore, MemoryService service)
+        {
+            _redis = redis;
+            _short = shortStore;
+            Service = service;
+        }
+
+        public MemoryService Service { get; }
+
+        public static Task<MemoryFixture> CreateAsync(OrchestrationHarness harness, TempWorkspace shortDb)
+        {
+            var redis = new RedisConnectionProvider("127.0.0.1:1", NullLogger<RedisConnectionProvider>.Instance);
+            var shortStore = new SwitchableShortMemoryStore(redis, "127.0.0.1:1", NullLoggerFactory.Instance);
+            shortStore.Configure(new MemoryStoreConnection(MemoryStoreProvider.Sqlite, Database: Path.Combine(shortDb.Root, "short.db"), Options: "Pooling=False"));
+
+            var service = new MemoryService(
+                harness.Service<IDbContextFactory<AiThreadDbContext>>(),
+                shortStore,
+                harness.Service<LongMemoryStore>(),
+                harness.Service<BusinessMemoryStore>(),
+                harness.Service<IEventBus>(),
+                harness.Service<IActivityLogService>(),
+                Options.Create(new AiThreadOptions { ShortMemoryHours = 0 }),
+                NullLogger<MemoryService>.Instance);
+            return Task.FromResult(new MemoryFixture(redis, shortStore, service));
+        }
+
+        public void Dispose()
+        {
+            _short.Dispose();
+            _redis.Dispose();
+        }
+    }
+
+    private sealed class NoShortMemory : IShortMemoryStore
+    {
+        public bool IsConnected => false;
+        public Task SaveAsync(ShortMemoryRecord record) => Task.CompletedTask;
+        public Task<ShortMemoryRecord?> GetAsync(Guid id) => Task.FromResult<ShortMemoryRecord?>(null);
+        public Task<IReadOnlyList<ShortMemoryRecord>> GetAllAsync() => Task.FromResult<IReadOnlyList<ShortMemoryRecord>>([]);
+        public Task<IReadOnlyList<ShortMemoryRecord>> GetCreatedBeforeAsync(DateTime cutoffUtc) => Task.FromResult<IReadOnlyList<ShortMemoryRecord>>([]);
+        public Task<bool> DeleteAsync(Guid id) => Task.FromResult(false);
+    }
+
+    private sealed class UnusedMainDatabase : IDbContextFactory<AiThreadDbContext>
+    {
+        public AiThreadDbContext CreateDbContext() => throw new InvalidOperationException("The main database must not be used.");
+    }
+}

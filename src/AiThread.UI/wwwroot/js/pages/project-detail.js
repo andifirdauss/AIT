@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, escapeHtml, fmt, threadRow, bindRowLinks, stream, debounce } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, stream, debounce } = window.AiThread;
   const projectId = window.projectId;
   const el = id => document.getElementById(id);
 
@@ -15,6 +15,7 @@
       el('statSessions').textContent = fmt.number(p.sessionCount);
       el('statMemory').textContent = fmt.number(p.memoryCount);
       el('statLastSeen').textContent = fmt.relative(p.lastSeenAt);
+      renderKey(p);
 
       el('projectModules').innerHTML = detail.modules.length
         ? detail.modules.map(m => `<li class="list-group-item">${escapeHtml(m)}</li>`).join('')
@@ -27,6 +28,32 @@
       el('projectName').textContent = error.message;
     }
   }
+
+  const keySources = {
+    File: 'dari .aithread/project.json di repository',
+    Manual: 'key manual',
+    GitRemote: 'dari git remote',
+    Local: 'lokal — memory hanya ada di mesin ini. Tambah git remote, file .aithread/project.json, atau isi key manual.'
+  };
+
+  function renderKey(p) {
+    el('projectKey').textContent = p.key;
+    el('projectKeySource').textContent = keySources[p.keySource] || p.keySource;
+    el('projectKeySource').className = `small mb-2 ${p.keySource === 'Local' ? 'text-warning' : 'text-secondary'}`;
+    // Do not overwrite what is being typed when an SSE refresh arrives.
+    if (document.activeElement !== el('manualKey')) el('manualKey').value = p.manualKey || '';
+  }
+
+  el('btnSaveKey').addEventListener('click', async () => {
+    try {
+      const project = await api.put(`/api/projects/${projectId}/key`, { key: el('manualKey').value.trim() || null });
+      toast(`Project key: ${project.key}`);
+      el('manualKey').blur();
+      loadDetail();
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
 
   async function loadThreads() {
     try {

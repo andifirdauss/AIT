@@ -3,6 +3,9 @@ namespace AiThread.Service.Models;
 // Invalid user input; the API turns it into a 400 with the message shown in the UI.
 public class AppValidationException(string message) : Exception(message);
 
+// A business page was saved by someone else (another developer, or the wiki writer) since it was loaded.
+public class BusinessPageConflictException(string message) : AppValidationException(message);
+
 // Failure talking to 9router (HTTP error, timeout, malformed stream).
 public class NineRouterException(string message, int? statusCode = null, Exception? innerException = null, TimeSpan? retryAfter = null)
     : Exception(message, innerException)
