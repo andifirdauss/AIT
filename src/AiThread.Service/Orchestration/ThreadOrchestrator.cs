@@ -537,6 +537,7 @@ public sealed class ThreadOrchestrator(
         File = task.File,
         Action = task.Action,
         To = task.To,
+        Members = task.Members,
         Instruction = task.Instruction,
         Focus = task.Focus,
         Context = task.Context,

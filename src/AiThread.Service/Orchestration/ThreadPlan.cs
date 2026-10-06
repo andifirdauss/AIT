@@ -76,14 +76,18 @@ public sealed class PlanTask
     public const string Create = "create";
     public const string Delete = "delete";
     public const string Move = "move";
+    public const string Extract = "extract";
 
     public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string File { get; set; } = string.Empty;
     public string Action { get; set; } = Edit;
 
-    // Destination of a move, relative to the project root.
+    // Destination of a move or an extract, relative to the project root.
     public string? To { get; set; }
+
+    // Extract only: names of the C# members to move from File to To (all overloads of a name move together).
+    public List<string>? Members { get; set; }
 
     public string Instruction { get; set; } = string.Empty;
     public List<LineRange>? Focus { get; set; }
@@ -99,13 +103,16 @@ public sealed class PlanTask
     [JsonIgnore]
     public bool IsMove => string.Equals(Action, Move, StringComparison.OrdinalIgnoreCase);
 
-    // Delete and move are done by AiThread itself; no executor model is involved.
     [JsonIgnore]
-    public bool IsFileOperation => IsDelete || IsMove;
+    public bool IsExtract => string.Equals(Action, Extract, StringComparison.OrdinalIgnoreCase);
 
-    // The file as shown to people and models: "a.cs → b.cs" for a move.
+    // Delete, move and extract are done by AiThread itself; no executor model is involved.
     [JsonIgnore]
-    public string Target => IsMove && !string.IsNullOrWhiteSpace(To) ? $"{File} → {To}" : File;
+    public bool IsFileOperation => IsDelete || IsMove || IsExtract;
+
+    // The file as shown to people and models: "a.cs → b.cs" for a move or an extract.
+    [JsonIgnore]
+    public string Target => (IsMove || IsExtract) && !string.IsNullOrWhiteSpace(To) ? $"{File} → {To}" : File;
 }
 
 public sealed class LineRange

@@ -193,15 +193,18 @@ Batasan:
 Rencana ditolak dan dikembalikan ke planner (memakan satu langkah) bila:
 
 - lebih dari 40 tugas, atau `summary` kosong padahal ada tugas;
-- id tugas ganda, `instruction` kosong (kecuali untuk `delete`/`move`), `action` bukan `edit`/`create`/`delete`/`move`;
+- id tugas ganda, `instruction` kosong (kecuali untuk `delete`/`move`/`extract`), `action` bukan
+  `edit`/`create`/`delete`/`move`/`extract`;
 - path (termasuk tujuan `to`) di luar root (perubahan hanya boleh di dalam root; membaca di luar root diperbolehkan),
   menunjuk folder, atau berada di folder yang disembunyikan;
 - `edit` untuk file yang tidak ada, `create` untuk file yang sudah ada, atau dua tugas membuat/memindahkan file ke path
   yang sama;
 - `delete`/`move` untuk file yang tidak ada; `move` tanpa `to`, ke file yang sudah ada, atau hanya mengubah huruf
   besar/kecil;
-- file yang dihapus atau dipindahkan juga disentuh tugas lain. File hasil `move` boleh di-`edit` di path barunya asal
-  tugas itu bergantung (`dependsOn`) pada tugas `move`-nya;
+- `extract` tanpa `members`, tanpa `to`, bukan file `.cs`, atau ke file yang juga dibuat tugas `create` (beberapa
+  `extract` boleh mengisi file baru yang sama);
+- file yang dihapus atau dipindahkan juga disentuh tugas lain. File hasil `move` atau file baru hasil `extract` boleh
+  di-`edit` asal tugas itu bergantung (`dependsOn`) pada tugas `move`/`extract`-nya;
 - `dependsOn` menunjuk tugas yang tidak ada, dirinya sendiri, atau membentuk siklus.
 
 Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di log aktivitas thread.
@@ -218,20 +221,43 @@ Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di l
   Setelah setiap penulisan, hash isi yang ditulis juga dicatat.
 - Waktu eksekusi = rantai tugas terpanjang. Dashboard membandingkannya dengan total waktu kerja executor (speedup).
 
-### Hapus dan pindah file
+### Hapus, pindah file, dan pindah member C#
 
 Selain `edit` dan `create`, sebuah tugas bisa berupa:
 
 - `delete` — menghapus satu file;
-- `move` — memindahkan/me-rename satu file ke path `to`. Isinya tidak berubah (byte demi byte).
+- `move` — memindahkan/me-rename satu file ke path `to`. Isinya tidak berubah (byte demi byte);
+- `extract` — memindahkan member C# (`members`: method, property, field, event, nested type) dari file `.cs` ke file
+  `.cs` lain (`to`). Lihat [Pindah member C#](#pindah-member-c-extract).
 
-Kedua aksi ini dijalankan **langsung oleh AiThread tanpa model** (tanpa token, tanpa node executor; di detail thread
+Ketiga aksi ini dijalankan **langsung oleh AiThread tanpa model** (tanpa token, tanpa node executor; di detail thread
 kolom node bertuliskan *tanpa model*), di bawah lock file yang sama dengan executor. Folder yang menjadi kosong setelah
 file diambil darinya ikut dihapus (tidak pernah root project). Bila isi file yang dipindahkan juga perlu berubah
 (namespace, import, nama class), planner menambah tugas `edit` di path baru yang bergantung pada tugas `move`; referensi
 ke file itu di file lain diubah lewat tugas `edit` masing-masing. Seperti penulisan executor, isi asli file dicatat
 dulu sehingga hapus dan pindah ikut dikembalikan saat
 [rollback](04-penggunaan.md#membatalkan-perubahan-file-rollback).
+
+#### Pindah member C# (`extract`)
+
+Untuk memecah class besar menjadi beberapa file `partial` (atau memindahkan method ke file lain), planner memakai
+`extract`, bukan `create` + `edit`. Executor tidak bisa diandalkan untuk menyalin atau menghapus ribuan baris: ia hanya
+melihat potongan file besar dan outputnya dibatasi *max tokens*, sehingga pemindahan berhenti di tengah dan build gagal
+karena member ganda.
+
+AiThread mengerjakan `extract` dengan parser C# (Roslyn), dalam hitungan milidetik:
+
+- Member disalin **apa adanya** (isi, komentar dokumentasi, indentasi). Semua overload dengan nama yang sama ikut
+  pindah; field dengan beberapa variabel dalam satu deklarasi harus dipindah bersama.
+- Class sumber (dan class pembungkusnya bila nested) diberi `partial` bila belum.
+- File tujuan baru mendapat `using`, namespace (gaya blok atau *file-scoped* mengikuti sumber), dan header class yang
+  sama tanpa atribut, base class/interface, dan constraint (cukup di bagian utama).
+- File tujuan yang sudah ada harus berisi bagian `partial` dari class yang sama; member ditambahkan di akhir class.
+  Member yang sudah ada di tujuan dengan signature sama hanya dihapus dari sumber (tidak digandakan).
+- `#region`/`#if` di sekitar member tetap di file sumber agar tetap seimbang. Constructor dan operator tidak bisa
+  dipindah.
+- Beberapa `extract` dari file sumber yang sama berjalan paralel; lock file membuat masing-masing bekerja pada isi
+  terbaru.
 
 ### Yang dilihat executor
 
@@ -311,6 +337,12 @@ Satu putaran verifikasi:
    executor seperti tugas biasa, dengan instruksi berisi error build (baris, kolom, kode, pesan), temuan reviewer, dan
    instruksi tugas awal file itu sebagai konteks. *Focus* diarahkan ke awal file (tempat `using`/import) dan ke baris
    setiap error atau baris yang dikutip reviewer. Lalu putaran berikutnya dimulai.
+
+   Pengecualian: error member ganda C# (`CS0111`, `CS0102`) antara file yang **diisi** thread ini (tugas `create`
+   atau tujuan `extract`) dan file yang sudah ada sebelumnya berarti pemindahan member belum tuntas. Untuk itu dibuat
+   tugas `extract` (tanpa model) dari file lama ke file baru, sehingga salinan di file lama yang dihapus — bukan
+   salinan di file baru. Tugas perbaikan lain pada kedua file menunggu tugas ini, dan temuan reviewer untuk kedua
+   file itu ditunda ke putaran berikutnya (reviewer memeriksa ulang setelah pemindahan).
 
 Batas dan aturan:
 

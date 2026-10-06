@@ -32,6 +32,7 @@ public static class PlanValidator
             task.Action = string.IsNullOrWhiteSpace(task.Action) ? PlanTask.Edit : task.Action.Trim().ToLowerInvariant();
             task.File = (task.File ?? string.Empty).Trim().Replace('\\', '/');
             task.To = string.IsNullOrWhiteSpace(task.To) ? null : task.To.Trim().Replace('\\', '/');
+            task.Members = task.Members?.Where(m => m is not null).Select(CSharpMemberMover.NormalizeName).Where(m => m.Length > 0).Distinct(StringComparer.Ordinal).ToList();
             task.Title = string.IsNullOrWhiteSpace(task.Title) ? task.File : task.Title.Trim();
             task.DependsOn = task.DependsOn?.Where(d => !string.IsNullOrWhiteSpace(d)).Select(d => d.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
@@ -40,6 +41,7 @@ public static class PlanValidator
         if (duplicateIds.Count > 0) errors.Add($"Duplicate task ids: {string.Join(", ", duplicateIds)}.");
 
         var ids = new HashSet<string>(plan.Tasks.Select(t => t.Id), StringComparer.OrdinalIgnoreCase);
+        var byId = plan.Tasks.GroupBy(t => t.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         // Paths that appear during the run (create targets and move destinations), and paths that disappear (delete and
         // move sources), each with the task responsible.
         var arrivals = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -49,8 +51,8 @@ public static class PlanValidator
         foreach (var task in plan.Tasks)
         {
             var label = $"Task {task.Id}";
-            if (task.Action is not (PlanTask.Edit or PlanTask.Create or PlanTask.Delete or PlanTask.Move))
-                errors.Add($"{label}: action must be \"edit\", \"create\", \"delete\" or \"move\", not \"{task.Action}\".");
+            if (task.Action is not (PlanTask.Edit or PlanTask.Create or PlanTask.Delete or PlanTask.Move or PlanTask.Extract))
+                errors.Add($"{label}: action must be \"edit\", \"create\", \"delete\", \"move\" or \"extract\", not \"{task.Action}\".");
             if (string.IsNullOrWhiteSpace(task.Instruction) && !task.IsFileOperation) errors.Add($"{label}: \"instruction\" is empty.");
 
             if (Resolve(task.File, label, scope, errors) is { } fullPath)
@@ -63,14 +65,23 @@ public static class PlanValidator
                 if (task.IsCreate && !arrivals.TryAdd(task.File, task.Id))
                     errors.Add($"{label}: another task already creates or moves a file to '{task.File}'. Merge them into one task.");
                 if (task.IsFileOperation && !exists)
-                    errors.Add($"{label}: '{task.File}' does not exist, so it cannot be {(task.IsMove ? "moved" : "deleted")}. Fix the path (use find_files).");
-                if (task.IsFileOperation && !removals.TryAdd(task.File, task.Id))
+                    errors.Add($"{label}: '{task.File}' does not exist, so it cannot be {(task.IsMove ? "moved" : task.IsExtract ? "extracted from" : "deleted")}. Fix the path (use find_files).");
+                if ((task.IsDelete || task.IsMove) && !removals.TryAdd(task.File, task.Id))
                     errors.Add($"{label}: another task already deletes or moves '{task.File}'.");
             }
 
             if (task.IsMove) ValidateDestination(task, label, scope, arrivals, errors);
+            if (task.IsExtract) ValidateExtract(task, label, scope, arrivals, byId, errors);
 
-            if (task.IsFileOperation && string.IsNullOrWhiteSpace(task.Instruction))
+            if (task.IsExtract)
+            {
+                // The instruction is what people see on the thread page; it always names the members.
+                var move = $"Move {string.Join(", ", task.Members ?? [])} from {task.File} to {task.To}.";
+                task.Instruction = string.IsNullOrWhiteSpace(task.Instruction) || task.Instruction.StartsWith(move, StringComparison.Ordinal)
+                    ? move
+                    : $"{move} {task.Instruction.Trim()}";
+            }
+            else if (task.IsFileOperation && string.IsNullOrWhiteSpace(task.Instruction))
                 task.Instruction = task.IsMove ? $"Move {task.File} to {task.To}." : $"Delete {task.File}.";
 
             foreach (var dependency in task.DependsOn ?? [])
@@ -96,10 +107,10 @@ public static class PlanValidator
         foreach (var task in missingEdits)
         {
             var label = $"Task {task.Id}";
-            if (!arrivals.TryGetValue(task.File, out var arrival) || !plan.Tasks.Any(t => t.IsMove && string.Equals(t.Id, arrival, StringComparison.OrdinalIgnoreCase)))
+            if (!arrivals.TryGetValue(task.File, out var arrival) || !plan.Tasks.Any(t => (t.IsMove || t.IsExtract) && string.Equals(t.Id, arrival, StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{label}: '{task.File}' does not exist. Use action \"create\" for new files, or fix the path (use find_files).");
             else if (!(task.DependsOn ?? []).Contains(arrival, StringComparer.OrdinalIgnoreCase))
-                errors.Add($"{label}: '{task.File}' only exists after task {arrival} moves it there. Add \"{arrival}\" to dependsOn.");
+                errors.Add($"{label}: '{task.File}' only exists after task {arrival} {(byId[arrival].IsExtract ? "extracts members into it" : "moves it there")}. Add \"{arrival}\" to dependsOn.");
         }
 
         if (errors.Count == 0 && HasCycle(plan.Tasks)) errors.Add("dependsOn contains a cycle.");
@@ -138,6 +149,31 @@ public static class PlanValidator
         else if (!arrivals.TryAdd(task.To, task.Id))
             errors.Add($"{label}: another task already creates or moves a file to '{task.To}'.");
     }
+
+    // Several extracts may fill the same new file (the first creates it, the next ones add to it); a create task may not.
+    private static void ValidateExtract(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, Dictionary<string, PlanTask> byId, List<string> errors)
+    {
+        if (task.Members is not { Count: > 0 })
+            errors.Add($"{label}: action \"extract\" needs \"members\", the names of the members to move.");
+        if (!IsCSharp(task.File))
+            errors.Add($"{label}: \"extract\" only works on C# files (.cs); use edit tasks for other languages.");
+        if (task.To is null)
+        {
+            errors.Add($"{label}: action \"extract\" needs \"to\", the .cs file that receives the members.");
+            return;
+        }
+        if (Resolve(task.To, label, scope, errors) is not { } fullPath) return;
+
+        task.To = scope.ToRelative(fullPath);
+        if (!IsCSharp(task.To))
+            errors.Add($"{label}: \"to\" must be a .cs file.");
+        else if (string.Equals(task.To, task.File, StringComparison.OrdinalIgnoreCase))
+            errors.Add($"{label}: \"to\" must be a different file than \"file\".");
+        else if (!File.Exists(fullPath) && !arrivals.TryAdd(task.To, task.Id) && !(byId.TryGetValue(arrivals[task.To], out var other) && other.IsExtract))
+            errors.Add($"{label}: task {arrivals[task.To]} already creates '{task.To}'. An extract to a new file creates it by itself; drop the create task.");
+    }
+
+    private static bool IsCSharp(string path) => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
 
     // Kahn's algorithm: a cycle leaves nodes that never reach in-degree zero.
     private static bool HasCycle(List<PlanTask> tasks)

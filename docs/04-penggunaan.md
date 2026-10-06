@@ -138,7 +138,8 @@ Cara kerjanya:
    adanya (byte demi byte, termasuk encoding dan akhir baris). File yang belum ada dicatat sebagai "belum ada".
    Penulisan berikutnya di thread yang sama (putaran perbaikan, percobaan ulang) tidak menimpa catatan ini.
 2. **Setelah** setiap penulisan, sidik jari (hash SHA-256) isi yang ditulis AiThread ikut dicatat. File yang dihapus
-   atau dipindahkan thread (tugas `delete`/`move`) dicatat sebagai "dihapus thread".
+   atau dipindahkan thread (tugas `delete`/`move`) dicatat sebagai "dihapus thread". Tugas `extract` mencatat file
+   sumber dan file tujuannya seperti penulisan biasa.
 3. Tombol ini membuka pratinjau per file:
    - *Dikembalikan ke isi asli*: isi file sekarang masih persis hasil thread ini, atau file dihapus/dipindahkan thread
      ini dan path lamanya masih kosong.
