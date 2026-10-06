@@ -170,8 +170,8 @@
     if (detail.contextPack) el('contextPack').innerHTML = md(detail.contextPack);
   }
 
-  // Delete and move tasks are done by AiThread itself, without a model.
-  const isFileOperation = t => t.action === 'delete' || t.action === 'move';
+  // Delete, move and extract tasks are done by AiThread itself, without a model.
+  const isFileOperation = t => t.action === 'delete' || t.action === 'move' || t.action === 'extract';
   const taskPath = t => t.targetPath ? `${t.filePath} → ${t.targetPath}` : t.filePath;
 
   function taskDetailHtml(t) {
