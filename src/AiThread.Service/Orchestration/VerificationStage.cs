@@ -140,7 +140,11 @@ public sealed class VerificationStage(BuildRunner buildRunner, ReviewerAgent rev
                 break;
             }
 
-            var changedFiles = results.Where(r => r.Status == ThreadTaskStatus.Succeeded).Select(r => r.File).ToList();
+            // A move or an extract also changes its destination.
+            var byId = tasks.GroupBy(t => t.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
+            var changedFiles = results.Where(r => r.Status == ThreadTaskStatus.Succeeded)
+                .SelectMany(r => byId.TryGetValue(r.TaskKey, out var t) && t.To is not null ? [r.File, t.To] : new[] { r.File })
+                .ToList();
             var fix = FixTaskFactory.Create(round, buildUsable ? build : null, reviewUsable ? review : null, changedFiles, tasks, input.Scope);
             current.Unfixable = fix.Unfixable.ToList();
             if (fix.Unfixable.Count > 0)
