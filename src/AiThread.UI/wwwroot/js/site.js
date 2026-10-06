@@ -285,6 +285,34 @@
     });
   }
 
+  function isNewerVersion(latest, current) {
+    const parse = value => String(value).split('-')[0].split('.').map(part => parseInt(part, 10) || 0);
+    const a = parse(latest);
+    const b = parse(current);
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      const diff = (a[i] || 0) - (b[i] || 0);
+      if (diff !== 0) return diff > 0;
+    }
+    return false;
+  }
+
+  // Asks the npm registry (once per page load) whether a newer aithread exists and shows a link in the sidebar.
+  async function initNpmUpdate() {
+    const link = document.getElementById('npmUpdate');
+    if (!link) return;
+    try {
+      const response = await fetch('https://registry.npmjs.org/aithread/latest', { headers: { Accept: 'application/json' } });
+      if (!response.ok) return;
+      const { version } = await response.json();
+      if (!version || !isNewerVersion(version, link.dataset.version)) return;
+      link.querySelector('.app-update-text').textContent = `Update tersedia · v${version}`;
+      link.title = `Versi terpasang ${link.dataset.version}. Jalankan: npm i -g aithread@latest`;
+      link.classList.remove('d-none');
+    } catch {
+      // Offline or blocked — no update hint.
+    }
+  }
+
   // First run: the developer name comes from git (user.name). Only without it is the name asked, once, and kept in the
   // settings so it is never asked again on this machine.
   async function initDeveloperName() {
@@ -329,6 +357,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     initThemeToggle();
     initUpdateBar();
+    initNpmUpdate();
     initDeveloperName();
     refreshRouterPill();
     setInterval(refreshRouterPill, 20000);

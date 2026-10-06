@@ -89,6 +89,32 @@ body {
   opacity: 0.8;
 }
 
+.app-update {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(46, 204, 113, 0.14);
+  color: #7ee2a8;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.app-update:hover {
+  background: rgba(46, 204, 113, 0.24);
+  color: #a6f0c4;
+}
+
+.app-update-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2ecc71;
+  flex: none;
+}
+
 .app-sidebar-footer {
   margin-top: auto;
 }

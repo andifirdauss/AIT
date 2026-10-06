@@ -49,8 +49,6 @@ public record ClaudeSettingsStatusDto(
 // somewhere else (e.g. an old port); Error when the file cannot be read.
 public record ProjectClaudeIntegrationDto(Guid ProjectId, bool Enabled, string? CurrentBaseUrl, string Path, string? Error);
 
-public record SetProjectClaudeIntegrationRequest(bool Enabled);
-
 // Installed = the /clear hooks point at this AiThread; InstalledBaseUrl is set when they exist at all.
 public record ClaudeHooksStatusDto(
     ClaudeSettingsScope Scope,
