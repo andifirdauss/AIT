@@ -269,6 +269,12 @@ public sealed class PlannerAgent(
                 case PlannerTools.SearchText:
                     return new PlannerToolOutcome(tools.SearchText(Str(args, "query") ?? string.Empty, Str(args, "glob"), Bool(args, "regex"), path: Str(args, "path")), null);
 
+                case PlannerTools.FindSymbol:
+                    return new PlannerToolOutcome(new SymbolSearch(tools.Scope).FindSymbol(Str(args, "name") ?? string.Empty, Str(args, "kind"), Str(args, "path")), null);
+
+                case PlannerTools.FindReferences:
+                    return new PlannerToolOutcome(new SymbolSearch(tools.Scope).FindReferences(Str(args, "name") ?? string.Empty, Str(args, "path")), null);
+
                 case PlannerTools.ReadFile:
                     return new PlannerToolOutcome(await tools.ReadFileAsync(Str(args, "path") ?? string.Empty, Int(args, "startLine"), Int(args, "endLine"), cancellationToken), null);
 
@@ -433,6 +439,8 @@ public sealed class PlannerAgent(
         PlannerTools.ListDirectory => $"`{Str(args, "path") ?? "."}`",
         PlannerTools.FindFiles => $"`{Str(args, "pattern")}`" + (Str(args, "path") is { } findIn ? $" in `{findIn}`" : string.Empty),
         PlannerTools.SearchText => $"\"{Str(args, "query")}\"" + (Str(args, "glob") is { } g ? $" in `{g}`" : string.Empty) + (Str(args, "path") is { } searchIn ? $" under `{searchIn}`" : string.Empty),
+        PlannerTools.FindSymbol => $"`{Str(args, "name")}`" + (Str(args, "kind") is { } kind ? $" ({kind})" : string.Empty) + (Str(args, "path") is { } symbolIn ? $" under `{symbolIn}`" : string.Empty),
+        PlannerTools.FindReferences => $"`{Str(args, "name")}`" + (Str(args, "path") is { } refsIn ? $" under `{refsIn}`" : string.Empty),
         PlannerTools.SearchMemory => $"\"{Str(args, "query")}\"",
         PlannerTools.ReadMemory => $"{(args["ids"] as JsonArray)?.Count ?? 0} item",
         PlannerTools.ReadThread => $"`{Str(args, "id")}`",
