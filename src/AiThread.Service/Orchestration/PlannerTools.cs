@@ -17,6 +17,10 @@ public static class PlannerTools
     public const string AskUser = "ask_user";
     public const string SubmitPlan = "submit_plan";
 
+    // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
+    public static readonly int NameColumn =
+        new[] { ListDirectory, FindFiles, SearchText, ReadFile, SearchMemory, ReadMemory, ReadThread, RunBuild, AskUser }.Max(n => n.Length) + 2;
+
     // canBuild: build verification is enabled and the project has a build command AiThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
     // The list stays the same for the whole planner run so the provider's prompt cache keeps matching.
@@ -186,7 +190,7 @@ public static class PlannerTools
                       "id": { "type": "string", "description": "Short id: T1, T2, ..." },
                       "title": { "type": "string" },
                       "file": { "type": "string", "description": "Target file relative to the project root. Files can only be changed inside the project root." },
-                      "action": { "type": "string", "enum": ["edit", "create", "delete", "move", "extract"], "description": "delete, move and extract are done by AiThread without an executor; move keeps the content unchanged; extract moves C# members from file to to." },
+                      "action": { "type": "string", "enum": ["edit", "create", "delete", "move", "extract"], "description": "delete, move and extract are done by AIT without an executor; move keeps the content unchanged; extract moves C# members from file to to." },
                       "to": { "type": "string", "description": "For action move: the destination path relative to the project root; it must not exist yet. For action extract: the .cs file that receives the members (new, or already a partial part of the same class)." },
                       "members": { "type": "array", "items": { "type": "string" }, "description": "Only for action extract: names of the C# members to move (methods, properties, fields, events, nested types). All overloads of a name move together." },
                       "instruction": { "type": "string", "description": "Self-contained instruction for the executor. For delete, move and extract, a short reason is enough." },

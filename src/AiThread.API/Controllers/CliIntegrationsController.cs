@@ -40,13 +40,13 @@ public class CliIntegrationsController(IEnumerable<ICliIntegration> integrations
         if (request.Enabled)
         {
             var applied = await cli.ApplyAsync(request.Scope, request.ProjectId, proxyBaseUrl, cancellationToken);
-            activityLog.Success("setting", $"{cli.Info.Name} diarahkan ke AiThread ({applied.Path}).");
-            return ApiResponse<CliStatusDto>.Ok(applied, $"{cli.Info.Name} diarahkan ke AiThread. {cli.Info.Note}");
+            activityLog.Success("setting", $"{cli.Info.Name} diarahkan ke AIT ({applied.Path}).");
+            return ApiResponse<CliStatusDto>.Ok(applied, $"{cli.Info.Name} diarahkan ke AIT. {cli.Info.Note}");
         }
 
         var reverted = await cli.RevertAsync(request.Scope, request.ProjectId, proxyBaseUrl, cancellationToken);
-        activityLog.Info("setting", $"Pengarahan {cli.Info.Name} ke AiThread dihapus ({reverted.Path}).");
-        return ApiResponse<CliStatusDto>.Ok(reverted, $"{cli.Info.Name} tidak lagi diarahkan ke AiThread. Buka sesi baru agar berlaku.");
+        activityLog.Info("setting", $"Pengarahan {cli.Info.Name} ke AIT dihapus ({reverted.Path}).");
+        return ApiResponse<CliStatusDto>.Ok(reverted, $"{cli.Info.Name} tidak lagi diarahkan ke AIT. Buka sesi baru agar berlaku.");
     }
 
     private ICliIntegration? Find(string id) =>

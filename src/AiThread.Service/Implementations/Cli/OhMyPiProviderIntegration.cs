@@ -25,7 +25,7 @@ public sealed partial class OhMyPiProviderIntegration(ISettingService settingSer
 
     public CliInfoDto Info => new(
         Id,
-        "oh-my-pi (omp) — provider AiThread",
+        "oh-my-pi (omp) — provider AIT",
         $"Menambah provider \"{ProviderId}\" di models.yml omp. Pilih model {ProviderId}/{ModelId} lewat /model (atau --model {ProviderId}/{ModelId}); provider Anthropic asli tetap bisa dipakai.",
         _modelsPath,
         null,

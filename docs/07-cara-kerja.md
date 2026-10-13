@@ -8,7 +8,7 @@ konfigurasi dengan tepat.
 Agen coding mengirim banyak request, tidak hanya prompt Anda: Claude Code ke `POST /v1/messages`, dan klien lain ke
 `/v1/chat/completions`, `/v1/responses` (Codex), atau `/v1beta/models/…` (Gemini CLI) — lihat
 [Klien lain](03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll). Semuanya lebih dulu diubah ke satu
-bentuk internal (`ProtocolAdapter`), jadi aturan di bawah sama untuk semua format. AiThread **mengorkestrasi**
+bentuk internal (`ProtocolAdapter`), jadi aturan di bawah sama untuk semua format. AIT **mengorkestrasi**
 sebuah request hanya bila semua syarat terpenuhi:
 
 - *Orkestrasi aktif* menyala di Setting;
@@ -18,14 +18,14 @@ sebuah request hanya bila semua syarat terpenuhi:
 - **sesi berasal dari sebuah project**, yaitu folder dengan `.git` atau file build (lihat bagian 2).
 
 Selain itu (judul sesi, `/compact`, cek kuota, sesi di luar project, dll.) request diteruskan apa adanya ke
-endpoint 9router yang sama dengan **model passthrough** — AiThread tidak membuat thread dan tidak memanggil planner. `POST /v1/messages/count_tokens` juga diteruskan; bila gagal, jumlah token
+endpoint 9router yang sama dengan **model passthrough** — AIT tidak membuat thread dan tidak memanggil planner. `POST /v1/messages/count_tokens` juga diteruskan; bila gagal, jumlah token
 diperkirakan (±4 karakter per token).
 
 Jika *Proxy API key* diisi, request tanpa key yang cocok (`Authorization: Bearer` atau `x-api-key`) ditolak `401`.
 
 ## 2. Cek sesi: project atau bukan
 
-Sebelum planner dipanggil, AiThread memeriksa **sesi** asal prompt:
+Sebelum planner dipanggil, AIT memeriksa **sesi** asal prompt:
 
 1. Id sesi diambil dari header `X-AiThread-Session` / `x-claude-code-session-id` / `x-session-id`, atau dari
    `metadata.user_id`; working directory dari header `X-AiThread-Cwd`, atau dari baris `Primary working directory:` /
@@ -71,10 +71,10 @@ Planner menerima **brief**, disusun dari bagian paling stabil ke yang paling spe
 bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah semua bahan yang dirujuknya):
 
 1. info project: nama, root, stack, folder tempat sesi dibuka (bila di bawah root), daftar file solution/build yang
-   ditemukan, dan perintah build yang bisa dijalankan AiThread (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
+   ditemukan, dan perintah build yang bisa dijalankan AIT (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
 2. struktur folder 2 tingkat (maks 200 entri);
 3. konteks yang disisipkan Claude Code (isi `CLAUDE.md`, reminder, file yang dilampirkan), maks 30.000 karakter;
-4. **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AiThread sebelumnya (lihat
+4. **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AIT sebelumnya (lihat
    [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
 5. percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
    ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
@@ -142,7 +142,7 @@ dan asumsinya disebut di ringkasan. Planner menyelidiki kode dulu agar pertanyaa
 Batasan:
 
 - Maks 2 pertanyaan per thread, satu per waktu, dan tidak di langkah terakhir planner.
-- Pertanyaan disimpan di memori proses: bila AiThread di-restart, atau tidak dijawab dalam **2 jam**, thread ditutup
+- Pertanyaan disimpan di memori proses: bila AIT di-restart, atau tidak dijawab dalam **2 jam**, thread ditutup
   sebagai *Dibatalkan* dan pesan berikutnya dijalankan sebagai thread baru (riwayat chat yang berisi pertanyaan tetap
   terbaca planner). Tombol *Batalkan* di detail thread juga menutup thread yang menunggu jawaban.
 - Sesi dikenali dari id sesi klien (Claude Code, Codex, Telegram, …); klien yang tidak mengirim id sesi, dan prompt
@@ -230,7 +230,7 @@ Selain `edit` dan `create`, sebuah tugas bisa berupa:
 - `extract` — memindahkan member C# (`members`: method, property, field, event, nested type) dari file `.cs` ke file
   `.cs` lain (`to`). Lihat [Pindah member C#](#pindah-member-c-extract).
 
-Ketiga aksi ini dijalankan **langsung oleh AiThread tanpa model** (tanpa token, tanpa node executor; di detail thread
+Ketiga aksi ini dijalankan **langsung oleh AIT tanpa model** (tanpa token, tanpa node executor; di detail thread
 kolom node bertuliskan *tanpa model*), di bawah lock file yang sama dengan executor. Folder yang menjadi kosong setelah
 file diambil darinya ikut dihapus (tidak pernah root project). Bila isi file yang dipindahkan juga perlu berubah
 (namespace, import, nama class), planner menambah tugas `edit` di path baru yang bergantung pada tugas `move`; referensi
@@ -245,7 +245,7 @@ Untuk memecah class besar menjadi beberapa file `partial` (atau memindahkan meth
 melihat potongan file besar dan outputnya dibatasi *max tokens*, sehingga pemindahan berhenti di tengah dan build gagal
 karena member ganda.
 
-AiThread mengerjakan `extract` dengan parser C# (Roslyn), dalam hitungan milidetik:
+AIT mengerjakan `extract` dengan parser C# (Roslyn), dalam hitungan milidetik:
 
 - Member disalin **apa adanya** (isi, komentar dokumentasi, indentasi). Semua overload dengan nama yang sama ikut
   pindah; field dengan beberapa variabel dalam satu deklarasi harus dipindah bersama.
@@ -303,7 +303,7 @@ Diff yang ditampilkan di detail thread dibangun dari blok-blok tersebut.
 
 ## 5. Verifikasi: build dan reviewer
 
-Setelah eksekusi, bila minimal satu tugas berhasil, AiThread memeriksa hasilnya (status thread *Verifikasi*). Tahap ini
+Setelah eksekusi, bila minimal satu tugas berhasil, AIT memeriksa hasilnya (status thread *Verifikasi*). Tahap ini
 berjalan bila ada salah satu dari:
 
 - **perintah build**: *Build & verifikasi otomatis* menyala di Setting dan project punya perintah build;
@@ -363,10 +363,19 @@ setiap putaran tampil di kartu *Verifikasi* pada detail thread.
 ## 6. Wrapper
 
 Wrapper menerima permintaan Anda, ringkasan rencana, kontrak, hasil setiap tugas termasuk tugas perbaikan (ringkasan,
-error, maks 60 baris diff per tugas), dan ringkasan verifikasi per putaran, lalu menulis balasan dalam bahasa
-permintaan Anda: apakah build lolos, apa kata reviewer, dan error yang masih tersisa. Balasan di-stream ke Claude Code.
-Jika tidak ada wrapper aktif atau wrapper gagal, AiThread menyusun ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
+error, maks 60 baris diff per tugas), dan ringkasan verifikasi per putaran, lalu menulis bagian jawaban yang perlu
+penjelasan, dalam bahasa permintaan Anda: 1–3 kalimat tentang apa yang dikerjakan, saran untuk tugas gagal atau
+masalah verifikasi yang tersisa, dan langkah lanjutan bila perlu. Fakta lainnya ditulis AIT sendiri dari hasil, bukan
+oleh model: baris status (tugas, build, reviewer) dan daftar *Perlu perhatian* sebelum teks Wrapper, tabel *File
+berubah* dan footer (durasi, token, memory, wiki, link thread) sesudahnya — lihat
+[Membaca output di Claude Code](04-penggunaan.md#membaca-output-di-claude-code). Teks Wrapper di-stream ke Claude Code.
+
+Jika tidak ada wrapper aktif atau wrapper gagal, Claude Code menampilkan ringkasan rencana sebagai pengganti teksnya;
+yang disimpan sebagai jawaban thread (Dashboard, Telegram) adalah ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
 verifikasi).
+
+Setelah itu ekstraksi memory dijalankan dan ditunggu paling lama 30 detik agar footer bisa menyebut jumlah memory
+baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi tetap selesai di latar belakang.
 
 ## 7. Setelah thread
 
@@ -374,7 +383,7 @@ verifikasi).
   berhenti pada pertanyaan planner berstatus *Menunggu jawaban* sampai dijawab, dibatalkan, atau kedaluwarsa.
 - Waktu (termasuk verifikasi; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi cache-nya,
   executor termasuk tugas perbaikan, reviewer, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
-- Ekstraksi memory berjalan di belakang — lihat [Memory](06-memory.md).
+- Ekstraksi memory ditunggu sebelum footer jawaban (maks 30 detik, lalu lanjut di belakang) — lihat [Memory](06-memory.md).
 - Thread yang *Selesai* menunggu dirangkum ke wiki bisnis project oleh penulis wiki (berkala, default tiap 6 jam) —
   lihat [Business memory](06-memory.md#business-memory-wiki-bisnis). Gambar yang dilampirkan di prompt disimpan
   sampai saat itu, agar screenshot bisa masuk ke halaman modulnya.
@@ -383,10 +392,11 @@ verifikasi).
 ## Konteks sesi (Context Keeper)
 
 Planner tidak membawa ingatan antar prompt: setiap prompt memulai planner baru. Supaya chat yang panjang tetap
-nyambung tanpa mengirim seluruh percakapan, AiThread menyimpan **ringkasan sesi** per thread:
+nyambung tanpa mengirim seluruh percakapan, AIT menyimpan **ringkasan sesi** per thread:
 
-1. Baris pertama setiap balasan orkestrasi adalah penanda ``**AiThread** · `NamaProject` · thread `3f2a1b9c` `` (selalu
-   dikirim, juga saat progres dimatikan). Penanda ini ikut tersimpan di chat Claude Code.
+1. Baris pertama setiap balasan orkestrasi adalah penanda ``**AIT** · `NamaProject` · thread `3f2a1b9c` `` (selalu
+   dikirim, juga saat progres dimatikan). Penanda ini ikut tersimpan di chat Claude Code. Penanda lama
+   ``**AiThread** · …`` dari balasan sebelum rename tetap dikenali.
 2. Setelah thread selesai, Context Keeper menulis ringkasan sesi (tujuan, keputusan & batasan, log kerja per thread,
    fakta penting berupa penunjuk file, hal yang belum selesai) dan menyimpannya pada thread itu.
 3. Di prompt berikutnya, proxy mencari penanda di history yang dikirim Claude Code, mengambil ringkasan dari thread
@@ -412,7 +422,7 @@ lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integras
 ## Skill pada node
 
 Skill adalah instruksi siap pakai (folder dengan `SKILL.md`, gaya Claude Code / Agent Skills) yang membuat model
-lebih mahir di satu jenis pekerjaan. AiThread menyimpannya di **gudang skill** offline dan menempelkannya ke node.
+lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offline dan menempelkannya ke node.
 
 1. **Menarik link** (Setting → Skill). Link dikenali lalu diunduh ke folder staging:
    - GitHub/GitLab sebagai arsip ZIP, tanpa perlu git. Link `/tree/<ref>/<folder>` hanya mengambil folder itu.
@@ -443,9 +453,9 @@ lebih mahir di satu jenis pekerjaan. AiThread menyimpannya di **gudang skill** o
 
 - Planner hanya bisa membaca; executor hanya bisa menulis file target tugasnya. Penulisan dibatasi ke root workspace
   dan tidak bisa menyentuh folder yang disembunyikan. Pembacaan planner boleh keluar root (path absolut), jadi ia dapat
-  membaca file apa pun yang bisa dibaca akun yang menjalankan AiThread, dan isinya dikirim ke model planner. Permintaan
+  membaca file apa pun yang bisa dibaca akun yang menjalankan AIT, dan isinya dikirim ke model planner. Permintaan
   "cek" ke folder lain hanya menghasilkan jawaban; mengubah file di luar root tidak didukung.
-- Satu-satunya perintah yang dijalankan AiThread adalah **perintah build** project (tabel di
+- Satu-satunya perintah yang dijalankan AIT adalah **perintah build** project (tabel di
   [Verifikasi](#5-verifikasi-build-dan-reviewer)), dengan program dan argumen tetap; model hanya memilih manifest di
   dalam root. Build menjalankan apa pun yang didefinisikan project itu sendiri (target MSBuild, script `build` di
   `package.json`, plugin Maven), jadi matikan *Build & verifikasi otomatis* untuk project yang tidak Anda percaya.
@@ -454,6 +464,6 @@ lebih mahir di satu jenis pekerjaan. AiThread menyimpannya di **gudang skill** o
   tanpa prompt kredensial, dan folder `.git`-nya dibuang.
 - Isi skill masuk ke system prompt model node. Tarik skill hanya dari sumber yang Anda percaya, karena skill bisa
   mengarahkan perilaku model.
-- AiThread menulis ke folder mana pun yang dikirim sebagai working directory. Biarkan aplikasi hanya mendengarkan
+- AIT menulis ke folder mana pun yang dikirim sebagai working directory. Biarkan aplikasi hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin dapat diakses orang lain.
 - API key 9router disimpan terenkripsi dengan ASP.NET Core Data Protection.

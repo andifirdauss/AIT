@@ -45,7 +45,7 @@ public class ThreadRecoveryTests
         Assert.Single(router.CallsTo(ScriptedAgent.Planner));
         Assert.Contains(HalloLine, harness.ReadFile(GreeterFile));
         Assert.Contains("public class Farewell", harness.ReadFile(FarewellFile));
-        Assert.Contains(observer.Lines, l => l.Contains("Mengulang 2 tugas"));
+        Assert.Contains(observer.Lines, l => l.Contains("Percobaan ulang · 2 tugas"));
 
         var thread = await harness.LoadThreadAsync(first.ThreadId);
         Assert.Equal(1, thread.RetryCount);
@@ -202,7 +202,7 @@ public class ThreadRecoveryTests
         Assert.False(File.Exists(Path.Combine(root, "src", "Greeter.cs")));
         Assert.False(File.Exists(Path.Combine(root, "src", "Old.cs")));
         Assert.Contains(HalloLine, harness.ReadFile(movedFile));
-        Assert.Contains(observer.Lines, l => l.Contains($"`{GreeterFile} → {movedFile}`"));
+        Assert.Contains(observer.Lines, l => l.Contains($"{GreeterFile} → {movedFile}"));
 
         await using (var db = await harness.CreateDbAsync())
         {

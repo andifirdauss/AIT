@@ -40,7 +40,7 @@ public sealed class AgentProxyHandler(
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
         if (!IsAuthorized(http.Request, settings))
         {
-            await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status401Unauthorized, "authentication_error", "Invalid AiThread proxy key (ANTHROPIC_AUTH_TOKEN / OPENAI_API_KEY / GEMINI_API_KEY).");
+            await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status401Unauthorized, "authentication_error", "Invalid AIT proxy key (ANTHROPIC_AUTH_TOKEN / OPENAI_API_KEY / GEMINI_API_KEY).");
             return;
         }
 
@@ -105,7 +105,8 @@ public sealed class AgentProxyHandler(
             project.ProjectId,
             info.SessionId,
             session?.Context,
-            info.Images);
+            info.Images,
+            ProxyUrlResolver.Resolve(http));
 
         if (!info.Stream)
         {
@@ -119,7 +120,7 @@ public sealed class AgentProxyHandler(
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Orchestration failed before the thread started.");
-                await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status500InternalServerError, "api_error", $"AiThread: {ex.Message}");
+                await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status500InternalServerError, "api_error", $"AIT: {ex.Message}");
             }
             return;
         }
@@ -134,7 +135,7 @@ public sealed class AgentProxyHandler(
         {
             // Failures inside a thread are reported by the orchestrator; this covers setup errors (e.g. database down).
             logger.LogError(ex, "Orchestration failed before the thread started.");
-            await writer.TextAsync($"❌ AiThread gagal memulai thread: {ex.Message}", cancellationToken);
+            await writer.TextAsync($"❌ AIT gagal memulai thread: {ex.Message}", cancellationToken);
         }
 
         if (!cancellationToken.IsCancellationRequested) await writer.FinishAsync(cancellationToken);
@@ -160,7 +161,7 @@ public sealed class AgentProxyHandler(
         if (model is null)
         {
             await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status503ServiceUnavailable, "api_error",
-                "AiThread: passthrough model belum diatur (menu Setting) dan tidak ada node aktif yang bisa dipakai.");
+                "AIT: passthrough model belum diatur (menu Setting) dan tidak ada node aktif yang bisa dipakai.");
             return;
         }
 

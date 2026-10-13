@@ -20,7 +20,9 @@ public sealed record ThreadRequest(
     // Claude Code only: what the context keeper knows about the earlier turns of this chat.
     SessionContext? Session = null,
     // Images attached to the active user turn, given to the planner alongside the brief.
-    IReadOnlyList<ImageAttachment>? Images = null);
+    IReadOnlyList<ImageAttachment>? Images = null,
+    // Base URL of this AIT instance as the client reaches it; the final answer links to the thread page there.
+    string? DashboardUrl = null);
 
 // ThreadIds are the AiThread threads found in the chat, oldest first. Pack is the context keeper's summary written
 // after PackThreadId, the latest of them that has one; turns after it reach the planner as ConversationContext.

@@ -6,23 +6,23 @@
 |---|---|---|---|
 | .NET SDK 10 | Ya | `dotnet --list-sdks` | Solusi menargetkan `net10.0`. |
 | SQL Server | Ya | `sqllocaldb info` | Default memakai LocalDB `(localdb)\MSSQLLocalDB` (terpasang bersama Visual Studio). |
-| Redis / Docker | Tidak | — | Short memory memakai Garnet yang berjalan di dalam AiThread (lihat langkah 1). |
+| Redis / Docker | Tidak | — | Short memory memakai Garnet yang berjalan di dalam AIT (lihat langkah 1). |
 | Node.js + 9router | Ya | `9router --help` | Sumber semua model AI. |
 | Git | Disarankan | `git --version` | Executor menulis langsung ke file project; git memudahkan meninjau/membatalkan. |
 
 ## 1. Short memory (Garnet)
 
-Tidak ada yang perlu di-install. AiThread menjalankan [Garnet](https://microsoft.github.io/garnet/) (server
+Tidak ada yang perlu di-install. AIT menjalankan [Garnet](https://microsoft.github.io/garnet/) (server
 protokol Redis dari Microsoft) di dalam prosesnya sendiri, di port dari `ConnectionStrings:Redis` (default
 `localhost:6379`) dan hanya bisa diakses dari komputer ini. Tambahan RAM ±30 MB.
 
 - Data: `%LOCALAPPDATA%\AiThread\garnet\<port>`. Setiap penulisan dicatat ke *append-only file* sebelum
-  dikonfirmasi, jadi short memory tidak hilang walau AiThread dimatikan paksa atau crash. Checkpoint tiap jam
+  dikonfirmasi, jadi short memory tidak hilang walau AIT dimatikan paksa atau crash. Checkpoint tiap jam
   memangkas file itu.
 - Instance lain (mis. untuk uji coba) cukup memakai port lain di `ConnectionStrings:Redis`; data-nya otomatis
   terpisah.
 - Bila port itu sudah dipakai program lain (mis. container Docker `aithread-redis` lama), Garnet tidak dijalankan
-  dan AiThread memakai server yang sudah ada di port itu (tercatat sebagai peringatan di log).
+  dan AIT memakai server yang sudah ada di port itu (tercatat sebagai peringatan di log).
 - Redis eksternal: set `AiThread:EmbeddedRedis:Enabled` = `false` dan arahkan `ConnectionStrings:Redis` ke server
   tersebut (format StackExchange.Redis, mis. `myhost:6379,password=rahasia`).
 
@@ -44,7 +44,7 @@ npm install -g 9router
 3. (Opsional) Buat *combo* agar model otomatis fallback ke provider lain saat limit habis.
 4. Salin **API key** dari dashboard 9router bila opsi *require API key* aktif (default aktif).
 
-AiThread memakai endpoint 9router berikut: `GET /api/health`, `GET /v1/models`, `POST /v1/chat/completions`,
+AIT memakai endpoint 9router berikut: `GET /api/health`, `GET /v1/models`, `POST /v1/chat/completions`,
 `POST /v1/messages`, `POST /v1/messages/count_tokens`.
 
 ## 3. Database
@@ -55,10 +55,10 @@ Untuk memakai SQL Server selain LocalDB, ubah `ConnectionStrings:Default` di
 `src/AiThread.UI/appsettings.json`, contoh:
 
 ```json
-"Default": "Server=localhost;Database=AiThread;User Id=aithread;Password=...;TrustServerCertificate=True"
+"Default": "Server=localhost;Database=AIT;User Id=aithread;Password=...;TrustServerCertificate=True"
 ```
 
-## 4. Menjalankan AiThread
+## 4. Menjalankan AIT
 
 ```powershell
 dotnet run --project src/AiThread.UI --launch-profile http
@@ -78,9 +78,9 @@ Setelah port berubah, matikan lalu nyalakan lagi switch CLI yang aktif di menu *
 
 ## 5. Menjalankan di background
 
-`dotnet run` dan Visual Studio hanya menjalankan AiThread selama terminal/debugger-nya terbuka. Di Visual Studio,
+`dotnet run` dan Visual Studio hanya menjalankan AIT selama terminal/debugger-nya terbuka. Di Visual Studio,
 menutup browser yang dibuka debugger juga menghentikan aplikasi. Untuk pemakaian sehari-hari (Claude Code, Telegram),
-jalankan AiThread di background agar tetap hidup walau browser, terminal, dan Visual Studio ditutup:
+jalankan AIT di background agar tetap hidup walau browser, terminal, dan Visual Studio ditutup:
 
 ```powershell
 .\scripts\aithread.ps1 start          # publish Release lalu jalankan tanpa jendela di http://localhost:5225
@@ -105,10 +105,10 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 | Port lain | `-Port 6000` — pakai `-Port` yang sama untuk semua perintah, lalu terapkan ulang integrasi Claude Code. |
 | Autostart | Task Scheduler `AiThread`, 30 detik setelah login, berjalan sebagai akun Anda sendiri (tanpa admin). Karena itu LocalDB dan API key 9router yang terenkripsi tetap berlaku. Memakai hasil publish terakhir tanpa build ulang. |
 | Stop | Lewat `POST /api/system/shutdown`: thread yang sedang berjalan dibatalkan dan dicatat (maks. ±15 detik), lalu proses keluar. Bila tidak berhenti dalam 45 detik, proses dihentikan paksa. |
-| Mati mendadak | Logoff, crash, atau dihentikan paksa: saat start berikutnya, thread yang tertinggal ditandai *Cancelled* dengan pesan *AiThread berhenti saat thread ini berjalan.* |
+| Mati mendadak | Logoff, crash, atau dihentikan paksa: saat start berikutnya, thread yang tertinggal ditandai *Cancelled* dengan pesan *AIT berhenti saat thread ini berjalan.* |
 
-9router tetap dijalankan terpisah dan harus hidup; AiThread menyambung ulang otomatis bila 9router baru menyala
-setelah AiThread. Short memory (Garnet) ikut berjalan di dalam proses AiThread.
+9router tetap dijalankan terpisah dan harus hidup; AIT menyambung ulang otomatis bila 9router baru menyala
+setelah AIT. Short memory (Garnet) ikut berjalan di dalam proses AIT.
 
 ## 6. AiThread.exe standalone (tanpa .NET)
 
@@ -190,7 +190,7 @@ Bagian `AiThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di
 | `ExecutorFullFileMaxLines` | `400` | File sampai sepanjang ini dikirim utuh ke executor; file lebih besar dikirim sebagai potongan. |
 | `Telegram:ApiBaseUrl` | `https://api.telegram.org` | Endpoint Bot API untuk [prompt dari Telegram](11-telegram.md) (token bot diatur di menu Setting). |
 | `Telegram:PollTimeoutSeconds` | `50` | Lama satu long poll `getUpdates` menunggu pesan baru (1–50). |
-| `EmbeddedRedis:Enabled` | `true` | Jalankan Garnet di dalam AiThread untuk short memory. `false` = pakai Redis eksternal di `ConnectionStrings:Redis`. |
+| `EmbeddedRedis:Enabled` | `true` | Jalankan Garnet di dalam AIT untuk short memory. `false` = pakai Redis eksternal di `ConnectionStrings:Redis`. |
 | `EmbeddedRedis:DataDirectory` | *(kosong)* | Lokasi data Garnet. Kosong = `%LOCALAPPDATA%\AiThread\garnet\<port>`. |
 | `EmbeddedRedis:MemorySize` | `16m` | Batas RAM log Garnet. Record tertua di luar batas ini dibuang, jadi jangan diperkecil (satu short memory ±1 KB). |
 | `EmbeddedRedis:CheckpointIntervalMinutes` | `60` | Interval checkpoint yang memangkas *append-only file*. |

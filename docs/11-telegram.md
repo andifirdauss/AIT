@@ -1,21 +1,21 @@
 # 11. Prompt dari Telegram
 
-Kirim prompt ke AiThread dari HP saat laptop ditinggal menyala di kantor atau di rumah. Anda chat dengan bot
-Telegram pribadi; AiThread di laptop menjalankan planner → executor → wrapper seperti biasa, melaporkan progres ke
+Kirim prompt ke AIT dari HP saat laptop ditinggal menyala di kantor atau di rumah. Anda chat dengan bot
+Telegram pribadi; AIT di laptop menjalankan planner → executor → wrapper seperti biasa, melaporkan progres ke
 chat, lalu mengirim ringkasannya.
 
 ```
-HP (Telegram) ──► server Telegram ◄──(long polling, koneksi keluar)── AiThread di laptop ─► Planner ─► Executor × N ─► Wrapper
+HP (Telegram) ──► server Telegram ◄──(long polling, koneksi keluar)── AIT di laptop ─► Planner ─► Executor × N ─► Wrapper
               ◄── status live & ringkasan ─────────────────────────────┘
 ```
 
-AiThread **menarik** pesan dari Telegram (long polling `getUpdates`). Yang dibutuhkan hanya koneksi keluar HTTPS ke
+AIT **menarik** pesan dari Telegram (long polling `getUpdates`). Yang dibutuhkan hanya koneksi keluar HTTPS ke
 `api.telegram.org` — tidak perlu IP publik, port forwarding, atau tunnel seperti ngrok, jadi tetap bekerja di balik
 NAT/firewall kantor.
 
 ## Prasyarat
 
-- AiThread berjalan di laptop, dan laptop tetap menyala serta terhubung internet (lihat
+- AIT berjalan di laptop, dan laptop tetap menyala serta terhubung internet (lihat
   [Agar laptop tetap bisa dihubungi](#agar-laptop-tetap-bisa-dihubungi)).
 - Node Planner, Executor, dan Wrapper sudah dikonfigurasi; minimal satu project terdaftar di menu **Project**.
 - Akun Telegram.
@@ -100,19 +100,19 @@ pilihan atau jawaban Anda sebagai pesan biasa; thread yang sama dilanjutkan. Lih
 - Thread hanya berjalan di project terdaftar, dan executor tetap dibatasi ke folder project.
 - Token disimpan terenkripsi (ASP.NET Core Data Protection), tidak pernah dikirim balik ke browser (hanya tersamar),
   dan tidak ditulis ke log.
-- Prompt yang terkirim saat AiThread tidak berjalan (laptop mati/sleep, bot nonaktif) **tidak dijalankan** ketika
-  AiThread hidup kembali — bot membalas agar Anda mengirim ulang. Perintah seperti `/status` tetap dijawab.
-- AiThread tidak perlu dibuka ke internet. Jangan mem-forward port 5225 hanya untuk fitur ini.
+- Prompt yang terkirim saat AIT tidak berjalan (laptop mati/sleep, bot nonaktif) **tidak dijalankan** ketika
+  AIT hidup kembali — bot membalas agar Anda mengirim ulang. Perintah seperti `/status` tetap dijawab.
+- AIT tidak perlu dibuka ke internet. Jangan mem-forward port 5225 hanya untuk fitur ini.
 
 ## Agar laptop tetap bisa dihubungi
 
 - Matikan sleep saat laptop dicolok: Windows **Settings → System → Power & battery** → sleep saat *plugged in* =
   **Never**, atau jalankan `powercfg /change standby-timeout-ac 0`. Bila lid akan ditutup: **Control Panel → Power
   Options → Choose what closing the lid does** → *When plugged in* = **Do nothing**.
-- Jalankan AiThread di background (`.\scripts\aithread.ps1 start`, opsional `autostart-on`) agar tidak ikut mati saat
+- Jalankan AIT di background (`.\scripts\aithread.ps1 start`, opsional `autostart-on`) agar tidak ikut mati saat
   browser, terminal, atau Visual Studio ditutup — lihat [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background).
-- Pastikan AiThread dan 9router berjalan sebelum pergi, lalu uji sekali dengan `/status` dari HP.
-- Bila koneksi internet putus, AiThread mencoba lagi otomatis (jeda naik hingga 60 detik) dan log dashboard mencatat
+- Pastikan AIT dan 9router berjalan sebelum pergi, lalu uji sekali dengan `/status` dari HP.
+- Bila koneksi internet putus, AIT mencoba lagi otomatis (jeda naik hingga 60 detik) dan log dashboard mencatat
   saat koneksi ke Telegram pulih.
 
 ## Status di kartu Telegram
@@ -144,12 +144,12 @@ HTTP proxy sistem Windows ikut dipakai secara otomatis.
 |---|---|---|
 | Simpan: *Token ditolak Telegram* | Token salah, terpotong, atau sudah di-revoke. | Salin ulang dari `@BotFather` → `/mybots` → bot Anda → *API Token*. |
 | Simpan: *Token tidak dapat diverifikasi: … tidak dapat dihubungi* | Jaringan memblokir `api.telegram.org`. | Periksa internet/proxy kantor; atur `ApiBaseUrl` bila harus lewat proxy. |
-| Bermasalah: *Token ini sedang dipakai program lain…* | Instance AiThread lain (atau program lain) menerima pesan dengan token yang sama. | Hentikan instance lain, atau buat bot terpisah untuk tiap instance. |
-| Bot tidak membalas sama sekali | AiThread tidak berjalan, laptop sleep/mati, atau bot nonaktif. | Periksa laptop. Setelah hidup kembali, kirim ulang prompt. |
+| Bermasalah: *Token ini sedang dipakai program lain…* | Instance AIT lain (atau program lain) menerima pesan dengan token yang sama. | Hentikan instance lain, atau buat bot terpisah untuk tiap instance. |
+| Bot tidak membalas sama sekali | AIT tidak berjalan, laptop sleep/mati, atau bot nonaktif. | Periksa laptop. Setelah hidup kembali, kirim ulang prompt. |
 | Bot membalas *Chat ini belum diizinkan* | Chat belum diizinkan. | Setting → Telegram → **Izinkan**. |
 | *Thread … masih berjalan* | Satu chat hanya menjalankan satu thread. | Tunggu sampai selesai, atau `/cancel`. |
 | Pesan status berhenti diperbarui | Pesan status dihapus, atau jaringan sempat putus. | Hasil akhir tetap dikirim sebagai pesan baru; cek `/status`. |
-| *AiThread berhenti saat thread … berjalan* | AiThread dimatikan atau di-restart dengan rapi saat thread berjalan. | Setelah AiThread hidup lagi, tinjau tugas yang sempat selesai dengan `/diff <id>`, lalu kirim ulang prompt bila perlu. |
-| Hasil akhir sebuah prompt tidak pernah datang | AiThread mati mendadak (crash, listrik, laptop sleep) saat thread berjalan — tidak sempat memberi tahu. | Cek `/status`, lalu seperti baris di atas. |
-| Ringkasan tampil tanpa format | Telegram menolak format pesan itu, sehingga AiThread mengirimnya ulang sebagai teks biasa. | Tidak perlu tindakan. |
+| *AIT berhenti saat thread … berjalan* | AIT dimatikan atau di-restart dengan rapi saat thread berjalan. | Setelah AIT hidup lagi, tinjau tugas yang sempat selesai dengan `/diff <id>`, lalu kirim ulang prompt bila perlu. |
+| Hasil akhir sebuah prompt tidak pernah datang | AIT mati mendadak (crash, listrik, laptop sleep) saat thread berjalan — tidak sempat memberi tahu. | Cek `/status`, lalu seperti baris di atas. |
+| Ringkasan tampil tanpa format | Telegram menolak format pesan itu, sehingga AIT mengirimnya ulang sebagai teks biasa. | Tidak perlu tindakan. |
 | *Thread gagal: Belum ada node Planner aktif* | Pipeline belum lengkap. | Lengkapi node di menu Node (harus dari laptop). |
