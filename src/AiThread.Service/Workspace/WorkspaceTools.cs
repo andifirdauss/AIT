@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using AiThread.Service.Workspace.Documents;
 using Microsoft.Extensions.FileSystemGlobbing;
 
 namespace AiThread.Service.Workspace;
@@ -170,11 +171,33 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         if (!scope.TryResolveForRead(path, out var fullPath, out var error)) return $"Error: {error}";
         if (Directory.Exists(fullPath)) return $"Error: '{path}' is a directory. Use list_directory.";
         if (!File.Exists(fullPath)) return $"Error: file '{path}' does not exist.";
-        if (new FileInfo(fullPath).Length > MaxReadFileBytes) return $"Error: '{path}' is larger than 2 MB.";
-        if (TextFileIo.LooksBinary(fullPath)) return $"Error: '{path}' is a binary file.";
 
-        var state = await TextFileIo.ReadAsync(fullPath, cancellationToken);
-        var lines = SplitLines(state.Content);
+        var extension = Path.GetExtension(fullPath);
+        if (DocumentExtractors.LegacyFormatMessage(extension) is { } legacy) return $"Error: {legacy}";
+
+        string content;
+        var extracted = false;
+        if (DocumentExtractors.TryGet(extension, out var extractor))
+        {
+            if (new FileInfo(fullPath).Length > DocumentExtractors.MaxDocumentBytes) return $"Error: '{path}' is larger than 20 MB.";
+            try
+            {
+                content = TextFileIo.NormalizeNewLines(await extractor.ExtractAsync(fullPath, cancellationToken));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return $"Error: could not extract text from '{path}': {ex.Message}";
+            }
+            extracted = true;
+        }
+        else
+        {
+            if (new FileInfo(fullPath).Length > MaxReadFileBytes) return $"Error: '{path}' is larger than 2 MB.";
+            if (TextFileIo.LooksBinary(fullPath)) return $"Error: '{path}' is a binary file.";
+            content = (await TextFileIo.ReadAsync(fullPath, cancellationToken)).Content;
+        }
+
+        var lines = SplitLines(content);
         var total = lines.Length;
         if (total == 0) return $"File: {scope.ToDisplay(fullPath)} (empty)";
 
@@ -183,7 +206,9 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         if (to - from + 1 > MaxReadLines) to = from + MaxReadLines - 1;
 
         var builder = new StringBuilder();
-        builder.Append($"File: {scope.ToDisplay(fullPath)} (lines {from}-{to} of {total})\n");
+        builder.Append(extracted
+            ? $"File: {scope.ToDisplay(fullPath)} (extracted text, lines {from}-{to} of {total})\n"
+            : $"File: {scope.ToDisplay(fullPath)} (lines {from}-{to} of {total})\n");
         for (var i = from; i <= to; i++) builder.Append(i).Append("| ").Append(lines[i - 1]).Append('\n');
         if (to < total) builder.Append($"... {total - to} more line(s). Call read_file with startLine={to + 1} to continue.\n");
         return Limit(builder.ToString());

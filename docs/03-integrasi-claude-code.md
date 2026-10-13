@@ -197,7 +197,7 @@ providers:
     models:
       - id: aithread
         name: AiThread
-        contextWindow: 200000
+        contextWindow: 1000000
         maxTokens: 32000
 # <<< AiThread <<<
 ```

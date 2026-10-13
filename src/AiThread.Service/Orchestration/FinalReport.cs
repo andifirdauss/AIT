@@ -81,7 +81,8 @@ public static partial class FinalReport
         string? dashboardUrl,
         Guid threadId)
     {
-        var parts = new List<string> { $"⏱️ {Duration(elapsed)}", $"🪙 {Tokens(tokens)} token" };
+        // Two spaces: terminals render ⏱️ and 🪙 as one cell but draw them two cells wide.
+        var parts = new List<string> { $"⏱️  {Duration(elapsed)}", $"🪙  {Tokens(tokens)} token" };
 
         var memory = new List<string>();
         if (memoriesUsed > 0) memory.Add($"{memoriesUsed} memory dipakai");

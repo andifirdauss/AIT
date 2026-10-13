@@ -76,7 +76,7 @@ mencoba form-nya.
 | `database/AddUserDescription.sql` | baru | +9 | T3 |
 | `src/Service/UserService.cs` | ubah | +7 | T4, V1-1 |
 
-⏱️ 48.6s · 🪙 41.2k token · 🧠 2 memory dipakai, +2 memory baru · 📚 Wiki masuk antrian rangkuman berikutnya (tiap 6 jam)
+⏱️  48.6s · 🪙  41.2k token · 🧠 2 memory dipakai, +2 memory baru · 📚 Wiki masuk antrian rangkuman berikutnya (tiap 6 jam)
 
 🔗 Detail & rollback: http://localhost:5225/Thread/Detail/5e469b54-…
 `````
