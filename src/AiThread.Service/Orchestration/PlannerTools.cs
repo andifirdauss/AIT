@@ -73,7 +73,7 @@ public static class PlannerTools
             }
             """)),
         ChatMessages.Function(ReadFile,
-            "Read a file with line numbers (max 600 lines per call; use startLine/endLine for large files).",
+            "Read a file with line numbers (max 600 lines per call; use startLine/endLine for large files). Documents (.pdf, .docx, .xlsx, .pptx, .ipynb, .odt, .ods) are returned as extracted text with page/sheet/slide/cell headers.",
             Schema("""
             {
               "type": "object",
