@@ -16,7 +16,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets/aithread.ico</ApplicationIcon>
     <Product>AiThread</Product>
-    <Version>1.5.0</Version>
+    <Version>1.5.2</Version>
   </PropertyGroup>
 
 </Project>
