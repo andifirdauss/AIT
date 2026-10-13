@@ -86,7 +86,7 @@ Bila sebuah bagian melebihi batas, yang dibuang adalah bagian tengahnya; awal da
 Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**, kecuali `run_build` yang
 menjalankan build project (tidak mengubah kode; hanya ditawarkan bila *Build & verifikasi otomatis* menyala dan project
 punya perintah build). Path relatif dihitung dari
-root project; tool baca (`list_directory`, `find_files`, `search_text`, `read_file`) juga menerima **path absolut di luar
+root project; tool baca (`list_directory`, `find_files`, `search_text`, `find_symbol`, `find_references`, `read_file`) juga menerima **path absolut di luar
 root**, supaya planner bisa mengecek folder atau project lain ketika Anda memintanya (mis. "cek ke
 `D:/project/otherproject`"). Di luar root hasilnya ditampilkan dengan path absolut:
 
@@ -95,6 +95,8 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `list_directory(path, depth)` | depth 1–4, maks 300 entri |
 | `find_files(pattern, path?)` | glob, mis. `**/*User*.cs`; maks 200 hasil; `path` = folder pencarian (default root; bila di luar root, pola relatif terhadap folder itu) |
 | `search_text(query, glob?, regex?, path?)` | tidak peka huruf besar/kecil; file ≤ 1 MB; maks 80 hasil; `path` seperti `find_files` |
+| `find_symbol(name, kind?, path?)` | lokasi deklarasi (class, method, property, field, enum, function, …) sebagai `file:baris: jenis signature (in Tipe)`; `name` boleh `Tipe.Member`; C# lewat Roslyn (syntax, tanpa build), JS/TS/Python/Java lewat pola regex (akurasi lebih rendah); maks 60 hasil |
+| `find_references(name, path?)` | semua pemakaian identifier, komentar diabaikan (C#: string literal juga), baris deklarasi ditandai `[declaration]`; cocok berdasarkan nama saja; maks 120 hasil |
 | `read_file(path, startLine?, endLine?)` | bernomor baris; maks 600 baris per panggilan; file ≤ 2 MB |
 | `search_memory(query)` | maks 25 label |
 | `read_memory(ids)` | deskripsi lengkap |

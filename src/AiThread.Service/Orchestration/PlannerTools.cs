@@ -9,6 +9,8 @@ public static class PlannerTools
     public const string ListDirectory = "list_directory";
     public const string FindFiles = "find_files";
     public const string SearchText = "search_text";
+    public const string FindSymbol = "find_symbol";
+    public const string FindReferences = "find_references";
     public const string ReadFile = "read_file";
     public const string SearchMemory = "search_memory";
     public const string ReadMemory = "read_memory";
@@ -19,7 +21,7 @@ public static class PlannerTools
 
     // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
     public static readonly int NameColumn =
-        new[] { ListDirectory, FindFiles, SearchText, ReadFile, SearchMemory, ReadMemory, ReadThread, RunBuild, AskUser }.Max(n => n.Length) + 2;
+        new[] { ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, RunBuild, AskUser }.Max(n => n.Length) + 2;
 
     // canBuild: build verification is enabled and the project has a build command AiThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
@@ -70,6 +72,31 @@ public static class PlannerTools
                 "path": { "type": "string", "description": "Optional directory to search in (default: the project root). May be an absolute path outside the project (read-only)." }
               },
               "required": ["query"]
+            }
+            """)),
+        ChatMessages.Function(FindSymbol,
+            "Find where a symbol is declared (class, interface, method, property, field, enum, function, ...). C# is parsed with Roslyn; JS/TS, Python and Java use declaration patterns. Returns path:line: kind signature (in Type). Faster and more precise than search_text for locating definitions.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string", "description": "Identifier, or Type.Member to restrict to members of one type, e.g. \"UserService\" or \"UserService.Save\". Case-sensitive." },
+                "kind": { "type": "string", "description": "Optional filter: type, class, struct, record, interface, enum, delegate, method, constructor, property, field, event, enum member, local function, function, variable, type alias." },
+                "path": { "type": "string", "description": "Optional directory to search in (default: the project root). May be an absolute path outside the project (read-only)." }
+              },
+              "required": ["name"]
+            }
+            """)),
+        ChatMessages.Function(FindReferences,
+            "Find every use of an identifier, ignoring comments and (for C#) string literals; declaration lines are marked [declaration]. Use it to find all places a contract name, method or property must change. Matches by name only, so same-named members of other types appear too.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string", "description": "Identifier to find (for Type.Member only the member name is used)." },
+                "path": { "type": "string", "description": "Optional directory to search in (default: the project root). May be an absolute path outside the project (read-only)." }
+              },
+              "required": ["name"]
             }
             """)),
         ChatMessages.Function(ReadFile,
