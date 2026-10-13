@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace AiThread.Service.Orchestration;
 
+// What one extraction did: the memories saved and the tokens spent; Failed when the model or the store failed.
+public sealed record MemoryExtraction(int Saved, int Tokens, bool Failed = false);
+
 // After a thread finishes, distills reusable project/knowledge memories into short memory (Redis).
 public sealed class MemoryExtractor(
     NodeCaller caller,
@@ -18,8 +21,9 @@ public sealed class MemoryExtractor(
 {
     private const int MaxMemories = 5;
 
-    public async Task ExtractAsync(AiNode node, ThreadRun thread, ThreadPlan plan, ExecutionSummary? execution, string finalText, CancellationToken cancellationToken)
+    public async Task<MemoryExtraction> ExtractAsync(AiNode node, ThreadRun thread, ThreadPlan plan, ExecutionSummary? execution, string finalText, CancellationToken cancellationToken)
     {
+        var tokens = 0;
         try
         {
             var existing = await memoryService.GetIndexAsync(thread.ProjectId, thread.Prompt, 40, cancellationToken);
@@ -43,6 +47,7 @@ public sealed class MemoryExtractor(
                 return Task.CompletedTask;
             });
 
+            tokens = reply.Result.TotalTokens;
             var memories = Parse(reply.Result.Content);
             var saved = new List<MemoryItemDto>();
             foreach (var (type, label, description) in memories.Take(MaxMemories))
@@ -59,11 +64,13 @@ public sealed class MemoryExtractor(
                     $"{saved.Count} memory baru dari thread ini ({shortCount} short/Redis, {saved.Count - shortCount} long/DB).",
                     thread.Id, thread.ProjectId);
             }
+            return new MemoryExtraction(saved.Count, tokens);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Memory extraction failed for thread {ThreadId}", thread.Id);
             activityLog.Warn("memory", $"Ekstraksi memory gagal: {ex.Message}", thread.Id, thread.ProjectId);
+            return new MemoryExtraction(0, tokens, Failed: true);
         }
     }
 

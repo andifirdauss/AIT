@@ -123,7 +123,7 @@ public sealed class TelegramPollingWorker(
                 if (failures >= 2 || ex.IsConflict)
                 {
                     var message = ex.IsConflict
-                        ? "Token ini sedang dipakai program lain untuk menerima pesan. Pastikan hanya satu AiThread yang memakai bot ini."
+                        ? "Token ini sedang dipakai program lain untuk menerima pesan. Pastikan hanya satu AIT yang memakai bot ini."
                         : ex.Message;
                     runtime.Report(TelegramBotStatus.Error, me.Username, message);
                     LogOnce(message);

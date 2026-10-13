@@ -22,7 +22,7 @@ penjelasan.
 
 | Level | Penyimpanan | Umur |
 |---|---|---|
-| **Short** | Default: Garnet di dalam AiThread (protokol Redis, tanpa TTL). Bisa diganti — lihat [Penyimpanan memory](#penyimpanan-memory). | Sampai berumur `ShortMemoryHours` (default 24 jam). |
+| **Short** | Default: Garnet di dalam AIT (protokol Redis, tanpa TTL). Bisa diganti — lihat [Penyimpanan memory](#penyimpanan-memory). | Sampai berumur `ShortMemoryHours` (default 24 jam). |
 | **Long** | Default: tabel `LongMemories` di database utama. Bisa diganti — lihat [Penyimpanan memory](#penyimpanan-memory). | Permanen sampai dihapus. |
 
 ```
@@ -35,7 +35,7 @@ thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
 
 - Memory dipindah oleh worker, bukan oleh kedaluwarsa (TTL) — jadi tidak ada yang hilang walau aplikasi mati saat
   sebuah memory berumur 24 jam. Id tetap sama sehingga pemindahan aman diulang.
-- Short memory bertahan saat AiThread di-restart atau crash: Garnet mencatat setiap penulisan ke disk
+- Short memory bertahan saat AIT di-restart atau crash: Garnet mencatat setiap penulisan ke disk
   (`%LOCALAPPDATA%\AiThread\garnet\<port>`) sebelum dikonfirmasi.
 - **Short memory tidak tersedia** (mis. Garnet gagal start, atau server short memory eksternal mati): memory baru
   langsung disimpan sebagai long memory (tercatat di log sebagai peringatan). Store database eksternal dicek ulang
@@ -55,14 +55,14 @@ tidak diikat ke folder, melainkan ke **project key** yang sama untuk semua clone
 4. tanpa semua itu: key **lokal** (`local:…`, dari path folder) — memory hanya ada di mesin ini. Menu Project
    menandainya *key lokal — belum dibagi*.
 
-AiThread membaca file itu langsung (tidak menjalankan `git`) dan menghitung ulang key setiap kali project terlihat,
+AIT membaca file itu langsung (tidak menjalankan `git`) dan menghitung ulang key setiap kali project terlihat,
 juga sekali saat start. Supaya long memory dari semua developer terkumpul di satu tempat, arahkan **Long memory**
 (dan **Business memory**) semua developer ke database yang sama di Setting → Penyimpanan memory. Short memory boleh
 tetap lokal: setelah 24 jam ia pindah ke long memory bersama.
 
 - Memory baru menyimpan key dan nama project-nya, sehingga tetap bernama walau project itu belum terdaftar di mesin
   Anda. Di menu Memory, memory dari developer lain ditampilkan atas nama clone project yang sama di mesin Anda.
-- Memory dari versi lama (tanpa key) otomatis diberi key project-nya saat AiThread start. Di store bersama, setiap
+- Memory dari versi lama (tanpa key) otomatis diberi key project-nya saat AIT start. Di store bersama, setiap
   developer mengisi baris miliknya sendiri, jadi lama-lama semuanya terkunci ke key.
 - Saat key project berubah dari **lokal** menjadi key bersama (remote, file, atau key manual ditambahkan), memory-nya
   ikut pindah. Memory di bawah key bersama tidak pernah dipindah, karena clone developer lain mungkin masih memakainya.
@@ -77,7 +77,7 @@ berlaku tanpa restart.
 
 | Provider | Short | Long | Business | Field yang dipakai |
 |---|---|---|---|---|
-| Bawaan | Garnet di dalam AiThread (`ConnectionStrings:Redis`) | Database utama (`ConnectionStrings:Default`) | Database utama | — |
+| Bawaan | Garnet di dalam AIT (`ConnectionStrings:Redis`) | Database utama (`ConnectionStrings:Default`) | Database utama | — |
 | Redis | ✓ | — | — | host, port (6379), database = indeks (opsional), username (ACL Redis 6+), password |
 | SQL Server | ✓ | ✓ | ✓ | host, port (1433), database, username/password — username kosong = Windows authentication |
 | PostgreSQL | ✓ | ✓ | ✓ | host, port (5432), database, username, password |
@@ -88,7 +88,7 @@ berlaku tanpa restart.
 - **Opsi tambahan** ditambahkan ke connection string dan menimpa field di atas, mis. `SSL Mode=Require` (PostgreSQL),
   `Encrypt=True` (SQL Server), atau `ssl=true` (Redis, dipisah koma). Keyword yang tidak dikenal ditolak saat disimpan.
 - **Test koneksi** memakai isi form tanpa menyimpan. Password kosong = memakai password tersimpan.
-- Saat **disimpan**, AiThread menghubungi store baru dan membuat database (bila belum ada dan user punya hak) serta
+- Saat **disimpan**, AIT menghubungi store baru dan membuat database (bila belum ada dan user punya hak) serta
   tabel `ShortMemories`/`LongMemories`, atau `BusinessPages`/`BusinessPageRevisions`/`BusinessAssets` untuk business
   memory. Store yang tidak bisa dihubungi ditolak, jadi setting lama tetap berlaku. Database eksternal tidak memakai
   migrasi EF; tabel dibuat sendiri pada pemakaian pertama, dan tabel dari versi lama otomatis mendapat kolom baru
@@ -167,7 +167,7 @@ thread selesai (tiap developer) ──► menunggu dirangkum (lokal)
   menandai yang meragukan dengan *(perlu konfirmasi)*, dan memakai bahasa halaman (default Bahasa Indonesia).
 - Thread ditandai *sudah dirangkum* hanya bila semua halaman yang ia sentuh berhasil disimpan; yang gagal dicoba lagi
   di jalan berikutnya.
-- **Banyak developer**: setiap AiThread merangkum thread miliknya sendiri ke store yang sama. Setiap halaman punya
+- **Banyak developer**: setiap AIT merangkum thread miliknya sendiri ke store yang sama. Setiap halaman punya
   nomor versi; penyimpanan atas versi yang sudah berubah ditolak (penulis wiki membaca ulang lalu menulis ulang sekali,
   editor di menu Memory menampilkan pesan *sudah diubah …*). Setiap simpan membuat revisi baru yang bisa dipulihkan.
 - Halaman yang **dikunci** (*Diperbarui AI* dimatikan) tidak pernah diubah penulis wiki — cocok untuk halaman yang

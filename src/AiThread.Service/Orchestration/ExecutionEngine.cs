@@ -13,7 +13,9 @@ public sealed record ExecutionRequest(
     WorkspaceScope Scope,
     RuntimeSettings Settings,
     // Null when the changes need not be undoable (no thread to undo).
-    FileJournal? Journal = null);
+    FileJournal? Journal = null,
+    // Fix tasks of a verification round: their progress lines sit under the round's entry instead of being entries.
+    bool Nested = false);
 
 public sealed record TaskResult(string TaskKey, string File, ThreadTaskStatus Status, string? Summary, string? Diff, string? Error, long DurationMs, int Tokens);
 
@@ -24,6 +26,8 @@ public sealed record ExecutionSummary(IReadOnlyList<TaskResult> Results, long Wa
 // Delete and move tasks are done by FileOperations without a model.
 public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimiter limiter, FileOperations fileOperations)
 {
+    private const string NoModel = "tanpa model";
+
     private int _roundRobin;
 
     public async Task<ExecutionSummary> RunAsync(ExecutionRequest request, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
@@ -33,6 +37,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
         var pending = new List<PlanTask>(request.Plan.Tasks);
         var running = new Dictionary<Task<TaskResult>, string>();
         using var globalGate = new SemaphoreSlim(request.Settings.MaxParallelTasks);
+        var columns = TaskLine.For(request);
         var wall = Stopwatch.StartNew();
 
         while (pending.Count > 0 || running.Count > 0)
@@ -52,13 +57,13 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
                     var failed = dependencies.Where(d => results[d].Status != ThreadTaskStatus.Succeeded).ToList();
                     if (failed.Count > 0)
                     {
-                        results[task.Id] = await SkipAsync(task, entities[task.Id], $"Dependency tidak berhasil: {string.Join(", ", failed)}", recorder, progress, cancellationToken);
+                        results[task.Id] = await SkipAsync(task, entities[task.Id], $"Dependency tidak berhasil: {string.Join(", ", failed)}", columns, recorder, progress, cancellationToken);
                         continue;
                     }
 
                     var run = task.IsFileOperation
-                        ? RunFileOperationAsync(task, entities[task.Id], request, recorder, progress, cancellationToken)
-                        : RunTaskAsync(task, entities[task.Id], request, globalGate, recorder, progress, cancellationToken);
+                        ? RunFileOperationAsync(task, entities[task.Id], request, columns, recorder, progress, cancellationToken)
+                        : RunTaskAsync(task, entities[task.Id], request, globalGate, columns, recorder, progress, cancellationToken);
                     running[run] = task.Id;
                 }
             } while (progressed);
@@ -67,7 +72,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
             {
                 // Unreachable after validation (cycles are rejected), but never spin forever.
                 foreach (var task in pending)
-                    results[task.Id] = await SkipAsync(task, entities[task.Id], "Dependency tidak dapat diselesaikan.", recorder, progress, cancellationToken);
+                    results[task.Id] = await SkipAsync(task, entities[task.Id], "Dependency tidak dapat diselesaikan.", columns, recorder, progress, cancellationToken);
                 break;
             }
 
@@ -87,6 +92,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
         ThreadTask entity,
         ExecutionRequest request,
         SemaphoreSlim globalGate,
+        TaskLine columns,
         ThreadRecorder recorder,
         ClientProgress progress,
         CancellationToken cancellationToken)
@@ -137,7 +143,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
 
             stopwatch.Stop();
             recorder.TaskOutput(entity, string.Empty, flush: true);
-            return await FinishAsync(task, entity, outcome, stopwatch, entity.NodeName, recorder, progress, cancellationToken);
+            return await FinishAsync(task, entity, outcome, stopwatch, entity.NodeName, columns, recorder, progress, cancellationToken);
         }
         finally
         {
@@ -150,6 +156,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
         PlanTask task,
         ThreadTask entity,
         ExecutionRequest request,
+        TaskLine columns,
         ThreadRecorder recorder,
         ClientProgress progress,
         CancellationToken cancellationToken)
@@ -172,7 +179,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
         }
 
         stopwatch.Stop();
-        return await FinishAsync(task, entity, outcome, stopwatch, "tanpa model", recorder, progress, cancellationToken);
+        return await FinishAsync(task, entity, outcome, stopwatch, NoModel, columns, recorder, progress, cancellationToken);
     }
 
     private static async Task<TaskResult> FinishAsync(
@@ -181,6 +188,7 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
         ExecutorOutcome outcome,
         Stopwatch stopwatch,
         string? doneBy,
+        TaskLine columns,
         ThreadRecorder recorder,
         ClientProgress progress,
         CancellationToken cancellationToken)
@@ -198,17 +206,16 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
             e.DurationMs = stopwatch.ElapsedMilliseconds;
         });
 
-        var seconds = stopwatch.Elapsed.TotalSeconds.ToString("0.0");
-        await progress.LineAsync(outcome.Success
-            ? $"   ✅ {task.Id} `{task.Target}` ({seconds}s, {doneBy}) — {outcome.Summary}"
-            : $"   ❌ {task.Id} `{task.Target}` ({seconds}s, {doneBy}) — {outcome.Error}", cancellationToken);
+        var seconds = $"{stopwatch.Elapsed.TotalSeconds:0.0}s";
+        await columns.WriteAsync(progress, outcome.Success ? "✅" : "❌", task.Id, seconds, doneBy ?? NoModel,
+            (outcome.Success ? outcome.Summary : outcome.Error) ?? string.Empty, cancellationToken);
         recorder.Log(outcome.Success ? ActivityLevel.Success : ActivityLevel.Error,
             $"{task.Id} {task.Target}: {(outcome.Success ? outcome.Summary : outcome.Error)}");
 
         return new TaskResult(task.Id, task.File, status, outcome.Summary, outcome.Diff, outcome.Error, stopwatch.ElapsedMilliseconds, outcome.Tokens);
     }
 
-    private static async Task<TaskResult> SkipAsync(PlanTask task, ThreadTask entity, string reason, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
+    private static async Task<TaskResult> SkipAsync(PlanTask task, ThreadTask entity, string reason, TaskLine columns, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
         await recorder.UpdateTaskAsync(entity, e =>
         {
@@ -216,8 +223,29 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
             e.Error = reason;
             e.CompletedAt = DateTime.UtcNow;
         });
-        await progress.LineAsync($"   ⏭️ {task.Id} `{task.Target}` dilewati — {reason}", cancellationToken);
+        await columns.WriteAsync(progress, "⏩", task.Id, "—", "—", $"dilewati — {reason}", cancellationToken);
         return new TaskResult(task.Id, task.File, ThreadTaskStatus.Skipped, null, null, reason, 0, 0);
+    }
+
+    // One progress line per finished task, in columns sized for the whole batch: icon, id, seconds, executor, text.
+    private sealed record TaskLine(int IdWidth, int NodeWidth, bool Nested)
+    {
+        private const int SecondsWidth = 6;
+
+        public static TaskLine For(ExecutionRequest request) => new(
+            request.Plan.Tasks.Select(t => t.Id.Length).DefaultIfEmpty(2).Max(),
+            request.Executors.Select(e => ClientProgress.DisplayWidth(e.Name)).Append(NoModel.Length).Max(),
+            request.Nested);
+
+        public Task WriteAsync(ClientProgress progress, string icon, string id, string seconds, string node, string text, CancellationToken cancellationToken)
+        {
+            var head = $"{icon} {ClientProgress.Pad(id, IdWidth)} {ClientProgress.PadLeft(seconds, SecondsWidth)}  {ClientProgress.Pad(node, NodeWidth)}  ";
+            var hang = ClientProgress.DisplayWidth(head);
+            var line = head + text.ReplaceLineEndings(" ");
+            return Nested
+                ? progress.DetailAsync(line, cancellationToken, hang: hang)
+                : progress.StepAsync(line, cancellationToken, hang: hang);
+        }
     }
 
     // Prefer the executor with the most free slots; rotate among equals so load spreads across models.

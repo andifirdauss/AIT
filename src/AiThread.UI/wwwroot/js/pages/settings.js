@@ -158,9 +158,9 @@
     Default: {
       fields: [],
       help: {
-        stm: 'Server Garnet (protokol Redis) yang berjalan di dalam AiThread — tanpa instalasi apa pun.',
-        ltm: 'Tabel LongMemories di database utama AiThread (ConnectionStrings:Default) — hanya di komputer ini.',
-        bzm: 'Tabel BusinessPages di database utama AiThread — hanya di komputer ini. Pilih database bersama agar wiki dibangun dari semua developer.'
+        stm: 'Server Garnet (protokol Redis) yang berjalan di dalam AIT — tanpa instalasi apa pun.',
+        ltm: 'Tabel LongMemories di database utama AIT (ConnectionStrings:Default) — hanya di komputer ini.',
+        bzm: 'Tabel BusinessPages di database utama AIT — hanya di komputer ini. Pilih database bersama agar wiki dibangun dari semua developer.'
       }
     },
     Redis: {
@@ -185,7 +185,7 @@
     },
     Sqlite: {
       fields: ['database'], database: ['File database', '%LOCALAPPDATA%\\AiThread\\memory.db'],
-      help: 'File lokal, dibuat otomatis. Kosongkan untuk lokasi default. Cocok bila AiThread hanya dipakai di satu komputer.'
+      help: 'File lokal, dibuat otomatis. Kosongkan untuk lokasi default. Cocok bila AIT hanya dipakai di satu komputer.'
     }
   };
   let memoryStorage = null;
@@ -438,7 +438,7 @@
     const button = event.target.closest('button[data-tg-allow], button[data-tg-delete], button[data-tg-revoke]');
     if (!button) return;
     const { tgAllow, tgDelete, tgRevoke } = button.dataset;
-    if (tgRevoke && !confirm('Cabut akses chat ini? Chat tidak bisa lagi mengirim prompt ke AiThread.')) return;
+    if (tgRevoke && !confirm('Cabut akses chat ini? Chat tidak bisa lagi mengirim prompt ke AIT.')) return;
     button.disabled = true;
     try {
       if (tgAllow) {

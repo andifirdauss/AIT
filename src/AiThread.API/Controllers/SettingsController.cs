@@ -42,7 +42,7 @@ public class SettingsController(
     public async Task<ActionResult<ApiResponse<ClaudeSettingsStatusDto>>> ApplyClaude(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken)
     {
         var status = await claudeSettings.ApplyAsync(request, cancellationToken);
-        activityLog.Success("setting", $"Claude Code diarahkan ke AiThread ({status.Path}).");
+        activityLog.Success("setting", $"Claude Code diarahkan ke AIT ({status.Path}).");
         return ApiResponse<ClaudeSettingsStatusDto>.Ok(status, "Claude Code settings diperbarui. Buka sesi Claude Code baru agar berlaku.");
     }
 
@@ -50,8 +50,8 @@ public class SettingsController(
     public async Task<ActionResult<ApiResponse<ClaudeSettingsStatusDto>>> RevertClaude(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken)
     {
         var status = await claudeSettings.RevertAsync(request.Scope, request.ProjectId, ProxyUrlResolver.Resolve(HttpContext), cancellationToken);
-        activityLog.Info("setting", $"Pengarahan Claude Code ke AiThread dihapus ({status.Path}).");
-        return ApiResponse<ClaudeSettingsStatusDto>.Ok(status, "Env AiThread dihapus dari settings Claude Code.");
+        activityLog.Info("setting", $"Pengarahan Claude Code ke AIT dihapus ({status.Path}).");
+        return ApiResponse<ClaudeSettingsStatusDto>.Ok(status, "Env AIT dihapus dari settings Claude Code.");
     }
 
     [HttpGet("claude/hooks")]
@@ -73,6 +73,6 @@ public class SettingsController(
     {
         var status = await claudeSettings.RevertHooksAsync(request.Scope, request.ProjectId, request.ProxyBaseUrl, cancellationToken);
         activityLog.Info("setting", $"Hook /clear Context Keeper dilepas ({status.Path}).");
-        return ApiResponse<ClaudeHooksStatusDto>.Ok(status, "Hook /clear AiThread dihapus dari settings Claude Code.");
+        return ApiResponse<ClaudeHooksStatusDto>.Ok(status, "Hook /clear AIT dihapus dari settings Claude Code.");
     }
 }

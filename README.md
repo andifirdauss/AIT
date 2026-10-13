@@ -1,15 +1,15 @@
-# AiThread
+# AIT
 
 Proxy untuk Claude Code yang memecah satu permintaan menjadi tugas-tugas sangat kecil:
 **planner** (model paling cerdas) merencanakan, banyak **executor** (model murah) mengerjakan secara paralel,
-AiThread membuild project dan (opsional) **reviewer** memeriksa hasilnya sampai lolos, lalu **wrapper** merangkum hasilnya
+AIT membuild project dan (opsional) **reviewer** memeriksa hasilnya sampai lolos, lalu **wrapper** merangkum hasilnya
 untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
 
 > **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** — instalasi, konfigurasi, integrasi Claude Code,
 > penggunaan sehari-hari, memory, cara kerja, troubleshooting, dan referensi API.
 
 ```
-Claude Code ──(ANTHROPIC_BASE_URL)──► AiThread /v1/messages
+Claude Code ──(ANTHROPIC_BASE_URL)──► AIT /v1/messages
                                           │
                   ┌───────────────────────┴───────────────────────┐
                   │ Planner (tool loop, read-only + run_build)     │
@@ -34,7 +34,7 @@ Claude Code ──(ANTHROPIC_BASE_URL)──► AiThread /v1/messages
 ## Kenapa akurat walau konteks executor kecil
 
 Masalah klasik multi-agent: executor UI membuat `id="description"` sementara executor JS membaca `#txtDesc`,
-atau executor JS membuat file baru karena tidak tahu file yang sudah ada. AiThread mencegahnya dengan:
+atau executor JS membuat file baru karena tidak tahu file yang sudah ada. AIT mencegahnya dengan:
 
 1. **Planner wajib membaca kode dulu** (tool read-only, boleh juga membaca path di luar root untuk pengecekan) sebelum `submit_plan`.
 2. **Kontrak**: semua nama yang dipakai lintas file (id elemen, properti DTO, parameter API, kolom DB, pesan validasi)
@@ -57,7 +57,7 @@ serta perbandingan "waktu nyata" vs "jika sekuensial".
 - 9router — `npm install -g 9router` lalu `9router` (dashboard di http://localhost:20128)
 
 Redis/Docker tidak diperlukan: short memory memakai [Garnet](https://microsoft.github.io/garnet/) (server protokol
-Redis dari Microsoft) yang berjalan di dalam proses AiThread — lihat
+Redis dari Microsoft) yang berjalan di dalam proses AIT — lihat
 [docs/01-instalasi.md](docs/01-instalasi.md#1-short-memory-garnet).
 
 ## Menjalankan
@@ -68,7 +68,7 @@ dotnet run --project src/AiThread.UI --launch-profile http   # http://localhost:
 
 Migrasi database diterapkan otomatis saat start.
 
-Agar AiThread tetap hidup walau browser, terminal, atau Visual Studio ditutup, jalankan di background
+Agar AIT tetap hidup walau browser, terminal, atau Visual Studio ditutup, jalankan di background
 (publish Release ke `%LOCALAPPDATA%\AiThread\app`, tanpa jendela):
 
 ```powershell
@@ -121,7 +121,7 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 Laptop ditinggal di kantor/rumah? Kirim prompt dari HP lewat bot Telegram pribadi: **Setting → Telegram** → tempel
 token dari `@BotFather` → *Simpan Telegram*, kirim `/start` ke bot, lalu **Izinkan** chat Anda. Pesan teks biasa
 menjalankan thread di project aktif; progres tampil live di chat dan ringkasan wrapper dikirim saat selesai
-(`/projects`, `/status`, `/cancel`, `/diff`, `/new`). AiThread memakai long polling, jadi tidak perlu URL publik atau
+(`/projects`, `/status`, `/cancel`, `/diff`, `/new`). AIT memakai long polling, jadi tidak perlu URL publik atau
 port forwarding. Detail: [docs/11-telegram.md](docs/11-telegram.md).
 
 ## Skill untuk node
@@ -137,7 +137,7 @@ prompt node setiap kali node dipanggil. Detail: [docs/07-cara-kerja.md](docs/07-
 `POST /v1/messages` diorkestrasi bila request punya `tools`, system prompt Claude Code, pesan terakhir adalah
 teks user (bukan `tool_result`), **dan sesinya berasal dari sebuah project (folder dengan `.git` atau file build)**. Request pendukung lain (judul
 sesi, compact, cek kuota) dan semua prompt dari sesi di luar project diteruskan apa adanya ke `/v1/messages` 9router
-memakai *model passthrough* (default: model node Wrapper). Mematikan *Orkestrasi aktif* membuat AiThread menjadi
+memakai *model passthrough* (default: model node Wrapper). Mematikan *Orkestrasi aktif* membuat AIT menjadi
 proxy biasa.
 
 Pengecekan dilakukan per sesi Claude Code (keputusan diingat 30 menit). Project = folder root yang berisi `.git`
@@ -151,7 +151,7 @@ diabaikan: tanpa orkestrasi, tanpa memory.
 
 - Setelah thread selesai, wrapper model menyarikan maksimal 5 memory: **label** (keyword, dipindai planner tanpa
   membaca isi) dan **deskripsi**.
-- **Short memory** disimpan di Garnet (protokol Redis, di dalam AiThread, tahan restart/crash) tanpa TTL; worker konsolidasi (tiap 10 menit) memindahkan yang berumur
+- **Short memory** disimpan di Garnet (protokol Redis, di dalam AIT, tahan restart/crash) tanpa TTL; worker konsolidasi (tiap 10 menit) memindahkan yang berumur
   > 24 jam ke **long memory** di database dengan id yang sama (idempoten).
 - Planner menerima indeks label (relevan dengan prompt + short memory terbaru) dan bisa memanggil `search_memory` /
   `read_memory`.
@@ -177,7 +177,7 @@ interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executo
 ## Catatan penting
 
 - Executor **menulis langsung ke file project**. Jalankan di repo git agar perubahan mudah ditinjau atau dibatalkan.
-- Satu-satunya perintah yang dijalankan AiThread adalah build project (bisa dimatikan di Setting); test, migrasi, dan
+- Satu-satunya perintah yang dijalankan AIT adalah build project (bisa dimatikan di Setting); test, migrasi, dan
   git tidak dijalankan — langkah lanjutan disebutkan di ringkasan wrapper.
 - Proxy dapat menulis file di folder mana pun yang dikirim sebagai working directory. Biarkan hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin diakses orang lain.

@@ -1,13 +1,13 @@
-# Dokumentasi AiThread
+# Dokumentasi AIT
 
-AiThread adalah proxy lokal di antara agen coding (**Claude Code**, **Codex CLI**, **Gemini CLI**, oh-my-pi, …) dan
+AIT adalah proxy lokal di antara agen coding (**Claude Code**, **Codex CLI**, **Gemini CLI**, oh-my-pi, …) dan
 **9router**. Setiap prompt yang Anda ketik direncanakan oleh satu model yang kuat (planner), dikerjakan paralel oleh
 banyak model murah (executor) dengan konteks sekecil mungkin, lalu dirangkum (wrapper) sebelum dikirim balik ke agen
 Anda dalam format yang ia pahami (Anthropic, OpenAI, atau Gemini). Panduan utama memakai Claude Code; klien lain ada di
 [Klien lain](03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll).
 
 ```
-Anda ─► Claude Code ─► AiThread ─► Planner ─► Executor × N (paralel) ─► Wrapper ─► Claude Code
+Anda ─► Claude Code ─► AIT ─► Planner ─► Executor × N (paralel) ─► Wrapper ─► Claude Code
                            │                                                │
                            └──────────── 9router (semua model) ◄────────────┘
 ```
@@ -35,7 +35,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 |---|---|---|
 | 1 | [Instalasi](01-instalasi.md) | Prasyarat, short memory (Garnet), 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
 | 2 | [Konfigurasi](02-konfigurasi.md) | Menu Setting (9router, proxy, orkestrasi) dan menu Node (memilih model per peran) |
-| 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code (dan Codex, Gemini CLI, oh-my-pi) ke AiThread lewat menu CLI, verifikasi, mengembalikan |
+| 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code (dan Codex, Gemini CLI, oh-my-pi) ke AIT lewat menu CLI, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
 | 5 | [Panduan menu](05-menu.md) | Dashboard, detail thread, Project, Memory, Node, CLI, Setting |
 | 6 | [Memory](06-memory.md) | Short vs long memory, project vs knowledge memory, siklus hidup, pengelolaan |
@@ -54,12 +54,12 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | **Executor** | Node murah. Mengerjakan satu tugas = satu file. Banyak executor berjalan paralel. |
 | **Wrapper** | Node yang mengumpulkan semua hasil executor dan menulis balasan untuk Anda. |
 | **Kontrak** | Daftar nama yang dipakai lintas file (id elemen, properti DTO, parameter API, kolom DB) — wajib dipakai persis oleh semua executor. |
-| **Tugas** | Instruksi untuk satu file (`edit`, `create`, `delete`, `move`, atau `extract`), bisa bergantung pada tugas lain (`dependsOn`). `delete`, `move`, dan `extract` (memindahkan member C# ke file lain, mis. memecah class jadi `partial`) dijalankan AiThread tanpa model. |
+| **Tugas** | Instruksi untuk satu file (`edit`, `create`, `delete`, `move`, atau `extract`), bisa bergantung pada tugas lain (`dependsOn`). `delete`, `move`, dan `extract` (memindahkan member C# ke file lain, mis. memecah class jadi `partial`) dijalankan AIT tanpa model. |
 | **Node** | Konfigurasi satu pekerja AI: peran, model 9router, temperature, max token, batas paralel. |
 | **Combo** | Model gabungan di 9router yang otomatis fallback antar provider. Bisa dipilih seperti model biasa. |
 | **Passthrough** | Request Claude Code yang tidak diorkestrasi (judul sesi, compact, cek kuota, sesi di luar project) dan diteruskan langsung ke 9router. |
 | **Project** | Folder root yang berisi `.git` atau file build (`.sln`, `pom.xml`, `package.json`, `go.mod`, …). Identitas unik sebuah codebase; memory terikat padanya. |
 | **Sesi diabaikan** | Sesi yang working directory-nya bukan bagian sebuah project (tidak ada marker). Semua prompt-nya dilewatkan apa adanya — tidak ada planner/executor, project, maupun memory. |
-| **Short memory** | Memory baru, disimpan di Garnet (server protokol Redis di dalam AiThread) selama ±24 jam. |
+| **Short memory** | Memory baru, disimpan di Garnet (server protokol Redis di dalam AIT) selama ±24 jam. |
 | **Long memory** | Memory yang sudah dipindah dari short memory ke database. |
 | **Project memory / Knowledge memory** | Pengetahuan khusus satu project / pola umum yang berguna lintas project. |

@@ -103,7 +103,7 @@ public sealed class TelegramThreadReporter(TelegramApi api, IThreadService threa
         }
         if (chunks.Count > MaxResultMessages)
             await api.SendAsync(context.ChatId,
-                $"… {chunks.Count - MaxResultMessages} bagian lagi tidak dikirim. Lihat detail thread di dashboard AiThread.", cancellationToken: cancellationToken);
+                $"… {chunks.Count - MaxResultMessages} bagian lagi tidak dikirim. Lihat detail thread di dashboard AIT.", cancellationToken: cancellationToken);
     }
 
     // Returns when an event about this thread arrives or after the idle refresh, keeping the latest planner activity.

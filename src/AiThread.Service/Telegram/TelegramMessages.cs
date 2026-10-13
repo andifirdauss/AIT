@@ -28,12 +28,12 @@ public static class TelegramMessages
 
     public const string TextOnly = "Hanya pesan teks yang didukung. Kirim /help untuk bantuan.";
     public const string UnknownCommand = "Perintah tidak dikenal. Kirim /help untuk daftar perintah.";
-    public const string NoProjects = "Belum ada project terdaftar. Buka sesi di folder project (berisi <code>.git</code> atau file build) atau daftarkan foldernya di menu <b>Project</b> AiThread terlebih dahulu.";
+    public const string NoProjects = "Belum ada project terdaftar. Buka sesi di folder project (berisi <code>.git</code> atau file build) atau daftarkan foldernya di menu <b>Project</b> AIT terlebih dahulu.";
     public const string ConversationReset = "🆕 Percakapan baru. Prompt berikutnya dikirim tanpa riwayat sebelumnya.";
     public const string NothingToCancel = "Tidak ada thread berjalan dari chat ini. Untuk thread lain: <code>/cancel &lt;id&gt;</code> (lihat /status).";
     public const string NoThreadYet = "Belum ada thread dari chat ini.";
-    public const string Revoked = "🔒 Akses chat ini ke AiThread dicabut.";
-    public const string DiffTruncated = "… diff terlalu panjang untuk Telegram; lihat detail thread di dashboard AiThread.";
+    public const string Revoked = "🔒 Akses chat ini ke AIT dicabut.";
+    public const string DiffTruncated = "… diff terlalu panjang untuk Telegram; lihat detail thread di dashboard AIT.";
 
     private const int MaxListedTasks = 25;
     private const int MaxListedProjects = 30;
@@ -67,7 +67,7 @@ public static class TelegramMessages
         status is ThreadStatus.Pending or ThreadStatus.Planning or ThreadStatus.Executing or ThreadStatus.Verifying or ThreadStatus.Wrapping;
 
     public static string Help(string? activeProject) => Lines(
-        "🧵 <b>AiThread</b> — prompt jarak jauh",
+        "🧵 <b>AIT</b> — prompt jarak jauh",
         "",
         "Kirim pesan biasa untuk menjalankan prompt di project aktif. Planner menyusun rencana, executor mengerjakan paralel, lalu ringkasannya dikirim ke sini.",
         "",
@@ -83,14 +83,14 @@ public static class TelegramMessages
         "<i>Prompt lanjutan di project yang sama membawa percakapan sebelumnya sebagai konteks, sampai /new atau ganti project.</i>");
 
     public static string NotAllowed(string displayName, long chatId) => Lines(
-        "🔒 Chat ini belum diizinkan memakai AiThread.",
+        "🔒 Chat ini belum diizinkan memakai AIT.",
         "",
-        $"Di komputer yang menjalankan AiThread, buka <b>Setting → Telegram</b> lalu klik <b>Izinkan</b> pada chat <b>{Escape(displayName)}</b> (ID <code>{chatId}</code>).");
+        $"Di komputer yang menjalankan AIT, buka <b>Setting → Telegram</b> lalu klik <b>Izinkan</b> pada chat <b>{Escape(displayName)}</b> (ID <code>{chatId}</code>).");
 
-    public static string Allowed(string? activeProject) => Lines("✅ Chat ini sekarang diizinkan memakai AiThread.", "", Help(activeProject));
+    public static string Allowed(string? activeProject) => Lines("✅ Chat ini sekarang diizinkan memakai AIT.", "", Help(activeProject));
 
     public static string Stale(DateTime sentAtUtc) =>
-        $"⏸️ Pesan ini terkirim saat AiThread tidak berjalan ({sentAtUtc.ToLocalTime().ToString("d MMM HH:mm", Indonesian)}) sehingga tidak dijalankan. Kirim ulang bila masih diperlukan.";
+        $"⏸️ Pesan ini terkirim saat AIT tidak berjalan ({sentAtUtc.ToLocalTime().ToString("d MMM HH:mm", Indonesian)}) sehingga tidak dijalankan. Kirim ulang bila masih diperlukan.";
 
     public static string Starting(string projectName) => $"🧵 <b>{Escape(projectName)}</b> · menyiapkan thread…";
 
@@ -99,11 +99,11 @@ public static class TelegramMessages
     public static string StillRunning(Guid threadId) =>
         $"⏳ Thread <code>{ShortId(threadId)}</code> masih berjalan. Tunggu sampai selesai atau kirim /cancel.";
 
-    public static string Failure(string error) => $"⚠️ Terjadi kesalahan di AiThread: {Escape(error)}";
+    public static string Failure(string error) => $"⚠️ Terjadi kesalahan di AIT: {Escape(error)}";
 
     public static string Interrupted(Guid threadId) =>
-        $"⚠️ AiThread berhenti saat thread <code>{ShortId(threadId)}</code> berjalan, jadi thread ini tidak selesai. " +
-        $"Tugas yang sempat selesai tetap tertulis — cek <code>/diff {ShortId(threadId)}</code> setelah AiThread hidup lagi, lalu kirim ulang prompt bila perlu.";
+        $"⚠️ AIT berhenti saat thread <code>{ShortId(threadId)}</code> berjalan, jadi thread ini tidak selesai. " +
+        $"Tugas yang sempat selesai tetap tertulis — cek <code>/diff {ShortId(threadId)}</code> setelah AIT hidup lagi, lalu kirim ulang prompt bila perlu.";
 
     public static string ProjectList(IReadOnlyList<TelegramProject> projects, Guid? activeId, string? intro)
     {

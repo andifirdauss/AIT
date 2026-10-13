@@ -34,7 +34,7 @@ public class AnthropicProxyController(
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
         if (!await handler.AuthorizeAsync(Request, cancellationToken))
         {
-            await AgentProxyHandler.WriteErrorAsync(Response, ClientProtocol.AnthropicMessages, StatusCodes.Status401Unauthorized, "authentication_error", "Invalid AiThread proxy key (ANTHROPIC_AUTH_TOKEN).");
+            await AgentProxyHandler.WriteErrorAsync(Response, ClientProtocol.AnthropicMessages, StatusCodes.Status401Unauthorized, "authentication_error", "Invalid AIT proxy key (ANTHROPIC_AUTH_TOKEN).");
             return;
         }
 

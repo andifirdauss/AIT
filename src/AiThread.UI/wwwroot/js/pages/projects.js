@@ -38,7 +38,7 @@
       const projects = await api.get('/api/projects');
       tbody.innerHTML = projects.length
         ? projects.map(row).join('')
-        : '<tr><td colspan="7" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari folder project, atau buka Claude Code di folder project (berisi .git atau file build) melalui AiThread.</td></tr>';
+        : '<tr><td colspan="7" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari folder project, atau buka Claude Code di folder project (berisi .git atau file build) melalui AIT.</td></tr>';
     } catch (error) {
       tbody.innerHTML = `<tr><td colspan="7" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }

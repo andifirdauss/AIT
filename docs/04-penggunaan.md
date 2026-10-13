@@ -2,74 +2,122 @@
 
 ## Alur kerja
 
-1. Pastikan 9router dan AiThread berjalan (pill *9router* di sidebar AiThread berwarna hijau).
-2. Buka Claude Code di folder project yang sudah diarahkan ke AiThread.
+1. Pastikan 9router dan AIT berjalan (pill *9router* di sidebar AIT berwarna hijau).
+2. Buka Claude Code di folder project yang sudah diarahkan ke AIT.
 3. Ketik permintaan seperti biasa.
 4. Pantau progres di Claude Code, atau buka Dashboard → thread untuk detailnya.
 5. Tinjau perubahan dengan `git diff`.
 6. Jalankan sendiri langkah lanjutan yang disebut ringkasan (build, script SQL/migrasi, restart).
 7. Lanjutkan dengan prompt berikutnya — percakapan sebelumnya dan memory ikut dibaca planner.
 
-## Membaca progres di Claude Code
+## Membaca output di Claude Code
 
 Contoh untuk prompt *"Tambahkan kolom deskripsi di form user: field di UI, logic di JS, validasi di service, dan DDL database."*:
 
-```
-**AiThread** · `SampleApp` · thread `5e469b54`
-🧠 Planner `cc/claude-opus` menganalisis project & menyusun rencana…
-   · list_directory `.`
-   · read_file `src/Web/Views/User/Index.cshtml`
-   · read_file `src/Web/wwwroot/js/user.js`
-   · read_file `src/Service/UserService.cs`
-   · search_memory "user description validation"
-📋 Rencana: Menambah field Deskripsi pada form User: input di view, pengiriman nilai di JS, validasi di service, dan script DDL kolom baru.
-   • T1 `src/Web/Views/User/Index.cshtml` — Add description textarea to the user form
-   • T2 `src/Web/wwwroot/js/user.js` — Send description in saveUser
-   • T3 `database/AddUserDescription.sql` — DDL script for Users.Description
-   • T4 `src/Service/UserService.cs` — Validate description length (setelah T3)
-⚙️ Menjalankan 4 tugas paralel di 2 executor…
-   ✅ T2 `src/Web/wwwroot/js/user.js` (1.7s, Combo Executor) — saveUser now sends description from #txtDescription.
-   ✅ T3 `database/AddUserDescription.sql` (1.7s, GLM Executor) — Created an idempotent script adding Users.Description.
-   ✅ T1 `src/Web/Views/User/Index.cshtml` (1.8s, GLM Executor) — Added the txtDescription textarea after the name field.
-   ✅ T4 `src/Service/UserService.cs` (3.3s, Combo Executor) — Added a 500-character limit for Description.
-⏱️ Eksekusi selesai dalam 5.0s (total kerja executor 8.4s → 1.7x lebih cepat dari sekuensial)
-🔍 Verifikasi: build `dotnet build SampleApp.sln` + reviewer `cc/claude-sonnet`…
-🔨 Build `dotnet build SampleApp.sln`…
-   ❌ build gagal: 1 error (14.2s)
-      · src/Service/UserService.cs(48,13): CS0103: The name 'MaxDescriptionLength' does not exist in the current context
-🔎 Reviewer `cc/claude-sonnet` memeriksa hasil…
-   ⚠️ Reviewer menemukan 1 masalah: Konstanta batas panjang deskripsi belum dideklarasikan.
-      · `src/Service/UserService.cs` — MaxDescriptionLength is used but never declared.
-🛠️ Putaran perbaikan 1: 1 tugas…
-   • V1-1 `src/Service/UserService.cs` — Fix build errors and review findings
-   ✅ V1-1 `src/Service/UserService.cs` (2.1s, GLM Executor) — Declared MaxDescriptionLength = 500.
-🔨 Build `dotnet build SampleApp.sln`…
-   ✅ build berhasil (9.8s)
-🔎 Reviewer `cc/claude-sonnet` memeriksa hasil…
-   ✅ Reviewer: Semua layer memakai txtDescription/Description sesuai kontrak.
-📦 Wrapper `glm/glm-cheap` merangkum hasil…
+`````
+**AIT** · `SampleApp` · thread `5e469b54`
+````text
+🧠 Planner · cc/claude-opus
+│  ├─ list_directory  .
+│  ├─ search_memory   "user description validation"
+│  ├─ read_memory     2 item
+│  ├─ read_file       src/Web/Views/User/Index.cshtml
+│  ├─ read_file       src/Web/wwwroot/js/user.js
+│  ├─ read_file       src/Service/UserService.cs
+│  └─ selesai dalam 12.3s
+│
+📋 Rencana · 4 tugas
+│  Menambah field Deskripsi pada form User: input di view, pengiriman nilai di JS, validasi
+│  di service, dan script DDL kolom baru.
+│  ├─ T1 src/Web/Views/User/Index.cshtml
+│  │     Add description textarea to the user form
+│  ├─ T2 src/Web/wwwroot/js/user.js
+│  │     Send description in saveUser
+│  ├─ T3 database/AddUserDescription.sql
+│  │     DDL script for Users.Description
+│  └─ T4 src/Service/UserService.cs ← T3
+│        Validate description length
+│
+🚀 Eksekusi · 2 executor paralel
+│  ├─ ✅ T2   1.7s  Combo Executor  saveUser now sends description from #txtDescription.
+│  ├─ ✅ T3   1.7s  GLM Executor    Created an idempotent script adding Users.Description.
+│  ├─ ✅ T1   1.8s  GLM Executor    Added the txtDescription textarea after the name field.
+│  ├─ ✅ T4   3.3s  Combo Executor  Added a 500-character limit for Description.
+│  └─ 4/4 berhasil · 5.0s (1.7x lebih cepat dari sekuensial)
+│
+🔍 Verifikasi · dotnet build SampleApp.sln + reviewer cc/claude-sonnet
+│  ├─ 🔨 Build gagal: 1 error (14.2s)
+│  │     src/Service/UserService.cs(48,13): CS0103: The name 'MaxDescriptionLength' does
+│  │     not exist in the current context
+│  ├─ 🔎 Reviewer: 1 masalah — Konstanta batas panjang deskripsi belum dideklarasikan.
+│  │     src/Service/UserService.cs — MaxDescriptionLength is used but never declared.
+│  ├─ 🔧 Perbaikan 1 · 1 tugas
+│  │     ✅ V1-1   2.1s  GLM Executor    Declared MaxDescriptionLength = 500.
+│  ├─ ✅ Build berhasil (9.8s)
+│  ├─ ✅ Reviewer: Semua layer memakai txtDescription/Description sesuai kontrak.
+│  └─ lolos setelah 1 putaran perbaikan
+│
+📦 Rangkuman · glm/glm-cheap
+````
 
 ---
 
-Field **Deskripsi** sudah ditambahkan end-to-end. …
-```
+✅ **Selesai** · 4/4 tugas · build lolos · reviewer setuju
 
-| Baris | Arti |
+Field **Deskripsi** sudah ditambahkan end-to-end. Jalankan `database/AddUserDescription.sql` di database sebelum
+mencoba form-nya.
+
+**File berubah**
+
+| File | Aksi | Baris | Tugas |
+|---|---|---|---|
+| `src/Web/Views/User/Index.cshtml` | ubah | +4 | T1 |
+| `src/Web/wwwroot/js/user.js` | ubah | +1 −1 | T2 |
+| `database/AddUserDescription.sql` | baru | +9 | T3 |
+| `src/Service/UserService.cs` | ubah | +7 | T4, V1-1 |
+
+⏱️ 48.6s · 🪙 41.2k token · 🧠 2 memory dipakai, +2 memory baru · 📚 Wiki masuk antrian rangkuman berikutnya (tiap 6 jam)
+
+🔗 Detail & rollback: http://localhost:5225/Thread/Detail/5e469b54-…
+`````
+
+Output terdiri dari tiga bagian:
+
+1. **Baris anchor** `**AIT** · project · thread …`: nama project yang terdeteksi dan id thread (cari di Dashboard). Baris
+   ini hanya muncul untuk sesi di dalam sebuah project (folder dengan `.git` atau file build), dan selalu tampil
+   walaupun progres disembunyikan — AIT memakainya untuk mengenali thread sebelumnya di percakapan. Balasan lama yang
+   masih bertuliskan `**AiThread**` tetap dikenali.
+2. **Progres** dalam blok teks (font monospace), berbentuk *vertical stepper*: tiap fase diawali emoji, entri fase
+   memakai `├─`, dan fase ditutup baris `└─` berisi hasilnya. Baris panjang dipotong di 90 kolom.
+3. **Jawaban akhir** setelah `---`.
+
+| Fase / baris | Arti |
 |---|---|
-| `**AiThread** · MyApp · thread …` | Nama project yang terdeteksi dan id thread (cari di Dashboard). Baris ini hanya muncul untuk sesi di dalam sebuah project (folder dengan `.git` atau file build). |
-| `🧠 Planner …` dan baris `·` | Planner sedang membaca kode. Setiap baris adalah satu panggilan tool (read-only). |
-| `📋 Rencana` dan `•` | Rencana yang sudah lolos validasi, satu baris per tugas. `(setelah T3)` = menunggu tugas lain. |
-| `✅` / `❌` / `⏭️` | Tugas berhasil / gagal (dengan alasan) / dilewati karena tugas yang ditunggunya gagal. |
-| `⏱️ … lebih cepat dari sekuensial` | Waktu nyata tahap eksekusi dibanding total waktu kerja semua executor. |
-| `🔍 Verifikasi`, `🔨 Build`, `🔎 Reviewer` | AiThread membuild project dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). Error ditampilkan maks 5 baris. |
-| `🛠️ Putaran perbaikan` dan `V1-1`, … | Error build dan temuan reviewer diserahkan ke executor sebagai tugas perbaikan, lalu dicek ulang. |
-| `---` lalu teks | Ringkasan wrapper — bagian yang perlu Anda baca. |
+| `🧠 Planner` | Planner membaca kode. Tiap entri adalah satu panggilan tool (read-only); nama tool rata kiri agar argumennya sejajar. `run_build` tampil dua baris: perintahnya, lalu hasilnya di bawahnya. |
+| `📋 Rencana` | Ringkasan rencana, lalu satu entri per tugas: id, path relatif penuh, dependensi (`← T3` = menunggu T3), dan judul tugas di baris bawahnya. |
+| `🚀 Eksekusi` | Satu baris per tugas yang selesai, dalam kolom: status, id, durasi, executor, ringkasan. `✅` berhasil, `❌` gagal (dengan alasan), `⏩` dilewati karena tugas yang ditunggunya gagal, `🟡` node dialihkan ke cadangannya. Penutupnya menyebut waktu nyata dan, bila paralel memang menghemat waktu, berapa kali lebih cepat dari sekuensial. |
+| `🔍 Verifikasi` | AIT membuild project dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). `🔨` build gagal (error maks 5 baris), `🔎` temuan reviewer, `🔧 Perbaikan` = putaran tugas perbaikan `V1-1`, …, `🟡` peringatan. |
+| `📦 Rangkuman` | Node Wrapper sedang menulis jawaban akhir. Tidak muncul bila tidak ada Wrapper aktif. |
 
-Progres bisa disembunyikan lewat Setting → *Tampilkan progres di Claude Code*; ringkasan tetap tampil.
+Jawaban akhir disusun sebagian oleh AIT sendiri (dari hasil, bukan dari model) dan sebagian oleh Wrapper:
+
+| Bagian | Dibuat oleh | Isi |
+|---|---|---|
+| Baris status | AIT | `✅ Selesai` / `🟡 Selesai sebagian` / `❌ Gagal`, jumlah tugas rencana yang berhasil (tugas perbaikan `V` tidak dihitung), hasil build dan reviewer terakhir. |
+| **Perlu perhatian** | AIT | Hanya bila ada tugas gagal/dilewati atau error build/temuan reviewer yang tersisa. |
+| Teks | Wrapper | 1–3 kalimat tentang apa yang dikerjakan, saran untuk masalah yang tersisa, dan langkah lanjutan bila perlu. Tanpa node Wrapper (atau bila Wrapper gagal), ringkasan rencana yang tampil. |
+| **File berubah** | AIT | Satu baris per file dari diff: aksi (`baru`/`ubah`/`hapus`/`pindah`), baris `+`/`−`, dan tugas yang menyentuhnya. |
+| Footer | AIT | Durasi total, total token (planner + executor + reviewer + wrapper + ekstraksi memory), memory yang dipakai planner dan memory baru, antrian wiki bisnis (bila *Business memory* aktif), dan link ke halaman thread untuk detail & rollback. |
+
+Footer menunggu ekstraksi memory selesai, paling lama 30 detik. Bila lebih lama, footer menulis
+*memory baru masih diproses* dan ekstraksi tetap berjalan di latar belakang. Yang disimpan sebagai jawaban thread
+(Dashboard, Telegram, context keeper) hanya teks Wrapper atau ringkasan otomatis.
+
+Progres bisa disembunyikan lewat Setting → *Tampilkan progres di Claude Code*; anchor dan jawaban akhir tetap tampil.
 
 ## Menulis prompt yang efektif
 
-AiThread paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
+AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 
 - **Sebut layer yang diinginkan**: "field di UI, JS, parameter API, parameter & validasi service, DDL".
 - **Tunjuk contoh yang sudah ada** agar planner meniru polanya: "sama seperti kolom `Email` di form yang sama".
@@ -78,11 +126,11 @@ AiThread paling efektif untuk perubahan yang menyentuh beberapa file/layer sekal
 - **Pertanyaan boleh langsung ditanyakan** ("di mana validasi user?"). Planner membaca kode lalu menjawab tanpa
   membuat tugas — tidak ada executor yang berjalan.
 
-## Yang tidak dilakukan AiThread
+## Yang tidak dilakukan AIT
 
 - Tidak menjalankan test, migrasi, git, instalasi paket, atau perintah shell lain. Satu-satunya perintah adalah
   **build** project (bila *Build & verifikasi otomatis* menyala): Anda bisa meminta "build lalu perbaiki errornya",
-  dan setelah tiap perubahan AiThread membuild ulang sendiri. Langkah lain disebutkan di ringkasan.
+  dan setelah tiap perubahan AIT membuild ulang sendiri. Langkah lain disebutkan di ringkasan.
 - Tidak memakai tool bawaan Claude Code: saat orkestrasi aktif, Claude Code berfungsi sebagai tampilan percakapan.
   Untuk pekerjaan yang butuh menjalankan perintah selain build, matikan *Orkestrasi aktif* sementara (Claude Code
   menjadi agen biasa lewat 9router) atau kembalikan integrasi.
@@ -137,7 +185,7 @@ Cara kerjanya:
 1. **Sebelum** executor menulis sebuah file untuk pertama kali dalam thread, isi aslinya disimpan di database apa
    adanya (byte demi byte, termasuk encoding dan akhir baris). File yang belum ada dicatat sebagai "belum ada".
    Penulisan berikutnya di thread yang sama (putaran perbaikan, percobaan ulang) tidak menimpa catatan ini.
-2. **Setelah** setiap penulisan, sidik jari (hash SHA-256) isi yang ditulis AiThread ikut dicatat. File yang dihapus
+2. **Setelah** setiap penulisan, sidik jari (hash SHA-256) isi yang ditulis AIT ikut dicatat. File yang dihapus
    atau dipindahkan thread (tugas `delete`/`move`) dicatat sebagai "dihapus thread". Tugas `extract` mencatat file
    sumber dan file tujuannya seperti penulisan biasa.
 3. Tombol ini membuka pratinjau per file:
@@ -154,7 +202,7 @@ Cara kerjanya:
 Batasan:
 
 - Hanya bisa saat thread tidak sedang berjalan.
-- Hanya mencakup file yang ditulis, dihapus, atau dipindahkan AiThread, bukan perubahan lain (mis. output build).
+- Hanya mencakup file yang ditulis, dihapus, atau dipindahkan AIT, bukan perubahan lain (mis. output build).
 - Folder yang menjadi kosong setelah file buatan thread dihapus ikut dihapus.
 - Thread yang berjalan sebelum fitur ini ada tidak punya catatan, jadi tidak bisa dibatalkan.
 
@@ -173,9 +221,9 @@ ada di [Prompt dari Telegram](11-telegram.md).
 
 ## Sesi di luar project
 
-AiThread hanya mengorkestrasi sesi yang dibuka di dalam sebuah project: folder yang berisi `.git` atau file build
+AIT hanya mengorkestrasi sesi yang dibuka di dalam sebuah project: folder yang berisi `.git` atau file build
 (`.sln`, `pom.xml`, `package.json`, `go.mod`, dst.), atau salah satu sub-foldernya. Bahasa project tidak dibatasi.
-Pada prompt pertama sebuah sesi, AiThread memeriksa working directory-nya:
+Pada prompt pertama sebuah sesi, AIT memeriksa working directory-nya:
 
 - **ada marker project** → project didaftarkan (bila belum) dan semua prompt sesi itu diorkestrasi;
 - **tidak ada marker** → sesi **diabaikan**: prompt diteruskan langsung ke 9router, Claude Code bekerja sebagai agen
@@ -205,10 +253,10 @@ menjelaskannya di jawaban dan tidak membuat tugas. Untuk mengerjakan project lai
 
 ## Percakapan lanjutan
 
-Setiap giliran, AiThread mengirim ke planner hingga 12 pesan terakhir percakapan (dipotong bila panjang) dan indeks
+Setiap giliran, AIT mengirim ke planner hingga 12 pesan terakhir percakapan (dipotong bila panjang) dan indeks
 memory project. Jadi "sekarang tambahkan juga di halaman detail" bisa dipahami tanpa mengulang konteks.
 
 Sesekali planner balik bertanya, misalnya bila permintaan bisa ditafsirkan dua cara yang hasilnya berbeda jauh.
-Balasan AiThread lalu berupa pertanyaan bernomor (status thread *Menunggu jawaban*); ketik nomor pilihan atau jawaban
+Balasan AIT lalu berupa pertanyaan bernomor (status thread *Menunggu jawaban*); ketik nomor pilihan atau jawaban
 Anda sebagai prompt berikutnya, dan thread yang sama dilanjutkan. Lihat
 [Pertanyaan dari planner](07-cara-kerja.md#pertanyaan-dari-planner).

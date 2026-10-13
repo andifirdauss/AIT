@@ -54,8 +54,13 @@ public class ThreadOrchestratorTests
         Assert.Equal(ThreadStatus.Completed, result.Status);
         Assert.Contains(HalloLine, harness.ReadFile(GreeterFile));
         Assert.Contains("public class Farewell", harness.ReadFile(FarewellFile));
-        // Streamed progress is separated from the final reply.
-        Assert.EndsWith("\n---\n\nSelesai: sapaan jadi Halo dan Farewell ditambahkan.", observer.Final);
+        // Progress is a stepper inside a ````text block; the answer is status, wrapper text, changed files, footer.
+        Assert.StartsWith("````text\n🧠 Planner · planner-model\n", observer.Lines[1]);
+        Assert.StartsWith("````\n\n---\n\n✅ **Selesai** · 2/2 tugas\n\n", observer.Final);
+        Assert.Contains("Selesai: sapaan jadi Halo dan Farewell ditambahkan.", observer.Final);
+        Assert.Contains("| `src/Greeter.cs` | ubah | +1 −1 | T1 |", observer.Final);
+        Assert.Contains("| `src/Farewell.cs` | baru | +3 | T2 |", observer.Final);
+        Assert.Contains("+1 memory baru", observer.Final);
 
         // The planner saw the file it asked for before submitting.
         var plannerCalls = router.CallsTo(ScriptedAgent.Planner);
@@ -104,7 +109,9 @@ public class ThreadOrchestratorTests
         var (result, observer) = await harness.RunAsync("Apa yang dikembalikan Greeter.Hello()?");
 
         Assert.Equal(ThreadStatus.Completed, result.Status);
-        Assert.EndsWith("Greeter.Hello() mengembalikan \"Hi\".", observer.Final);
+        Assert.Contains("````\n\n---\n\nGreeter.Hello() mengembalikan \"Hi\".", observer.Final);
+        Assert.DoesNotContain("**File berubah**", observer.Final);
+        Assert.Contains("🪙", observer.Final);
         Assert.Empty(harness.Router.CallsTo(ScriptedAgent.Executor));
         Assert.Empty(harness.Router.CallsTo(ScriptedAgent.Wrapper));
 
@@ -221,7 +228,7 @@ public class ThreadOrchestratorTests
 
         Assert.Equal(ThreadStatus.Completed, result.Status);
         Assert.Equal(["planner-main", "planner-backup"], router.CallsTo(ScriptedAgent.Planner).Select(c => c.Model));
-        Assert.Contains(observer.Lines, l => l.Contains("beralih ke `planner-backup`"));
+        Assert.Contains(observer.Lines, l => l.Contains("→ pindah ke planner-backup"));
 
         var thread = await harness.LoadThreadAsync(result.ThreadId);
         Assert.Equal("planner-backup", thread.PlannerModel);
@@ -250,7 +257,7 @@ public class ThreadOrchestratorTests
 
         Assert.Equal(first.ThreadId, second.ThreadId);
         Assert.Equal(ThreadStatus.Completed, second.Status);
-        Assert.EndsWith("Oke, memakai Halo.", secondObserver.Final);
+        Assert.Contains("Oke, memakai Halo.", secondObserver.Final);
 
         // The answer reaches the planner as the result of its ask_user call.
         var resumed = router.CallsTo(ScriptedAgent.Planner)[1].Messages;
@@ -285,7 +292,9 @@ public class ThreadOrchestratorTests
 
         var thread = await harness.LoadThreadAsync(result.ThreadId);
         Assert.StartsWith("**Ringkasan:**", thread.FinalResponse);
-        Assert.EndsWith(thread.FinalResponse!, observer.Final);
+        // The client gets the plan summary between the status and the files instead of the stored automatic summary.
+        Assert.DoesNotContain("**Ringkasan:**", observer.Final);
+        Assert.Contains("| `src/Greeter.cs` | ubah | +1 −1 | T1 |", observer.Final);
         Assert.Equal(0, thread.WrapperTokens);
     }
 

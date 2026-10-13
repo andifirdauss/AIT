@@ -34,7 +34,7 @@ mengirim ulang seluruh percakapan, jadi token input cepat menumpuk. Sebagian bes
 menghitung semua token input: satu thread planner `cc/claude-opus-…` dengan 10–20 langkah bisa memakai 0,2–1 juta
 token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya beserta porsi cache-nya. Solusi:
 - Tambahkan node Planner **kedua** (model/provider lain; boleh nonaktif) dan pilih sebagai *Node cadangan* di form
-  planner utama. AiThread beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di
+  planner utama. AIT beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di
   progres. Cara yang sama berlaku untuk executor, reviewer, dan wrapper (lihat
   [Node cadangan](02-konfigurasi.md#node-cadangan)).
 - Thread yang sudah terlanjur gagal tidak perlu diulang dari awal: buka detail thread → **Ulangi yang gagal**.
@@ -44,16 +44,16 @@ token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya bes
 **"Model '…' tidak merespons dalam N detik"**
 Naikkan Setting → *Timeout (detik)*, atau pakai model yang lebih cepat.
 
-## Claude Code tidak melewati AiThread
+## Claude Code tidak melewati AIT
 
-Jawaban muncul tanpa baris `**AiThread** · …` dan tidak ada thread baru di Dashboard:
+Jawaban muncul tanpa baris `**AIT** · …` dan tidak ada thread baru di Dashboard:
 
 1. Buka **sesi Claude Code baru** — env hanya dibaca saat sesi dimulai.
 2. Menu CLI → kartu Claude Code: switch harus menyala dengan lencana *Aktif* (bukan *Mengarah ke alamat lain*).
 3. Untuk cakupan per project, pastikan Claude Code dijalankan di folder yang berisi `.claude/settings.local.json`
    (lihat path di kotak status). Jika berbeda, salin blok `env` ke folder tempat Anda menjalankan `claude`.
 4. Pastikan tidak ada environment variable Windows `ANTHROPIC_BASE_URL` yang menimpa.
-5. Setting → *Orkestrasi aktif* harus menyala. Jika mati, request tetap lewat AiThread tetapi diteruskan tanpa orkestrasi
+5. Setting → *Orkestrasi aktif* harus menyala. Jika mati, request tetap lewat AIT tetapi diteruskan tanpa orkestrasi
    (terlihat sebagai log debug `Passthrough (orchestration disabled)`).
 6. Cari di log baris `Sesi xxxxxxxx (…) bukan bagian project (…)`. Artinya sesi **sengaja diabaikan** karena
    working directory-nya bukan bagian sebuah project — lihat [Project](#project).
@@ -64,11 +64,11 @@ Log debug `Passthrough (auxiliary request without tools)` untuk request judul se
 
 | Pesan | Penyebab | Solusi |
 |---|---|---|
-| `authentication_error: Invalid AiThread proxy key` | `ANTHROPIC_AUTH_TOKEN` berbeda dengan Proxy API key. | Terapkan ulang integrasi setelah mengganti key, lalu buka sesi baru. |
-| `AiThread: passthrough model belum diatur…` (503) | Tidak ada model passthrough dan tidak ada node Wrapper/Executor aktif. | Isi *Model passthrough* atau aktifkan node. |
-| `❌ AiThread gagal: Belum ada node Planner aktif…` | Pipeline belum lengkap. | Tambahkan/aktifkan node di menu Node. |
-| `❌ AiThread gagal: Planner tidak menghasilkan rencana yang valid dalam N langkah.` | Planner kehabisan langkah atau terus mengirim rencana yang ditolak validator. | Lihat alasan penolakan di *Aktivitas* thread. Naikkan *Langkah planner*, pakai model planner yang lebih kuat, atau perjelas prompt. |
-| `❌ AiThread gagal memulai thread: …` | Masalah sebelum thread dibuat, biasanya database atau project dihapus saat sesi berjalan. | Periksa kartu Database di Dashboard; daftarkan ulang project bila perlu. |
+| `authentication_error: Invalid AIT proxy key` | `ANTHROPIC_AUTH_TOKEN` berbeda dengan Proxy API key. | Terapkan ulang integrasi setelah mengganti key, lalu buka sesi baru. |
+| `AIT: passthrough model belum diatur…` (503) | Tidak ada model passthrough dan tidak ada node Wrapper/Executor aktif. | Isi *Model passthrough* atau aktifkan node. |
+| `❌ AIT gagal: Belum ada node Planner aktif…` | Pipeline belum lengkap. | Tambahkan/aktifkan node di menu Node. |
+| `❌ AIT gagal: Planner tidak menghasilkan rencana yang valid dalam N langkah.` | Planner kehabisan langkah atau terus mengirim rencana yang ditolak validator. | Lihat alasan penolakan di *Aktivitas* thread. Naikkan *Langkah planner*, pakai model planner yang lebih kuat, atau perjelas prompt. |
+| `❌ AIT gagal memulai thread: …` | Masalah sebelum thread dibuat, biasanya database atau project dihapus saat sesi berjalan. | Periksa kartu Database di Dashboard; daftarkan ulang project bila perlu. |
 | Claude Code timeout | Thread lebih lama dari `API_TIMEOUT_MS`. | Naikkan `API_TIMEOUT_MS` di settings Claude Code, atau pecah prompt. |
 
 ## Project
@@ -130,10 +130,10 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 
 | Gejala | Arti | Solusi |
 |---|---|---|
-| `build tidak bisa dijalankan — 'dotnet' could not be started…` | Toolchain project (`dotnet`, `node`/`npm`, `go`, `cargo`, `mvn`) tidak ada di PATH proses AiThread. | Pasang toolchain-nya atau tambahkan ke PATH, lalu restart AiThread. Exe standalone tidak butuh .NET SDK untuk berjalan, tetapi membuild project .NET tetap membutuhkannya. |
+| `build tidak bisa dijalankan — 'dotnet' could not be started…` | Toolchain project (`dotnet`, `node`/`npm`, `go`, `cargo`, `mvn`) tidak ada di PATH proses AIT. | Pasang toolchain-nya atau tambahkan ke PATH, lalu restart AIT. Exe standalone tidak butuh .NET SDK untuk berjalan, tetapi membuild project .NET tetap membutuhkannya. |
 | `kompilasi berhasil, tetapi file output terkunci…` | `MSB3021`/`MSB3027`: aplikasi yang sedang berjalan (mis. project yang Anda debug) mengunci file di `bin/`. Kode sudah dikompilasi, jadi verifikasi dianggap lolos. | Tidak perlu tindakan. Hentikan aplikasinya bila ingin output terbaru tersalin. |
 | `build melewati batas waktu…` | Build lebih lama dari *Timeout build*; build dihentikan dan tidak diulang di putaran berikutnya. | Naikkan *Timeout build*. Build pertama (restore paket) biasanya paling lama. |
-| Build lambat di setiap putaran | Restore menunggu feed NuGet yang tidak terjangkau. | AiThread sudah mematikan audit kerentanan (`NuGetAudit=false`); periksa `nuget.config` bila restore masih menunggu feed. |
+| Build lambat di setiap putaran | Restore menunggu feed NuGet yang tidak terjangkau. | AIT sudah mematikan audit kerentanan (`NuGetAudit=false`); periksa `nuget.config` bila restore masih menunggu feed. |
 | `… — in a file this thread did not change` | Error di file yang tidak diubah thread, mungkin sudah ada sebelumnya; tidak diperbaiki otomatis. | Minta secara eksplisit: "build lalu perbaiki semua error". Planner akan memanggil `run_build` dan merencanakan perbaikannya. |
 | `The build failed without a recognisable error message` | Output build tidak memuat format error yang dikenali (sering pada script `npm run build` khusus). | Lihat output di kartu *Verifikasi* detail thread. |
 | Verifikasi *Masih ada masalah* setelah semua putaran | Executor tidak berhasil memperbaiki dalam *Putaran perbaikan*. | Lanjutkan dengan prompt berikutnya (planner melihat thread sebelumnya), naikkan putaran perbaikan, atau pakai model executor yang lebih kuat. |
@@ -143,30 +143,30 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 ## Redis & database
 
 **Kartu Redis *Tidak terhubung***
-Short memory memakai Garnet di dalam AiThread. Cari baris `Embedded Garnet` di log AiThread: bila Garnet gagal
+Short memory memakai Garnet di dalam AIT. Cari baris `Embedded Garnet` di log AiThread: bila Garnet gagal
 start, penyebabnya tercatat di situ. Bila `AiThread:EmbeddedRedis:Enabled` = `false`, pastikan Redis eksternal di
 `ConnectionStrings:Redis` hidup. Selama short memory tidak tersedia, memory baru langsung masuk long memory; tidak
 ada data hilang.
 
 **Log `Port 6379 is already in use … short memory uses that server`**
-Program lain (biasanya container Docker `aithread-redis` lama) memakai port short memory, sehingga AiThread
+Program lain (biasanya container Docker `aithread-redis` lama) memakai port short memory, sehingga AIT
 memakainya alih-alih Garnet. Pindahkan dulu short memory yang ingin disimpan (menu Memory → **→ DB**), lalu
-`docker rm -f aithread-redis` dan restart AiThread. Lihat [Instalasi](01-instalasi.md#1-short-memory-garnet).
+`docker rm -f aithread-redis` dan restart AIT. Lihat [Instalasi](01-instalasi.md#1-short-memory-garnet).
 
 **Penyimpanan memory eksternal *Tidak terhubung*** (menu Setting → Penyimpanan memory)
 Klik **Test koneksi** pada kartunya: pesan error dari server (host tidak ditemukan, login gagal, database tidak ada)
 ditampilkan apa adanya. Selama short memory eksternal mati, memory baru masuk long memory dan store dicek ulang tiap
 15 detik. Bila long memory eksternal mati, planner tidak bisa membaca long memory sampai server kembali, atau
 kembalikan provider ke *Bawaan*. Log `The saved short/long memory store is invalid` saat start berarti setting
-tersimpan tidak valid, dan AiThread memakai store bawaan.
+tersimpan tidak valid, dan AIT memakai store bawaan.
 
 **Simpan penyimpanan memory ditolak dengan `permission denied` / `CREATE DATABASE`**
-AiThread membuat database dan tabel memory sendiri. Buat database-nya secara manual lalu beri user hak membuat tabel
+AIT membuat database dan tabel memory sendiri. Buat database-nya secara manual lalu beri user hak membuat tabel
 di database itu (Oracle: tabel dibuat di schema milik user yang login).
 
 **Kartu Database *Tidak terhubung*** / log `Database migration failed`
 Untuk LocalDB: `sqllocaldb start MSSQLLocalDB`. Untuk server lain: periksa `ConnectionStrings:Default`.
-Restart AiThread setelah diperbaiki agar migrasi dijalankan.
+Restart AIT setelah diperbaiki agar migrasi dijalankan.
 
 ## Telegram
 
@@ -180,7 +180,7 @@ Repository privat tidak bisa diunduh tanpa kredensial. Untuk host git, `git clon
 jadi hanya repository yang bisa di-clone tanpa login (atau dengan credential helper yang sudah tersimpan) yang berhasil.
 
 **`HTTP 403`/`429 — dibatasi oleh server`**
-API GitHub membatasi unduhan tanpa login (60 per jam per IP). AiThread otomatis mencoba `git clone` sebagai gantinya.
+API GitHub membatasi unduhan tanpa login (60 per jam per IP). AIT otomatis mencoba `git clone` sebagai gantinya.
 Bila git tidak terpasang, tunggu lalu klik *Sync*.
 
 **Sumber lama di status *Dianalisis AI…***
@@ -205,7 +205,7 @@ node*.
 
 ## Aplikasi
 
-**AiThread berhenti saat browser, terminal, atau Visual Studio ditutup**
+**AIT berhenti saat browser, terminal, atau Visual Studio ditutup**
 Instance dari Visual Studio (debugger berhenti saat browser yang dibukanya ditutup) dan `dotnet run` hanya hidup
 selama program itu terbuka. Jalankan di background: `.\scripts\aithread.ps1 start` — lihat
 [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background).
@@ -215,9 +215,9 @@ Jalankan dengan `--urls http://localhost:<port lain>` lalu terapkan ulang integr
 
 **`aithread.ps1 start`: "Port 5225 sudah dipakai proses lain (PID …)"**
 Biasanya instance dari Visual Studio / `dotnet run` masih hidup. Hentikan program itu, lalu `start` lagi. Bila yang
-memakai port adalah AiThread, `.\scripts\aithread.ps1 stop` juga bisa mematikannya.
+memakai port adalah AIT, `.\scripts\aithread.ps1 stop` juga bisa mematikannya.
 
-**`aithread.ps1 start`: "AiThread berhenti saat start (exit N)"**
+**`aithread.ps1 start`: "AIT berhenti saat start (exit N)"**
 Potongan log langsung ditampilkan. Penyebab umum: database tidak bisa dihubungi (lihat [Redis & database](#redis--database))
 atau `appsettings.json` tidak valid. Log lengkap: `.\scripts\aithread.ps1 logs`.
 
@@ -227,12 +227,12 @@ Instance background memakai hasil publish, bukan folder `src/`. Jalankan `.\scri
 **Log background berisi `Failed to determine the https port for redirect`**
 Normal: instance background hanya mendengarkan http. Peringatan ini tidak berpengaruh.
 
-**Thread *Cancelled*: "AiThread berhenti saat thread ini berjalan."**
-AiThread dimatikan (stop, restart, logoff, crash) saat thread itu berjalan. Hasil tugas yang sudah selesai tetap
+**Thread *Cancelled*: "AIT berhenti saat thread ini berjalan."**
+AIT dimatikan (stop, restart, logoff, crash) saat thread itu berjalan. Hasil tugas yang sudah selesai tetap
 tertulis di file — tinjau dengan git, lalu kirim ulang prompt bila perlu.
 
 **Thread *Cancelled* setelah planner bertanya**
-Pesannya menjelaskan sebabnya: *AiThread di-restart sebelum pertanyaan planner dijawab*, *tidak dijawab dalam 2 jam*,
+Pesannya menjelaskan sebabnya: *AIT di-restart sebelum pertanyaan planner dijawab*, *tidak dijawab dalam 2 jam*,
 *dibatalkan saat menunggu jawaban*, atau *prompt berikutnya dijalankan sebagai thread baru* (jawaban dikirim dari
 project lain). Pertanyaan hanya disimpan di memori proses, jadi kirim ulang jawaban Anda bersama permintaannya —
 planner tetap bisa membaca pertanyaan tadi dari riwayat chat.
@@ -245,4 +245,4 @@ baru, dan klien Anda mengirim id sesi (Claude Code dan Telegram selalu; klien ta
 Claude Code tidak mempercayai sertifikat development. Pakai alamat `http://localhost:5225`.
 
 **Halaman tidak update live**
-Browser memutus koneksi SSE (mis. terlalu banyak tab AiThread terbuka). Tutup tab lain atau refresh halaman.
+Browser memutus koneksi SSE (mis. terlalu banyak tab AIT terbuka). Tutup tab lain atau refresh halaman.

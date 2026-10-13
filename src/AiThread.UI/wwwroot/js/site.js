@@ -1,4 +1,4 @@
-// Shared helpers for every AiThread page: API calls, SSE, formatting, toasts and small renderers.
+// Shared helpers for every AIT page: API calls, SSE, formatting, toasts and small renderers.
 (() => {
   'use strict';
 
@@ -13,7 +13,7 @@
     try {
       response = await fetch(url, options);
     } catch {
-      throw new Error('Tidak dapat menghubungi server AiThread.');
+      throw new Error('Tidak dapat menghubungi server AIT.');
     }
 
     let payload = null;

@@ -100,7 +100,7 @@ public sealed class TrayIcon : IDisposable
         {
             data.uFlags |= NIF_INFO;
             data.szInfo = _balloon!;
-            data.szInfoTitle = "AiThread";
+            data.szInfoTitle = "AIT";
             data.dwInfoFlags = NIIF_INFO;
         }
         _added = Shell_NotifyIcon(NIM_ADD, ref data);

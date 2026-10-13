@@ -41,7 +41,7 @@ tombol *Jeda*. Log debug berisi panggilan tool planner dan request passthrough.
 
 ## Project
 
-Daftar codebase yang dikenal AiThread. Satu project = satu folder root, yaitu folder yang berisi `.git` atau file build
+Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder yang berisi `.git` atau file build
 (`.sln`, `pom.xml`, `package.json`, `go.mod`, dst.), apa pun bahasanya.
 
 - **Registrasi otomatis**: prompt pertama dari sesi di dalam sebuah project mendaftarkan project-nya. Sesi di folder
@@ -61,11 +61,11 @@ Daftar codebase yang dikenal AiThread. Satu project = satu folder root, yaitu fo
   dalamnya lalu diorkestrasi dan punya memory). Drive, folder Home, dan folder sistem ditolak. Path file juga diterima
   (foldernya yang dipakai).
 - Registrasi diperlukan sebelum menerapkan integrasi CLI per project.
-- Kolom: nama & root (beserta **project key** 🔑), **AiThread**, stack, jumlah thread, sesi Claude Code, memory,
+- Kolom: nama & root (beserta **project key** 🔑), **AIT**, stack, jumlah thread, sesi Claude Code, memory,
   terakhir dipakai. Badge *folder hilang* muncul bila folder project sudah tidak ada; badge *key lokal — belum dibagi*
   berarti memory project ini belum bisa dibagi dengan developer lain (lihat [Project key](06-memory.md#berbagi-memory-antar-developer-project-key)).
-- **Switch AiThread**: menyala = `<project>/.claude/settings.local.json` mengarahkan Claude Code ke proxy ini. Menyalakan
-  menulis blok `env` (sama dengan switch Claude Code per project di menu [CLI](#cli)); mematikan menghapus kunci AiThread
+- **Switch AIT**: menyala = `<project>/.claude/settings.local.json` mengarahkan Claude Code ke proxy ini. Menyalakan
+  menulis blok `env` (sama dengan switch Claude Code per project di menu [CLI](#cli)); mematikan menghapus kunci AIT
   saja, kunci lain di file tetap. Catatan *URL lain* berarti file mengarah ke alamat proxy lain (mis. port lama) —
   nyalakan ulang untuk memperbarui. Buka sesi Claude Code baru setelah mengubahnya.
 - **Hapus**: riwayat thread tetap ada (tanpa project). Memory yang hanya ada di mesin ini ikut terhapus. Memory di
@@ -118,12 +118,12 @@ model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu
 
 ## CLI
 
-Mengarahkan CLI coding ke proxy AiThread dengan satu switch, tanpa menyunting file konfigurasi CLI itu sendiri. Saat ini
+Mengarahkan CLI coding ke proxy AIT dengan satu switch, tanpa menyunting file konfigurasi CLI itu sendiri. Saat ini
 ada dua kartu: **Claude Code** dan **oh-my-pi (omp) —
-provider AiThread** (`models.yml`, hanya global: omp mendapat provider `aithread` sendiri di samping Anthropic asli);
+provider AIT** (`models.yml`, hanya global: omp mendapat provider `aithread` sendiri di samping Anthropic asli);
 CLI lain bisa ditambahkan dengan cara yang sama.
 
-- **URL proxy AiThread** di bagian atas: alamat yang ditulis ke konfigurasi CLI (default = alamat http aplikasi).
+- **URL proxy AIT** di bagian atas: alamat yang ditulis ke konfigurasi CLI (default = alamat http aplikasi).
   Mengubahnya menyegarkan status semua switch.
 - Tiap CLI punya satu kartu berisi:
   - **Global** — semua sesi CLI itu di komputer ini (`~/.claude/settings.json` untuk Claude Code,
@@ -132,7 +132,7 @@ CLI lain bisa ditambahkan dengan cara yang sama.
     tidak tersedia untuk omp). Lencana *Aktif*, *Nonaktif*, atau *Mengarah ke alamat lain* (file menunjuk URL lain, mis. port
     lama — matikan lalu nyalakan lagi).
   - *Yang akan ditulis*: pratinjau isi yang akan dituliskan.
-- Mematikan switch hanya menghapus yang ditulis AiThread; isi lain di file tetap. Backup file asli disimpan sekali
+- Mematikan switch hanya menghapus yang ditulis AIT; isi lain di file tetap. Backup file asli disimpan sekali
   sebagai `*.aithread-backup`.
 - Kartu Claude Code juga memuat **Context Keeper untuk /clear** (*Pasang hook* / *Lepas hook*; lihat
   [Integrasi Claude Code](03-integrasi-claude-code.md#context-keeper-untuk-clear)).

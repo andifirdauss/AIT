@@ -13,7 +13,7 @@ Konfigurasi runtime disimpan di database dan diubah dari UI — tidak perlu rest
 | Hapus API key tersimpan | Centang lalu *Simpan setting* untuk menghapus key. |
 
 Tombol **Test koneksi** memakai nilai di form **tanpa menyimpannya**. Setelah hasilnya benar, klik **Simpan setting**
-— hanya key yang tersimpan yang dipakai AiThread. Saat halaman dibuka, baris hasil menampilkan
+— hanya key yang tersimpan yang dipakai AIT. Saat halaman dibuka, baris hasil menampilkan
 status konfigurasi yang tersimpan.
 
 - `✓ Online · 12 ms · 48 model · 3 combo · API key OK` — siap dipakai.
@@ -46,7 +46,7 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 
 | Field | Default | Rentang | Keterangan |
 |---|---|---|---|
-| Build & verifikasi otomatis | aktif | — | AiThread boleh menjalankan perintah build project (`dotnet build`, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
+| Build & verifikasi otomatis | aktif | — | AIT boleh menjalankan perintah build project (`dotnet build`, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
 | Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. |
 | Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. |
 
@@ -82,7 +82,7 @@ Kartu di bawah penyimpanan memory (`/Setting#memory`), disimpan lewat **Simpan b
 | Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memory → Bisnis tetap bisa dipakai saat nonaktif. |
 | Interval (jam) | 6 | 1–168. Jeda antar rangkuman otomatis. |
 | Model penulis wiki | otomatis | Model 9router penulis wiki; kosong = model node Planner aktif. Pilih model yang teliti dan bisa membaca gambar agar screenshot dari prompt ikut masuk halaman. |
-| Nama developer | `git config user.name` | Dicatat pada halaman dan riwayat revisi, supaya tim tahu siapa (AiThread siapa) yang mengubah. Kosong = `user.name` dari git config global (dibaca langsung dari `~/.gitconfig`); bila git juga tidak punya, AiThread menanyakannya sekali lewat popup saat UI pertama dibuka. |
+| Nama developer | `git config user.name` | Dicatat pada halaman dan riwayat revisi, supaya tim tahu siapa (AIT siapa) yang mengubah. Kosong = `user.name` dari git config global (dibaca langsung dari `~/.gitconfig`); bila git juga tidak punya, AIT menanyakannya sekali lewat popup saat UI pertama dibuka. |
 
 ### Telegram
 
@@ -209,7 +209,7 @@ daripada input baru:
   assistant terakhir.
 - OpenAI, DeepSeek, Gemini, dan sejenisnya: caching prefix otomatis di sisi provider.
 
-AiThread menjaga awal percakapan tetap sama agar cache terus cocok: daftar tool planner tidak berubah selama satu
+AIT menjaga awal percakapan tetap sama agar cache terus cocok: daftar tool planner tidak berubah selama satu
 thread, dan brief disusun dari bagian paling stabil (project, struktur) ke permintaan di akhir. Detail thread
 menampilkan porsinya, mis. *Token planner 120.000 (85% cache)*. Persentase 0 berarti provider tidak melaporkan cache
 atau tidak memakainya.
@@ -234,7 +234,7 @@ Tips:
 - *Max tokens* executor harus cukup untuk seluruh output edit. Tugas `create` menulis file utuh — naikkan bila
   sering muncul "Output was cut off (max tokens)".
 - Jika planner sering gagal membuat rencana valid, naikkan *Langkah planner* atau ganti ke model yang lebih kuat.
-- Model planner yang tidak mendukung tool calling tetap dicoba: AiThread membaca rencana JSON dari teks, dan bila
+- Model planner yang tidak mendukung tool calling tetap dicoba: AIT membaca rencana JSON dari teks, dan bila
   tetap berupa teks biasa setelah dua kali diingatkan, teks itu dipakai sebagai jawaban langsung.
 
 Contoh susunan (id model hanya ilustrasi — pilih dari dropdown sesuai provider Anda):
