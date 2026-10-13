@@ -82,7 +82,7 @@ public static partial class FixTaskFactory
                 To = to,
                 Members = members.ToList(),
                 Instruction = $"Move {names} from {from} to {to}. The build reports them twice (CS0111/CS0102): this thread already put them in {to}, " +
-                              $"so AiThread removes them from {from}; members {to} already declares are only removed."
+                              $"so AIT removes them from {from}; members {to} already declares are only removed."
             });
         }
 

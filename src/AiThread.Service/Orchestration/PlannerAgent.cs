@@ -22,7 +22,8 @@ public sealed record PlannerInput(
 
 // Node is the planner that finished (a fallback when the preferred one failed). Plan is null when the planner paused
 // on a question instead (Pause). Steps and tokens are totals for the thread, including the run before a pause.
-public sealed record PlanningResult(ThreadPlan? Plan, int Steps, int Tokens, int CachedTokens, AiNode Node, PlannerPause? Pause = null);
+// MemoriesUsed counts the memories (and wiki pages) the planner read in this run.
+public sealed record PlanningResult(ThreadPlan? Plan, int Steps, int Tokens, int CachedTokens, AiNode Node, PlannerPause? Pause = null, int MemoriesUsed = 0);
 
 public sealed record PlannerPause(PlannerQuestion Question, PlannerConversation Conversation);
 
@@ -187,7 +188,7 @@ public sealed class PlannerAgent(
             {
                 run.QuestionsAsked++;
                 var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild);
-                return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation));
+                return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count);
             }
         }
 
@@ -195,7 +196,7 @@ public sealed class PlannerAgent(
     }
 
     private static PlanningResult Finished(ThreadPlan plan, PlannerRun run, AiNode node) =>
-        new(plan, run.Step, run.Tokens, run.CachedTokens, node);
+        new(plan, run.Step, run.Tokens, run.CachedTokens, node, MemoriesUsed: run.MemoriesRead.Count);
 
     private static PlanningResult DirectAnswer(string text, PlannerRun run, AiNode node, ThreadRecorder recorder)
     {
@@ -250,7 +251,9 @@ public sealed class PlannerAgent(
             var detail = Describe(call.Name, args);
             recorder.PlannerActivity(call.Name, detail);
             recorder.Log(ActivityLevel.Debug, $"Planner → {call.Name} {detail}");
-            await progress.LineAsync($"   · {call.Name} {detail}", cancellationToken);
+            // run_build writes its own lines: the command it resolved, then the result.
+            if (call.Name != PlannerTools.RunBuild)
+                await progress.StepAsync(ClientProgress.Pad(call.Name, PlannerTools.NameColumn) + detail, cancellationToken, hang: PlannerTools.NameColumn);
         }
 
         try
@@ -278,6 +281,7 @@ public sealed class PlannerAgent(
                         .Select(n => n is JsonValue v && v.TryGetValue<string>(out var s) && Guid.TryParse(s, out var g) ? g : (Guid?)null)
                         .Where(g => g is not null).Select(g => g!.Value).ToList();
                     var memories = await memoryService.GetManyAsync(ids, cancellationToken);
+                    lock (run.MemoriesRead) run.MemoriesRead.UnionWith(memories.Select(m => m.Id));
                     return new PlannerToolOutcome(memories.Count == 0
                         ? "No memories found for those ids."
                         : string.Join("\n\n", memories.Select(m => $"### {m.Label} ({m.Type}, {m.Level})\n{m.Description}")), null);
@@ -304,16 +308,29 @@ public sealed class PlannerAgent(
         }
     }
 
+    // Two progress lines: the command as soon as it is known, the result under it when the build is done.
     private async Task<PlannerToolOutcome> RunBuildAsync(PlannerInput input, string? target, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
-        if (!input.Settings.BuildEnabled) return new PlannerToolOutcome("Error: building is disabled in the AiThread settings.", null, true);
+        var head = ClientProgress.Pad(PlannerTools.RunBuild, PlannerTools.NameColumn);
+        if (!input.Settings.BuildEnabled)
+        {
+            await progress.StepAsync(head + (target ?? string.Empty), cancellationToken, hang: PlannerTools.NameColumn);
+            await progress.DetailAsync("🟡 build dimatikan di setting", cancellationToken, PlannerTools.NameColumn);
+            return new PlannerToolOutcome("Error: building is disabled in the AIT settings.", null, true);
+        }
 
         var command = BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, target, out var error);
-        if (command is null) return new PlannerToolOutcome($"Error: {error}", null, true);
+        if (command is null)
+        {
+            await progress.StepAsync(head + (target ?? string.Empty), cancellationToken, hang: PlannerTools.NameColumn);
+            await progress.DetailAsync($"❌ {error}", cancellationToken, PlannerTools.NameColumn);
+            return new PlannerToolOutcome($"Error: {error}", null, true);
+        }
 
+        await progress.StepAsync(head + command.Display, cancellationToken, hang: PlannerTools.NameColumn);
         var result = await buildRunner.RunAsync(command, TimeSpan.FromSeconds(input.Settings.BuildTimeoutSeconds), cancellationToken);
         recorder.Log(result.Passed ? ActivityLevel.Info : ActivityLevel.Warning, $"Planner → run_build `{command.Display}`: {BuildReport.Headline(result)}");
-        await progress.LineAsync($"     {(result.Passed ? "✅" : "❌")} {BuildReport.Headline(result)}", cancellationToken);
+        await progress.DetailAsync($"{(result.Passed ? "✅" : "❌")} {BuildReport.Headline(result)}", cancellationToken, PlannerTools.NameColumn);
         return new PlannerToolOutcome(BuildReport.Format(result, input.Scope), null);
     }
 
@@ -353,8 +370,8 @@ public sealed class PlannerAgent(
             foreach (var module in project.Modules.Take(60)) builder.Append("- ").Append(module).Append('\n');
         }
         builder.Append(build is null
-            ? "Build: AiThread cannot build this project; mention build or test steps in the summary.\n"
-            : $"Build: `{build.Display}` (run_build). AiThread builds it again after the executors finish{(input.Settings.MaxFixRounds > 0 ? " and has the errors fixed" : string.Empty)}.\n");
+            ? "Build: AIT cannot build this project; mention build or test steps in the summary.\n"
+            : $"Build: `{build.Display}` (run_build). AIT builds it again after the executors finish{(input.Settings.MaxFixRounds > 0 ? " and has the errors fixed" : string.Empty)}.\n");
         builder.Append("Tool paths are relative to the root. The read tools also accept absolute paths outside the root, for read-only checks; file changes are only possible inside the root.\n\n");
 
         builder.Append("## Structure (depth 2)\n");
@@ -465,5 +482,6 @@ public sealed class PlannerAgent(
         public int QuestionsAsked { get; set; }
         public bool CanBuild { get; init; }
         public int MaxSteps { get; init; }
+        public HashSet<Guid> MemoriesRead { get; } = [];
     }
 }

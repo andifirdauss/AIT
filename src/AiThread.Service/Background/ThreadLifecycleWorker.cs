@@ -44,18 +44,18 @@ public sealed class ThreadLifecycleWorker(
                 .Where(t => t.Status == ThreadStatus.AwaitingInput)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(t => t.Status, ThreadStatus.Cancelled)
-                    .SetProperty(t => t.Error, "AiThread di-restart sebelum pertanyaan planner dijawab.")
+                    .SetProperty(t => t.Error, "AIT di-restart sebelum pertanyaan planner dijawab.")
                     .SetProperty(t => t.CompletedAt, now)
                     .SetProperty(t => t.UpdatedAt, now), cancellationToken);
             if (waiting > 0)
-                activityLog.Warn("thread", $"{waiting} thread yang menunggu jawaban pertanyaan planner ditutup karena AiThread di-restart.");
+                activityLog.Warn("thread", $"{waiting} thread yang menunggu jawaban pertanyaan planner ditutup karena AIT di-restart.");
 
             var threads = await db.Threads
                 .Where(t => t.Status == ThreadStatus.Pending || t.Status == ThreadStatus.Planning
                             || t.Status == ThreadStatus.Executing || t.Status == ThreadStatus.Verifying || t.Status == ThreadStatus.Wrapping)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(t => t.Status, ThreadStatus.Cancelled)
-                    .SetProperty(t => t.Error, "AiThread berhenti saat thread ini berjalan.")
+                    .SetProperty(t => t.Error, "AIT berhenti saat thread ini berjalan.")
                     .SetProperty(t => t.CompletedAt, now)
                     .SetProperty(t => t.UpdatedAt, now), cancellationToken);
             if (threads == 0) return;
@@ -67,7 +67,7 @@ public sealed class ThreadLifecycleWorker(
                     .SetProperty(t => t.CompletedAt, now)
                     .SetProperty(t => t.UpdatedAt, now), cancellationToken);
 
-            activityLog.Warn("thread", $"{threads} thread yang tertinggal dari sesi AiThread sebelumnya ditandai dibatalkan.");
+            activityLog.Warn("thread", $"{threads} thread yang tertinggal dari sesi AIT sebelumnya ditandai dibatalkan.");
         }
         catch (Exception ex)
         {

@@ -86,7 +86,7 @@ public sealed class ReviewerAgent(NodeCaller caller, NodePromptBuilder prompts)
         }
 
         builder.Append("\n# Build\n");
-        builder.Append(string.IsNullOrWhiteSpace(buildReport) ? "AiThread cannot build this project; review the diffs only.\n" : buildReport);
+        builder.Append(string.IsNullOrWhiteSpace(buildReport) ? "AIT cannot build this project; review the diffs only.\n" : buildReport);
         return builder.ToString();
     }
 

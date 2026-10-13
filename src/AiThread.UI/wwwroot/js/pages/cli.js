@@ -121,7 +121,7 @@
 
     // A CLI without project files only gains an extra provider; nothing is redirected, so no confirmation.
     if (input.dataset.scope === 'Global' && enabled && cli.projectFile
-        && !confirm(`Semua sesi ${cli.name} di komputer ini akan melewati AiThread. Lanjutkan?`)) {
+        && !confirm(`Semua sesi ${cli.name} di komputer ini akan melewati AIT. Lanjutkan?`)) {
       input.checked = false;
       return;
     }
@@ -134,7 +134,7 @@
         enabled,
         proxyBaseUrl: proxyUrl()
       });
-      toast(enabled ? `${cli.name} diarahkan ke AiThread. ${cli.note || ''}` : `${cli.name} tidak lagi diarahkan ke AiThread.`, enabled ? 'success' : 'info');
+      toast(enabled ? `${cli.name} diarahkan ke AIT. ${cli.note || ''}` : `${cli.name} tidak lagi diarahkan ke AIT.`, enabled ? 'success' : 'info');
     } catch (error) {
       input.checked = !enabled;
       toast(error.message, 'error');
@@ -153,7 +153,7 @@
       <h3 class="h6">Context Keeper untuk <span class="mono">/clear</span></h3>
       <p class="small text-secondary">
         Hook HTTP resmi Claude Code (<span class="mono">SessionEnd</span> + <span class="mono">SessionStart</span>). Saat Anda menjalankan
-        <span class="mono">/clear</span>, AiThread meringkas sesi lama dan menyisipkannya ke sesi baru. Berlaku juga untuk sesi yang
+        <span class="mono">/clear</span>, AIT meringkas sesi lama dan menyisipkannya ke sesi baru. Berlaku juga untuk sesi yang
         <em>tidak</em> diarahkan ke proxy.
       </p>
       <select class="form-select form-select-sm mb-2" id="hooksTarget">${options.join('')}</select>
@@ -167,7 +167,7 @@
         <button type="button" class="btn btn-outline-danger btn-sm" id="btnRevertHooks">Lepas hook</button>
       </div>
       <p class="small text-secondary mt-2 mb-0">
-        Setelah <span class="mono">/clear</span>, Claude Code menunggu ringkasan maksimal ±40 detik. AiThread harus berjalan;
+        Setelah <span class="mono">/clear</span>, Claude Code menunggu ringkasan maksimal ±40 detik. AIT harus berjalan;
         bila tidak, sesi baru tetap dimulai tanpa ringkasan.
       </p>`;
   }
@@ -219,7 +219,7 @@
     const apply = button.id === 'btnApplyHooks';
     try {
       renderHooks(await api.post(`/api/settings/claude/hooks/${apply ? 'apply' : 'revert'}`, hooksBody()));
-      toast(apply ? 'Hook /clear terpasang. Berlaku untuk sesi Claude Code berikutnya.' : 'Hook /clear AiThread dilepas.', apply ? 'success' : 'info');
+      toast(apply ? 'Hook /clear terpasang. Berlaku untuk sesi Claude Code berikutnya.' : 'Hook /clear AIT dilepas.', apply ? 'success' : 'info');
     } catch (error) {
       toast(error.message, 'error');
     }

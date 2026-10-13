@@ -53,7 +53,7 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestRouter">Test koneksi</button>
                     <span class="small" id="routerTestResult"></span>
                 </div>
-                <div class="form-text">Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan setting</strong> agar key dipakai AiThread.</div>
+                <div class="form-text">Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan setting</strong> agar key dipakai AIT.</div>
             </div>
             <div class="card-footer text-end">
                 <button type="submit" class="btn btn-primary">Simpan setting</button>
@@ -67,7 +67,7 @@
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="orchestrationEnabled" />
                     <label class="form-check-label" for="orchestrationEnabled">Orkestrasi aktif (planner → executor → wrapper)</label>
-                    <div class="form-text">Jika mati, AiThread hanya meneruskan request CLI ke 9router.</div>
+                    <div class="form-text">Jika mati, AIT hanya meneruskan request CLI ke 9router.</div>
                 </div>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="streamProgress" />
@@ -132,7 +132,7 @@
                     <input class="form-check-input" type="checkbox" id="buildEnabled" />
                     <label class="form-check-label" for="buildEnabled">Build & verifikasi otomatis</label>
                     <div class="form-text">
-                        AiThread menjalankan perintah build bawaan project (<span class="mono">dotnet build</span>, <span class="mono">tsc</span>/<span class="mono">npm run build</span>,
+                        AIT menjalankan perintah build bawaan project (<span class="mono">dotnet build</span>, <span class="mono">tsc</span>/<span class="mono">npm run build</span>,
                         <span class="mono">go build</span>, <span class="mono">cargo check</span>, <span class="mono">mvn compile</span>): sebagai tool planner dan setelah executor selesai.
                         Error build (dan temuan node Reviewer, bila ada) diserahkan ke executor sebagai tugas perbaikan.
                     </div>
@@ -171,7 +171,7 @@
                         <label class="form-check-label" for="memoryCopyExisting">Salin memory yang ada ke penyimpanan baru saat provider/server diganti</label>
                     </div>
                     <div class="form-text">
-                        Saat disimpan, AiThread menguji koneksi dan membuat database/tabel <span class="mono">ShortMemories</span>, <span class="mono">LongMemories</span>, atau
+                        Saat disimpan, AIT menguji koneksi dan membuat database/tabel <span class="mono">ShortMemories</span>, <span class="mono">LongMemories</span>, atau
                         <span class="mono">BusinessPages</span> (beserta revisi & gambarnya) bila belum ada (user perlu hak membuat tabel). Penyimpanan lama tidak dihapus atau diubah.
                         Tanpa salinan, memory lama tidak terlihat sampai provider dikembalikan. Password disimpan terenkripsi dan tidak pernah dikirim balik ke browser.
                         Memory dibagi antar developer berdasarkan <a href="/Project">project key</a> (git remote, <span class="mono">.aithread/project.json</span>, atau key manual), bukan folder root.
@@ -228,8 +228,8 @@
                     <div class="col-lg-5">
                         <form id="telegramForm" autocomplete="off">
                             <p class="small text-secondary">
-                                Kirim prompt ke AiThread dari HP lewat bot Telegram pribadi, misalnya saat laptop ditinggal di kantor/rumah.
-                                AiThread menarik pesan dari Telegram (long polling), jadi tidak perlu URL publik atau membuka port — cukup laptop menyala dan terhubung internet.
+                                Kirim prompt ke AIT dari HP lewat bot Telegram pribadi, misalnya saat laptop ditinggal di kantor/rumah.
+                                AIT menarik pesan dari Telegram (long polling), jadi tidak perlu URL publik atau membuka port — cukup laptop menyala dan terhubung internet.
                             </p>
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="telegramEnabled" />

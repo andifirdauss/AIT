@@ -116,7 +116,7 @@ public sealed class ClaudeSettingsService(ISettingService settingService, IProje
     public async Task<ClaudeHooksStatusDto> ApplyHooksAsync(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken = default)
     {
         if (!Uri.TryCreate(request.ProxyBaseUrl, UriKind.Absolute, out _))
-            throw new AppValidationException("URL AiThread tidak valid.");
+            throw new AppValidationException("URL AIT tidak valid.");
 
         var target = await ResolveTargetAsync(request.Scope, request.ProjectId, cancellationToken);
         var root = await ReadAsync(target.Path, cancellationToken);

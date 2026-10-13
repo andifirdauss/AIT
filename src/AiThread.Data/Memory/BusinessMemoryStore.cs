@@ -16,7 +16,7 @@ public sealed class BusinessMemoryStore(IDbContextFactory<AiThreadDbContext> mai
     public bool IsExternal => _current.Options is not null;
 
     public string Description => _current.Connection.Provider == MemoryStoreProvider.Default
-        ? "Database utama AiThread"
+        ? "Database utama AIT"
         : _current.Connection.Describe();
 
     public Task<IBusinessMemoryDb> CreateAsync(CancellationToken cancellationToken = default) => _current.OpenAsync(mainFactory, cancellationToken);

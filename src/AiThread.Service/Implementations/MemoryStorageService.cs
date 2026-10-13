@@ -129,7 +129,7 @@ public sealed class MemoryStorageService(
         var started = DateTime.UtcNow;
         var connected = request.Level == MemoryLevel.Short ? IsDefaultShortConnected() : await MainDatabaseConnectedAsync(cancellationToken);
         var latency = (long)(DateTime.UtcNow - started).TotalMilliseconds;
-        var name = request.Level == MemoryLevel.Short ? "Garnet bawaan" : "Database utama AiThread";
+        var name = request.Level == MemoryLevel.Short ? "Garnet bawaan" : "Database utama AIT";
         return new MemoryStoreTestResultDto(connected, latency, connected ? $"{name} terhubung." : $"{name} tidak terhubung.");
     }
 

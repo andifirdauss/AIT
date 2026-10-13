@@ -19,7 +19,7 @@ public sealed record NodeSwitch(AiNode From, AiNode To, NineRouterException Erro
     public async Task ReportAsync(string agent, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
         recorder.Log(ActivityLevel.Warning, $"{agent} `{From.Model}` gagal ({Error.Message}); dialihkan ke node cadangan '{To.Name}' (`{To.Model}`).");
-        await progress.LineAsync($"   ⚠️ {agent} `{From.Model}` tidak tersedia ({Reason}), beralih ke `{To.Model}`…", cancellationToken);
+        await progress.StepAsync($"🟡 {agent} {From.Model} tidak tersedia ({Reason}) → pindah ke {To.Model}", cancellationToken, hang: 3);
     }
 }
 
