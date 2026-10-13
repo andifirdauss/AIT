@@ -17,7 +17,7 @@ public sealed class LongMemoryStore(IDbContextFactory<AiThreadDbContext> mainFac
     public bool IsExternal => _current.Options is not null;
 
     public string Description => _current.Connection.Provider == MemoryStoreProvider.Default
-        ? "Database utama AiThread"
+        ? "Database utama AIT"
         : _current.Connection.Describe();
 
     public Task<ILongMemoryDb> CreateAsync(CancellationToken cancellationToken = default) => _current.OpenAsync(mainFactory, cancellationToken);

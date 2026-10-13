@@ -64,7 +64,7 @@
       const threads = await api.get('/api/threads?take=25');
       tbody.innerHTML = threads.length
         ? threads.map(threadRow).join('')
-        : '<tr><td colspan="8" class="empty-state">Belum ada thread. Arahkan Claude Code ke AiThread (menu Setting) atau jalankan prompt di atas.</td></tr>';
+        : '<tr><td colspan="8" class="empty-state">Belum ada thread. Arahkan Claude Code ke AIT (menu Setting) atau jalankan prompt di atas.</td></tr>';
     } catch (error) {
       tbody.innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }

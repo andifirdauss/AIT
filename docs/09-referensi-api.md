@@ -1,6 +1,6 @@
 # 9. Referensi API
 
-Semua endpoint berada di host AiThread (default `http://localhost:5225`). Enum dikirim sebagai string
+Semua endpoint berada di host AIT (default `http://localhost:5225`). Enum dikirim sebagai string
 (`"Planner"`, `"Short"`, `"Completed"`, …) dan properti JSON memakai camelCase.
 
 ## Proxy agen coding (Claude Code, Codex, Gemini CLI, …)
@@ -57,8 +57,8 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `POST` | `/api/settings/claude/apply` | `{ "scope": "Project", "projectId": "...", "proxyBaseUrl": "http://localhost:5225", "timeoutMs": null }` |
 | `POST` | `/api/settings/claude/revert` | body sama dengan apply |
 | `GET` | `/api/settings/claude/hooks?scope=User\|Project&projectId=&baseUrl=` | status hook `/clear` Context Keeper di file settings Claude Code |
-| `POST` | `/api/settings/claude/hooks/apply` | pasang hook `/clear`; body sama dengan apply (`proxyBaseUrl` = alamat AiThread) |
-| `POST` | `/api/settings/claude/hooks/revert` | lepas hook `/clear` AiThread; hook lain tetap |
+| `POST` | `/api/settings/claude/hooks/apply` | pasang hook `/clear`; body sama dengan apply (`proxyBaseUrl` = alamat AIT) |
+| `POST` | `/api/settings/claude/hooks/revert` | lepas hook `/clear` AIT; hook lain tetap |
 | `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
 | `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
 
@@ -72,7 +72,7 @@ Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi-provider`; id lain �
 | `GET` | `/api/cli` | daftar CLI (`id`, `name`, `description`, `globalPath`, `projectFile`, `note`) dan `proxyBaseUrl` default |
 | `GET` | `/api/cli/{id}/status?scope=&projectId=&proxyBaseUrl=` | status file: `path`, `fileExists`, `enabled`, `currentBaseUrl`, `preview` |
 | `GET` | `/api/cli/{id}/projects?proxyBaseUrl=` | status `enabled`/`currentBaseUrl`/`path`/`error` tiap project terdaftar |
-| `PUT` | `/api/cli/{id}/toggle` | `{ "scope": "Project", "projectId": "...", "enabled": true, "proxyBaseUrl"?: "..." }` — `enabled: false` menghapus yang ditulis AiThread |
+| `PUT` | `/api/cli/{id}/toggle` | `{ "scope": "Project", "projectId": "...", "enabled": true, "proxyBaseUrl"?: "..." }` — `enabled: false` menghapus yang ditulis AIT |
 
 ### Node
 
@@ -162,7 +162,7 @@ Dipakai `scripts/aithread.ps1` untuk instance background.
 | Method | Path | Body / query |
 |---|---|---|
 | `GET` | `/api/system` | — (`processId`, `startedAt`, `environment`, `contentRoot`) |
-| `POST` | `/api/system/shutdown` | — ; wajib header `X-AiThread-Shutdown` dan hanya dari localhost, selain itu `403`. Mematikan AiThread dengan rapi: thread berjalan dibatalkan dan dicatat dulu. |
+| `POST` | `/api/system/shutdown` | — ; wajib header `X-AiThread-Shutdown` dan hanya dari localhost, selain itu `403`. Mematikan AIT dengan rapi: thread berjalan dibatalkan dan dicatat dulu. |
 
 ### Telegram
 

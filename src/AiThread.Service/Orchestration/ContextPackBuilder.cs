@@ -65,7 +65,7 @@ public static class ContextPackBuilder
         }
         else
         {
-            builder.Append("# Current session context\n(none — this is the first AiThread turn of the conversation)\n\n");
+            builder.Append("# Current session context\n(none — this is the first AIT turn of the conversation)\n\n");
         }
 
         if (!string.IsNullOrWhiteSpace(conversation))

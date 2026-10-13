@@ -68,7 +68,7 @@ public static class Cli
             case "logs": return await LogsAsync(options.Follow);
             case "open": OpenBrowser($"http://localhost:{port}"); return 0;
             case "autostart": return AutostartCommand(options.Rest);
-            case "version": Console.WriteLine($"AiThread {Version}"); return 0;
+            case "version": Console.WriteLine($"AIT {Version}"); return 0;
             default: Console.WriteLine(Help); return 0;
         }
     }
@@ -96,7 +96,7 @@ public static class Cli
         using var client = new ServerClient(port);
         if (await client.GetInfoAsync() is { } running)
         {
-            Console.Error.WriteLine($"AiThread sudah berjalan di {client.BaseUrl} (PID {running.ProcessId}). Jalankan 'AiThread.exe stop' dulu.");
+            Console.Error.WriteLine($"AIT sudah berjalan di {client.BaseUrl} (PID {running.ProcessId}). Jalankan 'AiThread.exe stop' dulu.");
             return 1;
         }
 
@@ -129,7 +129,7 @@ public static class Cli
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            ShowError($"AiThread gagal start di port {port}.\n\n{ex.Message}\n\nLog: {LogFile.CurrentPath}");
+            ShowError($"AIT gagal start di port {port}.\n\n{ex.Message}\n\nLog: {LogFile.CurrentPath}");
             await server.StopAsync();
             return 1;
         }
@@ -140,7 +140,7 @@ public static class Cli
         {
             if (stopping) return;
             stopping = true;
-            tray!.SetTooltip("AiThread - menghentikan ...");
+            tray!.SetTooltip("AIT - menghentikan ...");
             _ = Task.Run(async () =>
             {
                 await server.StopAsync();
@@ -149,7 +149,7 @@ public static class Cli
         }
 
         tray = new TrayIcon(
-            $"AiThread - http://localhost:{port}",
+            $"AIT - http://localhost:{port}",
             $"Berjalan di http://localhost:{port}. Klik kanan ikon ini untuk menu.",
             [
                 new TrayIcon.Item("Buka Web UI", () => OpenBrowser(client.BaseUrl)),
@@ -162,7 +162,7 @@ public static class Cli
                     catch (Exception ex) { ShowError(ex.Message); }
                 }, Autostart.IsEnabled),
                 TrayIcon.Item.Separator,
-                new TrayIcon.Item("Keluar (matikan AiThread)", Exit)
+                new TrayIcon.Item("Keluar (matikan AIT)", Exit)
             ],
             onDefault: () => OpenBrowser(client.BaseUrl));
 
@@ -181,11 +181,11 @@ public static class Cli
         var info = await client.GetInfoAsync();
         if (info is null)
         {
-            Console.WriteLine($"AiThread tidak berjalan di {client.BaseUrl}.");
+            Console.WriteLine($"AIT tidak berjalan di {client.BaseUrl}.");
             return 0;
         }
 
-        Console.WriteLine($"Mematikan AiThread (PID {info.ProcessId}) ...");
+        Console.WriteLine($"Mematikan AIT (PID {info.ProcessId}) ...");
         if (!await client.ShutdownAsync())
         {
             Console.Error.WriteLine("Permintaan shutdown ditolak. Tutup prosesnya secara manual.");
@@ -194,11 +194,11 @@ public static class Cli
 
         if (!await WaitUntilAsync(async () => await client.GetInfoAsync() is null, TimeSpan.FromSeconds(45)))
         {
-            Console.Error.WriteLine("AiThread belum berhenti setelah 45 detik.");
+            Console.Error.WriteLine("AIT belum berhenti setelah 45 detik.");
             return 1;
         }
 
-        Console.WriteLine("AiThread berhenti.");
+        Console.WriteLine("AIT berhenti.");
         return 0;
     }
 
@@ -206,10 +206,10 @@ public static class Cli
     {
         using var client = new ServerClient(port);
         var info = await client.GetInfoAsync();
-        if (info is null) Console.WriteLine($"AiThread tidak berjalan di {client.BaseUrl}.");
+        if (info is null) Console.WriteLine($"AIT tidak berjalan di {client.BaseUrl}.");
         else
         {
-            Console.WriteLine($"AiThread berjalan di {client.BaseUrl}");
+            Console.WriteLine($"AIT berjalan di {client.BaseUrl}");
             Console.WriteLine($"  PID       : {info.ProcessId}");
             Console.WriteLine($"  Sejak     : {info.StartedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}");
             Console.WriteLine($"  Folder    : {info.ContentRoot}");
@@ -255,7 +255,7 @@ public static class Cli
         {
             switch (value)
             {
-                case "on": Autostart.Enable(); Console.WriteLine("Autostart aktif: AiThread berjalan di tray saat login Windows."); return 0;
+                case "on": Autostart.Enable(); Console.WriteLine("Autostart aktif: AIT berjalan di tray saat login Windows."); return 0;
                 case "off": Autostart.Disable(); Console.WriteLine("Autostart dimatikan."); return 0;
                 default: Console.Error.WriteLine("Pemakaian: AiThread.exe autostart on|off"); return 2;
             }
@@ -303,7 +303,7 @@ public static class Cli
     }
 
     // Tray mode has no console, so startup failures are shown in a dialog.
-    private static void ShowError(string message) => MessageBox(0, message, "AiThread", 0x10 /* MB_ICONERROR */);
+    private static void ShowError(string message) => MessageBox(0, message, "AIT", 0x10 /* MB_ICONERROR */);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int MessageBox(nint hwnd, string text, string caption, uint type);

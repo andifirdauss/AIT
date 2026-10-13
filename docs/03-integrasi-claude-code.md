@@ -1,11 +1,11 @@
 # 3. Integrasi Claude Code
 
-Claude Code membaca variabel lingkungan dari blok `env` di `settings.json`. AiThread memakai tiga (plus satu
+Claude Code membaca variabel lingkungan dari blok `env` di `settings.json`. AIT memakai tiga (plus satu
 opsional) variabel:
 
 | Variabel | Nilai | Fungsi |
 |---|---|---|
-| `ANTHROPIC_BASE_URL` | `http://localhost:5225` | Semua request Claude Code dikirim ke AiThread, bukan ke Anthropic. |
+| `ANTHROPIC_BASE_URL` | `http://localhost:5225` | Semua request Claude Code dikirim ke AIT, bukan ke Anthropic. |
 | `ANTHROPIC_AUTH_TOKEN` | Proxy API key, atau `aithread-local` bila kosong | Dikirim sebagai `Authorization: Bearer`. Kredensial Anthropic Anda tidak ikut terkirim ke proxy. |
 | `API_TIMEOUT_MS` | `1800000` (30 menit) | Satu thread bisa memakan beberapa menit; default Claude Code (10 menit) bisa terlalu pendek. |
 | `ANTHROPIC_CUSTOM_HEADERS` | `X-AiThread-Project: <folder root project>` | Hanya untuk cakupan per project. Mengikat sesi ke project yang tepat. |
@@ -14,15 +14,15 @@ opsional) variabel:
 
 ### Per project
 
-Hanya sesi Claude Code yang dibuka di project tersebut yang melewati AiThread.
+Hanya sesi Claude Code yang dibuka di project tersebut yang melewati AIT.
 
 1. **Project** → *Telusuri…* → cari folder project (navigasi folder atau *Scan* sub-folder; folder project bertanda
    stack atau <kbd>git</kbd>) → centang → *Daftarkan terpilih*. Bisa juga menempel path folder di kolom lalu *Daftarkan*.
    Project juga terdaftar otomatis pada prompt pertama sesi Claude Code yang dibuka di folder project.
-2. Paling cepat: di tabel **Project**, nyalakan switch kolom **AiThread** pada project tersebut (matikan untuk
+2. Paling cepat: di tabel **Project**, nyalakan switch kolom **AIT** pada project tersebut (matikan untuk
    mengembalikan). Switch memakai URL proxy default (alamat http aplikasi).
 3. Atau lewat menu **CLI** → kartu *Claude Code* → nyalakan switch project di daftar *Per project*. URL proxy yang
-   ditulis diatur di kolom *URL proxy AiThread* di bagian atas halaman; *Yang akan ditulis* menampilkan pratinjaunya.
+   ditulis diatur di kolom *URL proxy AIT* di bagian atas halaman; *Yang akan ditulis* menampilkan pratinjaunya.
 4. Buka sesi Claude Code baru di project itu agar berlaku.
 
 File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder project = folder root project
@@ -34,7 +34,7 @@ File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder
 
 ### Global
 
-Semua sesi Claude Code di komputer ini melewati AiThread. Di menu **CLI**, nyalakan switch *Global* pada kartu Claude
+Semua sesi Claude Code di komputer ini melewati AIT. Di menu **CLI**, nyalakan switch *Global* pada kartu Claude
 Code (ada konfirmasi). File yang ditulis:
 `%USERPROFILE%\.claude\settings.json`.
 
@@ -47,8 +47,8 @@ dengan model passthrough, sehingga Claude Code tetap bekerja seperti biasa di sa
 
 | Status | Arti |
 |---|---|
-| ✓ Claude Code sudah diarahkan ke AiThread | `ANTHROPIC_BASE_URL` di file sama dengan URL proxy. |
-| `ANTHROPIC_BASE_URL saat ini: … (bukan AiThread)` | File mengarah ke tempat lain (mis. langsung ke 9router). *Terapkan* akan menimpanya. |
+| ✓ Claude Code sudah diarahkan ke AIT | `ANTHROPIC_BASE_URL` di file sama dengan URL proxy. |
+| `ANTHROPIC_BASE_URL saat ini: … (bukan AIT)` | File mengarah ke tempat lain (mis. langsung ke 9router). *Terapkan* akan menimpanya. |
 | Belum diarahkan | Belum ada `ANTHROPIC_BASE_URL`. |
 
 Sebelum perubahan pertama, file asli dibackup **sekali** sebagai `settings.json.aithread-backup` /
@@ -72,7 +72,7 @@ Tambahkan ke `.claude/settings.local.json` di folder tempat Anda menjalankan `cl
 ```
 
 - Ganti `aithread-local` dengan Proxy API key bila Anda mengisinya di Setting.
-- `ANTHROPIC_CUSTOM_HEADERS` opsional. Tanpa header ini, AiThread menentukan project dari working directory sesi
+- `ANTHROPIC_CUSTOM_HEADERS` opsional. Tanpa header ini, AIT menentukan project dari working directory sesi
   (folder itu atau folder induknya). Alternatif lain: `X-AiThread-Cwd: <folder>` untuk menetapkan working directory.
   Header lama `X-AiThread-Solution` (path `.sln`) tetap diterima; foldernya dipakai sebagai petunjuk project.
 
@@ -83,17 +83,17 @@ Tambahkan ke `.claude/settings.local.json` di folder tempat Anda menjalankan `cl
 3. Jawaban harus diawali baris seperti:
 
    ```
-   **AiThread** · `MyApp` · thread `5e469b54`
+   **AIT** · `MyApp` · thread `5e469b54`
    🧠 Planner `…` menganalisis project & menyusun rencana…
    ```
 
-4. Di Dashboard AiThread muncul thread baru dan log `Thread baru dari Claude Code · MyApp`.
+4. Di Dashboard AIT muncul thread baru dan log `Thread baru dari Claude Code · MyApp`.
 
-Jika jawaban datang tanpa baris `**AiThread**`, lihat [Troubleshooting](08-troubleshooting.md#claude-code-tidak-melewati-aithread).
+Jika jawaban datang tanpa baris `**AIT**`, lihat [Troubleshooting](08-troubleshooting.md#claude-code-tidak-melewati-aithread).
 
 ## Mengembalikan
 
-- UI: menu **CLI** → matikan switch yang sama (atau switch **AiThread** di tabel Project). Kunci AiThread
+- UI: menu **CLI** → matikan switch yang sama (atau switch **AIT** di tabel Project). Kunci AIT
   (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `API_TIMEOUT_MS`, dan header `X-AiThread-Project`, atau
   `X-AiThread-Solution` dari versi lama) dihapus;
   isi lain dibiarkan.
@@ -107,9 +107,9 @@ Sesi Claude Code yang panjang mahal karena **setiap request membaca ulang seluru
 kecil lagi, tetapi alurnya hilang. Hook ini menjembatani keduanya, dan berlaku untuk **semua** sesi di cakupannya —
 termasuk sesi yang tidak diarahkan ke proxy AiThread:
 
-1. Anda menjalankan `/clear`. Hook `SessionEnd` (reason `clear`) mengirim lokasi transcript sesi lama ke AiThread,
+1. Anda menjalankan `/clear`. Hook `SessionEnd` (reason `clear`) mengirim lokasi transcript sesi lama ke AIT,
    yang langsung membalas lalu bekerja di latar.
-2. AiThread meringkas transcript: prompt Anda, teks balasan, satu baris per tool call, error tool, dan ringkasan
+2. AIT meringkas transcript: prompt Anda, teks balasan, satu baris per tool call, error tool, dan ringkasan
    `/compact` (hasil tool, thinking, dan sub-agent dilewati; maks 60.000 karakter). Context Keeper (node Context
    Keeper, atau Wrapper) menulis ringkasan sesi dari situ, berikut ringkasan yang dipakai sesi lama itu sendiri.
 3. Hook `SessionStart` (source `clear`) sesi baru di folder yang sama menunggu ringkasan (maks ±40 detik) dan
@@ -133,24 +133,24 @@ berlaku di semua project) → **Pasang hook**. Yang ditulis ke file settings (ho
 }
 ```
 
-Hook berlaku untuk sesi Claude Code yang dibuka setelah dipasang. **Lepas hook** menghapus entri AiThread saja.
+Hook berlaku untuk sesi Claude Code yang dibuka setelah dipasang. **Lepas hook** menghapus entri AIT saja.
 
 Catatan:
 
 - Setelah `/clear`, Claude Code menunggu ringkasan (biasanya beberapa detik, tergantung model Context Keeper). Bila
-  AiThread mati atau ringkasan belum selesai dalam 40 detik, sesi baru tetap dimulai tanpa ringkasan.
+  AIT mati atau ringkasan belum selesai dalam 40 detik, sesi baru tetap dimulai tanpa ringkasan.
 - Sesi lama dan baru dicocokkan lewat working directory. Bila dua sesi di folder yang sama di-`/clear` pada saat
   bersamaan, ringkasan bisa tertukar.
-- Isi transcript (versi ringkas) dikirim ke model Context Keeper lewat 9router. AiThread hanya mau membaca transcript
+- Isi transcript (versi ringkas) dikirim ke model Context Keeper lewat 9router. AIT hanya mau membaca transcript
   di dalam `~/.claude/projects`.
 - Ringkasan otomatis `/compact` bawaan Claude Code tidak diganti; hook ini hanya bekerja pada `/clear`.
 
 ## Klien lain: Codex, Gemini CLI, oh-my-pi, dll.
 
-AiThread tidak terikat ke Claude Code. Ia menerima empat format request, dan 9router menerjemahkannya ke provider mana
+AIT tidak terikat ke Claude Code. Ia menerima empat format request, dan 9router menerjemahkannya ke provider mana
 pun (Claude, GPT, Gemini, …) — jadi model yang dipakai tidak harus sama dengan "bahasa" klien:
 
-| Format | Endpoint AiThread | Klien contoh |
+| Format | Endpoint AIT | Klien contoh |
 |---|---|---|
 | Anthropic Messages | `POST /v1/messages` | Claude Code, oh-my-pi (`anthropic-messages`) |
 | OpenAI Chat Completions | `POST /v1/chat/completions` | Cursor, Continue, opencode, oh-my-pi (`openai-completions`) |
@@ -184,7 +184,7 @@ Nama model yang dikirim klien diabaikan pada passthrough dan tampil apa adanya p
 sebenarnya dipakai ditentukan Setting *Passthrough model* dan Node.
 
 **oh-my-pi (paling mudah: menu CLI)** — nyalakan switch *Global* pada kartu *oh-my-pi (omp) — provider
-AiThread*. AiThread menambah satu provider di `~/.omp/agent/models.yml` (hanya global; omp tidak punya `models.yml`
+AIT*. AIT menambah satu provider di `~/.omp/agent/models.yml` (hanya global; omp tidak punya `models.yml`
 per project), tanpa menyentuh provider lain:
 
 ```yaml
@@ -205,13 +205,13 @@ providers:
 - Pilih model `aithread/aithread` lewat `/model` di omp (atau `omp --model aithread/aithread`). Provider Anthropic asli
   tetap tersedia, jadi Anda bisa berpindah per sesi.
 - Bila `models.yml` sudah punya `providers:`, entri `aithread` disisipkan di bawahnya dengan indentasi yang sama.
-  AiThread menolak menulis bila `providers` berbentuk satu baris (`providers: { ... }`), bila sudah ada provider
+  AIT menolak menulis bila `providers` berbentuk satu baris (`providers: { ... }`), bila sudah ada provider
   `aithread` buatan Anda, atau bila masih ada `models.json` lama yang belum dimigrasi omp.
 - Project tetap dikenali dari working directory yang dikirim omp di setiap request.
 - Diuji dengan omp 18.4.4: omp mengirim `POST <baseUrl>/v1/messages?beta=true` dengan `Authorization: Bearer <apiKey>`.
   Nilai `apiKey` yang sama dengan nama environment variable diganti isi variabel itu.
 
-**Membantu AiThread mengenali sesi.** Working directory dicari dari header `X-AiThread-Cwd`, lalu dari teks request:
+**Membantu AIT mengenali sesi.** Working directory dicari dari header `X-AiThread-Cwd`, lalu dari teks request:
 `Primary working directory:` (Claude Code), `<cwd>…</cwd>` (Codex), `I'm currently working in the directory:`
 (Gemini CLI), atau `Current working directory:` / `Working directory:` / `Current directory:` / `cwd:`. Bila klien Anda
 tidak mengirim salah satunya, set header `X-AiThread-Cwd` (atau `X-AiThread-Project`). Id sesi dibaca dari header
@@ -226,12 +226,12 @@ tidak mengirim salah satunya, set header `X-AiThread-Cwd` (atau `X-AiThread-Proj
 
 ## Catatan
 
-- Selama diarahkan ke AiThread, sesi Claude Code itu **tidak** memakai akun Anthropic Anda; semua model berasal dari
+- Selama diarahkan ke AIT, sesi Claude Code itu **tidak** memakai akun Anthropic Anda; semua model berasal dari
   9router.
 - Usage yang dikembalikan untuk jawaban orkestrasi adalah estimasi ukuran konteks, dilaporkan sebagai
   `cache_read_input_tokens` (`input_tokens` = 0). Claude Code tetap menghitung sisa konteks dengan benar, sementara
   pelacak biaya yang membaca transcript (burn rate, ccusage, dll.) tidak menghitungnya sebagai input Opus penuh.
 - Environment variable sistem dengan nama yang sama bisa bertabrakan dengan setting ini. Jika hasil tidak sesuai,
   periksa `ANTHROPIC_BASE_URL` di environment Windows Anda.
-- Mematikan *Orkestrasi aktif* di Setting tidak perlu mengubah file ini: Claude Code tetap lewat AiThread, tetapi
+- Mematikan *Orkestrasi aktif* di Setting tidak perlu mengubah file ini: Claude Code tetap lewat AIT, tetapi
   diteruskan langsung ke 9router sebagai agen biasa.

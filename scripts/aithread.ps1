@@ -129,7 +129,7 @@ function Publish-App {
     $staging = "$AppDir.new"
     if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
 
-    Write-Host "Publish AiThread (Release) ke $AppDir ..."
+    Write-Host "Publish AIT (Release) ke $AppDir ..."
     & dotnet publish $ProjectFile -c Release -o $staging --artifacts-path $BuildDir --nologo -v minimal
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish gagal (exit $LASTEXITCODE). Versi yang sudah ter-publish tidak diubah." }
 
@@ -140,7 +140,7 @@ function Publish-App {
 function Start-App {
     $instance = Get-RunningInstance
     if ($instance) {
-        Write-Ok "AiThread sudah berjalan di $BaseUrl (PID $($instance.processId))."
+        Write-Ok "AIT sudah berjalan di $BaseUrl (PID $($instance.processId))."
         if (-not (Test-IsBackgroundInstance $instance)) {
             Write-Note 'Instance ini bukan dari script ini (mis. Visual Studio / dotnet run) dan ikut berhenti bila program itu ditutup.'
             Write-Note "Hentikan dulu, lalu jalankan: .\scripts\aithread.ps1 start"
@@ -152,7 +152,7 @@ function Start-App {
     if ($owner) { throw "Port $Port sudah dipakai proses lain ($owner). Tutup proses itu atau pakai -Port lain." }
 
     $previous = Get-BackgroundProcess
-    if ($previous) { throw "AiThread background (PID $($previous.Id)) masih hidup tetapi tidak menjawab di $BaseUrl. Jalankan 'stop' dulu." }
+    if ($previous) { throw "AIT background (PID $($previous.Id)) masih hidup tetapi tidak menjawab di $BaseUrl. Jalankan 'stop' dulu." }
 
     if (-not $NoBuild -or -not (Test-Path $ExePath)) { Publish-App }
 
@@ -170,17 +170,17 @@ function Start-App {
     $null = $process.Handle # keeps ExitCode readable after the process exits
     Set-Content -Path $PidFile -Value $process.Id -Encoding Ascii
 
-    Write-Host "Menunggu AiThread siap (PID $($process.Id)) ..."
+    Write-Host "Menunggu AIT siap (PID $($process.Id)) ..."
     $deadline = (Get-Date).AddSeconds($StartTimeoutSeconds)
     while ((Get-Date) -lt $deadline) {
         if ($process.HasExited) {
             Show-LogTail $log 30
             Show-LogTail $errorLog 30
             Remove-Item $PidFile -ErrorAction SilentlyContinue
-            throw "AiThread berhenti saat start (exit $($process.ExitCode)). Log: $log"
+            throw "AIT berhenti saat start (exit $($process.ExitCode)). Log: $log"
         }
         if (Get-RunningInstance) {
-            Write-Ok "AiThread berjalan di background: $BaseUrl (PID $($process.Id))"
+            Write-Ok "AIT berjalan di background: $BaseUrl (PID $($process.Id))"
             Write-Host 'Browser, terminal, dan Visual Studio sekarang boleh ditutup.'
             Write-Host "Log: $log"
             if ($Open) { Start-Process $BaseUrl }
@@ -188,7 +188,7 @@ function Start-App {
         }
         Start-Sleep -Milliseconds 500
     }
-    Write-Note "AiThread belum menjawab setelah $StartTimeoutSeconds detik; prosesnya tetap berjalan. Periksa: .\scripts\aithread.ps1 logs"
+    Write-Note "AIT belum menjawab setelah $StartTimeoutSeconds detik; prosesnya tetap berjalan. Periksa: .\scripts\aithread.ps1 logs"
 }
 
 function Stop-App {
@@ -198,11 +198,11 @@ function Stop-App {
     if (-not $process) { $process = Get-BackgroundProcess }
     if (-not $process) {
         Remove-Item $PidFile -ErrorAction SilentlyContinue
-        Write-Host "AiThread tidak berjalan di $BaseUrl."
+        Write-Host "AIT tidak berjalan di $BaseUrl."
         return
     }
 
-    Write-Host "Mematikan AiThread (PID $($process.Id)) ..."
+    Write-Host "Mematikan AIT (PID $($process.Id)) ..."
     $graceful = $false
     if ($instance) {
         try {
@@ -226,7 +226,7 @@ function Show-Status {
     $instance = Get-RunningInstance
     if ($instance) {
         $mode = if (Test-IsBackgroundInstance $instance) { 'background (script ini)' } else { 'bukan background - ikut berhenti bila Visual Studio / terminalnya ditutup' }
-        Write-Ok "AiThread berjalan di $BaseUrl"
+        Write-Ok "AIT berjalan di $BaseUrl"
         Write-Host "  PID       : $($instance.processId)"
         Write-Host "  Mode      : $mode"
         Write-Host ("  Sejak     : {0:yyyy-MM-dd HH:mm:ss}" -f ([datetime]$instance.startedAt).ToLocalTime())
@@ -234,8 +234,8 @@ function Show-Status {
     }
     else {
         $process = Get-BackgroundProcess
-        if ($process) { Write-Note "Proses AiThread background (PID $($process.Id)) hidup tetapi tidak menjawab di $BaseUrl." }
-        else { Write-Host "AiThread tidak berjalan di $BaseUrl." }
+        if ($process) { Write-Note "Proses AIT background (PID $($process.Id)) hidup tetapi tidak menjawab di $BaseUrl." }
+        else { Write-Host "AIT tidak berjalan di $BaseUrl." }
     }
 
     $log = Get-LatestLog
@@ -273,7 +273,7 @@ function Enable-Autostart {
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
         -Description 'Menjalankan AiThread di background saat login (scripts\aithread.ps1).' -Force | Out-Null
 
-    Write-Ok "Autostart aktif: AiThread dijalankan 30 detik setelah $user login (port $Port)."
+    Write-Ok "Autostart aktif: AIT dijalankan 30 detik setelah $user login (port $Port)."
     Write-Host 'Autostart memakai hasil publish terakhir; setelah kode berubah jalankan: .\scripts\aithread.ps1 restart'
     if (-not (Test-Path $ExePath)) { Write-Note 'Belum ada hasil publish; login berikutnya akan mem-publish dulu (lebih lama).' }
 }

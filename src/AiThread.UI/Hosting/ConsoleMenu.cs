@@ -22,7 +22,7 @@ public sealed class ConsoleMenu(int port)
             e.Cancel = true; // leave through the menu so the server stops gracefully
             _quit.Cancel();
         };
-        Console.Title = "AiThread";
+        Console.Title = "AIT";
 
         await EnsureServerAsync();
 
@@ -71,7 +71,7 @@ public sealed class ConsoleMenu(int port)
         }
 
         LogFile.Redirect();
-        Out.WriteLine($"Menjalankan AiThread di {client.BaseUrl} ...");
+        Out.WriteLine($"Menjalankan AIT di {client.BaseUrl} ...");
         try
         {
             await _server.StartAsync([], _port);
@@ -90,7 +90,7 @@ public sealed class ConsoleMenu(int port)
     {
         Console.Clear();
         Out.WriteLine();
-        Out.WriteLine($"  AiThread {Cli.Version}");
+        Out.WriteLine($"  AIT {Cli.Version}");
         Out.WriteLine("  ------------------------------------------------------------");
         if (info is not null)
         {
@@ -157,7 +157,7 @@ public sealed class ConsoleMenu(int port)
     private async Task<bool> HideToTrayAsync()
     {
         Out.WriteLine();
-        Out.WriteLine("Memindahkan AiThread ke tray ...");
+        Out.WriteLine("Memindahkan AIT ke tray ...");
         if (!Autostart.CanEnable)
         {
             Out.WriteLine("Hanya tersedia untuk AiThread.exe hasil publish.");
@@ -173,12 +173,12 @@ public sealed class ConsoleMenu(int port)
         var ready = await Cli.WaitUntilAsync(async () => await client.GetInfoAsync() is not null, TimeSpan.FromSeconds(90));
         if (ready)
         {
-            Out.WriteLine($"AiThread berjalan di tray: {client.BaseUrl}. Jendela ini boleh ditutup.");
+            Out.WriteLine($"AIT berjalan di tray: {client.BaseUrl}. Jendela ini boleh ditutup.");
             await Task.Delay(1500);
             return true;
         }
 
-        Out.WriteLine("AiThread di tray belum menjawab. Periksa log di: " + AppPaths.LogDir);
+        Out.WriteLine("AIT di tray belum menjawab. Periksa log di: " + AppPaths.LogDir);
         await PauseAsync();
         return true;
     }
@@ -293,7 +293,7 @@ public sealed class ConsoleMenu(int port)
         if (_owned)
         {
             Out.WriteLine();
-            Out.WriteLine("Mematikan AiThread (thread yang berjalan dibatalkan dan dicatat) ...");
+            Out.WriteLine("Mematikan AIT (thread yang berjalan dibatalkan dan dicatat) ...");
             await _server.StopAsync();
         }
 

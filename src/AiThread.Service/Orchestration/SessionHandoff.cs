@@ -27,7 +27,7 @@ public sealed class SessionHandoff(
     private static readonly TimeSpan Freshness = TimeSpan.FromMinutes(10);
 
     public const string ContextIntro =
-        "AiThread Context Keeper — summary of the Claude Code session that was cleared (/clear) in this directory. " +
+        "AIT Context Keeper — summary of the Claude Code session that was cleared (/clear) in this directory. " +
         "Treat it as your memory of that conversation and verify details in the files before relying on them.";
 
     private readonly ConcurrentDictionary<string, Pending> _pending = new(StringComparer.Ordinal);

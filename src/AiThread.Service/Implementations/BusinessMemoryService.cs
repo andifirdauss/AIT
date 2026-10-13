@@ -228,7 +228,7 @@ public sealed class BusinessMemoryService(
         var current = await settingService.GetRuntimeAsync(cancellationToken);
         var settings = await settingService.UpdateBusinessAsync(new UpdateBusinessSettingsRequest(
             current.BusinessMemoryEnabled, current.BusinessMemoryIntervalHours, current.BusinessMemoryModel, name), cancellationToken);
-        activityLog.Info("business", $"Nama developer di AiThread ini: {settings.EffectiveDeveloperName}.");
+        activityLog.Info("business", $"Nama developer di AIT ini: {settings.EffectiveDeveloperName}.");
         eventBus.Publish(AppEvent.Create(AppEventTypes.BusinessChanged, new { action = "settings" }));
         return ToSettingsDto(settings);
     }

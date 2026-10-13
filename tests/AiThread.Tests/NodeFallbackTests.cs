@@ -41,8 +41,8 @@ public class NodeFallbackTests
 
         Assert.Equal(ThreadStatus.Completed, result.Status);
         Assert.Equal(["planner-1", "planner-2", "planner-3"], router.CallsTo(ScriptedAgent.Planner).Select(c => c.Model));
-        Assert.Contains(observer.Lines, l => l.Contains("beralih ke `planner-2`"));
-        Assert.Contains(observer.Lines, l => l.Contains("beralih ke `planner-3`"));
+        Assert.Contains(observer.Lines, l => l.Contains("→ pindah ke planner-2"));
+        Assert.Contains(observer.Lines, l => l.Contains("→ pindah ke planner-3"));
         Assert.Equal("planner-3", (await harness.LoadThreadAsync(result.ThreadId)).PlannerModel);
     }
 
@@ -68,7 +68,8 @@ public class NodeFallbackTests
         Assert.Equal(ThreadStatus.Completed, result.Status);
         Assert.Contains(HalloLine, harness.ReadFile(GreeterFile));
         Assert.Equal(["executor-main", "executor-backup"], router.CallsTo(ScriptedAgent.Executor).Select(c => c.Model));
-        Assert.Contains(observer.Lines, l => l.Contains("Executor T1 `executor-main` tidak tersedia (rate limit 429), beralih ke `executor-backup`"));
+        // One entry, wrapped at the stepper width.
+        Assert.Contains(observer.Lines, l => l.Contains("🟡 Executor T1 executor-main tidak tersedia (rate limit 429) → pindah ke") && l.Contains("executor-backup"));
 
         var task = Assert.Single((await harness.LoadThreadAsync(result.ThreadId)).Tasks);
         Assert.Equal(ThreadTaskStatus.Succeeded, task.Status);
@@ -102,7 +103,7 @@ public class NodeFallbackTests
         var (result, observer) = await harness.RunAsync("Sapaan jadi Halo");
 
         Assert.Equal(ThreadStatus.Completed, result.Status);
-        Assert.EndsWith("Ringkasan dari wrapper cadangan.", observer.Final);
+        Assert.Contains("Ringkasan dari wrapper cadangan.", observer.Final);
         Assert.Equal(["reviewer-main", "reviewer-backup"], router.CallsTo(ScriptedAgent.Reviewer).Select(c => c.Model));
 
         var thread = await harness.LoadThreadAsync(result.ThreadId);

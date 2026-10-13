@@ -29,7 +29,7 @@ public class GeminiProxyController(AgentProxyHandler handler, INineRouterService
         {
             // countTokens and friends have no orchestrated form; they are not proxied.
             await AgentProxyHandler.WriteErrorAsync(Response, ClientProtocol.GeminiGenerate, StatusCodes.Status404NotFound, "not_found",
-                $"AiThread hanya mendukung generateContent dan streamGenerateContent (diminta: {action}).");
+                $"AIT hanya mendukung generateContent dan streamGenerateContent (diminta: {action}).");
             return;
         }
 

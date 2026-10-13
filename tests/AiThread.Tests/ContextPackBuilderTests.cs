@@ -23,9 +23,11 @@ public class ContextPackBuilderTests
     {
         var line = ThreadAnchor.Line("MasterData", FirstId);
 
-        Assert.Equal("**AiThread** · `MasterData` · thread `3f2a1b9c`", line);
+        Assert.Equal("**AIT** · `MasterData` · thread `3f2a1b9c`", line);
         Assert.Equal(["3f2a1b9c"], ThreadAnchor.Find($"intro\n{line}\nmore"));
-        Assert.Empty(ThreadAnchor.Find("thread `3f2a1b9c` mentioned without the AiThread header"));
+        Assert.Empty(ThreadAnchor.Find("thread `3f2a1b9c` mentioned without the AIT header"));
+        // Replies written before the rename still count.
+        Assert.Equal(["3f2a1b9c"], ThreadAnchor.Find("**AiThread** · `MasterData` · thread `3f2a1b9c`"));
     }
 
     [Fact]

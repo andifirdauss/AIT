@@ -36,6 +36,6 @@ public class SystemController(IHostApplicationLifetime lifetime, IHostEnvironmen
             lifetime.StopApplication();
             return Task.CompletedTask;
         });
-        return ApiResponse<bool>.Ok(true, "AiThread dimatikan.");
+        return ApiResponse<bool>.Ok(true, "AIT dimatikan.");
     }
 }
