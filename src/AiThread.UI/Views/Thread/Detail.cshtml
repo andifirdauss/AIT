@@ -19,9 +19,9 @@
 <div class="modal fade" id="rollbackModal" tabindex="-1" aria-labelledby="rollbackModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
                 <h5 class="modal-title" id="rollbackModalTitle">Batalkan perubahan file</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
             <div class="modal-body">
                 <p class="small text-secondary">
@@ -111,8 +111,11 @@
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header">Aktivitas</div>
+        <div class="card win" id="activityWindow" data-win-id="thread-activity" data-win-persist>
+            <div class="card-header win-bar">
+                <win-controls close-label="Kosongkan log" />
+                <span class="win-title">Aktivitas</span>
+            </div>
             <div class="log-panel" style="height:560px" id="activity"><div class="empty-state">Memuat…</div></div>
         </div>
     </div>
