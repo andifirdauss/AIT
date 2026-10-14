@@ -24,7 +24,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 3. **Setting** → isi URL & API key 9router → *Test koneksi* → *Simpan* — [Konfigurasi](02-konfigurasi.md).
 4. **Node** → tambahkan 1 Planner, minimal 1 Executor, 1 Wrapper.
 5. **Project** → *Telusuri…* untuk mencari dan mendaftarkan folder project Anda (bahasa apa pun), lalu
-   menu **CLI** → nyalakan switch Claude Code (atau oh-my-pi) — [Integrasi Claude Code](03-integrasi-claude-code.md).
+   menu **CLI** → nyalakan switch Claude Code (atau oh-my-pi, Codex, Gemini CLI, opencode, Qwen Code) — [Integrasi Claude Code](03-integrasi-claude-code.md).
 6. Buka sesi Claude Code **baru** di folder project dan beri perintah seperti biasa — [Penggunaan](04-penggunaan.md).
 7. *(Opsional)* **Setting → Telegram** untuk mengirim prompt dari HP saat laptop ditinggal —
    [Prompt dari Telegram](11-telegram.md).
@@ -35,7 +35,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 |---|---|---|
 | 1 | [Instalasi](01-instalasi.md) | Prasyarat, short memory (Garnet), 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
 | 2 | [Konfigurasi](02-konfigurasi.md) | Menu Setting (9router, proxy, orkestrasi) dan menu Node (memilih model per peran) |
-| 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code (dan Codex, Gemini CLI, oh-my-pi) ke AIT lewat menu CLI, verifikasi, mengembalikan |
+| 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code (dan Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi) ke AIT lewat menu CLI, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
 | 5 | [Panduan menu](05-menu.md) | Dashboard, detail thread, Project, Memory, Node, CLI, Setting |
 | 6 | [Memory](06-memory.md) | Short vs long memory, project vs knowledge memory, siklus hidup, pengelolaan |

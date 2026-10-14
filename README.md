@@ -101,6 +101,8 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    ```
 
    Backup file asli disimpan sekali sebagai `*.aithread-backup`; tombol *Kembalikan* menghapus kunci-kunci di atas.
+   CLI lain punya kartunya sendiri di menu yang sama: oh-my-pi, Codex CLI (`codex --profile aithread`), Gemini CLI,
+   opencode, dan Qwen Code — lihat [Klien lain](docs/03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll).
 4. Buka sesi Claude Code baru di project tersebut dan beri perintah seperti biasa. Progres (tool planner, rencana,
    status tiap tugas) tampil di Claude Code; detail lengkap ada di Dashboard → thread.
 

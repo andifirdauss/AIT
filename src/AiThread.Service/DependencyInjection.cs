@@ -52,6 +52,10 @@ public static class DependencyInjection
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
         services.AddSingleton<ICliIntegration, ClaudeCodeIntegration>();
         services.AddSingleton<ICliIntegration>(sp => new OhMyPiProviderIntegration(sp.GetRequiredService<ISettingService>()));
+        services.AddSingleton<ICliIntegration>(sp => new CodexIntegration(sp.GetRequiredService<ISettingService>()));
+        services.AddSingleton<ICliIntegration>(sp => new GeminiCliIntegration(sp.GetRequiredService<ISettingService>(), sp.GetRequiredService<IProjectService>()));
+        services.AddSingleton<ICliIntegration>(sp => new OpenCodeIntegration(sp.GetRequiredService<ISettingService>()));
+        services.AddSingleton<ICliIntegration>(sp => new QwenCodeIntegration(sp.GetRequiredService<ISettingService>()));
         services.AddSingleton<ActivityLogQueue>();
         services.AddSingleton<IActivityLogService, ActivityLogService>();
         services.AddSingleton<IDocsService>(sp => new DocsService(DocsService.ResolveDirectory(

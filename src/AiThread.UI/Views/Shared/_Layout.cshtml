@@ -52,8 +52,8 @@
         </aside>
         <main class="app-main" role="main">
             <div id="updateBar" class="alert alert-info alert-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
-                <strong>🚀 AIT versi @appVersion</strong> — Fitur baru: rencana kini bisa <strong>menghapus</strong> dan <strong>memindahkan/me-rename file</strong>. Dikerjakan langsung oleh AIT tanpa model (tanpa token) dan ikut dikembalikan saat <strong>↩ Batalkan perubahan file</strong>.
-                <a asp-controller="Docs" asp-action="Index" class="alert-link ms-2">Panduan singkat →</a>
+                <strong>🚀 AIT versi @appVersion</strong> — Fitur baru: menu <strong>CLI</strong> kini bisa mengarahkan <strong>Codex CLI</strong>, <strong>Gemini CLI</strong>, <strong>opencode</strong>, dan <strong>Qwen Code</strong> ke AIT dengan satu switch, di samping Claude Code dan oh-my-pi. Provider asli tetap bisa dipakai.
+                <a href="~/Docs/03-integrasi-claude-code#lewat-menu-cli" class="alert-link ms-2">Panduan singkat →</a>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
             </div>
             @RenderBody()

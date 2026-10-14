@@ -152,8 +152,8 @@ pun (Claude, GPT, Gemini, …) — jadi model yang dipakai tidak harus sama deng
 
 | Format | Endpoint AIT | Klien contoh |
 |---|---|---|
-| Anthropic Messages | `POST /v1/messages` | Claude Code, oh-my-pi (`anthropic-messages`) |
-| OpenAI Chat Completions | `POST /v1/chat/completions` | Cursor, Continue, opencode, oh-my-pi (`openai-completions`) |
+| Anthropic Messages | `POST /v1/messages` | Claude Code, oh-my-pi (`anthropic-messages`), opencode (`@ai-sdk/anthropic`) |
+| OpenAI Chat Completions | `POST /v1/chat/completions` | Qwen Code, Cursor, Continue, oh-my-pi (`openai-completions`) |
 | OpenAI Responses | `POST /v1/responses` | Codex CLI |
 | Gemini native | `POST /v1beta/models/{model}:generateContent` dan `:streamGenerateContent` | Gemini CLI |
 
@@ -161,27 +161,71 @@ Aturan orkestrasi sama untuk semuanya: request diorkestrasi bila membawa `tools`
 hasil tool), dan sesinya berasal dari sebuah project (folder dengan `.git` atau file build); balasannya dikirim dalam format klien itu sendiri
 (stream maupun non-stream). Selain itu request diteruskan ke endpoint 9router yang sama dengan model passthrough.
 
-**Codex CLI** — `~/.codex/config.toml` (Codex hanya memakai `wire_api = "responses"`):
-
-```toml
-model_provider = "aithread"
-
-[model_providers.aithread]
-name = "AiThread"
-base_url = "http://localhost:5225/v1"
-env_key = "AITHREAD_API_KEY"        # isi dengan Proxy API key (atau nilai bebas bila kosong)
-wire_api = "responses"
-```
-
-**Gemini CLI** — variabel lingkungan (HTTP diizinkan karena `localhost`):
-
-```powershell
-$env:GOOGLE_GEMINI_BASE_URL = "http://localhost:5225"
-$env:GEMINI_API_KEY = "aithread-local"   # Proxy API key bila diisi
-```
-
 Nama model yang dikirim klien diabaikan pada passthrough dan tampil apa adanya pada balasan orkestrasi; model yang
 sebenarnya dipakai ditentukan Setting *Passthrough model* dan Node.
+
+### Lewat menu CLI
+
+Menu **CLI** punya kartu untuk Claude Code, oh-my-pi, Codex CLI, Gemini CLI, opencode, dan Qwen Code. Semua kartu
+bekerja sama: AIT hanya menulis/menghapus entri miliknya, backup file asli disimpan sekali sebagai `*.aithread-backup`,
+dan file yang hanya berisi entri AIT dihapus saat switch dimatikan. Bila *Proxy API key* diisi, nilainya ikut ditulis
+(kosong = `aithread-local`).
+
+| CLI | File | Scope | Cara memakai |
+|---|---|---|---|
+| Codex CLI | `~/.codex/config.toml` (atau `$CODEX_HOME`) | global | `codex --profile aithread` (`-p aithread`); `codex` biasa tetap memakai provider aslinya |
+| Gemini CLI | `~/.gemini/.env`, atau `<project>/.gemini/.env` | global + per project | pilih *Use Gemini API Key* di `/auth` |
+| opencode | `~/.config/opencode/opencode.json` (atau `opencode.jsonc` yang sudah ada) | global | pilih `aithread/aithread` lewat `/models` |
+| Qwen Code | `~/.qwen/settings.json` | global | pilih model *AIT* lewat `/model` |
+
+**Codex CLI** — Codex tidak mengizinkan provider di `.codex/config.toml` project, jadi hanya global. Blok ini
+ditambahkan di akhir file (Codex hanya memakai `wire_api = "responses"`; `stream_idle_timeout_ms` dipanjangkan
+karena thread orkestrasi bisa diam beberapa menit):
+
+```toml
+# >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
+[model_providers.aithread]
+name = "AIT"
+base_url = "http://localhost:5225/v1"
+wire_api = "responses"
+experimental_bearer_token = "aithread-local"   # Proxy API key bila diisi
+stream_idle_timeout_ms = 1800000
+
+[profiles.aithread]
+model_provider = "aithread"
+# <<< AiThread <<<
+```
+
+AIT menolak menulis bila sudah ada `[model_providers.aithread]` / `[profiles.aithread]` buatan Anda, atau bila
+`model_providers`/`profiles` ditulis sebagai inline table (`model_providers = { ... }`).
+
+**Gemini CLI** — AIT menulis dua variabel di `.gemini/.env` (HTTP diizinkan karena `localhost`):
+
+```dotenv
+# >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
+GOOGLE_GEMINI_BASE_URL="http://localhost:5225"
+GEMINI_API_KEY="aithread-local"
+# <<< AiThread <<<
+```
+
+- Base URL hanya berlaku dengan autentikasi *Gemini API Key*; login Google tidak lewat AIT.
+- Gemini CLI hanya membaca **satu** `.env`: yang pertama ditemukan dari folder kerja ke atas (`.gemini/.env` lalu
+  `.env`), baru `~/.gemini/.env`. Project yang punya `.env` sendiri di root menutupi switch global — pakai switch
+  per project untuk project itu. Variabel lingkungan sistem dengan nama sama juga menang atas `.env`.
+- AIT menolak menulis bila file sudah berisi `GEMINI_API_KEY` atau `GOOGLE_GEMINI_BASE_URL` buatan Anda; jadikan
+  komentar dulu.
+- `.gemini/.env` per project berisi Proxy API key — pastikan tidak ikut di-commit.
+
+**opencode** — provider `aithread` (format Anthropic lewat `@ai-sdk/anthropic`) ditambahkan ke `provider` di
+`opencode.json` global, dengan `timeout: false` agar thread panjang tidak diputus. Hanya global, karena
+`opencode.json` project biasanya di-commit. AIT menolak menulis bila file berisi komentar (tidak bisa ditulis ulang
+tanpa menghapusnya) atau sudah punya provider `aithread` buatan Anda.
+
+**Qwen Code** — model `aithread` (OpenAI-compatible, `baseUrl` = `<proxy>/v1`) ditambahkan ke
+`modelProviders.openai` beserta `env.AITHREAD_API_KEY`, dengan `generationConfig.timeout` 30 menit. Hanya global,
+karena Qwen Code mengganti (bukan menggabung) `modelProviders` dari settings project. Aturan komentar dan id yang
+sudah dipakai sama dengan opencode. Batas umur stream bawaan Qwen Code (15 menit, `QWEN_STREAM_MAX_LIFETIME_MS`)
+tetap berlaku.
 
 **oh-my-pi (paling mudah: menu CLI)** — nyalakan switch *Global* pada kartu *oh-my-pi (omp) — provider
 AIT*. AIT menambah satu provider di `~/.omp/agent/models.yml` (hanya global; omp tidak punya `models.yml`
@@ -210,6 +254,8 @@ providers:
 - Project tetap dikenali dari working directory yang dikirim omp di setiap request.
 - Diuji dengan omp 18.4.4: omp mengirim `POST <baseUrl>/v1/messages?beta=true` dengan `Authorization: Bearer <apiKey>`.
   Nilai `apiKey` yang sama dengan nama environment variable diganti isi variabel itu.
+
+### Sesi dan batasan
 
 **Membantu AIT mengenali sesi.** Working directory dicari dari header `X-AiThread-Cwd`, lalu dari teks request:
 `Primary working directory:` (Claude Code), `<cwd>…</cwd>` (Codex), `I'm currently working in the directory:`
