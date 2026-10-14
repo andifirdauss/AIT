@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml } = window.AiThread;
+  const { api, toast, escapeHtml, winFrame } = window.AiThread;
   const el = id => document.getElementById(id);
 
   let clis = [];
@@ -105,10 +105,13 @@
       </div>`
         : '<p class="small text-secondary mb-2">Hanya global — CLI ini tidak punya file konfigurasi per project.</p>'}
 
-      <details class="mb-2">
-        <summary class="small">Yang akan ditulis ke ${escapeHtml(global.path)}</summary>
-        <pre class="code-block mt-2 mb-0">${escapeHtml(global.preview)}</pre>
-      </details>
+      ${winFrame({
+        id: `cli-preview-${cli.id}`,
+        title: `Yang akan ditulis · ${global.path}`,
+        minimized: true,
+        className: 'mb-2',
+        body: `<pre class="code-block">${escapeHtml(global.preview)}</pre>`
+      })}
       ${cli.note ? `<p class="small text-secondary mb-0">${escapeHtml(cli.note)}</p>` : ''}
       ${cli.id === CLAUDE ? hooksShell() : ''}`;
   }
@@ -158,10 +161,13 @@
       </p>
       <select class="form-select form-select-sm mb-2" id="hooksTarget">${options.join('')}</select>
       <div class="alert small" id="hooksStatus">Memuat status…</div>
-      <details class="mb-2">
-        <summary class="small">Blok yang akan ditulis</summary>
-        <pre class="code-block mt-2 mb-0" id="hooksPreview"></pre>
-      </details>
+      ${winFrame({
+        id: 'cli-hooks-preview',
+        title: 'Blok hook yang akan ditulis',
+        minimized: true,
+        className: 'mb-2',
+        body: '<pre class="code-block" id="hooksPreview"></pre>'
+      })}
       <div class="d-flex gap-2">
         <button type="button" class="btn btn-primary btn-sm" id="btnApplyHooks">Pasang hook</button>
         <button type="button" class="btn btn-outline-danger btn-sm" id="btnRevertHooks">Lepas hook</button>

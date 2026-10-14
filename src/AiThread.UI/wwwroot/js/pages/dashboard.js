@@ -135,6 +135,10 @@
   bindRowLinks(el('threadRows'));
   el('btnRun').addEventListener('click', runThread);
   el('logLevel').addEventListener('change', loadLogs);
+  // Red window button: empty the view; new entries keep arriving.
+  el('logWindow').addEventListener('win:close', () => {
+    el('logPanel').innerHTML = '<div class="empty-state">Log dikosongkan. Log baru akan muncul di sini.</div>';
+  });
   el('btnPauseLog').addEventListener('click', event => {
     logPaused = !logPaused;
     event.target.textContent = logPaused ? 'Lanjut' : 'Jeda';
