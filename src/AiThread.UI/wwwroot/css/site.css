@@ -535,3 +535,273 @@ body {
   .app-nav { flex-direction: row; flex-wrap: wrap; }
   .app-main { padding: 1rem; }
 }
+
+/* First-run tour (Views/Shared/_Onboarding.cshtml). The illustrations are inline SVG colored through the theme
+   variables, so they follow the light/dark switch; the terminal mockups stay dark in both modes. */
+/* Every slide keeps its box (stacked by Bootstrap's float + negative margin), only hidden, so the dialog is as tall as
+   the tallest slide and does not jump while paging. */
+.onboarding .carousel-item {
+  display: block;
+  visibility: hidden;
+}
+
+.onboarding .carousel-item.active,
+.onboarding .carousel-item-next,
+.onboarding .carousel-item-prev {
+  visibility: visible;
+}
+
+.onboarding-figure {
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: var(--app-muted-bg);
+}
+
+.onboarding-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.onboarding-title {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-dots {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.onboarding-dots button {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: var(--bs-secondary-bg);
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.onboarding-dots button.active {
+  width: 22px;
+  background: var(--app-accent);
+}
+
+.app-sidebar-footer .btn-onboarding {
+  color: var(--app-sidebar-fg);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.ob-svg { font-family: var(--bs-body-font-family); font-size: 13px; }
+.ob-svg .ob-t { fill: var(--bs-body-color); }
+.ob-svg .ob-m { fill: var(--bs-secondary-color); font-size: 11px; }
+.ob-svg .ob-sm { font-size: 12px; }
+.ob-svg .ob-xs { font-size: 10px; }
+.ob-svg .ob-strong { font-weight: 600; }
+.ob-svg .ob-mono { font-family: var(--bs-font-monospace); }
+.ob-svg .ob-panel { fill: var(--bs-body-bg); stroke: var(--bs-border-color); }
+.ob-svg .ob-soft { fill: var(--bs-tertiary-bg); }
+.ob-svg .ob-off { fill: var(--bs-secondary-bg); }
+.ob-svg .ob-line { stroke: var(--bs-border-color); fill: none; }
+.ob-svg .ob-dash { stroke: var(--bs-secondary-color); stroke-dasharray: 3 4; fill: none; opacity: 0.6; }
+.ob-svg .ob-dashed { fill: none; stroke: var(--bs-secondary-color); stroke-dasharray: 5 4; opacity: 0.7; }
+.ob-svg .ob-arrow { stroke: var(--bs-secondary-color); stroke-width: 1.5; fill: none; marker-end: url(#obArrow); }
+.ob-arrowhead { fill: var(--bs-secondary-color); }
+.ob-svg .ob-accent { fill: var(--app-accent); }
+.ob-svg .ob-accent-text { fill: var(--app-accent); }
+.ob-svg .ob-accent-stroke { stroke: var(--app-accent); stroke-width: 1.5; }
+.ob-svg .ob-on-accent { fill: #fff; }
+.ob-svg .ob-ok { fill: var(--app-ok); }
+.ob-svg .ob-ok-soft { fill: rgba(47, 191, 113, 0.18); }
+.ob-svg .ob-ok-text { fill: var(--app-ok); }
+.ob-svg .ob-warn { fill: var(--app-warn); }
+.ob-svg .ob-on-warn { fill: #2b1d05; }
+.ob-svg .ob-err-text { fill: var(--app-err); }
+.ob-svg .ob-err-stroke { stroke: var(--app-err); }
+.ob-svg .ob-knob { fill: #fff; }
+.ob-svg .ob-folder { fill: var(--app-warn); }
+.ob-svg .ob-check { fill: none; stroke: #fff; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+.ob-svg .ob-term { fill: #0f1318; }
+.ob-svg .ob-term-bar { fill: #1c222b; }
+.ob-svg .ob-term-t { fill: #d6dde8; }
+.ob-svg .ob-term-m { fill: #7d8796; }
+.ob-svg .ob-term-p { fill: #8aa1ff; }
+.ob-svg .ob-term-a { fill: #b9c6ff; }
+.ob-svg .ob-term-ok { fill: #2fbf71; }
+.ob-svg .ob-cursor { fill: #d6dde8; animation: ob-blink 1.1s steps(1) infinite; }
+
+@keyframes ob-blink {
+  50% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-svg .ob-cursor { animation: none; }
+}
+
+/* Window controls, macOS style — the project standard for close / minimize / maximize (TagHelpers/WinControls,
+   site.js winControls / winFrame). Red closes, yellow folds the window to its title bar (a modal docks at the
+   bottom of the screen), green fills the screen; the symbols show on hover, an inactive button is grey. */
+.win-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.win-btn {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+/* A bigger hit area than the 12px dot. */
+.win-btn::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.win-btn::before {
+  position: absolute;
+  inset: 0;
+  font: 700 10px/12px system-ui, sans-serif;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.6);
+  opacity: 0;
+}
+
+.win-close { background: #ff5f57; }
+.win-min { background: #febc2e; }
+.win-max { background: #28c840; }
+.win-close::before { content: '×'; }
+.win-min::before { content: '−'; }
+.win-max::before { content: '+'; }
+.win-max[aria-pressed="true"]::before { content: '⤡'; font-size: 8px; }
+
+.win-controls:hover .win-btn::before,
+.win-btn:focus-visible::before {
+  opacity: 1;
+}
+
+.win-btn:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+
+.win-btn:disabled {
+  background: var(--bs-secondary-bg);
+  box-shadow: inset 0 0 0 1px var(--bs-border-color);
+  cursor: default;
+}
+
+.win-btn:disabled::before { opacity: 0 !important; }
+
+/* A window: title bar (controls, title, optional actions on the right) and its content. Also used on .card. */
+.win {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bs-body-bg);
+}
+
+.win-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--bs-tertiary-bg);
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.win-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.win-bar .win-title.small { color: var(--bs-secondary-color); }
+
+.win-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.win > .code-block {
+  border-radius: 0;
+  background: transparent;
+}
+
+.win.win-minimized > :not(.win-bar) { display: none !important; }
+.win.win-minimized > .win-bar { border-bottom: 0; }
+
+.win.win-maximized {
+  position: fixed;
+  inset: 1rem;
+  z-index: 1060;
+  display: flex;
+  flex-direction: column;
+  margin: 0 !important;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.55), 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+.win.win-maximized > :not(.win-bar) {
+  flex: 1 1 auto;
+  height: auto !important;
+  max-height: none !important;
+  overflow: auto;
+}
+
+body.win-has-max { overflow: hidden; }
+
+/* Modals: the controls sit on the left of the header, like a macOS title bar. */
+.modal-header.win-bar {
+  justify-content: flex-start;
+  min-height: 0;
+  padding: 0.75rem 1rem;
+}
+
+.modal-header.win-bar .modal-title { flex: 1; min-width: 0; }
+
+/* A minimized modal docks at the bottom center (clear of the toasts on the right) as its title bar; the page behind
+   it stays usable. */
+.modal.win-docked { pointer-events: none; }
+
+.modal.win-docked .modal-dialog {
+  position: fixed;
+  right: 0;
+  bottom: 1rem;
+  left: 0;
+  width: 340px;
+  max-width: calc(100vw - 2rem);
+  height: auto;
+  min-height: 0;
+  margin: 0 auto;
+  transform: none !important;
+  pointer-events: auto;
+}
+
+.modal.win-docked .modal-content { box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45); }
+.modal.win-docked .modal-content > :not(.modal-header) { display: none !important; }
+.modal.win-docked .modal-header { border-bottom: 0; cursor: pointer; }
+body.win-modal-docked { overflow: auto !important; padding-right: 0 !important; }
+body.win-modal-docked .modal-backdrop { opacity: 0 !important; pointer-events: none; }
+
+/* Alerts and toasts carry the close button alone, at the start. */
+.win-dismissible {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.win-dismissible > .win-controls { margin-top: 0.3rem; }

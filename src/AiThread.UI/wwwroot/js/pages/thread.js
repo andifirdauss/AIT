@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, stream, debounce, md, diffHtml } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, stream, debounce, md, diffHtml, winFrame } = window.AiThread;
 
   const threadId = window.threadId;
   const el = id => document.getElementById(id);
@@ -117,9 +117,11 @@
     if (r.build) {
       const b = r.build;
       const more = b.errorCount > b.errors.length ? `\n… ${b.errorCount - b.errors.length} error lain` : '';
-      parts.push(`<div class="small">${buildIcons[b.status] || ''} ${escapeHtml(b.headline)}</div>`
-        + (b.errors.length ? `<pre class="code-block small mb-1">${escapeHtml(b.errors.join('\n') + more)}</pre>` : '')
-        + (b.output ? `<pre class="code-block small mb-1">${escapeHtml(b.output)}</pre>` : ''));
+      parts.push(`<div class="small mb-1">${buildIcons[b.status] || ''} ${escapeHtml(b.headline)}</div>`
+        + (b.errors.length ? winFrame({ id: `build-errors-${r.round}`, title: `Error build · putaran ${r.round}`, className: 'mb-2',
+          body: `<pre class="code-block small">${escapeHtml(b.errors.join('\n') + more)}</pre>` }) : '')
+        + (b.output ? winFrame({ id: `build-output-${r.round}`, title: `Output build · putaran ${r.round}`, className: 'mb-2',
+          body: `<pre class="code-block small">${escapeHtml(b.output)}</pre>` }) : ''));
     }
     if (r.review) {
       const v = r.review;
@@ -176,14 +178,17 @@
 
   function taskDetailHtml(t) {
     const output = outputs.get(t.id) || '';
-    const outputHtml = isFileOperation(t) ? '' : `<div><span class="text-secondary small">Output model${t.attempts > 1 ? ` (${t.attempts} percobaan)` : ''}</span>
-        <pre class="code-block" data-output-for="${t.id}">${escapeHtml(output || (t.status === 'Pending' ? 'Menunggu giliran…' : 'Output live hanya tersedia selama halaman terbuka saat tugas berjalan.'))}</pre></div>`;
+    const outputHtml = isFileOperation(t) ? '' : winFrame({
+      id: `output-${t.id}`,
+      title: `Output model · ${t.taskKey}${t.attempts > 1 ? ` (${t.attempts} percobaan)` : ''}`,
+      body: `<pre class="code-block" data-output-for="${t.id}">${escapeHtml(output || (t.status === 'Pending' ? 'Menunggu giliran…' : 'Output live hanya tersedia selama halaman terbuka saat tugas berjalan.'))}</pre>`
+    });
     return `<tr class="task-detail" data-detail-for="${t.id}"><td colspan="7" class="bg-body-tertiary">
       <div class="mb-2"><span class="text-secondary small">Instruksi</span><div class="pre-wrap small">${escapeHtml(t.instruction)}</div></div>
       ${t.dependsOn ? `<div class="mb-2 small"><span class="text-secondary">Bergantung pada:</span> ${escapeHtml(t.dependsOn)}</div>` : ''}
       ${t.summary ? `<div class="mb-2 small"><span class="text-secondary">Ringkasan:</span> ${escapeHtml(t.summary)}</div>` : ''}
       ${t.error ? `<div class="mb-2 small text-danger">${escapeHtml(t.error)}</div>` : ''}
-      ${t.diff ? `<div class="mb-2"><span class="text-secondary small">Diff</span><pre class="code-block">${diffHtml(t.diff)}</pre></div>` : ''}
+      ${t.diff ? winFrame({ id: `diff-${t.id}`, title: `Diff · ${taskPath(t)}`, className: 'mb-2', body: `<pre class="code-block">${diffHtml(t.diff)}</pre>` }) : ''}
       ${outputHtml}
     </td></tr>`;
   }
@@ -246,6 +251,11 @@
   function activityLine(time, category, message, level = 'Info') {
     return `<div class="log-line level-${level}"><span class="log-time">${fmt.time(time)}</span><span class="log-category">${escapeHtml(category)}</span><span class="log-message">${escapeHtml(message)}</span></div>`;
   }
+
+  // Red window button: empty the view; new entries keep arriving.
+  el('activityWindow').addEventListener('win:close', () => {
+    el('activity').innerHTML = '<div class="empty-state">Aktivitas dikosongkan. Aktivitas baru akan muncul di sini.</div>';
+  });
 
   function addActivity(html) {
     const panel = el('activity');

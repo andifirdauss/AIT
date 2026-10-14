@@ -3,6 +3,24 @@
 Semua halaman memperbarui diri secara live lewat Server-Sent Events — tidak perlu refresh. Pill di kiri bawah
 sidebar menunjukkan status 9router; tombol *Ganti tema* beralih antara mode gelap dan terang.
 
+**Tombol jendela.** Semua jendela, dialog, panel log, dan blok kode memakai tiga tombol gaya macOS di kiri title
+bar (simbolnya muncul saat kursor di atasnya):
+
+| Tombol | Dialog | Panel log | Blok kode (output, diff, build, pratinjau config) |
+|---|---|---|---|
+| 🔴 merah | tutup | kosongkan tampilan log (log baru tetap masuk) | nonaktif (abu-abu) |
+| 🟡 kuning | kecilkan ke bawah layar; halaman di belakang bisa dipakai, klik judulnya untuk membuka lagi | lipat / buka | lipat / buka |
+| 🟢 hijau | layar penuh | layar penuh | layar penuh |
+
+Double-click title bar = layar penuh; Esc keluar dari layar penuh. Status lipat panel log diingat browser. Banner dan
+notifikasi hanya punya tombol merah.
+
+**Panduan memulai.** Saat AIT pertama kali dibuka (belum ada Node sama sekali), muncul popup bergambar berisi 9 langkah:
+mengenal AIT, memasang AIT, menyiapkan 9router, Setting, Node, Project, CLI, mulai bekerja, dan selesai. Geser, klik
+titik, atau pakai tombol panah ← → untuk berpindah langkah; tiap langkah punya tombol menuju menu terkait. Popup hanya
+muncul otomatis sekali per browser. Tombol *Panduan memulai* di kiri bawah sidebar membukanya lagi di langkah terakhir
+yang dilihat.
+
 ## Dashboard
 
 **Kartu status**

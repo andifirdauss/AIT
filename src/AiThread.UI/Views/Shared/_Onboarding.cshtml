@@ -1,0 +1,449 @@
+@* First-run tour (site.js initOnboarding): one slide per setup step, each with an inline SVG that follows the color
+   mode through the Bootstrap/--app-* variables. Reopened from the sidebar button "Panduan memulai". *@
+<div class="modal fade" id="onboardingModal" tabindex="-1" aria-labelledby="onboardingHeading" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content onboarding">
+            <div class="modal-header win-bar border-0 pb-0">
+                <win-controls for="modal" />
+                <h5 class="modal-title fs-6 text-secondary fw-normal" id="onboardingHeading">Panduan memulai · <span id="onboardingStep">1 / 9</span></h5>
+            </div>
+            <div class="modal-body pt-2">
+                <svg width="0" height="0" class="position-absolute" aria-hidden="true" focusable="false">
+                    <defs>
+                        <marker id="obArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                            <path class="ob-arrowhead" d="M0 0 L10 5 L0 10 z" />
+                        </marker>
+                    </defs>
+                </svg>
+
+                <div id="onboardingCarousel" class="carousel slide" data-bs-touch="true">
+                    <div class="carousel-inner">
+
+                        @* 1. What AIT is *@
+                        <div class="carousel-item active">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Alur: Anda memakai CLI coding, CLI mengirim ke AIT; planner menyusun rencana, beberapa executor bekerja paralel, wrapper merangkum; semua model berasal dari 9router">
+                                    <rect class="ob-panel" x="8" y="88" width="72" height="54" rx="10" />
+                                    <text class="ob-t ob-strong" x="44" y="120" text-anchor="middle">Anda</text>
+                                    <path class="ob-arrow" d="M82 115 H104" />
+                                    <rect class="ob-panel" x="106" y="78" width="104" height="74" rx="10" />
+                                    <text class="ob-t ob-strong" x="158" y="104" text-anchor="middle">CLI coding</text>
+                                    <text class="ob-m" x="158" y="122" text-anchor="middle">Claude Code</text>
+                                    <text class="ob-m" x="158" y="137" text-anchor="middle">Codex · Gemini …</text>
+                                    <path class="ob-arrow" d="M212 115 H234" />
+
+                                    <rect class="ob-panel ob-accent-stroke" x="236" y="14" width="316" height="202" rx="14" />
+                                    <text class="ob-t ob-strong ob-accent-text" x="252" y="38">AIT</text>
+                                    <text class="ob-m" x="282" y="38">proxy + orkestrasi</text>
+                                    <path class="ob-arrow" d="M505 84 V58 H158 V76" />
+                                    <text class="ob-m" x="330" y="53">jawaban akhir</text>
+
+                                    <rect class="ob-accent" x="252" y="86" width="82" height="50" rx="8" />
+                                    <text class="ob-on-accent ob-strong" x="293" y="108" text-anchor="middle">Planner</text>
+                                    <text class="ob-on-accent ob-xs" x="293" y="124" text-anchor="middle">rencana</text>
+                                    <path class="ob-arrow" d="M336 111 L360 78" />
+                                    <path class="ob-arrow" d="M336 111 H360" />
+                                    <path class="ob-arrow" d="M336 111 L360 144" />
+                                    <rect class="ob-ok-soft" x="362" y="63" width="84" height="26" rx="6" />
+                                    <rect class="ob-ok-soft" x="362" y="98" width="84" height="26" rx="6" />
+                                    <rect class="ob-ok-soft" x="362" y="133" width="84" height="26" rx="6" />
+                                    <text class="ob-t ob-sm" x="404" y="80" text-anchor="middle">Executor</text>
+                                    <text class="ob-t ob-sm" x="404" y="115" text-anchor="middle">Executor</text>
+                                    <text class="ob-t ob-sm" x="404" y="150" text-anchor="middle">Executor</text>
+                                    <path class="ob-arrow" d="M448 76 L468 106" />
+                                    <path class="ob-arrow" d="M448 111 H468" />
+                                    <path class="ob-arrow" d="M448 146 L468 116" />
+                                    <rect class="ob-warn" x="470" y="86" width="70" height="50" rx="8" />
+                                    <text class="ob-on-warn ob-strong" x="505" y="108" text-anchor="middle">Wrapper</text>
+                                    <text class="ob-on-warn ob-xs" x="505" y="124" text-anchor="middle">ringkas</text>
+
+                                    <path class="ob-dash" d="M293 136 V178 M404 159 V178 M505 136 V178" />
+                                    <rect class="ob-soft" x="252" y="178" width="288" height="26" rx="6" />
+                                    <text class="ob-m" x="396" y="195" text-anchor="middle">9router — semua model (Claude, GPT, Gemini, …)</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">Selamat datang di AIT 👋</h4>
+                            <p>
+                                AIT duduk di antara CLI coding Anda dan 9router. Setiap perintah <strong>direncanakan</strong> oleh satu model kuat,
+                                <strong>dikerjakan paralel</strong> oleh banyak model murah, lalu <strong>dirangkum</strong> kembali ke CLI Anda —
+                                lebih cepat dan lebih hemat token.
+                            </p>
+                            <p class="small text-secondary mb-0">Panduan ini ±2 menit: pasang → hubungkan → pakai. Geser, klik titik di bawah, atau pakai tombol panah ← →.</p>
+                        </div>
+
+                        @* 2. Install *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Terminal PowerShell: npm i -g aithread lalu aithread tray; AIT berjalan di localhost:5225 dengan ikon di tray Windows">
+                                    <rect class="ob-term" x="16" y="14" width="404" height="202" rx="10" />
+                                    <path class="ob-term-bar" d="M16 24 a10 10 0 0 1 10 -10 H410 a10 10 0 0 1 10 10 V40 H16 z" />
+                                    <circle cx="34" cy="27" r="4.5" fill="#e5534b" />
+                                    <circle cx="48" cy="27" r="4.5" fill="#f0ad3c" />
+                                    <circle cx="62" cy="27" r="4.5" fill="#2fbf71" />
+                                    <text class="ob-term-m ob-sm" x="218" y="31" text-anchor="middle">PowerShell</text>
+                                    <text class="ob-term-t ob-mono" x="30" y="68"><tspan class="ob-term-p">PS&gt;</tspan> npm i -g aithread</text>
+                                    <text class="ob-term-m ob-mono" x="30" y="90">added 2 packages in 9s</text>
+                                    <text class="ob-term-t ob-mono" x="30" y="120"><tspan class="ob-term-p">PS&gt;</tspan> aithread tray</text>
+                                    <text class="ob-term-ok ob-mono" x="30" y="142">✓ AIT berjalan di http://localhost:5225</text>
+                                    <text class="ob-term-m ob-mono" x="30" y="164">  ikon AIT muncul di tray Windows</text>
+                                    <text class="ob-term-t ob-mono" x="30" y="194"><tspan class="ob-term-p">PS&gt;</tspan></text>
+                                    <rect class="ob-cursor" x="64" y="183" width="8" height="15" />
+
+                                    <rect class="ob-panel" x="436" y="96" width="110" height="120" rx="10" />
+                                    <text class="ob-m" x="491" y="118" text-anchor="middle">Tray Windows</text>
+                                    <rect class="ob-soft" x="452" y="132" width="22" height="22" rx="5" />
+                                    <rect class="ob-accent" x="480" y="129" width="28" height="28" rx="7" />
+                                    <text class="ob-on-accent ob-strong" x="494" y="148" text-anchor="middle">⧉</text>
+                                    <rect class="ob-soft" x="514" y="132" width="22" height="22" rx="5" />
+                                    <text class="ob-t ob-sm" x="491" y="180" text-anchor="middle">Klik kanan:</text>
+                                    <text class="ob-m" x="491" y="197" text-anchor="middle">buka / stop</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">1. Pasang dan jalankan AIT</h4>
+                            <p>
+                                Butuh <strong>Windows x64</strong>, <strong>Node.js</strong>, dan <strong>SQL Server LocalDB</strong> (ikut terpasang bersama
+                                Visual Studio atau SQL Server Express). Lalu di PowerShell:
+                            </p>
+                            <pre class="code-block small mb-2">npm i -g aithread
+aithread tray        # jalan di background, ikon di tray</pre>
+                            <p class="small text-secondary mb-0">Halaman ini sudah terbuka? Berarti langkah ini selesai. Perintah lain: <span class="mono">aithread help</span>.</p>
+                        </div>
+
+                        @* 3. 9router *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Pasang 9router lewat npm, buka dashboard localhost:20128, hubungkan provider, salin API key">
+                                    <rect class="ob-term" x="16" y="14" width="204" height="118" rx="10" />
+                                    <path class="ob-term-bar" d="M16 24 a10 10 0 0 1 10 -10 H210 a10 10 0 0 1 10 10 V40 H16 z" />
+                                    <circle cx="34" cy="27" r="4.5" fill="#e5534b" />
+                                    <circle cx="48" cy="27" r="4.5" fill="#f0ad3c" />
+                                    <circle cx="62" cy="27" r="4.5" fill="#2fbf71" />
+                                    <text class="ob-term-t ob-mono ob-sm" x="28" y="66"><tspan class="ob-term-p">PS&gt;</tspan> npm i -g 9router</text>
+                                    <text class="ob-term-t ob-mono ob-sm" x="28" y="88"><tspan class="ob-term-p">PS&gt;</tspan> 9router</text>
+                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="112">✓ dashboard :20128</text>
+                                    <path class="ob-arrow" d="M118 136 V172 H226" />
+
+                                    <rect class="ob-panel" x="232" y="14" width="314" height="202" rx="10" />
+                                    <path class="ob-soft" d="M232 24 a10 10 0 0 1 10 -10 H536 a10 10 0 0 1 10 10 V42 H232 z" />
+                                    <rect class="ob-panel" x="290" y="20" width="200" height="16" rx="8" />
+                                    <text class="ob-m ob-mono" x="302" y="32">localhost:20128</text>
+                                    <text class="ob-t ob-strong" x="248" y="64">Providers</text>
+                                    <rect class="ob-soft" x="248" y="74" width="282" height="30" rx="6" />
+                                    <circle class="ob-ok" cx="262" cy="89" r="5" />
+                                    <text class="ob-t ob-sm" x="274" y="93">Anthropic</text>
+                                    <text class="ob-m" x="518" y="93" text-anchor="end">terhubung</text>
+                                    <rect class="ob-soft" x="248" y="110" width="282" height="30" rx="6" />
+                                    <circle class="ob-ok" cx="262" cy="125" r="5" />
+                                    <text class="ob-t ob-sm" x="274" y="129">OpenRouter (gratis)</text>
+                                    <text class="ob-m" x="518" y="129" text-anchor="end">terhubung</text>
+                                    <rect class="ob-panel ob-accent-stroke" x="248" y="152" width="282" height="48" rx="8" />
+                                    <text class="ob-m" x="260" y="170">API key</text>
+                                    <text class="ob-t ob-mono ob-sm" x="260" y="189">sk-9r-••••••••••</text>
+                                    <rect class="ob-accent" x="462" y="164" width="56" height="24" rx="5" />
+                                    <text class="ob-on-accent ob-sm" x="490" y="180" text-anchor="middle">Salin</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">2. Siapkan 9router</h4>
+                            <p>
+                                9router adalah sumber semua model AI. Pasang dengan <span class="mono">npm i -g 9router</span>, jalankan <span class="mono">9router</span>,
+                                lalu di dashboard-nya hubungkan <strong>minimal satu provider</strong> (idealnya satu yang kuat dan satu yang murah/gratis)
+                                dan <strong>salin API key</strong>.
+                            </p>
+                            <a class="btn btn-sm btn-outline-primary" href="http://localhost:20128" target="_blank" rel="noopener">Buka dashboard 9router ↗</a>
+                        </div>
+
+                        @* 4. Setting *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Menu Setting tab Koneksi 9router: isi URL dan API key, klik Test koneksi lalu Simpan; status berubah menjadi Terhubung">
+                                    <rect class="ob-panel" x="14" y="10" width="532" height="210" rx="10" />
+                                    <path class="ob-soft" d="M14 20 a10 10 0 0 1 10 -10 H536 a10 10 0 0 1 10 10 V38 H14 z" />
+                                    <rect class="ob-panel" x="160" y="16" width="240" height="16" rx="8" />
+                                    <text class="ob-m ob-mono" x="172" y="28">localhost:5225/Setting</text>
+                                    <text class="ob-t ob-strong ob-sm" x="32" y="62">Koneksi 9router</text>
+                                    <rect class="ob-accent" x="32" y="68" width="100" height="2.5" />
+                                    <text class="ob-m" x="152" y="62">Proxy &amp; orkestrasi</text>
+                                    <text class="ob-m" x="268" y="62">Build</text>
+                                    <text class="ob-m" x="312" y="62">Memory</text>
+                                    <text class="ob-m" x="366" y="62">Telegram</text>
+                                    <path class="ob-line" d="M32 71 H528" />
+                                    <text class="ob-m" x="32" y="94">URL 9router</text>
+                                    <rect class="ob-panel" x="32" y="100" width="300" height="28" rx="6" />
+                                    <text class="ob-t ob-mono ob-sm" x="42" y="118">http://localhost:20128</text>
+                                    <text class="ob-m" x="32" y="146">API key</text>
+                                    <rect class="ob-panel" x="32" y="152" width="300" height="28" rx="6" />
+                                    <text class="ob-t ob-sm" x="42" y="171">••••••••••••••</text>
+                                    <rect class="ob-panel ob-accent-stroke" x="32" y="190" width="104" height="24" rx="6" />
+                                    <text class="ob-accent-text ob-sm" x="84" y="206" text-anchor="middle">Test koneksi</text>
+                                    <rect class="ob-accent" x="144" y="190" width="72" height="24" rx="6" />
+                                    <text class="ob-on-accent ob-sm" x="180" y="206" text-anchor="middle">Simpan</text>
+
+                                    <rect class="ob-soft" x="354" y="100" width="174" height="80" rx="10" />
+                                    <circle class="ob-ok" cx="374" cy="125" r="6" />
+                                    <text class="ob-t ob-strong" x="388" y="130">Terhubung</text>
+                                    <text class="ob-m" x="370" y="152">latency 12 ms</text>
+                                    <text class="ob-m" x="370" y="168">42 model · 3 combo</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">3. Hubungkan AIT ke 9router</h4>
+                            <p>
+                                Menu <strong>Setting</strong> → tab <em>Koneksi 9router</em>: isi URL (default <span class="mono">http://localhost:20128</span>)
+                                dan API key, klik <strong>Test koneksi</strong>, lalu <strong>Simpan</strong>. Pill status di kiri bawah sidebar berubah hijau.
+                            </p>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setting" asp-action="Index" asp-fragment="router">Buka Setting →</a>
+                        </div>
+
+                        @* 5. Nodes *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Menu Node dengan tiga kolom: satu Planner, dua Executor, satu Wrapper, dan Reviewer opsional">
+                                    <rect class="ob-soft" x="14" y="12" width="168" height="206" rx="12" />
+                                    <rect class="ob-soft" x="196" y="12" width="168" height="206" rx="12" />
+                                    <rect class="ob-soft" x="378" y="12" width="168" height="206" rx="12" />
+                                    <text class="ob-t ob-strong" x="28" y="38">Planner</text>
+                                    <text class="ob-m" x="168" y="38" text-anchor="end">1 node</text>
+                                    <text class="ob-t ob-strong" x="210" y="38">Executor</text>
+                                    <text class="ob-m" x="350" y="38" text-anchor="end">≥ 1 node</text>
+                                    <text class="ob-t ob-strong" x="392" y="38">Wrapper</text>
+                                    <text class="ob-m" x="532" y="38" text-anchor="end">1 node</text>
+
+                                    <rect class="ob-panel" x="28" y="52" width="140" height="66" rx="8" />
+                                    <rect class="ob-accent" x="28" y="52" width="4" height="66" rx="2" />
+                                    <text class="ob-t ob-sm ob-strong" x="42" y="74">Model terkuat</text>
+                                    <text class="ob-m" x="42" y="93">tool calling ✓</text>
+                                    <text class="ob-m" x="42" y="108">menyusun rencana</text>
+
+                                    <rect class="ob-panel" x="210" y="52" width="140" height="66" rx="8" />
+                                    <rect class="ob-ok" x="210" y="52" width="4" height="66" rx="2" />
+                                    <text class="ob-t ob-sm ob-strong" x="224" y="74">Executor A</text>
+                                    <text class="ob-m" x="224" y="93">murah &amp; cepat</text>
+                                    <text class="ob-m" x="224" y="108">max paralel 4</text>
+                                    <rect class="ob-panel" x="210" y="126" width="140" height="66" rx="8" />
+                                    <rect class="ob-ok" x="210" y="126" width="4" height="66" rx="2" />
+                                    <text class="ob-t ob-sm ob-strong" x="224" y="148">Executor B</text>
+                                    <text class="ob-m" x="224" y="167">provider lain</text>
+                                    <text class="ob-m" x="224" y="182">max paralel 4</text>
+
+                                    <rect class="ob-panel" x="392" y="52" width="140" height="66" rx="8" />
+                                    <rect class="ob-warn" x="392" y="52" width="4" height="66" rx="2" />
+                                    <text class="ob-t ob-sm ob-strong" x="406" y="74">Model murah</text>
+                                    <text class="ob-m" x="406" y="93">merangkum hasil</text>
+                                    <text class="ob-m" x="406" y="108">+ ekstraksi memory</text>
+                                    <rect class="ob-dashed" x="392" y="126" width="140" height="66" rx="8" />
+                                    <text class="ob-m" x="462" y="155" text-anchor="middle">+ Reviewer</text>
+                                    <text class="ob-m" x="462" y="171" text-anchor="middle">(opsional)</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">4. Pilih model untuk tiap peran</h4>
+                            <p>
+                                Menu <strong>Node</strong>: tambahkan <strong>1 Planner</strong> (model terkuat yang mendukung tool calling),
+                                <strong>minimal 1 Executor</strong> (murah &amp; cepat — tambah beberapa untuk menyebar beban), dan <strong>1 Wrapper</strong>
+                                (murah). Reviewer opsional. Tombol <em>Test</em> di tiap kartu memastikan modelnya menjawab.
+                            </p>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Node" asp-action="Index">Buka Node →</a>
+                        </div>
+
+                        @* 6. Projects *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Menu Project: satu project terdaftar otomatis dari sesi CLI, dua lainnya lewat tombol Telusuri; stack tiap folder terdeteksi">
+                                    <rect class="ob-panel" x="14" y="10" width="532" height="210" rx="10" />
+                                    <path class="ob-soft" d="M14 20 a10 10 0 0 1 10 -10 H536 a10 10 0 0 1 10 10 V38 H14 z" />
+                                    <rect class="ob-panel" x="160" y="16" width="240" height="16" rx="8" />
+                                    <text class="ob-m ob-mono" x="172" y="28">localhost:5225/Project</text>
+                                    <text class="ob-t ob-strong" x="32" y="68">Project</text>
+                                    <rect class="ob-accent" x="426" y="52" width="102" height="24" rx="6" />
+                                    <text class="ob-on-accent ob-sm" x="477" y="68" text-anchor="middle">Telusuri…</text>
+
+                                    <rect class="ob-soft" x="32" y="88" width="496" height="34" rx="6" />
+                                    <path class="ob-folder" d="M46 99 h7 l3 3 h12 v12 h-22 z" />
+                                    <text class="ob-t ob-mono ob-sm" x="78" y="110">D:\Source\toko-online</text>
+                                    <text class="ob-accent-text ob-xs ob-strong" x="376" y="109" text-anchor="end">⚡ otomatis dari CLI</text>
+                                    <rect class="ob-panel" x="388" y="96" width="66" height="18" rx="9" />
+                                    <text class="ob-m" x="421" y="109" text-anchor="middle">Node.js</text>
+                                    <circle class="ob-ok" cx="508" cy="105" r="8" />
+                                    <text class="ob-on-accent ob-xs" x="508" y="109" text-anchor="middle">✓</text>
+
+                                    <rect class="ob-soft" x="32" y="130" width="496" height="34" rx="6" />
+                                    <path class="ob-folder" d="M46 141 h7 l3 3 h12 v12 h-22 z" />
+                                    <text class="ob-t ob-mono ob-sm" x="78" y="152">D:\Source\erp-api</text>
+                                    <text class="ob-m ob-xs" x="376" y="151" text-anchor="end">via Telusuri…</text>
+                                    <rect class="ob-panel" x="388" y="138" width="66" height="18" rx="9" />
+                                    <text class="ob-m" x="421" y="151" text-anchor="middle">.NET</text>
+                                    <circle class="ob-ok" cx="508" cy="147" r="8" />
+                                    <text class="ob-on-accent ob-xs" x="508" y="151" text-anchor="middle">✓</text>
+
+                                    <rect class="ob-soft" x="32" y="172" width="496" height="34" rx="6" />
+                                    <path class="ob-folder" d="M46 183 h7 l3 3 h12 v12 h-22 z" />
+                                    <text class="ob-t ob-mono ob-sm" x="78" y="194">D:\Source\gudang</text>
+                                    <text class="ob-m ob-xs" x="376" y="193" text-anchor="end">via Telusuri…</text>
+                                    <rect class="ob-panel" x="388" y="180" width="66" height="18" rx="9" />
+                                    <text class="ob-m" x="421" y="193" text-anchor="middle">Java</text>
+                                    <circle class="ob-ok" cx="508" cy="189" r="8" />
+                                    <text class="ob-on-accent ob-xs" x="508" y="193" text-anchor="middle">✓</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">5. Daftarkan project Anda</h4>
+                            <p>
+                                <strong>Paling mudah: otomatis.</strong> Setelah CLI diarahkan ke AIT (langkah berikutnya), cukup buka CLI di folder
+                                project lalu kirim prompt pertama — mis. <span class="mono">cd D:\Source\toko-online</span> lalu <span class="mono">claude</span>,
+                                <span class="mono">codex -p aithread</span>, atau pilih model <span class="mono">aithread</span> di opencode / Qwen Code / omp.
+                                Folder yang berisi <span class="mono">.git</span> atau file build (bahasa apa pun) langsung terdaftar.
+                            </p>
+                            <p class="small text-secondary">
+                                Ingin mendaftarkan lebih dulu, sekaligus banyak, atau folder tanpa <span class="mono">.git</span>/file build? Pakai menu
+                                <strong>Project</strong> → <strong>Telusuri…</strong> (atau <em>Daftarkan manual</em>). Sesi di luar project tetap jalan,
+                                hanya tidak diorkestrasi.
+                            </p>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Project" asp-action="Index">Buka Project →</a>
+                        </div>
+
+                        @* 7. CLI *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Menu CLI: kartu Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, dan oh-my-pi, masing-masing dengan switch">
+                                    <rect class="ob-panel" x="14" y="14" width="168" height="96" rx="10" />
+                                    <text class="ob-t ob-strong" x="28" y="40">Claude Code</text>
+                                    <text class="ob-m ob-mono" x="28" y="58">settings.json</text>
+                                    <rect class="ob-accent" x="28" y="74" width="34" height="18" rx="9" />
+                                    <circle class="ob-knob" cx="53" cy="83" r="7" />
+                                    <text class="ob-ok-text ob-sm" x="72" y="88">Aktif</text>
+
+                                    <rect class="ob-panel" x="196" y="14" width="168" height="96" rx="10" />
+                                    <text class="ob-t ob-strong" x="210" y="40">Codex CLI</text>
+                                    <text class="ob-m ob-mono" x="210" y="58">-p aithread</text>
+                                    <rect class="ob-accent" x="210" y="74" width="34" height="18" rx="9" />
+                                    <circle class="ob-knob" cx="235" cy="83" r="7" />
+                                    <text class="ob-ok-text ob-sm" x="254" y="88">Aktif</text>
+
+                                    <rect class="ob-panel" x="378" y="14" width="168" height="96" rx="10" />
+                                    <text class="ob-t ob-strong" x="392" y="40">Gemini CLI</text>
+                                    <text class="ob-m ob-mono" x="392" y="58">.gemini/.env</text>
+                                    <rect class="ob-off" x="392" y="74" width="34" height="18" rx="9" />
+                                    <circle class="ob-knob" cx="401" cy="83" r="7" />
+                                    <text class="ob-m" x="436" y="88">Nonaktif</text>
+
+                                    <rect class="ob-panel" x="14" y="122" width="168" height="96" rx="10" />
+                                    <text class="ob-t ob-strong" x="28" y="148">opencode</text>
+                                    <text class="ob-m ob-mono" x="28" y="166">opencode.json</text>
+                                    <rect class="ob-off" x="28" y="182" width="34" height="18" rx="9" />
+                                    <circle class="ob-knob" cx="37" cy="191" r="7" />
+                                    <text class="ob-m" x="72" y="196">Nonaktif</text>
+
+                                    <rect class="ob-panel" x="196" y="122" width="168" height="96" rx="10" />
+                                    <text class="ob-t ob-strong" x="210" y="148">Qwen Code</text>
+                                    <text class="ob-m ob-mono" x="210" y="166">settings.json</text>
+                                    <rect class="ob-off" x="210" y="182" width="34" height="18" rx="9" />
+                                    <circle class="ob-knob" cx="219" cy="191" r="7" />
+                                    <text class="ob-m" x="254" y="196">Nonaktif</text>
+
+                                    <rect class="ob-panel" x="378" y="122" width="168" height="96" rx="10" />
+                                    <text class="ob-t ob-strong" x="392" y="148">oh-my-pi</text>
+                                    <text class="ob-m ob-mono" x="392" y="166">models.yml</text>
+                                    <rect class="ob-off" x="392" y="182" width="34" height="18" rx="9" />
+                                    <circle class="ob-knob" cx="401" cy="191" r="7" />
+                                    <text class="ob-m" x="436" y="196">Nonaktif</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">6. Arahkan CLI Anda ke AIT</h4>
+                            <p>
+                                Menu <strong>CLI</strong>: nyalakan switch CLI yang Anda pakai — <strong>Claude Code</strong> (per project atau global),
+                                Codex CLI, Gemini CLI, opencode, Qwen Code, atau oh-my-pi. AIT hanya menulis entri miliknya dan bisa dilepas kapan saja
+                                dengan mematikan switch.
+                            </p>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Cli" asp-action="Index">Buka CLI →</a>
+                        </div>
+
+                        @* 8. Use *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Sesi Claude Code menampilkan progres AIT: rencana, executor paralel, build dan review, ringkasan; Dashboard menampilkan timeline tugas, diff, dan tombol batalkan perubahan">
+                                    <rect class="ob-term" x="14" y="12" width="344" height="206" rx="10" />
+                                    <path class="ob-term-bar" d="M14 22 a10 10 0 0 1 10 -10 H348 a10 10 0 0 1 10 10 V38 H14 z" />
+                                    <circle cx="32" cy="25" r="4.5" fill="#e5534b" />
+                                    <circle cx="46" cy="25" r="4.5" fill="#f0ad3c" />
+                                    <circle cx="60" cy="25" r="4.5" fill="#2fbf71" />
+                                    <text class="ob-term-m ob-xs ob-mono" x="210" y="29" text-anchor="middle">claude · D:\Source\toko-online</text>
+                                    <text class="ob-term-t ob-mono ob-sm" x="28" y="62"><tspan class="ob-term-p">&gt;</tspan> tambahkan validasi email di register</text>
+                                    <text class="ob-term-a ob-mono ob-sm ob-strong" x="28" y="88">AIT · thread #128</text>
+                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="110">✓ Rencana: 3 tugas</text>
+                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="130">✓ Executor 3/3 (paralel)</text>
+                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="150">✓ Build &amp; review lolos</text>
+                                    <text class="ob-term-p ob-mono ob-sm" x="28" y="170">● Menulis ringkasan…</text>
+                                    <text class="ob-term-m ob-mono ob-xs" x="28" y="200">3 file diubah · 41 dtk · speedup 2.6×</text>
+
+                                    <rect class="ob-panel" x="372" y="12" width="174" height="206" rx="10" />
+                                    <text class="ob-t ob-strong" x="386" y="38">Dashboard</text>
+                                    <text class="ob-m" x="386" y="56">thread #128</text>
+                                    <text class="ob-m ob-mono" x="386" y="80">T1</text>
+                                    <rect class="ob-ok" x="408" y="71" width="70" height="10" rx="3" />
+                                    <text class="ob-m ob-mono" x="386" y="98">T2</text>
+                                    <rect class="ob-ok" x="416" y="89" width="96" height="10" rx="3" />
+                                    <text class="ob-m ob-mono" x="386" y="116">T3</text>
+                                    <rect class="ob-ok" x="412" y="107" width="58" height="10" rx="3" />
+                                    <text class="ob-m ob-mono" x="386" y="144">Register.cs <tspan class="ob-ok-text">+12</tspan> <tspan class="ob-err-text">−3</tspan></text>
+                                    <text class="ob-m ob-mono" x="386" y="160">validate.js <tspan class="ob-ok-text">+20</tspan></text>
+                                    <rect class="ob-panel ob-err-stroke" x="386" y="178" width="146" height="26" rx="6" />
+                                    <text class="ob-err-text ob-xs" x="459" y="195" text-anchor="middle">↩ Batalkan perubahan file</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">7. Mulai bekerja</h4>
+                            <p>
+                                Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel,
+                                build &amp; review) tampil langsung di CLI. Detail, diff per file, dan tombol <strong>↩ Batalkan perubahan file</strong> ada di
+                                Dashboard → thread.
+                            </p>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Home" asp-action="Index">Buka Dashboard →</a>
+                        </div>
+
+                        @* 9. Done *@
+                        <div class="carousel-item">
+                            <figure class="onboarding-figure">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="Selesai; lanjutkan ke Docs, Telegram, atau Memory">
+                                    <circle class="ob-ok-soft" cx="118" cy="115" r="78" />
+                                    <circle class="ob-ok" cx="118" cy="115" r="50" />
+                                    <path class="ob-check" d="M94 116 L111 133 L144 98" />
+
+                                    <rect class="ob-panel" x="230" y="22" width="316" height="54" rx="10" />
+                                    <circle class="ob-accent" cx="258" cy="49" r="15" />
+                                    <text class="ob-on-accent" x="258" y="54" text-anchor="middle">☷</text>
+                                    <text class="ob-t ob-strong" x="284" y="45">Docs</text>
+                                    <text class="ob-m" x="284" y="63">Panduan lengkap &amp; troubleshooting</text>
+
+                                    <rect class="ob-panel" x="230" y="88" width="316" height="54" rx="10" />
+                                    <circle class="ob-accent" cx="258" cy="115" r="15" />
+                                    <text class="ob-on-accent" x="258" y="120" text-anchor="middle">✈︎</text>
+                                    <text class="ob-t ob-strong" x="284" y="111">Telegram</text>
+                                    <text class="ob-m" x="284" y="129">Kirim prompt dari HP saat laptop ditinggal</text>
+
+                                    <rect class="ob-panel" x="230" y="154" width="316" height="54" rx="10" />
+                                    <circle class="ob-accent" cx="258" cy="181" r="15" />
+                                    <text class="ob-on-accent" x="258" y="186" text-anchor="middle">◈</text>
+                                    <text class="ob-t ob-strong" x="284" y="177">Memory</text>
+                                    <text class="ob-m" x="284" y="195">AIT mengingat keputusan &amp; konteks project</text>
+                                </svg>
+                            </figure>
+                            <h4 class="onboarding-title">Siap dipakai! 🎉</h4>
+                            <p>
+                                Itu saja. Panduan ini bisa dibuka lagi kapan saja lewat tombol <strong>Panduan memulai</strong> di kiri bawah sidebar.
+                                Jika ada yang tidak berjalan, cek <em>Docs → Troubleshooting</em>.
+                            </p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Docs" asp-action="Index">Buka Docs →</a>
+                                <a class="btn btn-sm btn-outline-secondary" asp-controller="Setting" asp-action="Index" asp-fragment="telegram">Atur Telegram</a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <div class="onboarding-dots" id="onboardingDots" role="group" aria-label="Pilih langkah"></div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" id="onboardingPrev">‹ Kembali</button>
+                    <button type="button" class="btn btn-primary" id="onboardingNext">Lanjut ›</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -47,20 +47,25 @@
                 <div id="routerPill" class="router-pill" title="Status koneksi 9router">
                     <span class="status-dot"></span><span class="router-pill-text">9router…</span>
                 </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-onboarding w-100 mt-2" id="onboardingOpen">Panduan memulai</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" id="themeToggle">Ganti tema</button>
             </div>
         </aside>
         <main class="app-main" role="main">
-            <div id="updateBar" class="alert alert-info alert-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
-                <strong>🚀 AIT versi @appVersion</strong> — Fitur baru: menu <strong>CLI</strong> kini bisa mengarahkan <strong>Codex CLI</strong>, <strong>Gemini CLI</strong>, <strong>opencode</strong>, dan <strong>Qwen Code</strong> ke AIT dengan satu switch, di samping Claude Code dan oh-my-pi. Provider asli tetap bisa dipakai.
-                <a href="~/Docs/03-integrasi-claude-code#lewat-menu-cli" class="alert-link ms-2">Panduan singkat →</a>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+            <div id="updateBar" class="alert alert-info win-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
+                <win-controls for="alert" />
+                <div>
+                    <strong>🚀 AIT versi @appVersion</strong> — Fitur baru: menu <strong>CLI</strong> kini bisa mengarahkan <strong>Codex CLI</strong>, <strong>Gemini CLI</strong>, <strong>opencode</strong>, dan <strong>Qwen Code</strong> ke AIT dengan satu switch, di samping Claude Code dan oh-my-pi. Provider asli tetap bisa dipakai.
+                    <a href="~/Docs/03-integrasi-claude-code#lewat-menu-cli" class="alert-link ms-2">Panduan singkat →</a>
+                </div>
             </div>
             @RenderBody()
         </main>
     </div>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <partial name="_Onboarding" />
 
     @* Asked once, the first time AiThread is opened, when no developer name is saved and git has no user.name (site.js). *@
     <div class="modal fade" id="developerNameModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="developerNameTitle" aria-hidden="true">

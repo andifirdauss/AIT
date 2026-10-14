@@ -97,10 +97,11 @@
     </div>
 
     <div class="col-xl-5">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center gap-2">
-                <span>Log langsung</span>
-                <div class="d-flex gap-2">
+        <div class="card win" id="logWindow" data-win-id="dashboard-log" data-win-persist>
+            <div class="card-header win-bar">
+                <win-controls close-label="Kosongkan log" />
+                <span class="win-title">Log langsung</span>
+                <div class="win-actions">
                     <select class="form-select form-select-sm" id="logLevel" style="width:auto">
                         <option value="Info" selected>Info+</option>
                         <option value="Debug">Semua (debug)</option>
