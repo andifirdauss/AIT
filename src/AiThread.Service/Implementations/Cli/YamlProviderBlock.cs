@@ -9,8 +9,8 @@ namespace AiThread.Service.Implementations.Cli;
 // handled: a flow-style "providers: {...}" or the user's own entry with the same provider id is refused.
 public static partial class YamlProviderBlock
 {
-    public const string Begin = "# >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>";
-    public const string End = "# <<< AiThread <<<";
+    public const string Begin = ManagedTextBlock.Begin;
+    public const string End = ManagedTextBlock.End;
 
     // providerLines: the provider entry relative to its own indentation, e.g. ["aithread:", "  baseUrl: \"...\""].
     public static string Apply(string? content, string providerId, IReadOnlyList<string> providerLines)
@@ -42,20 +42,7 @@ public static partial class YamlProviderBlock
         return string.Join(newLine, lines) + newLine;
     }
 
-    public static string Remove(string content)
-    {
-        var lines = Lines(content);
-        var start = lines.FindIndex(l => l.Trim() == Begin);
-        if (start < 0) return content;
-
-        var end = lines.FindIndex(start, l => l.Trim() == End);
-        if (end < 0) end = lines.Count - 1;
-
-        lines.RemoveRange(start, end - start + 1);
-        // The blank line Apply put in front of a top-level block.
-        if (start > 0 && start == lines.Count && lines[start - 1].Trim().Length == 0) lines.RemoveAt(start - 1);
-        return lines.Count == 0 ? string.Empty : string.Join(NewLine(content), lines) + NewLine(content);
-    }
+    public static string Remove(string content) => ManagedTextBlock.Remove(content);
 
     // A problem that makes writing the block unsafe, phrased for the user; null when it can be written.
     public static string? Conflict(string content, string providerId)
@@ -80,16 +67,9 @@ public static partial class YamlProviderBlock
     }
 
     // The lines inside the managed block, or null when there is none.
-    public static IReadOnlyList<string>? Managed(string content)
-    {
-        var lines = Lines(content);
-        var start = lines.FindIndex(l => l.Trim() == Begin);
-        if (start < 0) return null;
-        var end = lines.FindIndex(start, l => l.Trim() == End);
-        return lines.Skip(start + 1).Take((end < 0 ? lines.Count : end) - start - 1).ToList();
-    }
+    public static IReadOnlyList<string>? Managed(string content) => ManagedTextBlock.Managed(content);
 
-    // Double-quoted YAML scalar; valid for any value.
+    // Double-quoted YAML scalar; valid for any value. Also a valid TOML basic string (same escapes).
     public static string Quote(string value)
     {
         var builder = new StringBuilder("\"");
@@ -121,11 +101,9 @@ public static partial class YamlProviderBlock
         return null;
     }
 
-    private static List<string> Lines(string content) =>
-        content.Length == 0 ? [] : content.Replace("\r\n", "\n").TrimEnd('\n').Split('\n').ToList();
+    private static List<string> Lines(string content) => ManagedTextBlock.Lines(content);
 
-    private static string NewLine(string? content) =>
-        content is not null && content.Contains("\r\n") ? "\r\n" : content is { Length: > 0 } ? "\n" : Environment.NewLine;
+    private static string NewLine(string? content) => ManagedTextBlock.NewLine(content);
 
     [GeneratedRegex(@"^providers:\s*(#.*)?$")]
     private static partial Regex ProvidersKey();

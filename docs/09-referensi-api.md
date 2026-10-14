@@ -64,8 +64,9 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 
 ### CLI
 
-Backend menu **CLI**. `{id}` = `claude-code` atau `oh-my-pi-provider`; id lain → `404`. `scope` = `Global` atau `Project`
-(`oh-my-pi-provider` hanya `Global`; `projectFile` di daftar CLI bernilai `null` dan `/projects` mengembalikan daftar kosong).
+Backend menu **CLI**. `{id}` = `claude-code`, `oh-my-pi-provider`, `codex`, `gemini-cli`, `opencode`, atau `qwen-code`;
+id lain → `404`. `scope` = `Global` atau `Project` (hanya `claude-code` dan `gemini-cli` yang punya `Project`; untuk
+yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan daftar kosong, dan scope `Project` → `400`).
 
 | Method | Path | Body / query |
 |---|---|---|

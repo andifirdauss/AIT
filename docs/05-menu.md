@@ -118,22 +118,26 @@ model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu
 
 ## CLI
 
-Mengarahkan CLI coding ke proxy AIT dengan satu switch, tanpa menyunting file konfigurasi CLI itu sendiri. Saat ini
-ada dua kartu: **Claude Code** dan **oh-my-pi (omp) —
-provider AIT** (`models.yml`, hanya global: omp mendapat provider `aithread` sendiri di samping Anthropic asli);
-CLI lain bisa ditambahkan dengan cara yang sama.
+Mengarahkan CLI coding ke proxy AIT dengan satu switch, tanpa menyunting file konfigurasi CLI itu sendiri. Kartu yang
+tersedia: **Claude Code**, **oh-my-pi (omp) — provider AIT** (`models.yml`), **Codex CLI — profile AIT**
+(`config.toml`, dipakai lewat `codex --profile aithread`), **Gemini CLI** (`.gemini/.env`), **opencode — provider
+AIT** (`opencode.json`), dan **Qwen Code — model AIT** (`settings.json`). Kartu "provider/profile/model AIT" hanya
+global dan tidak mengalihkan sesi lain: CLI itu mendapat pilihan `aithread` di samping provider aslinya.
 
 - **URL proxy AIT** di bagian atas: alamat yang ditulis ke konfigurasi CLI (default = alamat http aplikasi).
   Mengubahnya menyegarkan status semua switch.
 - Tiap CLI punya satu kartu berisi:
-  - **Global** — semua sesi CLI itu di komputer ini (`~/.claude/settings.json` untuk Claude Code,
-    `~/.omp/agent/models.yml` untuk omp). Menyalakan meminta konfirmasi.
-  - **Per project** — satu switch per project terdaftar (`<project>/.claude/settings.local.json`;
-    tidak tersedia untuk omp). Lencana *Aktif*, *Nonaktif*, atau *Mengarah ke alamat lain* (file menunjuk URL lain, mis. port
+  - **Global** — file konfigurasi CLI itu di level pengguna (`~/.claude/settings.json` untuk Claude Code,
+    `~/.omp/agent/models.yml` untuk omp, `~/.codex/config.toml`, `~/.gemini/.env`, `~/.config/opencode/opencode.json`,
+    `~/.qwen/settings.json`). Menyalakan Claude Code atau Gemini CLI global meminta konfirmasi karena semua sesinya
+    ikut lewat AIT.
+  - **Per project** — satu switch per project terdaftar (`<project>/.claude/settings.local.json` untuk Claude Code,
+    `<project>/.gemini/.env` untuk Gemini CLI; CLI lain hanya global). Lencana *Aktif*, *Nonaktif*, atau *Mengarah ke alamat lain* (file menunjuk URL lain, mis. port
     lama — matikan lalu nyalakan lagi).
   - *Yang akan ditulis*: pratinjau isi yang akan dituliskan.
 - Mematikan switch hanya menghapus yang ditulis AIT; isi lain di file tetap. Backup file asli disimpan sekali
-  sebagai `*.aithread-backup`.
+  sebagai `*.aithread-backup`. AIT menolak menulis (dengan pesan) bila file sudah berisi entri bernama sama buatan
+  Anda, atau JSON opencode/Qwen Code berisi komentar.
 - Kartu Claude Code juga memuat **Context Keeper untuk /clear** (*Pasang hook* / *Lepas hook*; lihat
   [Integrasi Claude Code](03-integrasi-claude-code.md#context-keeper-untuk-clear)).
 - Bila *Proxy API key* di Setting diubah, matikan lalu nyalakan lagi agar key baru ikut tertulis.
@@ -148,7 +152,7 @@ refresh dan bisa ditautkan langsung.
 
 - **Koneksi 9router** (`#router`) — URL, API key, *Test koneksi* (tidak menyimpan); baris status menunjukkan apakah key tersimpan dan diterima.
 - **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, model passthrough, proxy API key (beserta tautan ke
-  menu [CLI](#cli), tempat integrasi Claude Code/omp dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
+  menu [CLI](#cli), tempat integrasi Claude Code, omp, Codex, Gemini CLI, opencode, Qwen Code dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
 - **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
 - **Penyimpanan memory** (`#memory`) — provider short, long, dan business memory (bawaan, Redis untuk short saja,
   SQL Server, PostgreSQL, MySQL, Oracle, SQLite) beserta host/port/database/username/password, *Test koneksi* per kartu,
