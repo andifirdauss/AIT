@@ -55,8 +55,8 @@
             <div id="updateBar" class="alert alert-info win-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
                 <win-controls for="alert" />
                 <div>
-                    <strong>🚀 AIT versi @appVersion</strong> — Fitur baru: menu <strong>CLI</strong> kini bisa mengarahkan <strong>Codex CLI</strong>, <strong>Gemini CLI</strong>, <strong>opencode</strong>, dan <strong>Qwen Code</strong> ke AIT dengan satu switch, di samping Claude Code dan oh-my-pi. Provider asli tetap bisa dipakai.
-                    <a href="~/Docs/03-integrasi-claude-code#lewat-menu-cli" class="alert-link ms-2">Panduan singkat →</a>
+                    <strong>🚀 AIT versi @appVersion</strong> — Fitur baru: role <strong>Tools Node</strong> — tool baca planner (<span class="mono">read_file</span>, <span class="mono">search_text</span>, …) bisa didelegasikan ke model murah sehingga token planner jauh lebih hemat. Footer jawaban kini menampilkan <strong>Sisa kuota</strong> akun provider dari 9router, dan build otomatis mendukung project <strong>.NET Framework</strong> lewat MSBuild Visual Studio.
+                    <a href="~/Docs/02-konfigurasi#tools-node-planner" class="alert-link ms-2">Panduan singkat →</a>
                 </div>
             </div>
             @RenderBody()
