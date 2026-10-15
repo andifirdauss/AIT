@@ -41,6 +41,13 @@ token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya bes
 - Atau jadikan model planner sebuah **combo** 9router (mis. Claude → model lain) supaya fallback terjadi di 9router.
 - Kurangi slot node planner bila beberapa thread berjalan bersamaan, atau turunkan Setting → *Langkah planner*.
 
+**Footer tidak menampilkan *Sisa kuota***
+- Dashboard 9router mewajibkan login (Settings 9router → *Require login* aktif): API `/api/usage` menolak AIT, dan log
+  AIT menulis *Kuota provider tidak bisa dibaca* sekali. Matikan *Require login* bila 9router hanya dipakai lokal.
+- Model node berasal dari akun API key biasa (mis. provider *compatible*) atau provider yang kuotanya tidak bisa dibaca
+  9router — bagian ini memang hanya untuk langganan/OAuth yang ditampilkan 9router di halaman *Usage*-nya.
+- 9router tidak menjawab dalam 10 detik; footer dikirim tanpa kuota. Thread berikutnya mencoba lagi.
+
 **"Model '…' tidak merespons dalam N detik"**
 Naikkan Setting → *Timeout (detik)*, atau pakai model yang lebih cepat.
 

@@ -2,15 +2,29 @@
   'use strict';
   const { api, toast, escapeHtml, fmt, stream, debounce } = window.AiThread;
   const el = id => document.getElementById(id);
-  const roles = ['Planner', 'Executor', 'Reviewer', 'Wrapper', 'ContextKeeper'];
-  const roleLabels = { ContextKeeper: 'Context Keeper' };
+  const roles = ['Planner', 'ToolsNode', 'Executor', 'Reviewer', 'Wrapper', 'ContextKeeper'];
+  const roleLabels = { ContextKeeper: 'Context Keeper', ToolsNode: 'Tools Node' };
   const defaults = {
     Planner: { maxTokens: 16384, concurrency: 2, temperature: 0.2 },
+    ToolsNode: { maxTokens: 4096, concurrency: 4, temperature: 0.1 },
     Executor: { maxTokens: 8192, concurrency: 6, temperature: 0.1 },
     Reviewer: { maxTokens: 4096, concurrency: 2, temperature: 0.1 },
     Wrapper: { maxTokens: 4096, concurrency: 4, temperature: 0.3 },
     ContextKeeper: { maxTokens: 4096, concurrency: 2, temperature: 0.2 }
   };
+  // Planner tools a tools node can run instead (PlannerTools.Delegable), with what they cost the planner.
+  const delegableTools = [
+    ['list_directory', 'daftar isi folder'],
+    ['find_files', 'cari file dengan glob'],
+    ['search_text', 'cari teks — hasil bisa panjang'],
+    ['find_symbol', 'cari deklarasi'],
+    ['find_references', 'cari pemakaian — hasil bisa panjang'],
+    ['read_file', 'baca file — paling boros token'],
+    ['search_memory', 'cari label memory'],
+    ['read_memory', 'baca isi memory / wiki'],
+    ['read_thread', 'baca thread sebelumnya'],
+    ['run_build', 'build proyek & daftar error']
+  ];
   const nodes = new Map();
   let models = [];
   let modelsLoaded = false;
@@ -44,6 +58,30 @@
     const fallback = n.fallbackNodeName
       ? ` · <span title="Node cadangan: ${escapeHtml(n.fallbackNodeName)}">↪ ${escapeHtml(n.fallbackNodeName)}</span>`
       : '';
+    return `${nodeCardHead(n)}
+        <div class="small text-secondary mt-1 text-truncate">
+          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}${delegationBadge(n)}${fallback}
+        </div>`;
+  }
+
+  // Planner: the tools it hands to tools nodes. Tools node: the planners that use it.
+  function delegationBadge(n) {
+    if (n.toolDelegations?.length) {
+      const detail = n.toolDelegations
+        .map(d => `${d.tool} → ${d.toolsNodeName}${d.toolsNodeActive ? '' : ' (nonaktif: dijalankan planner)'}`)
+        .join('\n');
+      return ` · <span title="${escapeHtml(detail)}">🛰 ${n.toolDelegations.length} tool</span>`;
+    }
+    if (n.role !== 'ToolsNode') return '';
+    const users = [...nodes.values()]
+      .map(p => ({ name: p.name, tools: (p.toolDelegations || []).filter(d => d.toolsNodeId === n.id).map(d => d.tool) }))
+      .filter(p => p.tools.length);
+    if (!users.length) return ' · <span title="Belum ada planner yang mendelegasikan tool ke node ini (Edit node Planner).">🛰 belum dipakai</span>';
+    const detail = users.map(p => `${p.name}: ${p.tools.join(', ')}`).join('\n');
+    return ` · <span title="${escapeHtml(detail)}">🛰 ${users.length} planner</span>`;
+  }
+
+  function nodeCardHead(n) {
     return `<div class="d-flex justify-content-between align-items-start gap-2">
           <div class="node-card-title">
             <div class="fw-semibold text-truncate" title="${escapeHtml(n.name)}">${escapeHtml(n.name)}
@@ -55,9 +93,6 @@
             <button type="button" class="btn btn-outline-secondary" data-edit="${n.id}">Edit</button>
             <button type="button" class="btn btn-outline-danger" data-delete="${n.id}">Hapus</button>
           </div>
-        </div>
-        <div class="small text-secondary mt-1 text-truncate">
-          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}${fallback}
         </div>`;
   }
 
@@ -255,6 +290,40 @@
       .join('');
   }
 
+  // One select per delegable tool; only planners delegate. Keeps the choices made in the form when re-rendered.
+  function renderDelegations(selected) {
+    const isPlanner = el('nodeRole').value === 'Planner';
+    el('nodeDelegationBox').classList.toggle('d-none', !isPlanner);
+    if (!isPlanner) return;
+
+    const chosen = new Map((selected || []).map(d => [d.tool, d.toolsNodeId]));
+    const toolsNodes = [...nodes.values()].filter(n => n.role === 'ToolsNode');
+    el('nodeDelegations').innerHTML = delegableTools.map(([tool, note]) => {
+      const current = chosen.get(tool) || '';
+      const options = toolsNodes
+        .map(n => `<option value="${n.id}" ${n.id === current ? 'selected' : ''}>${escapeHtml(n.name)} — ${escapeHtml(n.model)}${n.isActive ? '' : ' (nonaktif)'}</option>`)
+        .join('');
+      return `<div class="col-md-6">
+          <label class="d-flex align-items-center gap-2 small mb-0" for="delegate-${tool}">
+            <span class="mono text-nowrap" style="min-width: 9.5rem">${tool}</span>
+            <select class="form-select form-select-sm" id="delegate-${tool}" data-delegate="${tool}" title="${escapeHtml(note)}" ${toolsNodes.length ? '' : 'disabled'}>
+              <option value="">Planner langsung</option>${options}
+            </select>
+          </label>
+          <div class="text-secondary" style="font-size: .75rem; margin-left: 10rem">${escapeHtml(note)}</div>
+        </div>`;
+    }).join('');
+    el('nodeDelegationHint').textContent = toolsNodes.length
+      ? 'Saran hemat: read_file, search_text dan find_references (output terbesar) ke tools node; find_symbol dan list_directory murah dibiarkan di planner.'
+      : 'Belum ada node Tools Node. Tambahkan node ber-role Tools Node (model murah) dulu, lalu pilih di sini.';
+  }
+
+  function readDelegations() {
+    return [...el('nodeDelegations').querySelectorAll('select[data-delegate]')]
+      .filter(select => select.value)
+      .map(select => ({ tool: select.dataset.delegate, toolsNodeId: select.value }));
+  }
+
   function applyRoleDefaults(role) {
     const d = defaults[role];
     el('nodeMaxTokens').value = d.maxTokens;
@@ -285,6 +354,7 @@
     }
     renderModelOptions(node?.model || '');
     renderFallbackOptions(node?.fallbackNodeId || '');
+    renderDelegations(node?.toolDelegations || []);
     el('nodeModalTitle').textContent = node ? `Edit node · ${node.name}` : 'Tambah node';
     modal.show();
   }
@@ -292,6 +362,7 @@
   el('nodeRole').addEventListener('change', () => {
     if (!el('nodeId').value) applyRoleDefaults(el('nodeRole').value);
     renderFallbackOptions(el('nodeFallback').value);
+    renderDelegations(readDelegations());
   });
 
   el('nodeForm').addEventListener('submit', async event => {
@@ -310,7 +381,8 @@
       systemPrompt: el('nodeSystemPrompt').value.trim() || null,
       isActive: el('nodeActive').checked,
       skillIds: nodeSkills.map(s => s.id),
-      fallbackNodeId: el('nodeFallback').value || null
+      fallbackNodeId: el('nodeFallback').value || null,
+      toolDelegations: el('nodeRole').value === 'Planner' ? readDelegations() : []
     };
     try {
       if (id) await api.put(`/api/nodes/${id}`, body);

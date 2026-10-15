@@ -125,9 +125,11 @@ Tab *Bisnis (wiki)* — lihat [Business memory](06-memory.md#business-memory-wik
 
 ## Node
 
-Lima kolom: Planner, Executor, Reviewer (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
+Enam kolom: Planner, Tools Node (opsional), Executor, Reviewer (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
 prioritas, penanda *📝 instruksi* bila ada instruksi tambahan (isinya di tooltip), penanda *🧩 n* bila node memakai n skill
-(namanya di tooltip), penanda *↪ nama* bila node punya [node cadangan](02-konfigurasi.md#node-cadangan), dengan tombol *Test*, *Edit*, *Hapus*. Di modal node, bagian *Skill* menampilkan skill terpasang
+(namanya di tooltip), penanda *🛰 n tool* di planner yang mendelegasikan tool ke [tools node](02-konfigurasi.md#tools-node-planner)
+(di kartu tools node: *🛰 n planner* yang memakainya; detail di tooltip), penanda *↪ nama* bila node punya [node cadangan](02-konfigurasi.md#node-cadangan), dengan tombol *Test*, *Edit*, *Hapus*.
+Di modal node Planner, bagian *Delegasi tool ke tools node* berisi satu pilihan per tool baca (*Planner langsung* atau tools node). Di modal node, bagian *Skill* menampilkan skill terpasang
 sebagai chip. Kolom *Cari sendiri di gudang* membuka dropdown skill yang cocok dengan nama, deskripsi, tag, sumber,
 atau isi skill (potongan isi yang cocok ditampilkan); klik item untuk memasang/melepas. Kolom *Butuh kemampuan apa?* + **Cari skill** meminta Skill Orchestrator mencarikan skill yang cocok
 dari gudang (lihat [Skill pada node](07-cara-kerja.md#skill-pada-node)).
