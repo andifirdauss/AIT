@@ -32,6 +32,11 @@ public sealed partial class MemoryService(
 {
     private const int PlannerPageMaxChars = 15_000;
 
+    // While the long memory database is down the planner keeps running without it; the activity log says so at most
+    // this often instead of once per thread.
+    private static readonly TimeSpan LongStoreNoticeInterval = TimeSpan.FromMinutes(10);
+    private long _longStoreNoticeTicks;
+
     private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "the", "and", "for", "with", "that", "this", "from", "into", "when", "then", "than", "are", "was", "will",
@@ -85,13 +90,7 @@ public sealed partial class MemoryService(
             .Select(r => new MemoryIndexEntry(r.Id, MemoryLevel.Short, r.Type, r.Label, r.CreatedAt))
             .ToList();
 
-        await using (var db = await longStore.CreateAsync(cancellationToken))
-        {
-            var longEntries = await WhereVisible(db.LongMemories.AsNoTracking(), scope, includeKnowledge: true)
-                .Select(m => new MemoryIndexEntry(m.Id, MemoryLevel.Long, m.Type, m.Label, m.CreatedAt))
-                .ToListAsync(cancellationToken);
-            entries.AddRange(longEntries);
-        }
+        entries.AddRange(await LongIndexAsync(scope, cancellationToken));
 
         // Business pages get their own share of the index, so many memories never push the project's wiki out.
         var pages = Rank(await BusinessIndexAsync(scope, cancellationToken), Keywords(query), Math.Min(8, Math.Max(1, take / 3)));
@@ -118,6 +117,34 @@ public sealed partial class MemoryService(
             .Take(take)
             .Select(x => x.Entry)
             .ToList();
+    }
+
+    // Long memory may live in an external database too; an outage there only hides those memories, the thread still runs.
+    private async Task<IReadOnlyList<MemoryIndexEntry>> LongIndexAsync(ProjectScope? scope, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var db = await longStore.CreateAsync(cancellationToken);
+            return await WhereVisible(db.LongMemories.AsNoTracking(), scope, includeKnowledge: true)
+                .Select(m => new MemoryIndexEntry(m.Id, MemoryLevel.Long, m.Type, m.Label, m.CreatedAt))
+                .ToListAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LongStoreFailed(ex, "Could not read the long memory index");
+            return [];
+        }
+    }
+
+    private void LongStoreFailed(Exception ex, string what)
+    {
+        logger.LogStoreWarning(ex, what);
+        if (!StoreErrors.IsUnreachable(ex)) return;
+
+        var now = DateTime.UtcNow.Ticks;
+        var last = Interlocked.Read(ref _longStoreNoticeTicks);
+        if (now - last < LongStoreNoticeInterval.Ticks || Interlocked.CompareExchange(ref _longStoreNoticeTicks, now, last) != last) return;
+        activityLog.Warn("memory", $"Long memory ({longStore.Description}) tidak dapat dihubungi: {MemoryStoreTester.ErrorMessage(ex)}. Thread tetap berjalan tanpa long memory.");
     }
 
     // The business wiki may live in another (shared) database; an outage there only hides the pages.
@@ -166,16 +193,24 @@ public sealed partial class MemoryService(
         var remaining = idList.Except(results.Select(r => r.Id)).ToList();
         if (remaining.Count == 0) return results;
 
-        await using var db = await longStore.CreateAsync(cancellationToken);
-        var longs = await db.LongMemories.AsNoTracking()
-            .Where(m => remaining.Contains(m.Id))
-            .ToListAsync(cancellationToken);
-        results.AddRange(longs.Select(m => ToDto(m, projects)));
+        var longs = new List<LongMemory>();
+        try
+        {
+            await using var db = await longStore.CreateAsync(cancellationToken);
+            longs = await db.LongMemories.AsNoTracking()
+                .Where(m => remaining.Contains(m.Id))
+                .ToListAsync(cancellationToken);
 
-        // Usage statistics help to spot memories worth keeping.
-        await db.LongMemories.Where(m => remaining.Contains(m.Id)).ExecuteUpdateAsync(s => s
-            .SetProperty(m => m.HitCount, m => m.HitCount + 1)
-            .SetProperty(m => m.LastAccessedAt, DateTime.UtcNow), cancellationToken);
+            // Usage statistics help to spot memories worth keeping.
+            await db.LongMemories.Where(m => remaining.Contains(m.Id)).ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.HitCount, m => m.HitCount + 1)
+                .SetProperty(m => m.LastAccessedAt, DateTime.UtcNow), cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LongStoreFailed(ex, "Could not read long memories");
+        }
+        results.AddRange(longs.Select(m => ToDto(m, projects)));
 
         remaining = remaining.Except(longs.Select(m => m.Id)).ToList();
         if (remaining.Count > 0) results.AddRange(await BusinessPagesAsync(remaining, projects, cancellationToken));
@@ -352,6 +387,12 @@ public sealed partial class MemoryService(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                if (StoreErrors.IsUnreachable(ex))
+                {
+                    // Every record would fail the same way; they stay in short memory until the next round.
+                    LongStoreFailed(ex, $"Memory consolidation postponed ({due.Count - moved} due)");
+                    break;
+                }
                 logger.LogWarning(ex, "Could not consolidate short memory {Id}", record.Id);
             }
         }
@@ -367,17 +408,27 @@ public sealed partial class MemoryService(
     public async Task<MemoryStatsDto> GetStatsAsync(CancellationToken cancellationToken = default)
     {
         var shorts = await SafeShortAsync();
-        await using var db = await longStore.CreateAsync(cancellationToken);
-        var longByType = await db.LongMemories.AsNoTracking()
-            .GroupBy(m => m.Type)
-            .Select(g => new { Type = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
+        var longDescription = longStore.Description;
+        var longByType = new Dictionary<MemoryType, int>();
+        try
+        {
+            await using var db = await longStore.CreateAsync(cancellationToken);
+            longByType = await db.LongMemories.AsNoTracking()
+                .GroupBy(m => m.Type)
+                .Select(g => new { Type = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Type, x => x.Count, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            LongStoreFailed(ex, "Could not count long memories");
+            longDescription += " — tidak terhubung";
+        }
 
-        var longCount = longByType.Sum(x => x.Count);
-        var projectCount = shorts.Count(r => r.Type == MemoryType.Project) + longByType.Where(x => x.Type == MemoryType.Project).Sum(x => x.Count);
-        var knowledgeCount = shorts.Count(r => r.Type == MemoryType.Knowledge) + longByType.Where(x => x.Type == MemoryType.Knowledge).Sum(x => x.Count);
+        var longCount = longByType.Values.Sum();
+        var projectCount = shorts.Count(r => r.Type == MemoryType.Project) + longByType.GetValueOrDefault(MemoryType.Project);
+        var knowledgeCount = shorts.Count(r => r.Type == MemoryType.Knowledge) + longByType.GetValueOrDefault(MemoryType.Knowledge);
         return new MemoryStatsDto(shorts.Count, longCount, projectCount, knowledgeCount, shortStore.IsConnected,
-            shortStore.Description, longStore.Description);
+            shortStore.Description, longDescription);
     }
 
     // Idempotent: the long row keeps the short memory id, so a retried consolidation never duplicates.
