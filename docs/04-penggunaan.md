@@ -79,8 +79,11 @@ mencoba form-nya.
 ⏱️  48.6s · 🪙  41.2k token · 🧠 2 memory dipakai, +2 memory baru · 📚 Wiki masuk antrian rangkuman berikutnya (tiap 6 jam)
 
 📊 **Sisa kuota**
-- Antigravity · DS997: Gemini 3.8 Flash (High) 98% (reset 1j 56m)
-- Claude Code · Andi: session (5h) 17% ⚠️ (reset 1j 20m) · weekly (7d) 69% (reset 4h 18j)
+- **Antigravity · DS997**
+  - 🟩🟩🟩🟩🟩🟩🟩🟩🟩⬜ 98% · Gemini 3.8 Flash (High) · reset 1j 56m
+- **Claude Code · Andi**
+  - 🟥⬜⬜⬜⬜⬜⬜⬜⬜⬜ 17% · session (5h) · reset 1j 20m
+  - 🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜ 69% · weekly (7d) · reset 4h 18j
 
 🔗 Detail & rollback: http://localhost:5225/Thread/Detail/5e469b54-…
 `````
@@ -118,8 +121,10 @@ Footer menunggu ekstraksi memory selesai, paling lama 30 detik. Bila lebih lama,
 (Dashboard, Telegram, context keeper) hanya teks Wrapper atau ringkasan otomatis.
 
 **Sisa kuota** dibaca dari 9router (`/api/usage/{koneksi}`) dan hanya mencakup akun provider yang modelnya dipakai
-node aktif beserta node cadangannya (anggota combo ikut dihitung). Satu baris per akun 9router: persen sisa per batas
-(mis. jendela 5 jam / 7 hari Claude), `⚠️` bila sisa ≤ 20%, dan waktu reset (`m` menit, `j` jam, `h` hari). Untuk kuota
+node aktif beserta node cadangannya (anggota combo ikut dihitung). Per akun 9router, tiap batas (mis. jendela 5 jam /
+7 hari Claude) tampil sebagai bar 10 kotak (1 kotak = 10%, sisa berapa pun minimal 1 kotak) beserta persen sisa dan
+waktu reset (`m` menit, `j` jam, `h` hari). Warna bar: 🟩 sisa > 50%, 🟨 > 35%, 🟥 > 0%, dan semua ⬜ bila habis —
+terminal hanya bisa mewarnai emoji, dan tidak ada emoji kotak abu-abu. Untuk kuota
 per model (mis. Antigravity) hanya model yang dipakai node yang tampil. Akun API key biasa dan provider yang kuotanya
 tidak bisa dibaca 9router tidak tampil. Hasil di-cache 60 detik; bila 9router tidak menjawab dalam 10 detik atau
 dashboard-nya mewajibkan login, bagian ini dilewati — lihat [Troubleshooting](08-troubleshooting.md#9router).
