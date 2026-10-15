@@ -13,8 +13,9 @@ public static partial class FinalReport
 {
     private const int MaxAttentionErrors = 10;
 
-    // Remaining share at or below which a quota is flagged.
-    private const double LowQuotaPercent = 20;
+    // Quota bars: one cell per 10%, coloured by what remains (terminals only colour emoji).
+    private const int QuotaBarCells = 10;
+    private const string QuotaEmptyCell = "⬜";
 
     // "✅ **Selesai** · 8/8 tugas · build lolos · reviewer setuju", then "Perlu perhatian" when something failed.
     // Fix tasks (V<round>-<n>) do not count as tasks of the plan; their failures are listed like the others.
@@ -107,33 +108,45 @@ public static partial class FinalReport
         return builder.ToString();
     }
 
-    // "📊 Sisa kuota", one line per account: "- Claude Code · Andi: session (5h) 17% ⚠️ (reset 1j 20m) · weekly (7d) 69% …".
+    // "📊 Sisa kuota", then per account its limits as bars, the bar first so they line up:
+    //   - **Claude Code · Andi**
+    //     - 🟩🟩🟩🟩🟩🟩🟩🟩🟩⬜ 95% · session (5h) · reset 4j 53m
     public static string Quotas(IReadOnlyList<RouterQuotaDto> quotas, DateTime now)
     {
         var builder = new StringBuilder("📊 **Sisa kuota**\n");
         foreach (var account in quotas.OrderBy(q => q.Plan, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Name, StringComparer.OrdinalIgnoreCase))
         {
             var label = string.Equals(account.Plan, account.Name, StringComparison.OrdinalIgnoreCase) ? account.Plan : $"{account.Plan} · {account.Name}";
-            builder.Append("- ").Append(label).Append(": ")
-                .Append(string.Join(" · ", account.Windows.Select(w => QuotaWindow(w, now))))
-                .Append('\n');
+            builder.Append("- **").Append(label).Append("**\n");
+            foreach (var window in account.Windows)
+                builder.Append("  - ").Append(QuotaWindow(window, now)).Append('\n');
         }
         return builder.ToString();
     }
 
     private static string QuotaWindow(RouterQuotaWindowDto window, DateTime now)
     {
-        if (window.Unlimited) return $"{window.Name} tanpa batas";
-        var text = window.RemainingPercent switch
-        {
-            null => $"{window.Name} ?",
-            <= 0 => $"{window.Name} 0% habis",
-            < 1 => $"{window.Name} <1%",
-            double p => $"{window.Name} {Math.Round(p, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture)}%"
-        };
-        if (window.RemainingPercent is > 0 and <= LowQuotaPercent) text += " ⚠️";
-        if (window.ResetAt is { } reset && reset > now) text += $" (reset {Remaining(reset - now)})";
+        var amount = window.Unlimited ? "tanpa batas"
+            : window.RemainingPercent switch
+            {
+                null => "?",
+                <= 0 => "0% habis",
+                < 1 => "<1%",
+                double p => $"{Math.Round(p, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture)}%"
+            };
+        var bar = window.Unlimited ? QuotaBar(100) : window.RemainingPercent is { } percent ? QuotaBar(percent) : null;
+        var text = (bar is null ? string.Empty : bar + " ") + $"{amount} · {window.Name}";
+        if (window.ResetAt is { } reset && reset > now) text += $" · reset {Remaining(reset - now)}";
         return text;
+    }
+
+    // Green above 50%, yellow above 35%, red above 0, all empty when used up. Any remainder fills at least one cell.
+    public static string QuotaBar(double remainingPercent)
+    {
+        var percent = Math.Clamp(remainingPercent, 0, 100);
+        var cell = percent > 50 ? "🟩" : percent > 35 ? "🟨" : "🟥";
+        var filled = percent <= 0 ? 0 : Math.Clamp((int)Math.Floor(percent / (100.0 / QuotaBarCells)), 1, QuotaBarCells);
+        return string.Concat(Enumerable.Repeat(cell, filled)) + string.Concat(Enumerable.Repeat(QuotaEmptyCell, QuotaBarCells - filled));
     }
 
     // "45m", "3j 05m", "4h 19j" (menit, jam, hari).
