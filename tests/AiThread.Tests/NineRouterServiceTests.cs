@@ -103,6 +103,29 @@ public class NineRouterServiceTests
     }
 
     [Fact]
+    public async Task Provider_logged_out_is_reported_once_without_retrying_and_allows_fail_over()
+    {
+        var calls = 0;
+        const string body = "{\"error\":{\"message\":\"[claude/claude-opus-5-5] [401]: {\\\"type\\\":\\\"error\\\",\\\"error\\\":{\\\"type\\\":\\\"authentication_error\\\",\\\"message\\\":\\\"OAuth access token has expired. Re-authenticate to continue.\\\"}} (reset after 2m)\"}}";
+        var handler = new StubHandler(_ =>
+        {
+            calls++;
+            return Json(HttpStatusCode.ServiceUnavailable, body);
+        });
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), NullLogger<NineRouterService>.Instance);
+
+        var ex = await Assert.ThrowsAsync<NineRouterException>(() =>
+            router.ChatAsync(new ChatCompletionRequest { Model = "cc/claude-opus-5-5", Messages = [ChatMessages.User("hi")] }));
+
+        Assert.Equal(1, calls);
+        Assert.True(ex.IsProviderLoginRequired);
+        Assert.False(ex.IsTransient);
+        Assert.True(ex.IsModelUnavailable);
+        Assert.Contains("perlu login ulang (OAuth access token has expired. Re-authenticate to continue.)", ex.Message);
+        Assert.DoesNotContain("{", ex.Message);
+    }
+
+    [Fact]
     public void Long_retry_after_is_not_waited_on_so_the_caller_can_fail_over()
     {
         var ex = new NineRouterException("limited", 429, retryAfter: TimeSpan.FromMinutes(5));

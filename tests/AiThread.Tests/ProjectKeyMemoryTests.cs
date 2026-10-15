@@ -46,6 +46,29 @@ public class ProjectKeyMemoryTests
     }
 
     [Fact]
+    public async Task Unreachable_long_memory_database_only_hides_long_memory()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "transfer order, approval", "TO above 10M needs approval."));
+
+        // Nothing listens on port 1: every connection is refused, as with a stopped PostgreSQL server.
+        harness.Service<LongMemoryStore>().Configure(new MemoryStoreConnection(MemoryStoreProvider.PostgreSql, "127.0.0.1", 1, "aithread", "app", "pw"));
+
+        Assert.Contains(await memory.Service.GetIndexAsync(harness.ProjectId, "approval", 10), e => e.Id == saved.Id);
+        Assert.Equal(saved.Id, Assert.Single(await memory.Service.GetManyAsync([saved.Id, Guid.NewGuid()])).Id);
+
+        // Consolidation waits for the database instead of failing record by record; the memory stays short.
+        Assert.Equal(0, await memory.Service.ConsolidateAsync());
+        Assert.Contains(await memory.Service.GetIndexAsync(harness.ProjectId, "approval", 10), e => e.Id == saved.Id && e.Level == MemoryLevel.Short);
+
+        var stats = await memory.Service.GetStatsAsync();
+        Assert.Equal((1, 0), (stats.ShortCount, stats.LongCount));
+        Assert.EndsWith("tidak terhubung", stats.LongStore);
+    }
+
+    [Fact]
     public async Task Planner_index_and_read_memory_include_the_business_wiki_of_the_key()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();

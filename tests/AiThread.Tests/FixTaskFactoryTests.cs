@@ -94,6 +94,73 @@ public class FixTaskFactoryTests : IDisposable
     }
 
     [Fact]
+    public void Other_uses_of_a_name_from_the_error_are_shown_as_the_pattern_to_follow()
+    {
+        const string pattern = "using (var db = new OracleEntities(EFClientUtility.GetConnectionString()))";
+        const string other = "using (var context = new OracleEntities(EFClientUtility.GetConnectionString()))";
+        _workspace.Write("src/KlaimBL.cs", string.Join('\n', Enumerable.Range(1, 600).Select(i => i switch
+        {
+            // The same line twice teaches nothing new, so only its first use is shown.
+            120 or 250 => "            " + pattern,
+            380 => "            " + other,
+            465 => "            using (var db = new OracleEntities())",
+            _ => $"// line {i}"
+        })));
+        var build = Failed(Error("src/KlaimBL.cs", 465, "CS7036",
+            "There is no argument given that corresponds to the required parameter 'connectionString' of 'OracleEntities.OracleEntities(string)'"));
+        var original = new PlanTask { Id = "T1", Title = "Add fee summary", File = "src/KlaimBL.cs", Instruction = "Add GetFeeSummaryByMKPP." };
+
+        var task = Assert.Single(FixTaskFactory.Create(1, build, null, ["src/KlaimBL.cs"], [original], _scope).Tasks);
+
+        Assert.Equal([1, 120, 380, 465], task.Focus!.Select(f => f.StartLine));
+        Assert.Contains($"- line 120: {pattern}", task.Instruction);
+        Assert.Contains($"- line 380: {other}", task.Instruction);
+        Assert.DoesNotContain("- line 250:", task.Instruction);
+    }
+
+    [Fact]
+    public void Missing_name_is_fixed_in_the_file_the_plan_meant_to_declare_it()
+    {
+        _workspace.Write("src/CarryForward.cs", "partial class KiosService\n{\n    void CopySettings() { }\n}");
+        _workspace.Write("src/MapEmployee.cs", "partial class KiosService\n{\n    void Map() { CarryForwardNonKiosApps(employee, previous); }\n}");
+        PlanTask[] plan =
+        [
+            new() { Id = "T1", Title = "Add helper", File = "src/CarryForward.cs", Instruction = "Add private method CarryForwardNonKiosApps(employee, previous) that copies non-KIOS apps." },
+            new() { Id = "T2", Title = "Call helper", File = "src/MapEmployee.cs", Instruction = "Call CarryForwardNonKiosApps(employee, previous) in Map." }
+        ];
+        var build = Failed(Error("src/MapEmployee.cs", 3, "CS0103", "The name 'CarryForwardNonKiosApps' does not exist in the current context"));
+
+        var fix = FixTaskFactory.Create(1, build, null, ["src/CarryForward.cs", "src/MapEmployee.cs"], plan, _scope);
+
+        var task = Assert.Single(fix.Tasks);
+        Assert.Equal("src/CarryForward.cs", task.File);
+        Assert.Equal("Fix build errors", task.Title);
+        Assert.Contains("- CarryForwardNonKiosApps — used in src/MapEmployee.cs line 3: CS0103", task.Instruction);
+        Assert.Contains("Add private method CarryForwardNonKiosApps", task.Instruction);
+        Assert.Equal([1, 4], task.Focus!.Select(f => f.StartLine));
+        var callSite = Assert.Single(task.Context!);
+        Assert.Equal("src/MapEmployee.cs", callSite.File);
+        Assert.Empty(fix.Unfixable);
+    }
+
+    [Fact]
+    public void Missing_name_stays_with_the_calling_file_when_the_declaring_file_already_has_it()
+    {
+        _workspace.Write("src/CarryForward.cs", "static class KiosHelpers\n{\n    public static void CarryForwardNonKiosApps(int a) { }\n}");
+        _workspace.Write("src/MapEmployee.cs", "partial class KiosService\n{\n    void Map() { CarryForwardNonKiosApps(employee); }\n}");
+        PlanTask[] plan =
+        [
+            new() { Id = "T1", Title = "Add helper", File = "src/CarryForward.cs", Instruction = "Add CarryForwardNonKiosApps." },
+            new() { Id = "T2", Title = "Call helper", File = "src/MapEmployee.cs", Instruction = "Call CarryForwardNonKiosApps in Map." }
+        ];
+        var build = Failed(Error("src/MapEmployee.cs", 3, "CS0103", "The name 'CarryForwardNonKiosApps' does not exist in the current context"));
+
+        var task = Assert.Single(FixTaskFactory.Create(1, build, null, ["src/CarryForward.cs", "src/MapEmployee.cs"], plan, _scope).Tasks);
+
+        Assert.Equal("src/MapEmployee.cs", task.File);
+    }
+
+    [Fact]
     public void Review_issues_may_target_any_project_file_and_focus_on_their_anchor()
     {
         var review = new ReviewResult(false, "Selector mismatch.",

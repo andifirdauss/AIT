@@ -40,6 +40,10 @@ thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
 - **Short memory tidak tersedia** (mis. Garnet gagal start, atau server short memory eksternal mati): memory baru
   langsung disimpan sebagai long memory (tercatat di log sebagai peringatan). Store database eksternal dicek ulang
   tiap 15 detik dan otomatis dipakai lagi begitu kembali hidup.
+- **Long memory tidak tersedia** (mis. server PostgreSQL eksternal mati): thread tetap berjalan, planner hanya tidak
+  melihat long memory. Log aktivitas mencatat `Long memory (…) tidak dapat dihubungi` paling sering sekali per 10
+  menit. Konsolidasi menunda pemindahan: short memory yang sudah jatuh tempo tetap di short memory sampai database
+  kembali, dan statistik menu Memory menampilkan store long memory sebagai *tidak terhubung*.
 - Short memory dari project yang sudah dihapus berubah menjadi knowledge memory saat dipindah.
 
 ## Berbagi memory antar developer (project key)
