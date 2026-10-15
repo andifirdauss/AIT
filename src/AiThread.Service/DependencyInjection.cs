@@ -68,6 +68,8 @@ public static class DependencyInjection
         services.AddSingleton<NodeCaller>();
         services.AddSingleton<ThreadRollback>();
         services.AddSingleton<FileLockProvider>();
+        services.AddSingleton<PlannerToolRunner>();
+        services.AddSingleton<ToolsNodeAgent>();
         services.AddSingleton<PlannerAgent>();
         services.AddSingleton<ExecutorAgent>();
         services.AddSingleton<FileOperations>();

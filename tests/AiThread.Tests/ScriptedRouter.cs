@@ -11,6 +11,7 @@ namespace AiThread.Tests;
 public enum ScriptedAgent
 {
     Planner,
+    ToolsNode,
     Executor,
     Reviewer,
     Wrapper,
@@ -20,8 +21,8 @@ public enum ScriptedAgent
     Other
 }
 
-// Messages is a snapshot: the agents keep appending to the array they sent.
-public sealed record RouterCall(ScriptedAgent Agent, string Model, JsonArray Messages)
+// Messages is a snapshot: the agents keep appending to the array they sent. ToolNames: the tools offered in the call.
+public sealed record RouterCall(ScriptedAgent Agent, string Model, JsonArray Messages, IReadOnlyList<string>? ToolNames = null)
 {
     public string System => Messages[0]?["content"]?.GetValue<string>() ?? string.Empty;
 
@@ -62,7 +63,8 @@ public sealed class ScriptedRouter : INineRouterService
     public async Task<ChatCompletionResult> ChatAsync(ChatCompletionRequest request, Func<string, Task>? onDelta = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var call = new RouterCall(Identify(request), request.Model, (JsonArray)request.Messages.DeepClone());
+        var call = new RouterCall(Identify(request), request.Model, (JsonArray)request.Messages.DeepClone(),
+            request.Tools?.Select(t => t?["function"]?["name"]?.GetValue<string>() ?? string.Empty).ToList());
         _calls.Enqueue(call);
 
         var reply = NextReply(call)
@@ -80,6 +82,9 @@ public sealed class ScriptedRouter : INineRouterService
 
     public Task<IReadOnlyList<RouterModelDto>> GetModelsAsync(bool refresh = false, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<RouterModelDto>>([]);
+
+    public Task<IReadOnlyList<RouterQuotaDto>> GetQuotasAsync(IReadOnlyCollection<string> models, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<RouterQuotaDto>>([]);
 
     public Task<HttpResponseMessage> ForwardAsync(string pathAndQuery, string body, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default) =>
         throw new NotSupportedException();
@@ -136,6 +141,7 @@ public sealed class ScriptedRouter : INineRouterService
     {
         var system = request.Messages[0]?["content"]?.GetValue<string>() ?? string.Empty;
         if (system.StartsWith(AgentPrompts.Planner, StringComparison.Ordinal)) return ScriptedAgent.Planner;
+        if (system.StartsWith(AgentPrompts.ToolsNode, StringComparison.Ordinal)) return ScriptedAgent.ToolsNode;
         if (system.StartsWith(AgentPrompts.Executor, StringComparison.Ordinal)) return ScriptedAgent.Executor;
         if (system.StartsWith(AgentPrompts.Reviewer, StringComparison.Ordinal)) return ScriptedAgent.Reviewer;
         if (system.StartsWith(AgentPrompts.Wrapper, StringComparison.Ordinal)) return ScriptedAgent.Wrapper;

@@ -87,6 +87,7 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    - Executor: model murah & cepat; tambah beberapa node untuk menyebar beban. `Max paralel` dibatasi per node lintas semua thread.
    - Wrapper: model murah; juga dipakai untuk ekstraksi memory dan sebagai model passthrough default.
    - Reviewer (opsional): model yang teliti; memeriksa hasil executor terhadap rencana, kontrak, dan hasil build.
+   - Tools Node (opsional): model murah dengan *tool calling*; di Edit node Planner, tool yang boros (mis. `read_file`, `search_text`) bisa didelegasikan ke sini agar output mentahnya tidak membebani token planner — lihat [docs/02-konfigurasi.md](docs/02-konfigurasi.md#tools-node-planner).
 3. Menu **CLI** → kartu *Claude Code* → nyalakan switch *Per project* (disarankan) atau *Global*. Untuk Claude Code, ini menulis blok `env` ke `.claude/settings.local.json` (atau `~/.claude/settings.json`):
 
    ```json

@@ -45,7 +45,9 @@ npm install -g 9router
 4. Salin **API key** dari dashboard 9router bila opsi *require API key* aktif (default aktif).
 
 AIT memakai endpoint 9router berikut: `GET /api/health`, `GET /v1/models`, `POST /v1/chat/completions`,
-`POST /v1/messages`, `POST /v1/messages/count_tokens`.
+`POST /v1/messages`, `POST /v1/messages/count_tokens`. Untuk *Sisa kuota* di footer jawaban AIT juga membaca API
+dashboard 9router (`GET /api/combos`, `/api/providers/client`, `/api/usage/{id}`); API ini hanya terbuka bila
+*Require login* di Settings 9router dimatikan (bawaan 9router: aktif). Tanpa itu footer tampil tanpa kuota.
 
 ## 3. Database
 

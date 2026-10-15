@@ -102,6 +102,7 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `read_memory(ids)` | deskripsi lengkap |
 | `read_thread(id)` | catatan lengkap thread sebelumnya di project ini (permintaan, rencana, tugas, balasan) |
 | `run_build(target?)` | build project, hasilnya status + setiap error `file(baris,kolom): kode: pesan` (maks 40). `target` = solution/project/manifest lain di dalam root. Dipakai bila Anda minta build atau memperbaiki error build |
+| `investigate(question, agent?)` | hanya ada bila node planner [mendelegasikan tool ke tools node](02-konfigurasi.md#tools-node-planner); tools node menjalankan tool yang didelegasikan (yang hilang dari daftar ini) dalam loop sendiri, maks 12 langkah, lalu mengembalikan temuan ringkas maks 12.000 karakter. Di progres: `investigate  #1 "…"`, lalu baris `#1 › read_file …` per tool tools node, dan `#1 ✅ n langkah · token · model`. Di progres CLI, path panjang diringkas menjadi `folder-awal/…/folder/file` (maks 48 karakter) dan query pencarian dipotong di 60 karakter agar satu tool tetap satu baris; log aktivitas menyimpan versi lengkap |
 | `ask_user(question, options?)` | menghentikan thread dengan satu pertanyaan ke developer (lihat [Pertanyaan dari planner](#pertanyaan-dari-planner)); hanya ditawarkan bila *Planner boleh bertanya* menyala dan prompt berasal dari sesi yang bisa menjawab |
 | `submit_plan(plan)` | mengakhiri planning |
 
@@ -316,13 +317,27 @@ root lewat `run_build`):
 
 | Stack | Perintah | Target default |
 |---|---|---|
-| .NET | `dotnet build <file> -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | `.sln`/`.slnx` paling dangkal, kalau tidak ada `.csproj`/`.fsproj`/`.vbproj` paling dangkal |
+| .NET | `dotnet build <file> --no-incremental -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | `.sln`/`.slnx` paling dangkal, kalau tidak ada `.csproj`/`.fsproj`/`.vbproj` paling dangkal |
+| .NET Framework (csproj format lama/non-SDK, mis. ASP.NET MVC 5) | `MSBuild.exe <file> -restore -t:Rebuild -m -nr:false -p:RestorePackagesConfig=true …` dari Visual Studio / Build Tools (dicari lewat `vswhere`, lalu folder standar `Program Files\Microsoft Visual Studio`) | sama dengan .NET; solution dianggap format lama bila salah satu project-nya format lama atau berisi web site project |
 | Node.js | `tsc --noEmit` (TypeScript lokal di `node_modules`), kalau tidak ada `npm run build` | `package.json` paling dangkal yang punya salah satunya |
 | Go | `go build ./...` | `go.mod` |
 | Rust | `cargo check --message-format short` | `Cargo.toml` |
 | Java (Maven) | `mvnw`/`mvn -q -B compile` | `pom.xml` |
 
 Stack lain (Python, PHP, Gradle, …) tidak punya perintah build; verifikasinya hanya lewat Reviewer bila ada.
+
+Build .NET selalu **rebuild penuh** (clean + build), supaya output lama tidak menutupi error. Pengecualiannya: bila
+ada `.dll`/`.exe` di folder `bin` project yang sedang dipakai program yang berjalan (app-nya sendiri, IIS tanpa shadow
+copy, compiler server di `bin\roslyn`), build dijalankan **incremental tanpa clean** (`dotnet build` / `msbuild
+-t:Build`). Kalau tetap clean, semua file di sekitar file yang terkunci (mis. `*.runtimeconfig.json`, `*.deps.json`)
+ikut terhapus dan tidak disalin ulang karena copy-nya gagal, sehingga app tidak bisa dijalankan lagi tanpa build
+ulang. Copy ke `bin` yang gagal karena file terkunci (`MSB3021`/`MSB3027`) tetap dihitung lolos: kodenya sudah
+terkompilasi. Project format lama
+tidak bisa di-build `dotnet build` karena meng-import target milik Visual Studio (mis.
+`Microsoft.WebApplication.targets`). Kalau MSBuild Visual Studio tidak ada, project itu tidak di-build sama sekali
+(tidak diganti build stack lain seperti `npm run build` di sebelahnya). Build yang gagal **hanya** karena toolchain
+kurang (`MSB4019` target import tidak ada, `MSB4236` SDK tidak ada, `NETSDK1045` target framework tidak didukung)
+dilaporkan sebagai "build tidak bisa dijalankan" (🟡): bukan masalah kode, jadi tidak dibuatkan tugas perbaikan.
 
 Satu putaran verifikasi:
 
@@ -369,7 +384,7 @@ error, maks 60 baris diff per tugas), dan ringkasan verifikasi per putaran, lalu
 penjelasan, dalam bahasa permintaan Anda: 1–3 kalimat tentang apa yang dikerjakan, saran untuk tugas gagal atau
 masalah verifikasi yang tersisa, dan langkah lanjutan bila perlu. Fakta lainnya ditulis AIT sendiri dari hasil, bukan
 oleh model: baris status (tugas, build, reviewer) dan daftar *Perlu perhatian* sebelum teks Wrapper, tabel *File
-berubah* dan footer (durasi, token, memory, wiki, link thread) sesudahnya — lihat
+berubah* dan footer (durasi, token, memory, wiki, sisa kuota provider, link thread) sesudahnya — lihat
 [Membaca output di Claude Code](04-penggunaan.md#membaca-output-di-claude-code). Teks Wrapper di-stream ke Claude Code.
 
 Jika tidak ada wrapper aktif atau wrapper gagal, Claude Code menampilkan ringkasan rencana sebagai pengganti teksnya;

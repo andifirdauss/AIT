@@ -10,5 +10,9 @@ public enum NodeRole
     ContextKeeper = 4,
 
     // Optional: checks the executors' changes against the plan (and the build result) before the wrapper reports.
-    Reviewer = 5
+    Reviewer = 5,
+
+    // Optional: a cheap investigator the planner hands its delegated tools to (PlannerToolDelegation); it runs them in
+    // its own loop and returns short findings, so the raw tool output never enters the planner's conversation.
+    ToolsNode = 6
 }

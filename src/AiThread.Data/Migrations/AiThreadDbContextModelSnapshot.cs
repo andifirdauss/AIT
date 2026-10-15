@@ -371,6 +371,25 @@ namespace AiThread.Data.Migrations
                     b.ToTable("NodeSkills", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.PlannerToolDelegation", b =>
+                {
+                    b.Property<Guid>("PlannerNodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Tool")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("ToolsNodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("PlannerNodeId", "Tool");
+
+                    b.HasIndex("ToolsNodeId");
+
+                    b.ToTable("PlannerToolDelegations", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -891,6 +910,9 @@ namespace AiThread.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int>("ToolsNodeTokens")
+                        .HasColumnType("int");
+
                     b.Property<long?>("TotalMs")
                         .HasColumnType("bigint");
 
@@ -1062,6 +1084,25 @@ namespace AiThread.Data.Migrations
                     b.Navigation("AiNode");
 
                     b.Navigation("Skill");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.PlannerToolDelegation", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.AiNode", "PlannerNode")
+                        .WithMany("ToolDelegations")
+                        .HasForeignKey("PlannerNodeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AiThread.Common.Entities.AiNode", "ToolsNode")
+                        .WithMany()
+                        .HasForeignKey("ToolsNodeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("PlannerNode");
+
+                    b.Navigation("ToolsNode");
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.Skill", b =>
@@ -1263,6 +1304,8 @@ namespace AiThread.Data.Migrations
             modelBuilder.Entity("AiThread.Common.Entities.AiNode", b =>
                 {
                     b.Navigation("Skills");
+
+                    b.Navigation("ToolDelegations");
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.Project", b =>
