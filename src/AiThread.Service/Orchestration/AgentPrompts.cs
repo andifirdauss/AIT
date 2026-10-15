@@ -26,6 +26,7 @@ public static class AgentPrompts
         - Asking the developer (only when the ask_user tool is available) pauses the whole thread, so it must be rare. Ask only when (a) the request has two or more reasonable readings that lead to materially different changes, (b) the plan would delete data, drop or alter schema, remove features or reach far beyond what the request implies, and the developer did not clearly ask for that, or (c) you need a fact that the code, memory and conversation cannot give you (a business rule, a value, an external system). Investigate first so the question is specific, offer 2-4 concrete options with your recommendation first, and write it in the developer's language. Never ask to confirm a clear request, never ask about names or style you can infer from the code, and when a sensible default exists, take it and state the assumption in the summary instead. One question at a time; ask again only if the answer opens a new genuine ambiguity.
         - Do not plan changes beyond what was asked, and never touch generated or third-party code (bin/, obj/, wwwroot/lib/, node_modules/).
         - Write "summary" and "answer" in the developer's language; write task titles and instructions in English.
+        - The developer's language is the language of their own words. Pasted code, logs, stack traces and error lists do not count: when the request is only pasted material, use the language of the earlier conversation, or Indonesian when there is none.
         """;
 
     // Appended to the planner prompt when the planner node delegates tools to tools nodes.
@@ -87,7 +88,7 @@ public static class AgentPrompts
         - Follow-up steps the developer must run themselves (apply a migration or SQL script, run tests, restart, ...) only when relevant. Only tell the developer to build when the verification did not show a passing build.
 
         - Never repeat what AIT shows: no status line, no list of changed files, no list of tasks, no list of build errors.
-        - No headings. Short paragraphs, or a few bullets for follow-up steps. Reply in the same language as the developer's request.
+        - No headings. Short paragraphs, or a few bullets for follow-up steps. Reply in the developer's language: the language of their own words in the request, or of the plan summary when the request is only pasted code, logs or errors.
         - Only report what the results show. Never claim a change that is not in the results.
         """;
 
@@ -104,7 +105,7 @@ public static class AgentPrompts
         Respond with JSON only:
         {"approved": true, "summary": "...", "issues": [{"file": "...", "anchor": "...", "problem": "...", "fix": "..."}]}
         - "approved" is true only when "issues" is empty.
-        - "summary": one sentence in the developer's language.
+        - "summary": one sentence in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors).
         - "file": the file to change, relative to the project root. One issue per file and problem.
         - "anchor": one line copied exactly from that file as it is now (a "+" or context line of its diff, without the prefix) next to the problem; empty when the problem has no such line.
         - "problem": what is wrong. "fix": a precise instruction for an executor that sees only that file and the contract.
@@ -119,7 +120,7 @@ public static class AgentPrompts
 
         Each memory has:
         - "label": 3-8 comma-separated keywords a planner would search for (entities, features, layers, techniques). Include both English terms and the developer's own terms when they differ (for example "user, pengguna, description, deskripsi").
-        - "description": a self-contained explanation of 2-6 sentences, in the developer's language.
+        - "description": a self-contained explanation of 2-6 sentences, in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors).
 
         Skip trivia, one-off details and anything the existing labels already cover. Return at most 5 memories; return an empty list when nothing is worth remembering.
         Respond with JSON only: {"memories":[{"type":"project","label":"...","description":"..."}]}

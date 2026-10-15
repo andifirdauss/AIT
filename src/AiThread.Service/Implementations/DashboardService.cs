@@ -2,6 +2,7 @@ using AiThread.Common.DTOs;
 using AiThread.Common.Enums;
 using AiThread.Data.Cache;
 using AiThread.Data.Context;
+using AiThread.Data.Memory;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Orchestration;
 using Microsoft.EntityFrameworkCore;
@@ -91,7 +92,7 @@ public sealed class DashboardService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Dashboard component failed.");
+            logger.LogStoreWarning(ex, "Dashboard component failed");
             return fallback;
         }
     }

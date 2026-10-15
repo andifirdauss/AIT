@@ -82,6 +82,72 @@ public class ClaudeRequestInspectorTests
         Assert.Equal("tool_result turn", info.Reason);
     }
 
+    [Theory]
+    [InlineData("<title-request> Session UI request, not from the user. Your main reply continues separately; NEVER start on the task here.")]
+    [InlineData("<recap> User stepped away; returning. Recap: <40 words, 1–2 plain sentences, no markdown.")]
+    public void Claude_code_side_requests_are_passed_through(string prompt)
+    {
+        var body = MainAgentRequest(
+        [
+            new JsonObject { ["role"] = "user", ["content"] = "Add a description column" },
+            new JsonObject { ["role"] = "assistant", ["content"] = "Done." },
+            new JsonObject
+            {
+                ["role"] = "user",
+                ["content"] = new JsonArray
+                {
+                    new JsonObject { ["type"] = "text", ["text"] = "<system-reminder>CLAUDE.md says hi</system-reminder>" },
+                    new JsonObject { ["type"] = "text", ["text"] = prompt }
+                }
+            }
+        ]);
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.False(info.IsOrchestratable);
+        Assert.StartsWith("Claude Code side request", info.Reason);
+    }
+
+    [Fact]
+    public void Text_document_attached_to_the_turn_is_part_of_the_prompt()
+    {
+        var body = MainAgentRequest(
+        [
+            new JsonObject
+            {
+                ["role"] = "user",
+                ["content"] = new JsonArray
+                {
+                    new JsonObject { ["type"] = "text", ["text"] = "Bisa kamu kerjakan ini?" },
+                    new JsonObject
+                    {
+                        ["type"] = "document",
+                        ["title"] = "paste-1.md",
+                        ["source"] = new JsonObject { ["type"] = "text", ["media_type"] = "text/plain", ["data"] = "# EmployeeAPI\nSync JoinDate." }
+                    },
+                    new JsonObject
+                    {
+                        ["type"] = "document",
+                        ["source"] = new JsonObject { ["type"] = "base64", ["media_type"] = "application/pdf", ["data"] = "JVBERi0=" }
+                    }
+                }
+            }
+        ]);
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 100);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("Bisa kamu kerjakan ini?\n<document title=\"paste-1.md\">\n# EmployeeAPI\nSync JoinDate.\n</document>", info.Prompt);
+    }
+
+    [Fact]
+    public void Prompt_mentioning_a_recap_tag_later_is_still_orchestrated()
+    {
+        var body = MainAgentRequest([new JsonObject { ["role"] = "user", ["content"] = "Why does Claude Code send <recap> requests?" }]);
+
+        Assert.True(ClaudeRequestInspector.Inspect(body, NoHeaders, 100).IsOrchestratable);
+    }
+
     [Fact]
     public void Headers_override_detection()
     {

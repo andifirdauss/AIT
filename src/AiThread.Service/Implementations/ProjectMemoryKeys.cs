@@ -44,7 +44,7 @@ public sealed class ProjectMemoryKeys(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Could not fill the project keys of long memories.");
+            logger.LogStoreWarning(ex, "Could not fill the project keys of long memories");
         }
 
         updated += await UpdateShortAsync(

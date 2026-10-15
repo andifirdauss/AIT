@@ -21,6 +21,13 @@ Key salah atau sudah dihapus di 9router. Salin ulang dari dashboard 9router, isi
 **Key 9router "hilang" setelah pindah komputer/akun Windows**
 Key dienkripsi dengan Data Protection milik akun Windows tersebut. Isi ulang key di Setting.
 
+**"Akun provider untuk model '…' di 9router perlu login ulang (OAuth access token has expired …)"**
+9router hidup dan API key AIT diterima, tetapi akun provider di balik model itu (mis. langganan Claude) sudah logout:
+token OAuth kedaluwarsa atau key provider dicabut. 9router meneruskannya sebagai HTTP 503 berisi `authentication_error`
+/ `[401]`. AIT tidak mencoba ulang (menunggu tidak membantu) dan langsung beralih ke
+[node cadangan](02-konfigurasi.md#node-cadangan) bila ada. Buka dashboard 9router → Providers, sambungkan ulang akun
+tersebut, lalu **Ulangi yang gagal** di detail thread.
+
 **"9router HTTP 4xx/5xx untuk model '…'"**
 Model tidak tersedia atau provider-nya bermasalah. Klik *Test* pada node terkait; pilih model/combo lain bila perlu.
 Error sementara (429, 5xx, koneksi) sudah dicoba ulang otomatis 2 kali sebelum dilaporkan. Untuk 429, header
@@ -163,8 +170,8 @@ memakainya alih-alih Garnet. Pindahkan dulu short memory yang ingin disimpan (me
 **Penyimpanan memory eksternal *Tidak terhubung*** (menu Setting → Penyimpanan memory)
 Klik **Test koneksi** pada kartunya: pesan error dari server (host tidak ditemukan, login gagal, database tidak ada)
 ditampilkan apa adanya. Selama short memory eksternal mati, memory baru masuk long memory dan store dicek ulang tiap
-15 detik. Bila long memory eksternal mati, planner tidak bisa membaca long memory sampai server kembali, atau
-kembalikan provider ke *Bawaan*. Log `The saved short/long memory store is invalid` saat start berarti setting
+15 detik. Bila long memory eksternal mati, thread tetap berjalan tanpa long memory (log aktivitas mencatat *Long
+memory … tidak dapat dihubungi*), dan konsolidasi menunggu sampai server kembali; atau kembalikan provider ke *Bawaan*. Log `The saved short/long memory store is invalid` saat start berarti setting
 tersimpan tidak valid, dan AIT memakai store bawaan.
 
 **Simpan penyimpanan memory ditolak dengan `permission denied` / `CREATE DATABASE`**

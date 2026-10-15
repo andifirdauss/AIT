@@ -497,7 +497,7 @@ public sealed class ProjectService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Could not count long memories.");
+            logger.LogStoreWarning(ex, "Could not count long memories");
         }
 
         return projects.ToDictionary(

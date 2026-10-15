@@ -1,6 +1,7 @@
 using AiThread.API;
 using AiThread.Data;
 using AiThread.Service;
+using Microsoft.Extensions.Logging.Console;
 
 namespace AiThread.UI.Hosting;
 
@@ -31,6 +32,11 @@ public sealed class ServerHost : IAsyncDisposable
 
         if (port is not null) builder.WebHost.UseUrls($"http://localhost:{port}");
 
+        // Menu and tray modes write the console log to a file while the process may still own a real console, so the
+        // logger would put ANSI color codes in the file.
+        if (LogFile.CurrentPath is not null)
+            builder.Logging.AddSimpleConsole(options => options.ColorBehavior = LoggerColorBehavior.Disabled);
+
         // Claude Code resends the whole conversation on every turn; allow large request bodies.
         builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 100 * 1024 * 1024);
 
@@ -49,12 +55,16 @@ public sealed class ServerHost : IAsyncDisposable
 
         // Coding agents call the proxy (/v1/*, and /v1beta/* for Gemini), Claude Code its HTTP hooks (/api/hooks/*), and
         // the planner CLI its MCP server (/mcp/*), over plain HTTP; redirecting them to HTTPS would break the connection.
-        app.UseWhen(
-            context => !context.Request.Path.StartsWithSegments("/v1")
-                       && !context.Request.Path.StartsWithSegments("/v1beta")
-                       && !context.Request.Path.StartsWithSegments("/mcp")
-                       && !context.Request.Path.StartsWithSegments("/api/hooks"),
-            branch => branch.UseHttpsRedirection());
+        // The installed exe listens on http://localhost only, where the redirect has no port to go to and only warns.
+        if (port is null)
+        {
+            app.UseWhen(
+                context => !context.Request.Path.StartsWithSegments("/v1")
+                           && !context.Request.Path.StartsWithSegments("/v1beta")
+                           && !context.Request.Path.StartsWithSegments("/mcp")
+                           && !context.Request.Path.StartsWithSegments("/api/hooks"),
+                branch => branch.UseHttpsRedirection());
+        }
         app.UseRouting();
 
         app.UseAuthorization();

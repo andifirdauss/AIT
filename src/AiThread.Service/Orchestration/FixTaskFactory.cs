@@ -17,10 +17,21 @@ public sealed record FixPlan(IReadOnlyList<PlanTask> Tasks, IReadOnlyList<string
 // file that held them before mean a move that was not finished. They become extract tasks from the old file, done
 // without a model, so the copy the thread meant to keep stays; an executor told "remove the duplicate" in each new file
 // would undo the move instead.
+//
+// A missing name (CS0103, CS0117, CS1061) that the plan told another task to declare, in a file that still does not
+// contain it, is fixed in that file: the executor of the calling file can only report that the call matches the plan.
 public static partial class FixTaskFactory
 {
     private const int MaxErrorsPerFile = 25;
     private const int MaxOriginalInstructionChars = 1500;
+    private const int MaxExamplesPerName = 3;
+    private const int MaxExamplesPerFile = 6;
+    private const int CallSiteMargin = 5;
+
+    private static readonly HashSet<string> CommonNames = new(StringComparer.Ordinal)
+    {
+        "string", "int", "long", "bool", "object", "void", "var", "decimal", "double", "float", "null", "System", "Task"
+    };
 
     public static FixPlan Create(
         int round,
@@ -49,6 +60,8 @@ public static partial class FixTaskFactory
 
                 var relative = scope.ToRelative(error.File);
                 if (scope.IsIgnoredPath(relative)) unfixable.Add($"{line} — generated or third-party file");
+                else if (MissingDeclaration(error, relative, earlierTasks, scope) is { } owner)
+                    Work(work, owner.Relative, owner.FullPath).Missing.Add(new MissingName(owner.Name, relative, error));
                 else if (!changed.Contains(relative)) unfixable.Add($"{line} — in a file this thread did not change");
                 else if (!File.Exists(error.File)) unfixable.Add($"{line} — file not found");
                 else Work(work, relative, error.File).Errors.Add(error);
@@ -93,18 +106,21 @@ public static partial class FixTaskFactory
                                                    || (t.IsExtract && string.Equals(t.To, relative, StringComparison.OrdinalIgnoreCase))).ToList();
             var after = extracts.Where(t => string.Equals(t.File, relative, StringComparison.OrdinalIgnoreCase) || string.Equals(t.To, relative, StringComparison.OrdinalIgnoreCase))
                 .Select(t => t.Id).ToList();
+            var hasErrors = fileWork.Errors.Count > 0 || fileWork.Missing.Count > 0;
+            var examples = Examples(fileWork);
             tasks.Add(new PlanTask
             {
                 Id = $"V{round}-{tasks.Count + 1}",
                 DependsOn = after.Count > 0 ? after : null,
-                Title = fileWork.Errors.Count > 0 && fileWork.Issues.Count > 0 ? "Fix build errors and review findings"
-                    : fileWork.Errors.Count > 0 ? "Fix build errors"
+                Title = hasErrors && fileWork.Issues.Count > 0 ? "Fix build errors and review findings"
+                    : hasErrors ? "Fix build errors"
                     : "Fix review findings",
                 File = relative,
                 Action = "edit",
-                Instruction = Instruction(fileWork, original),
-                Focus = Focus(fileWork),
+                Instruction = Instruction(fileWork, original, examples),
+                Focus = Focus(fileWork, examples),
                 Context = original.SelectMany(t => t.Context ?? [])
+                    .Concat(CallSites(fileWork))
                     .DistinctBy(c => (c.File.ToLowerInvariant(), c.StartLine, c.EndLine))
                     .ToList()
             });
@@ -119,7 +135,7 @@ public static partial class FixTaskFactory
         return fileWork;
     }
 
-    private static string Instruction(FileWork work, IReadOnlyList<PlanTask> original)
+    private static string Instruction(FileWork work, IReadOnlyList<PlanTask> original, IReadOnlyList<(int Line, string Text)> examples)
     {
         var builder = new StringBuilder();
         builder.Append("Verification after the previous changes found problems in this file. Fix exactly these problems and change nothing else; keep every name from the contract.\n");
@@ -133,6 +149,24 @@ public static partial class FixTaskFactory
                 builder.Append($"- {location}: {(error.Code is null ? string.Empty : error.Code + ": ")}{error.Message}\n");
             }
             if (work.Errors.Count > MaxErrorsPerFile) builder.Append($"- ... {work.Errors.Count - MaxErrorsPerFile} more errors of the same build\n");
+        }
+
+        if (work.Missing.Count > 0)
+        {
+            builder.Append("\nThe build reports names that this file was meant to declare as missing where other files use them. " +
+                           "Declare them in this file as the earlier instruction describes, with the signature the calling code expects " +
+                           "(the call sites are in the reference excerpts):\n");
+            foreach (var missing in work.Missing.Take(MaxErrorsPerFile))
+            {
+                var at = missing.Error.Line is { } line ? $" line {line}" : string.Empty;
+                builder.Append($"- {missing.Name} — used in {missing.UsedIn}{at}: {(missing.Error.Code is null ? string.Empty : missing.Error.Code + ": ")}{missing.Error.Message}\n");
+            }
+        }
+
+        if (examples.Count > 0)
+        {
+            builder.Append("\nOther lines of this file that use the same names — follow their pattern (they are in the excerpts):\n");
+            foreach (var (line, text) in examples) builder.Append($"- line {line}: {text}\n");
         }
 
         if (work.Issues.Count > 0)
@@ -155,36 +189,138 @@ public static partial class FixTaskFactory
         return builder.ToString().TrimEnd();
     }
 
-    // The top of the file (imports, usings) plus the lines around every error and review anchor; only matters for
-    // files too large to send whole.
-    private static List<LineRange> Focus(FileWork work)
+    // The top of the file (imports, usings) plus the lines around every error, review anchor and usage example, and the
+    // end of the file when a missing declaration has to go in; only matters for files too large to send whole.
+    private static List<LineRange> Focus(FileWork work, IReadOnlyList<(int Line, string Text)> examples)
     {
         var ranges = new List<LineRange> { new() { StartLine = 1, EndLine = 1 } };
         ranges.AddRange(work.Errors.Where(e => e.Line is > 0).Select(e => new LineRange { StartLine = e.Line!.Value, EndLine = e.Line.Value }));
+        ranges.AddRange(examples.Select(e => new LineRange { StartLine = e.Line, EndLine = e.Line }));
 
-        var anchors = work.Issues.Select(i => i.Anchor).OfType<string>().Select(a => a.Trim()).Where(a => a.Length >= 3).ToList();
-        if (anchors.Count > 0)
+        var lines = work.Lines;
+        if (work.Missing.Count > 0 && lines.Length > 0) ranges.Add(new LineRange { StartLine = lines.Length, EndLine = lines.Length });
+
+        foreach (var anchor in work.Issues.Select(i => i.Anchor).OfType<string>().Select(a => a.Trim()).Where(a => a.Length >= 3))
         {
-            string[] lines;
-            try
-            {
-                lines = File.ReadAllLines(work.FullPath);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                lines = [];
-            }
-
-            foreach (var anchor in anchors)
-            {
-                var index = Array.FindIndex(lines, l => l.Trim() == anchor);
-                if (index < 0) index = Array.FindIndex(lines, l => l.Contains(anchor, StringComparison.Ordinal));
-                if (index >= 0) ranges.Add(new LineRange { StartLine = index + 1, EndLine = index + 1 });
-            }
+            var index = Array.FindIndex(lines, l => l.Trim() == anchor);
+            if (index < 0) index = Array.FindIndex(lines, l => l.Contains(anchor, StringComparison.Ordinal));
+            if (index >= 0) ranges.Add(new LineRange { StartLine = index + 1, EndLine = index + 1 });
         }
 
         return ranges.DistinctBy(r => r.StartLine).OrderBy(r => r.StartLine).ToList();
     }
+
+    // Other lines of the file that use a name from an error message: how every other method constructs 'OracleEntities'
+    // when one call misses its argument (CS7036), for example. A large file reaches the executor as excerpts around the
+    // errors only, so without these it cannot see the pattern to follow.
+    private static List<(int Line, string Text)> Examples(FileWork work)
+    {
+        var lines = work.Lines;
+        var found = new List<(int Line, string Text)>();
+        if (lines.Length == 0) return found;
+
+        var errorLines = work.Errors.Where(e => e.Line is > 0).Select(e => e.Line!.Value).ToList();
+        foreach (var name in work.Errors.SelectMany(e => QuotedNames(e.Message)).Distinct(StringComparer.Ordinal))
+        {
+            var hits = 0;
+            for (var i = 0; i < lines.Length && hits < MaxExamplesPerName && found.Count < MaxExamplesPerFile; i++)
+            {
+                var number = i + 1;
+                if (errorLines.Any(l => Math.Abs(l - number) <= 2) || !ContainsWord(lines[i], name)) continue;
+                var text = lines[i].Trim();
+                if (text.Length == 0 || found.Any(f => f.Text == text)) continue;
+                found.Add((number, text));
+                hits++;
+            }
+        }
+        return found.OrderBy(f => f.Line).ToList();
+    }
+
+    // Simple names quoted in a compiler message: 'OracleEntities.OracleEntities(string)' gives OracleEntities.
+    private static IEnumerable<string> QuotedNames(string message)
+    {
+        foreach (Match match in QuotedText().Matches(message))
+        {
+            var text = match.Groups[1].Value;
+            var paren = text.IndexOf('(');
+            if (paren >= 0) text = text[..paren];
+            var generic = text.IndexOf('<');
+            if (generic >= 0) text = text[..generic];
+            var name = text[(text.LastIndexOf('.') + 1)..];
+            if (name.Length >= 3 && Identifier().IsMatch(name) && !CommonNames.Contains(name)) yield return name;
+        }
+    }
+
+    // The calling lines of every missing declaration, so the executor of the declaring file sees the expected signature.
+    private static IEnumerable<ContextRef> CallSites(FileWork work) =>
+        work.Missing
+            .Where(m => m.Error.Line is > 0)
+            .Select(m => new ContextRef
+            {
+                File = m.UsedIn,
+                StartLine = Math.Max(1, m.Error.Line!.Value - CallSiteMargin),
+                EndLine = m.Error.Line.Value + CallSiteMargin,
+                Note = $"uses {m.Name}"
+            });
+
+    // CS0103: The name 'X' does not exist in the current context
+    // CS0117: 'T' does not contain a definition for 'X'
+    // CS1061: 'T' does not contain a definition for 'X' and no accessible extension method 'X' ...
+    [GeneratedRegex("(?:The name '(?<name>[^']+)' does not exist|does not contain a definition for '(?<name>[^']+)')")]
+    private static partial Regex MissingNameMessage();
+
+    [GeneratedRegex("'([^']+)'")]
+    private static partial Regex QuotedText();
+
+    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]
+    private static partial Regex Identifier();
+
+    // The one other C# file whose task instruction names the missing name while the file itself still does not contain
+    // it. Several such files (or none) leave the error with the calling file.
+    private static (string Name, string Relative, string FullPath)? MissingDeclaration(
+        BuildDiagnostic error, string errorFile, IReadOnlyList<PlanTask> earlierTasks, WorkspaceScope scope)
+    {
+        if (error.Code is not ("CS0103" or "CS0117" or "CS1061")) return null;
+        var match = MissingNameMessage().Match(error.Message);
+        if (!match.Success) return null;
+        var name = match.Groups["name"].Value;
+        if (name.Length < 3 || !Identifier().IsMatch(name)) return null;
+
+        var owners = new List<(string Relative, string FullPath)>();
+        foreach (var file in earlierTasks
+                     .Where(t => (t.Action == PlanTask.Edit || t.IsCreate) && ContainsWord(t.Instruction, name))
+                     .Select(t => t.File)
+                     .Where(f => IsCSharp(f) && !string.Equals(f, errorFile, StringComparison.OrdinalIgnoreCase))
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!scope.TryResolve(file, out var fullPath, out _) || scope.IsIgnoredPath(file) || !File.Exists(fullPath)) continue;
+            string content;
+            try
+            {
+                content = File.ReadAllText(fullPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+            if (!ContainsWord(content, name)) owners.Add((scope.ToRelative(fullPath), fullPath));
+        }
+
+        return owners.Count == 1 ? (name, owners[0].Relative, owners[0].FullPath) : null;
+    }
+
+    private static bool ContainsWord(string text, string word)
+    {
+        for (var i = text.IndexOf(word, StringComparison.Ordinal); i >= 0; i = text.IndexOf(word, i + 1, StringComparison.Ordinal))
+        {
+            var before = i == 0 ? ' ' : text[i - 1];
+            var after = i + word.Length >= text.Length ? ' ' : text[i + word.Length];
+            if (!IsIdentifierChar(before) && !IsIdentifierChar(after)) return true;
+        }
+        return false;
+    }
+
+    private static bool IsIdentifierChar(char c) => char.IsLetterOrDigit(c) || c == '_';
 
     // CS0111: Type 'T' already defines a member called 'M' with the same parameter types
     // CS0102: The type 'T' already contains a definition for 'M'
@@ -273,10 +409,32 @@ public static partial class FixTaskFactory
         }
     }
 
+    private sealed record MissingName(string Name, string UsedIn, BuildDiagnostic Error);
+
     private sealed class FileWork(string fullPath)
     {
+        private string[]? _lines;
+
         public string FullPath { get; } = fullPath;
         public List<BuildDiagnostic> Errors { get; } = [];
         public List<ReviewIssue> Issues { get; } = [];
+        public List<MissingName> Missing { get; } = [];
+
+        public string[] Lines
+        {
+            get
+            {
+                if (_lines is not null) return _lines;
+                try
+                {
+                    _lines = File.ReadAllLines(FullPath);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _lines = [];
+                }
+                return _lines;
+            }
+        }
     }
 }

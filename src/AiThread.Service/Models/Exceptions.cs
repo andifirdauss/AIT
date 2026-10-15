@@ -15,12 +15,16 @@ public class NineRouterException(string message, int? statusCode = null, Excepti
     // Wait requested by the upstream (Retry-After header), when it sent one.
     public TimeSpan? RetryAfter { get; } = retryAfter;
 
-    public bool IsTransient => StatusCode is null or 408 or 429 or >= 500;
+    // 9router was reached, but the provider account behind the model is logged out (expired OAuth token, revoked
+    // key). Retrying does not help until someone logs in again; another model (a fallback node) may.
+    public bool IsProviderLoginRequired { get; init; }
+
+    public bool IsTransient => !IsProviderLoginRequired && StatusCode is null or 408 or 429 or >= 500;
 
     public bool IsRateLimited => StatusCode == 429;
 
     // The router answered but this model is unavailable right now; another model may still work.
-    public bool IsModelUnavailable => StatusCode is 408 or 429 or >= 500;
+    public bool IsModelUnavailable => IsProviderLoginRequired || StatusCode is 408 or 429 or >= 500;
 }
 
 // Failure calling the Telegram Bot API. ErrorCode is Telegram's error_code (or the HTTP status); null when

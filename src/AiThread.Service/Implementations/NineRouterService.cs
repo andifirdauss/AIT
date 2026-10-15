@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using AiThread.Common.DTOs;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
@@ -21,7 +22,7 @@ namespace AiThread.Service.Implementations;
 //   POST /v1beta/models/{m}:generateContent | :streamGenerateContent -> Gemini native (Gemini CLI passthrough)
 // and, for the quota footer, the dashboard API (no API key; 401 while 9router's "require login" is on):
 //   GET  /api/combos, /api/providers/client, /api/usage/{connectionId}
-public sealed class NineRouterService(
+public sealed partial class NineRouterService(
     IHttpClientFactory httpClientFactory,
     ISettingService settingService,
     ILogger<NineRouterService> logger) : INineRouterService
@@ -375,11 +376,21 @@ public sealed class NineRouterService(
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(timeout.Token);
-                var hint = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                var routerRejected = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+                var error = ExtractError(errorBody);
+                if (!routerRejected && IsProviderLoginError(error))
+                {
+                    throw new NineRouterException(ProviderLoginMessage(request.Model, error, settings.NineRouterBaseUrl), (int)response.StatusCode)
+                    {
+                        IsProviderLoginRequired = true
+                    };
+                }
+
+                var hint = routerRejected
                     ? " — " + (string.IsNullOrEmpty(settings.NineRouterApiKey) ? KeyMissingMessage : KeyRejectedMessage)
                     : string.Empty;
                 throw new NineRouterException(
-                    $"9router HTTP {(int)response.StatusCode} untuk model '{request.Model}': {ExtractError(errorBody)}{hint}",
+                    $"9router HTTP {(int)response.StatusCode} untuk model '{request.Model}': {error}{hint}",
                     (int)response.StatusCode,
                     retryAfter: RetryAfterOf(response));
             }
@@ -555,6 +566,23 @@ public sealed class NineRouterService(
         }
         return body.Length > 500 ? body[..500] : body;
     }
+
+    // 9router passes the provider's own failure on inside its message, e.g. HTTP 503 with "[claude/claude-opus-5-5]
+    // [401]: {"type":"error","error":{"type":"authentication_error","message":"OAuth access token has expired. ..."}}".
+    public static bool IsProviderLoginError(string error) => ProviderLoginPattern().IsMatch(error);
+
+    private static string ProviderLoginMessage(string model, string error, string baseUrl)
+    {
+        var detail = ProviderMessagePattern().Matches(error).LastOrDefault()?.Groups[1].Value ?? error;
+        return $"Akun provider untuk model '{model}' di 9router perlu login ulang ({detail.Trim()}). " +
+               $"Sambungkan ulang akunnya di dashboard 9router ({baseUrl}), atau pasang node cadangan dengan provider lain.";
+    }
+
+    [GeneratedRegex(@"authentication_error|\[401\]|\boauth\b|re-?authenticate|invalid[ _-]?(?:x-)?api[ _-]?key", RegexOptions.IgnoreCase)]
+    private static partial Regex ProviderLoginPattern();
+
+    [GeneratedRegex(@"""message""\s*:\s*""((?:[^""\\]|\\.)+)""")]
+    private static partial Regex ProviderMessagePattern();
 
     private static TimeSpan? RetryAfterOf(HttpResponseMessage response)
     {
