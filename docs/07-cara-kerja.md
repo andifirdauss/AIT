@@ -15,9 +15,14 @@ sebuah request hanya bila semua syarat terpenuhi:
 - request membawa daftar `tools` (ciri request agen utama);
 - pesan terakhir berasal dari user, **bukan** `tool_result`;
 - teks prompt tidak kosong setelah blok `<system-reminder>` dibuang;
+- prompt bukan permintaan sampingan Claude Code: `<title-request>` (menamai sesi) dan `<recap>` (rangkuman saat
+  developer kembali) dikirim Claude Code lengkap dengan `tools`, tetapi bukan tugas untuk planner;
 - **sesi berasal dari sebuah project**, yaitu folder dengan `.git` atau file build (lihat bagian 2).
 
-Selain itu (judul sesi, `/compact`, cek kuota, sesi di luar project, dll.) request diteruskan apa adanya ke
+Teks yang dilampirkan sebagai blok `document` bersumber teks (tempelan atau lampiran file teks) ikut menjadi bagian
+prompt, dibungkus `<document title="…">`; dokumen biner (mis. PDF) tidak dibaca.
+
+Selain itu (judul sesi, rangkuman sesi, `/compact`, cek kuota, sesi di luar project, dll.) request diteruskan apa adanya ke
 endpoint 9router yang sama dengan **model passthrough** — AIT tidak membuat thread dan tidak memanggil planner. `POST /v1/messages/count_tokens` juga diteruskan; bila gagal, jumlah token
 diperkirakan (±4 karakter per token).
 
@@ -353,7 +358,16 @@ Satu putaran verifikasi:
 3. **Tugas perbaikan**. Masalah dikelompokkan per file menjadi tugas `V<putaran>-<n>` (mis. `V1-1`) yang dikerjakan
    executor seperti tugas biasa, dengan instruksi berisi error build (baris, kolom, kode, pesan), temuan reviewer, dan
    instruksi tugas awal file itu sebagai konteks. *Focus* diarahkan ke awal file (tempat `using`/import) dan ke baris
-   setiap error atau baris yang dikutip reviewer. Lalu putaran berikutnya dimulai.
+   setiap error atau baris yang dikutip reviewer. Nama yang dikutip pesan error (mis. `OracleEntities` pada
+   `CS7036 … 'OracleEntities.OracleEntities(string)'`) dicari di bagian lain file yang sama: maksimal 6 baris yang
+   memakainya ikut masuk *focus* dan instruksi sebagai pola yang harus diikuti. Tanpa ini, executor file besar hanya
+   melihat ±40 baris di sekitar error dan tidak tahu cara yang dipakai method lain. Lalu putaran berikutnya dimulai.
+
+   Nama yang tidak ditemukan (`CS0103`, `CS0117`, `CS1061`) diperbaiki di **file yang seharusnya mendeklarasikannya**,
+   bukan di file pemanggil, bila tepat satu tugas lain (file C#) menyebut nama itu di instruksinya dan file tersebut
+   belum memuat nama itu sama sekali. Instruksinya menyebut lokasi pemanggil, dan baris pemanggil (±5 baris) ikut
+   sebagai excerpt referensi supaya signature-nya cocok. Tanpa itu executor file pemanggil hanya bisa menjawab
+   "pemanggilannya sudah sesuai kontrak" dan putaran perbaikan terbuang.
 
    Pengecualian: error member ganda C# (`CS0111`, `CS0102`) antara file yang **diisi** thread ini (tugas `create`
    atau tujuan `extract`) dan file yang sudah ada sebelumnya berarti pemindahan member belum tuntas. Untuk itu dibuat
@@ -364,7 +378,8 @@ Satu putaran verifikasi:
 Batas dan aturan:
 
 - Maksimal *Putaran perbaikan* putaran (default 2). Nilai `0` = hanya verifikasi dan laporkan.
-- Error build hanya diperbaiki otomatis di **file yang diubah thread ini**. Error di file lain (mungkin sudah ada
+- Error build hanya diperbaiki otomatis di **file yang diubah thread ini** (atau, untuk nama yang tidak ditemukan, di
+  file yang menurut rencana harus mendeklarasikannya). Error di file lain (mungkin sudah ada
   sebelum thread), di folder hasil generate, di luar root, atau tanpa file (mis. paket NuGet tidak ditemukan)
   dilaporkan apa adanya. Reviewer tetap boleh menunjuk file lain bila jelas rusak akibat perubahan.
 - Error `MSB3021`/`MSB3026`/`MSB3027` (file output terkunci oleh aplikasi yang sedang berjalan) dianggap **lolos**:

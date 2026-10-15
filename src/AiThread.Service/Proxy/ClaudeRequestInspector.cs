@@ -86,6 +86,7 @@ public static partial class ClaudeRequestInspector
             : userMessage is null ? (false, $"last message is not from the user (role: {lastRole})")
             : hasToolResult ? (false, "tool_result turn")
             : prompt.Length == 0 ? (false, "empty prompt")
+            : SideRequest().IsMatch(prompt) ? (false, "Claude Code side request (session title / recap)")
             : (true, "main agent turn");
 
         return new ClaudeRequestInfo(
@@ -227,6 +228,9 @@ public static partial class ClaudeRequestInspector
                 case "text":
                     if (Str(block?["text"]) is { } text) builder.Append(text).Append('\n');
                     break;
+                case "document":
+                    if (DocumentText(block) is { } document) builder.Append(document).Append('\n');
+                    break;
                 case "tool_result":
                     hasToolResult = true;
                     if (includeToolMarkers) builder.Append("[tool result]\n");
@@ -237,6 +241,25 @@ public static partial class ClaudeRequestInspector
             }
         }
         return (builder.ToString(), hasToolResult);
+    }
+
+    // Pasted or attached text sent as a document block: plain text, or content made of text blocks. PDFs and other
+    // binary sources are left out.
+    private static string? DocumentText(JsonNode? block)
+    {
+        var source = block?["source"];
+        var text = Str(source?["type"]) switch
+        {
+            "text" => Str(source?["data"]),
+            "content" => source?["content"] is JsonArray parts
+                ? string.Join("\n", parts.Select(p => Str(p?["text"])).OfType<string>())
+                : Str(source?["content"]),
+            _ => null
+        };
+        if (string.IsNullOrWhiteSpace(text)) return null;
+
+        var title = Str(block?["title"]);
+        return $"<document{(string.IsNullOrWhiteSpace(title) ? string.Empty : $" title=\"{title}\"")}>\n{text.Trim()}\n</document>";
     }
 
     // Up to this many images survive per turn, and each one up to this many base64 chars (~6 MB raw), so a chat
@@ -276,6 +299,11 @@ public static partial class ClaudeRequestInspector
 
     [GeneratedRegex(@"<system-reminder>[\s\S]*?</system-reminder>", RegexOptions.IgnoreCase)]
     private static partial Regex ReminderBlock();
+
+    // Claude Code asks the main model, with the full tool list, to name the session (<title-request>) and to recap it
+    // when the developer comes back (<recap>). Neither is a task for the planner.
+    [GeneratedRegex(@"^<(?:title-request|recap)>", RegexOptions.IgnoreCase)]
+    private static partial Regex SideRequest();
 
     // "Primary working directory:" is Claude Code, "working in the directory:" Gemini CLI, and oh-my-pi writes
     // "current working directory: '<path>'. Do not repeat…", so a quoted path ends at its closing quote. Codex puts
