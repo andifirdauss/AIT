@@ -1,7 +1,17 @@
 {
     "name":  "aithread",
-    "version":  "1.5.2",
-    "description":  "AiThread: proxy, planner, dan orkestrasi multi-agent untuk Claude Code (Windows x64)",
+    "version":  "1.6.0",
+    "description":  "AIT: proxy, planner, dan orkestrasi multi-agent untuk Claude Code, Codex CLI, Gemini CLI, opencode, dan Qwen Code (Windows x64)",
+    "keywords":  [
+                     "claude-code",
+                     "codex",
+                     "gemini-cli",
+                     "opencode",
+                     "qwen-code",
+                     "multi-agent",
+                     "proxy",
+                     "9router"
+                 ],
     "license":  "Apache-2.0",
     "bin":  {
                 "aithread":  "bin/aithread.js"
@@ -20,6 +30,6 @@
                 "x64"
             ],
     "optionalDependencies":  {
-                                 "aithread-win-x64":  "1.5.2"
+                                 "aithread-win-x64":  "1.6.0"
                              }
 }
