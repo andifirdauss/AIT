@@ -22,6 +22,9 @@ public sealed record BuildResult(
 
     // Good enough to stop fixing: the build succeeded or only failed to overwrite locked binaries.
     public bool Passed => Succeeded || OnlyLockedOutput;
+
+    // The output file a running program held before the build, which therefore ran without its clean step.
+    public string? InUseOutput { get; init; }
 }
 
 // Runs a BuildCommand: one build per project root at a time (two builds would fight over obj/), stopped together
@@ -30,6 +33,11 @@ public sealed record BuildResult(
 public sealed class BuildRunner(ILogger<BuildRunner> logger)
 {
     private const int TailLines = 120;
+    private const int MaxToolchainMessage = 300;
+
+    // bin\<configuration>\<framework>\<runtime>\ and bin\roslyn\ are deep enough; a huge bin is not worth a full scan.
+    private const int InUseDepth = 4;
+    private const int MaxInUseChecks = 5000;
 
     // Build servers started by the build (MSBuild nodes, the compiler server) can inherit the output pipes and keep
     // them open after the build exits; whatever the build wrote is read by then.
@@ -44,6 +52,11 @@ public sealed class BuildRunner(ILogger<BuildRunner> logger)
         await gate.WaitAsync(cancellationToken);
         try
         {
+            if (command.Incremental is { } incremental && FirstInUse(command.OutputDirectories) is { } inUse)
+            {
+                logger.LogInformation("Build {Command} runs without clean: {File} is in use", command.Display, inUse);
+                return await RunCoreAsync(incremental, timeout, cancellationToken) with { InUseOutput = inUse };
+            }
             return await RunCoreAsync(command, timeout, cancellationToken);
         }
         finally
@@ -127,8 +140,62 @@ public sealed class BuildRunner(ILogger<BuildRunner> logger)
         string outputTail;
         lock (tail) outputTail = string.Join('\n', tail);
 
-        return new BuildResult(command.Display, !timedOut && exitCode == 0, timedOut, exitCode,
-            parser.Errors.ToList(), parser.WarningCount, outputTail, stopwatch.ElapsedMilliseconds);
+        var succeeded = !timedOut && exitCode == 0;
+        var errors = parser.Errors.ToList();
+        return new BuildResult(command.Display, succeeded, timedOut, exitCode,
+            errors, parser.WarningCount, outputTail, stopwatch.ElapsedMilliseconds, succeeded || timedOut ? null : MissingToolchain(command, errors));
+    }
+
+    // Reported like a build that cannot start: fix tasks cannot help and the next round would fail the same way.
+    private static string? MissingToolchain(BuildCommand command, IReadOnlyList<BuildDiagnostic> errors)
+    {
+        if (errors.Count == 0 || !errors.All(e => e.IsMissingToolchain)) return null;
+        var first = errors[0];
+        var message = first.Message.Length <= MaxToolchainMessage ? first.Message : first.Message[..MaxToolchainMessage] + "…";
+        return $"this machine lacks build tooling the project needs ({first.Code}: {message}). This is an environment problem, not a code problem"
+               + command.Stack switch
+               {
+                   ".NET" => "; .NET Framework projects build with MSBuild of Visual Studio or the Build Tools for Visual Studio.",
+                   ".NET Framework" => "; install the Visual Studio workload that provides it (for ASP.NET MVC / Web API: \"ASP.NET and web development\").",
+                   _ => "."
+               };
+    }
+
+    // A binary that cannot be opened for writing: a running program (the app itself, IIS without shadow copies, the
+    // compiler server of bin\roslyn) has it loaded. Opening without writing changes nothing.
+    public static string? FirstInUse(IEnumerable<string> directories)
+    {
+        var checkedFiles = 0;
+        foreach (var directory in directories.Where(Directory.Exists))
+        {
+            IEnumerable<string> files;
+            try
+            {
+                files = Directory.EnumerateFiles(directory, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, MaxRecursionDepth = InUseDepth });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            foreach (var file in files.Where(f => Path.GetExtension(f) is { } e && (e.Equals(".dll", StringComparison.OrdinalIgnoreCase) || e.Equals(".exe", StringComparison.OrdinalIgnoreCase))))
+            {
+                if (++checkedFiles > MaxInUseChecks) return null;
+                try
+                {
+                    using var stream = new FileStream(file, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Read-only, not in use.
+                }
+                catch (IOException)
+                {
+                    return file;
+                }
+            }
+        }
+        return null;
     }
 
     private async Task KillAsync(Process process)

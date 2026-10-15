@@ -63,7 +63,8 @@ public sealed record PlannerConversation(
     int CachedTokens,
     string AskCallId,
     int QuestionsAsked,
-    bool CanBuild);
+    bool CanBuild,
+    int ToolsNodeTokens = 0);
 
 public sealed record PendingQuestion(
     Guid ThreadId,

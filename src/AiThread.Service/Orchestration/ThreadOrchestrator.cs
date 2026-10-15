@@ -34,6 +34,7 @@ public sealed class ThreadOrchestrator(
     MemoryExtractor memoryExtractor,
     ContextKeeper contextKeeper,
     PendingQuestionStore questions,
+    INineRouterService router,
     IHostApplicationLifetime lifetime,
     ILogger<ThreadOrchestrator> logger) : IThreadOrchestrator
 {
@@ -186,6 +187,7 @@ public sealed class ThreadOrchestrator(
                 t.PlannerSteps = planning.Steps;
                 t.PlannerTokens = planning.Tokens;
                 t.PlannerCachedTokens = planning.CachedTokens;
+                t.ToolsNodeTokens = planning.ToolsNodeTokens;
                 t.PlanningMs = (t.PlanningMs ?? 0) + planClock.ElapsedMilliseconds;
             });
 
@@ -512,8 +514,9 @@ public sealed class ThreadOrchestrator(
         }
     }
 
-    // Last part of the answer: time, tokens (memory extraction included), memory, wiki queue and the thread page link.
-    private static async Task FooterAsync(
+    // Last part of the answer: time, tokens (memory extraction included), memory, wiki queue, the remaining quota of
+    // the providers behind the nodes, and the thread page link.
+    private async Task FooterAsync(
         ClientProgress progress,
         ThreadRequest request,
         RuntimeSettings settings,
@@ -528,9 +531,35 @@ public sealed class ThreadOrchestrator(
         // The thread is already finished; a client that left gets nothing more, and the thread stays as it is.
         if (cancellationToken.IsCancellationRequested) return;
         var wikiHours = settings.BusinessMemoryEnabled && status == ThreadStatus.Completed ? Math.Max(1, settings.BusinessMemoryIntervalHours) : (int?)null;
+        var quotas = await NodeQuotasAsync(cancellationToken);
         var footer = FinalReport.Footer(total.Elapsed, TotalTokens(thread) + (memory?.Tokens ?? 0), memoriesUsed, memory, memoryPending, wikiHours,
-            request.DashboardUrl, thread.Id);
+            request.DashboardUrl, thread.Id, quotas);
         await progress.FinalAsync(footer, cancellationToken);
+    }
+
+    // Only the providers whose models the active nodes (and the fallbacks they hand calls to) use. Best effort: the
+    // footer goes out without it when 9router's dashboard API does not answer.
+    private async Task<IReadOnlyList<RouterQuotaDto>> NodeQuotasAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var nodes = await nodeService.GetAllAsync(cancellationToken);
+            var byId = nodes.ToDictionary(n => n.Id);
+            var used = new HashSet<Guid>();
+            foreach (var node in nodes.Where(n => n.IsActive))
+                for (NodeDto? current = node; current is not null && used.Add(current.Id);)
+                    current = current.FallbackNodeId is { } next ? byId.GetValueOrDefault(next) : null;
+
+            var models = nodes.Where(n => used.Contains(n.Id)).Select(n => n.Model.Trim()).Where(m => m.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            return await router.GetQuotasAsync(models, cancellationToken);
+        }
+        // Also a client hanging up: the thread is already finished and must not turn into a cancelled one here.
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Provider quota for the footer unavailable");
+            return [];
+        }
     }
 
     // "📋 Rencana": the summary, then one entry per task (id, file and dependencies) with its title under it.
@@ -661,6 +690,7 @@ public sealed class ThreadOrchestrator(
             t.PlannerSteps = planning.Steps;
             t.PlannerTokens = planning.Tokens;
             t.PlannerCachedTokens = planning.CachedTokens;
+            t.ToolsNodeTokens = planning.ToolsNodeTokens;
             t.PlanningMs = (t.PlanningMs ?? 0) + planClock.ElapsedMilliseconds;
             t.FinalResponse = text;
             t.TotalMs = (t.TotalMs ?? 0) + total.ElapsedMilliseconds;
@@ -791,7 +821,7 @@ public sealed class ThreadOrchestrator(
         _ = Task.Run(() => contextKeeper.UpdateAsync(thread, request, lifetime.ApplicationStopping), CancellationToken.None);
     }
 
-    private static int TotalTokens(ThreadRun thread) => thread.PlannerTokens + thread.ExecutorTokens + thread.ReviewerTokens + thread.WrapperTokens;
+    private static int TotalTokens(ThreadRun thread) => thread.PlannerTokens + thread.ToolsNodeTokens + thread.ExecutorTokens + thread.ReviewerTokens + thread.WrapperTokens;
 
     private static string Seconds(long milliseconds) => $"{milliseconds / 1000.0:0.0}s";
 

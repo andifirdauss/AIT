@@ -51,6 +51,7 @@
         <div class="small text-secondary mt-3">
             <span class="mono">📝 instruksi</span> = node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).
             <span class="mono">🧩 n</span> = node memakai n skill dari gudang (Setting → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.
+            <span class="mono">🛰 n tool</span> = planner menyerahkan n tool ke tools node (detail di tooltip).
             Detail lengkap: <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">Docs → Konfigurasi</a>.
         </div>
     </div>
@@ -63,6 +64,13 @@
             <p class="small text-secondary">Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas. Planner aktif lain menjadi cadangan otomatis.</p>
         </div>
         <div id="nodes-Planner"></div>
+    </div>
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Tools Node</h2>
+            <p class="small text-secondary">Opsional. Model murah yang menjalankan tool planner yang didelegasikan (atur di Edit node Planner): ia menyelidiki sendiri lewat <span class="mono">investigate</span> dan hanya mengembalikan temuan ringkas, sehingga konteks planner tetap kecil.</p>
+        </div>
+        <div id="nodes-ToolsNode"></div>
     </div>
     <div class="node-column">
         <div>
@@ -112,6 +120,7 @@
                         <label class="form-label small" for="nodeRole">Role</label>
                         <select class="form-select" id="nodeRole">
                             <option value="Planner">Planner</option>
+                            <option value="ToolsNode">Tools Node</option>
                             <option value="Executor">Executor</option>
                             <option value="Reviewer">Reviewer</option>
                             <option value="Wrapper">Wrapper</option>
@@ -148,6 +157,18 @@
                         <label class="form-label small" for="nodeFallback">Node cadangan (opsional)</label>
                         <select class="form-select" id="nodeFallback"></select>
                         <div class="form-text">Kalau node ini tetap gagal (rate limit 429, server 5xx, timeout) setelah 9router mencoba ulang, panggilan yang sama dialihkan ke node cadangan. Hanya node dengan role yang sama yang bisa dipilih. Node cadangan boleh <em>nonaktif</em>: ia tidak menerima pekerjaan biasa dan baru dipakai saat dibutuhkan. Cadangan dari node cadangan ikut dipakai berantai.</div>
+                    </div>
+                    <div class="col-12" id="nodeDelegationBox">
+                        <div class="border rounded p-2">
+                            <div class="form-label small mb-1">Delegasi tool ke tools node</div>
+                            <div class="small text-secondary mb-2">
+                                Tool yang didelegasikan tidak lagi dipanggil planner sendiri. Planner bertanya lewat <span class="mono">investigate</span>,
+                                tools node menjalankan tool-nya dan hanya mengembalikan temuan ringkas (path:baris + kutipan pendek) — output mentah tidak
+                                masuk ke konteks planner. Tools node nonaktif = tool kembali dijalankan planner.
+                            </div>
+                            <div class="row g-2" id="nodeDelegations"></div>
+                            <div class="form-text" id="nodeDelegationHint"></div>
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label small" for="nodeSystemPrompt">Instruksi tambahan (opsional)</label>

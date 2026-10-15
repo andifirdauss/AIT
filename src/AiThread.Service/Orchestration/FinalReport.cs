@@ -1,16 +1,20 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using AiThread.Common.DTOs;
 using AiThread.Common.Enums;
 
 namespace AiThread.Service.Orchestration;
 
 // The parts of the final answer AIT writes itself around the wrapper's text, from the results and never from a model:
 // a status line with what still needs attention, the table of changed files, and the footer (time, tokens, memory,
-// wiki, dashboard link).
+// wiki, remaining provider quota, dashboard link).
 public static partial class FinalReport
 {
     private const int MaxAttentionErrors = 10;
+
+    // Remaining share at or below which a quota is flagged.
+    private const double LowQuotaPercent = 20;
 
     // "✅ **Selesai** · 8/8 tugas · build lolos · reviewer setuju", then "Perlu perhatian" when something failed.
     // Fix tasks (V<round>-<n>) do not count as tasks of the plan; their failures are listed like the others.
@@ -71,6 +75,7 @@ public static partial class FinalReport
     }
 
     // memoriesUsed: read by the planner. extraction: null when no extraction ran; pending when it did not finish in time.
+    // quotas: the 9router accounts behind the nodes' models; now: the moment reset times are counted from.
     public static string Footer(
         TimeSpan elapsed,
         int tokens,
@@ -79,7 +84,9 @@ public static partial class FinalReport
         bool extractionPending,
         int? wikiIntervalHours,
         string? dashboardUrl,
-        Guid threadId)
+        Guid threadId,
+        IReadOnlyList<RouterQuotaDto>? quotas = null,
+        DateTime? now = null)
     {
         // Two spaces: terminals render ⏱️ and 🪙 as one cell but draw them two cells wide.
         var parts = new List<string> { $"⏱️  {Duration(elapsed)}", $"🪙  {Tokens(tokens)} token" };
@@ -94,10 +101,46 @@ public static partial class FinalReport
         if (wikiIntervalHours is { } hours) parts.Add($"📚 Wiki masuk antrian rangkuman berikutnya (tiap {hours} jam)");
 
         var builder = new StringBuilder("\n\n").Append(string.Join(" · ", parts)).Append('\n');
+        if (quotas is { Count: > 0 }) builder.Append('\n').Append(Quotas(quotas, now ?? DateTime.UtcNow));
         if (!string.IsNullOrWhiteSpace(dashboardUrl))
             builder.Append($"\n🔗 Detail & rollback: {dashboardUrl.TrimEnd('/')}/Thread/Detail/{threadId}\n");
         return builder.ToString();
     }
+
+    // "📊 Sisa kuota", one line per account: "- Claude Code · Andi: session (5h) 17% ⚠️ (reset 1j 20m) · weekly (7d) 69% …".
+    public static string Quotas(IReadOnlyList<RouterQuotaDto> quotas, DateTime now)
+    {
+        var builder = new StringBuilder("📊 **Sisa kuota**\n");
+        foreach (var account in quotas.OrderBy(q => q.Plan, StringComparer.OrdinalIgnoreCase).ThenBy(q => q.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var label = string.Equals(account.Plan, account.Name, StringComparison.OrdinalIgnoreCase) ? account.Plan : $"{account.Plan} · {account.Name}";
+            builder.Append("- ").Append(label).Append(": ")
+                .Append(string.Join(" · ", account.Windows.Select(w => QuotaWindow(w, now))))
+                .Append('\n');
+        }
+        return builder.ToString();
+    }
+
+    private static string QuotaWindow(RouterQuotaWindowDto window, DateTime now)
+    {
+        if (window.Unlimited) return $"{window.Name} tanpa batas";
+        var text = window.RemainingPercent switch
+        {
+            null => $"{window.Name} ?",
+            <= 0 => $"{window.Name} 0% habis",
+            < 1 => $"{window.Name} <1%",
+            double p => $"{window.Name} {Math.Round(p, MidpointRounding.AwayFromZero).ToString("0", CultureInfo.InvariantCulture)}%"
+        };
+        if (window.RemainingPercent is > 0 and <= LowQuotaPercent) text += " ⚠️";
+        if (window.ResetAt is { } reset && reset > now) text += $" (reset {Remaining(reset - now)})";
+        return text;
+    }
+
+    // "45m", "3j 05m", "4h 19j" (menit, jam, hari).
+    private static string Remaining(TimeSpan left) =>
+        left.TotalHours < 1 ? $"{Math.Max(1, (int)Math.Ceiling(left.TotalMinutes))}m"
+        : left.TotalDays < 1 ? $"{(int)left.TotalHours}j {left.Minutes:00}m"
+        : $"{(int)left.TotalDays}h {left.Hours}j";
 
     public static string Duration(TimeSpan elapsed) => elapsed.TotalSeconds < 60
         ? $"{elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture)}s"

@@ -10,6 +10,10 @@ public sealed record BuildDiagnostic(string Severity, string? File, int? Line, i
     // Copying to bin/ failed because a running program holds the file (often the app being worked on): the code
     // itself compiled, so this is no reason to change it.
     public bool IsLockedOutput => Code is "MSB3021" or "MSB3026" or "MSB3027";
+
+    // An imported targets file (often Visual Studio's, e.g. Microsoft.WebApplication.targets), an MSBuild SDK or a
+    // target framework this machine does not have: an environment problem no code change fixes.
+    public bool IsMissingToolchain => Code is "MSB4019" or "MSB4236" or "NETSDK1045";
 }
 
 // Reads build output line by line and keeps the errors (deduplicated: MSBuild repeats them per target framework
