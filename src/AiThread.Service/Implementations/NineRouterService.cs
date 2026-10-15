@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
@@ -18,6 +19,8 @@ namespace AiThread.Service.Implementations;
 //   POST /v1/messages            -> Anthropic Messages API (Claude Code passthrough)
 //   POST /v1/responses           -> OpenAI Responses API (Codex passthrough)
 //   POST /v1beta/models/{m}:generateContent | :streamGenerateContent -> Gemini native (Gemini CLI passthrough)
+// and, for the quota footer, the dashboard API (no API key; 401 while 9router's "require login" is on):
+//   GET  /api/combos, /api/providers/client, /api/usage/{connectionId}
 public sealed class NineRouterService(
     IHttpClientFactory httpClientFactory,
     ISettingService settingService,
@@ -30,10 +33,16 @@ public sealed class NineRouterService(
     private static readonly TimeSpan ModelCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan KeyCheckCacheDuration = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(30);
+    // 9router asks the provider on every usage request (Claude's is cached there for 5 minutes).
+    private static readonly TimeSpan QuotaCacheDuration = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan QuotaTimeout = TimeSpan.FromSeconds(10);
+    private const int MaxConnectionPages = 10;
 
     private readonly SemaphoreSlim _modelLock = new(1, 1);
+    private readonly ConcurrentDictionary<string, UsageCache> _usageCache = new();
     private ModelCache? _modelCache;
     private KeyCheck? _keyCheck;
+    private bool _dashboardLoginLogged;
 
     public RouterStatusDto? LastStatus { get; private set; }
 
@@ -101,6 +110,77 @@ public sealed class NineRouterService(
         // Rate limits usually clear on a scale of seconds to a minute; other transient errors retry sooner.
         var baseSeconds = ex.IsRateLimited ? 5 * attempt : 2 * attempt;
         return TimeSpan.FromSeconds(baseSeconds + Random.Shared.NextDouble() * baseSeconds / 2);
+    }
+
+    public async Task<IReadOnlyList<RouterQuotaDto>> GetQuotasAsync(IReadOnlyCollection<string> models, CancellationToken cancellationToken = default)
+    {
+        if (models.Count == 0) return [];
+        var settings = await settingService.GetRuntimeAsync(cancellationToken);
+        var baseUrl = settings.NineRouterBaseUrl;
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(QuotaTimeout);
+        try
+        {
+            // A model id without a provider prefix can only be a combo.
+            var combos = models.Any(m => !m.Contains('/'))
+                ? RouterQuotas.ParseCombos(await GetDashboardJsonAsync(baseUrl, "/api/combos", timeout.Token))
+                : new Dictionary<string, IReadOnlyList<string>>();
+            var modelsByPrefix = RouterQuotas.ModelsByPrefix(models, combos);
+            if (modelsByPrefix.Count == 0) return [];
+
+            var connections = new List<RouterConnection>();
+            for (int page = 1, pages = 1; page <= pages && page <= MaxConnectionPages; page++)
+                connections.AddRange(RouterQuotas.ParseConnections(
+                    await GetDashboardJsonAsync(baseUrl, $"/api/providers/client?pageSize=100&page={page}", timeout.Token), out pages));
+
+            var lookups = connections
+                .Select(c => (Connection: c, Used: RouterQuotas.UsedModels(c.Provider, modelsByPrefix)))
+                .Where(c => c.Used is not null)
+                .Select(c => GetQuotaAsync(baseUrl, c.Connection, c.Used!, timeout.Token));
+            return (await Task.WhenAll(lookups)).OfType<RouterQuotaDto>().ToList();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or NineRouterException or JsonException
+                                       || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            logger.LogDebug("9router quota lookup skipped: {Message}", ex.Message);
+            return [];
+        }
+    }
+
+    // One account; null when it has nothing to show or 9router cannot read it right now.
+    private async Task<RouterQuotaDto?> GetQuotaAsync(string baseUrl, RouterConnection connection, IReadOnlySet<string> usedModels, CancellationToken cancellationToken)
+    {
+        var key = $"{baseUrl}|{connection.Id}";
+        try
+        {
+            if (!_usageCache.TryGetValue(key, out var cached) || DateTime.UtcNow - cached.LoadedAt >= QuotaCacheDuration)
+            {
+                cached = new UsageCache(await GetDashboardJsonAsync(baseUrl, $"/api/usage/{Uri.EscapeDataString(connection.Id)}", cancellationToken), DateTime.UtcNow);
+                _usageCache[key] = cached;
+            }
+            return RouterQuotas.ParseUsage(cached.Json, connection, usedModels);
+        }
+        // A slow account (the shared timeout) leaves the others' results standing.
+        catch (Exception ex) when (ex is HttpRequestException or NineRouterException or JsonException or OperationCanceledException)
+        {
+            logger.LogDebug("9router usage of {Provider} ({Name}) unavailable: {Message}", connection.Provider, connection.Name, ex.Message);
+            return null;
+        }
+    }
+
+    private async Task<string> GetDashboardJsonAsync(string baseUrl, string path, CancellationToken cancellationToken)
+    {
+        using var response = await Client().GetAsync(Combine(baseUrl, path), cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (response.StatusCode is (HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) && !_dashboardLoginLogged)
+        {
+            _dashboardLoginLogged = true;
+            logger.LogInformation("Kuota provider tidak bisa dibaca: dashboard 9router mewajibkan login (matikan 'Require login' di Settings 9router agar AIT bisa membacanya).");
+        }
+        if (!response.IsSuccessStatusCode)
+            throw new NineRouterException($"GET {path} HTTP {(int)response.StatusCode}: {ExtractError(json)}", (int)response.StatusCode);
+        return json;
     }
 
     public async Task<HttpResponseMessage> ForwardAsync(
@@ -523,4 +603,6 @@ public sealed class NineRouterService(
     private sealed record ModelCache(string BaseUrl, IReadOnlyList<RouterModelDto> Models, DateTime LoadedAt);
 
     private sealed record KeyCheck(string BaseUrl, string? Key, bool Valid, DateTime CheckedAt);
+
+    private sealed record UsageCache(string Json, DateTime LoadedAt);
 }

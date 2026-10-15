@@ -25,6 +25,9 @@ public static class BuildReport
         else
             builder.Append($"Build `{result.Command}` FAILED in {seconds} (exit code {result.ExitCode}): {result.Errors.Count} error(s), {result.WarningCount} warning(s).\n");
 
+        if (result.InUseOutput is { } inUse)
+            builder.Append($"It ran without a clean because a running program uses `{scope.ToDisplay(inUse)}`.\n");
+
         foreach (var error in result.Errors.Take(maxErrors)) builder.Append("- ").Append(Line(error, scope)).Append('\n');
         if (result.Errors.Count > maxErrors) builder.Append($"- ... {result.Errors.Count - maxErrors} more error(s)\n");
 
@@ -48,6 +51,14 @@ public static class BuildReport
 
     // One line for progress output and the activity log (Indonesian, like the rest of the UI).
     public static string Headline(BuildResult result)
+    {
+        var headline = HeadlineCore(result);
+        return result.InUseOutput is { } inUse && result.StartError is null && !result.OnlyLockedOutput
+            ? $"{headline}; tanpa clean karena {Path.GetFileName(inUse)} sedang dipakai program yang berjalan"
+            : headline;
+    }
+
+    private static string HeadlineCore(BuildResult result)
     {
         var seconds = $"{result.DurationMs / 1000.0:0.0}s";
         if (result.StartError is not null) return $"build tidak bisa dijalankan — {result.StartError}";

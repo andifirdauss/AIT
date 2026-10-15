@@ -23,6 +23,7 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
     public DbSet<SkillSource> SkillSources => Set<SkillSource>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<NodeSkill> NodeSkills => Set<NodeSkill>();
+    public DbSet<PlannerToolDelegation> PlannerToolDelegations => Set<PlannerToolDelegation>();
     public DbSet<BusinessPage> BusinessPages => Set<BusinessPage>();
     public DbSet<BusinessPageRevision> BusinessPageRevisions => Set<BusinessPageRevision>();
     public DbSet<BusinessAsset> BusinessAssets => Set<BusinessAsset>();
@@ -205,6 +206,17 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.HasOne(x => x.AiNode).WithMany(n => n.Skills).HasForeignKey(x => x.AiNodeId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Skill).WithMany(s => s.Nodes).HasForeignKey(x => x.SkillId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.SkillId);
+        });
+
+        modelBuilder.Entity<PlannerToolDelegation>(e =>
+        {
+            e.ToTable("PlannerToolDelegations");
+            e.HasKey(x => new { x.PlannerNodeId, x.Tool });
+            e.Property(x => x.Tool).HasMaxLength(40);
+            e.HasOne(x => x.PlannerNode).WithMany(n => n.ToolDelegations).HasForeignKey(x => x.PlannerNodeId).OnDelete(DeleteBehavior.Cascade);
+            // A second cascade path to Nodes is refused by SQL Server; NodeService removes these rows before deleting a tools node.
+            e.HasOne(x => x.ToolsNode).WithMany().HasForeignKey(x => x.ToolsNodeId).OnDelete(DeleteBehavior.NoAction);
+            e.HasIndex(x => x.ToolsNodeId);
         });
 
         // Same mapping as an external business memory store (BusinessMemoryDbContext).

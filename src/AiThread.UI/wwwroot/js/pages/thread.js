@@ -90,6 +90,7 @@
       ['Total', fmt.ms(s.totalMs)],
       ['Percobaan ulang', detail.retryCount ? `${fmt.number(detail.retryCount)}×` : '–'],
       ['Token planner', plannerTokens()],
+      ['Token tools node', detail.toolsNodeTokens ? fmt.number(detail.toolsNodeTokens) : '–'],
       ['Token executor', fmt.number(detail.executorTokens)],
       ['Token reviewer', fmt.number(detail.reviewerTokens)],
       ['Token wrapper', fmt.number(detail.wrapperTokens)]

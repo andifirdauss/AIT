@@ -65,7 +65,8 @@ public record ThreadDetailDto(
     string? VerificationJson = null,
     int PlannerCachedTokens = 0,
     int RetryCount = 0,
-    DateTime? RolledBackAt = null);
+    DateTime? RolledBackAt = null,
+    int ToolsNodeTokens = 0);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);
 

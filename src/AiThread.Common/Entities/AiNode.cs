@@ -31,4 +31,7 @@ public class AiNode : BaseEntity
 
     // Skills from the skill store, put in the system prompt after the additional instructions.
     public List<NodeSkill> Skills { get; set; } = [];
+
+    // Planner only: tools handed to tools nodes (role ToolsNode).
+    public List<PlannerToolDelegation> ToolDelegations { get; set; } = [];
 }

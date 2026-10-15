@@ -78,6 +78,10 @@ mencoba form-nya.
 
 ⏱️  48.6s · 🪙  41.2k token · 🧠 2 memory dipakai, +2 memory baru · 📚 Wiki masuk antrian rangkuman berikutnya (tiap 6 jam)
 
+📊 **Sisa kuota**
+- Antigravity · DS997: Gemini 3.8 Flash (High) 98% (reset 1j 56m)
+- Claude Code · Andi: session (5h) 17% ⚠️ (reset 1j 20m) · weekly (7d) 69% (reset 4h 18j)
+
 🔗 Detail & rollback: http://localhost:5225/Thread/Detail/5e469b54-…
 `````
 
@@ -107,11 +111,18 @@ Jawaban akhir disusun sebagian oleh AIT sendiri (dari hasil, bukan dari model) d
 | **Perlu perhatian** | AIT | Hanya bila ada tugas gagal/dilewati atau error build/temuan reviewer yang tersisa. |
 | Teks | Wrapper | 1–3 kalimat tentang apa yang dikerjakan, saran untuk masalah yang tersisa, dan langkah lanjutan bila perlu. Tanpa node Wrapper (atau bila Wrapper gagal), ringkasan rencana yang tampil. |
 | **File berubah** | AIT | Satu baris per file dari diff: aksi (`baru`/`ubah`/`hapus`/`pindah`), baris `+`/`−`, dan tugas yang menyentuhnya. |
-| Footer | AIT | Durasi total, total token (planner + executor + reviewer + wrapper + ekstraksi memory), memory yang dipakai planner dan memory baru, antrian wiki bisnis (bila *Business memory* aktif), dan link ke halaman thread untuk detail & rollback. |
+| Footer | AIT | Durasi total, total token (planner + executor + reviewer + wrapper + ekstraksi memory), memory yang dipakai planner dan memory baru, antrian wiki bisnis (bila *Business memory* aktif), *Sisa kuota* provider, dan link ke halaman thread untuk detail & rollback. |
 
 Footer menunggu ekstraksi memory selesai, paling lama 30 detik. Bila lebih lama, footer menulis
 *memory baru masih diproses* dan ekstraksi tetap berjalan di latar belakang. Yang disimpan sebagai jawaban thread
 (Dashboard, Telegram, context keeper) hanya teks Wrapper atau ringkasan otomatis.
+
+**Sisa kuota** dibaca dari 9router (`/api/usage/{koneksi}`) dan hanya mencakup akun provider yang modelnya dipakai
+node aktif beserta node cadangannya (anggota combo ikut dihitung). Satu baris per akun 9router: persen sisa per batas
+(mis. jendela 5 jam / 7 hari Claude), `⚠️` bila sisa ≤ 20%, dan waktu reset (`m` menit, `j` jam, `h` hari). Untuk kuota
+per model (mis. Antigravity) hanya model yang dipakai node yang tampil. Akun API key biasa dan provider yang kuotanya
+tidak bisa dibaca 9router tidak tampil. Hasil di-cache 60 detik; bila 9router tidak menjawab dalam 10 detik atau
+dashboard-nya mewajibkan login, bagian ini dilewati — lihat [Troubleshooting](08-troubleshooting.md#9router).
 
 Progres bisa disembunyikan lewat Setting → *Tampilkan progres di Claude Code*; anchor dan jawaban akhir tetap tampil.
 

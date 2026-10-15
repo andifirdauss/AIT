@@ -28,6 +28,9 @@ public class ThreadRun : BaseEntity
     // Part of PlannerTokens served from the provider's prompt cache.
     public int PlannerCachedTokens { get; set; }
 
+    // Spent by tools nodes on the investigations the planner delegated to them.
+    public int ToolsNodeTokens { get; set; }
+
     // Includes the fix tasks of the verification stage.
     public int ExecutorTokens { get; set; }
     public int ReviewerTokens { get; set; }

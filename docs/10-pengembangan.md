@@ -61,7 +61,9 @@ connection string LocalDB default.
 | `Implementations/ProjectService.cs` | `ResolveSessionAsync`: gerbang per sesi (project atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. Identitas project = `RootPath`. |
 | `Workspace/ProjectLocator.cs` | Tabel marker (`.git`, manifest per ekosistem), penentuan root dari working directory (repo terdekat → penghimpun paling luar → manifest terdekat), folder yang diblokir (drive/Home/sistem), scan rekursif, daftar manifest & stack, daftar folder build per stack. |
 | `Orchestration/ThreadOrchestrator.cs` | Alur utama thread: project → planner → eksekusi → wrapper → memory, status & error. |
-| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema), brief (urutan stabil → spesifik untuk prompt cache), jeda & lanjut pada `ask_user`. |
+| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema), brief (urutan stabil → spesifik untuk prompt cache), jeda & lanjut pada `ask_user`, tool `investigate` untuk tool yang didelegasikan. |
+| `Orchestration/PlannerToolRunner.cs` | Eksekusi tool baca & `run_build` (dipakai planner dan tools node), teks progres per tool (`Describe`). |
+| `Orchestration/ToolsNodeAgent.cs` | Tools node: loop tool sendiri untuk satu pertanyaan `investigate`, diakhiri `report_findings`; delegasi disimpan di `PlannerToolDelegation` (`NodeService` memvalidasi). |
 | `Orchestration/PlannerQuestions.cs` | Pertanyaan planner: format teks bernomor, jawaban → hasil tool, `PendingQuestionStore` (per sesi, di memori, 2 jam), penutupan thread yang tidak dijawab. |
 | `Orchestration/ThreadPlan.cs`, `PlanValidator.cs` | Model rencana dan aturan validasinya. |
 | `Orchestration/ExecutionEngine.cs` | Penjadwalan DAG paralel, pemilihan executor, skip dependensi gagal. |
@@ -71,7 +73,8 @@ connection string LocalDB default.
 | `Orchestration/SessionHandoff.cs`, `TranscriptDigest.cs`, `Implementations/ClaudeHookConfig.cs`, `API/Controllers/ClaudeHooksController.cs` | Context Keeper untuk `/clear`: hook `SessionEnd`/`SessionStart`, ringkasan transcript, penulisan blok `hooks` di settings Claude Code. |
 | `Orchestration/AgentPrompts.cs` | **Semua prompt peran** (planner, executor, wrapper, memory, context keeper). |
 | `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; progres untuk Claude Code sebagai *vertical stepper* di blok ```` ````text ```` (wrap 90 kolom). |
-| `Orchestration/FinalReport.cs` | Bagian jawaban akhir yang ditulis AIT dari hasil: baris status + *Perlu perhatian*, tabel *File berubah* (dari diff), footer (durasi, token, memory, wiki, link thread). |
+| `Orchestration/FinalReport.cs` | Bagian jawaban akhir yang ditulis AIT dari hasil: baris status + *Perlu perhatian*, tabel *File berubah* (dari diff), footer (durasi, token, memory, wiki, *Sisa kuota*, link thread). |
+| `Implementations/RouterQuotas.cs` | Bagian murni kuota provider: model node/combo → provider 9router (peta alias `cc`→`claude`, `ag`→`antigravity`, …), parsing `/api/combos`, `/api/providers/client`, `/api/usage/{id}`, dan pemilihan batas yang ditampilkan. HTTP-nya di `NineRouterService.GetQuotasAsync` (cache 60 detik, timeout 10 detik). |
 | `Workspace/*` | Sandbox path, tool baca repo, parser & applier SEARCH/REPLACE, I/O teks (BOM/line ending), diff, pencari project. |
 | `API/Infrastructure/AgentProxyHandler.cs` | Logika proxy bersama semua format: auth, klasifikasi, orkestrasi, passthrough ke 9router. |
 | `API/Infrastructure/AnthropicSseWriter.cs`, `ClientStreamWriters.cs` | Menulis balasan orkestrasi (stream, non-stream, error) dalam format Anthropic, OpenAI chat, OpenAI Responses, atau Gemini. |
@@ -97,8 +100,10 @@ Menu **Docs** (`/Docs`, `/Docs/{nama-file-tanpa-.md}`) merender `docs/*.md` deng
 user dalam bahasa Indonesia. Untuk penyesuaian per tim tanpa mengubah kode, gunakan *Instruksi tambahan* di node.
 
 **Menambah tool planner**
-1. Tambahkan definisi di `PlannerTools.All()` (nama konstanta + JSON schema).
-2. Tangani di `PlannerAgent.RunToolAsync` (dan `Describe` untuk teks progres).
+1. Tambahkan definisi di `PlannerTools.Definition()` (nama konstanta + JSON schema) dan namanya di
+   `PlannerTools.Delegable` (urutan tool baca planner; semua tool baca bisa didelegasikan ke tools node), serta di
+   daftar `delegableTools` di `wwwroot/js/pages/nodes.js`.
+2. Tangani di `PlannerToolRunner.RunAsync` (dan `Describe` untuk teks progres).
 3. Tool harus read-only dan memakai `WorkspaceScope` untuk setiap path.
 
 **Menambah aturan validasi rencana** — `PlanValidator.Validate`; tulis pesan error dalam bahasa Inggris yang

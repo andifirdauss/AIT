@@ -101,6 +101,25 @@ public sealed partial class ClientProgress(IThreadObserver observer, bool showPr
 
     public static string PadLeft(string text, int columns) => new string(' ', Math.Max(0, columns - DisplayWidth(text))) + text;
 
+    // Shortens a long path to its first folder and as many trailing segments as fit: "Web/…/mkppdf/script.js".
+    public static string CompactPath(string path, int max)
+    {
+        if (path.Length <= max) return path;
+        var parts = path.Replace('\\', '/').Split('/');
+        if (parts.Length < 3) return "…" + path[^(max - 1)..];
+
+        var head = parts[0] + "/…/";
+        var tail = parts[^1];
+        for (var i = parts.Length - 2; i > 0; i--)
+        {
+            var longer = parts[i] + "/" + tail;
+            if (head.Length + longer.Length > max) break;
+            tail = longer;
+        }
+        var compact = head + tail;
+        return compact.Length <= max ? compact : "…" + tail[^Math.Min(tail.Length, max - 1)..];
+    }
+
     // Splits text into lines of at most Width columns: the first starts with firstPrefix, the others with nextPrefix.
     // Spaces between words are kept (column padding); a wrapped line drops the spaces it would start with. Words longer
     // than a line are cut. Backticks are removed: they would show literally inside the block.

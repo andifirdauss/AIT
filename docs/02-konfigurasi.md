@@ -46,7 +46,7 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 
 | Field | Default | Rentang | Keterangan |
 |---|---|---|---|
-| Build & verifikasi otomatis | aktif | — | AIT boleh menjalankan perintah build project (`dotnet build`, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
+| Build & verifikasi otomatis | aktif | — | AIT boleh menjalankan perintah build project (`dotnet build --no-incremental`, MSBuild Visual Studio untuk project .NET Framework format lama, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
 | Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. |
 | Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. |
 
@@ -120,22 +120,24 @@ berubah langsung tanpa refresh. Folder gudang: `%LOCALAPPDATA%\AiThread\skills`,
 Pipeline butuh minimal **1 Planner, 1 Executor, 1 Wrapper** yang aktif. Banner di atas halaman menunjukkan
 kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)) dan **Context Keeper** (lihat
-[Konteks sesi](07-cara-kerja.md#konteks-sesi-context-keeper)) opsional.
+[Konteks sesi](07-cara-kerja.md#konteks-sesi-context-keeper)) opsional, begitu juga **Tools Node** (lihat
+[Tools node planner](#tools-node-planner)).
 
 ### Field node
 
 | Field | Default (UI) | Keterangan |
 |---|---|---|
 | Nama | — | Label bebas, tampil di progres dan detail thread. |
-| Role | Executor | Planner / Executor / Reviewer / Wrapper / Context Keeper. |
+| Role | Executor | Planner / Tools Node / Executor / Reviewer / Wrapper / Context Keeper. |
 | Model / combo | — | Dipilih dari `/v1/models` 9router, dikelompokkan: *Combo* dulu, lalu per provider. Jika 9router offline, muncul input teks untuk mengetik id model manual. |
-| Temperature | Planner 0.2 · Executor 0.1 · Reviewer 0.1 · Wrapper 0.3 · Context Keeper 0.2 | 0–2. Kosongkan untuk nilai default yang sama. |
-| Max tokens | Planner 16384 · Executor 8192 · Reviewer 4096 · Wrapper 4096 · Context Keeper 4096 | 256–200000. Batas output per panggilan. |
-| Max paralel | Planner 2 · Executor 6 · Reviewer 2 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
+| Temperature | Planner 0.2 · Tools Node 0.1 · Executor 0.1 · Reviewer 0.1 · Wrapper 0.3 · Context Keeper 0.2 | 0–2. Kosongkan untuk nilai default yang sama. |
+| Max tokens | Planner 16384 · Tools Node 4096 · Executor 8192 · Reviewer 4096 · Wrapper 4096 · Context Keeper 4096 | 256–200000. Batas output per panggilan. |
+| Max paralel | Planner 2 · Tools Node 4 · Executor 6 · Reviewer 2 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
 | Prioritas | 100 | Angka kecil diutamakan. |
 | Node cadangan | tidak ada | Node lain dengan **role yang sama** yang mengambil alih bila node ini tetap gagal setelah 9router mencoba ulang. Lihat [Node cadangan](#node-cadangan). |
 | Instruksi tambahan | kosong | Ditambahkan di akhir prompt bawaan peran, mis. konvensi coding tim. |
 | Skill | kosong | Skill dari gudang (maks 10). Cari sendiri lewat dropdown *Cari sendiri di gudang* (cocok dengan nama, deskripsi, tag, atau isi skill; klik untuk memasang/melepas), atau tulis kebutuhan di *Butuh kemampuan apa?* lalu klik **Cari skill**: Skill Orchestrator menyarankan skill yang cocok beserta alasannya, Anda centang, lalu **Terapkan** dan **Simpan**. Isi skill ditempel ke system prompt node setelah instruksi tambahan; field *Instruksi tambahan* tidak berubah. |
+| Delegasi tool | semua di planner | Khusus Planner: per tool baca, pilih *Planner langsung* atau sebuah Tools Node. Lihat [Tools node planner](#tools-node-planner). |
 | Aktif | aktif | Node nonaktif tidak dipakai. |
 
 Tombol **Test** mengirim prompt singkat ("Reply with exactly one word: pong") dan menampilkan latency, token, dan
@@ -152,6 +154,7 @@ balasan — cara cepat memastikan model dan key benar.
   otomatis.
 - **Context Keeper**: node aktif dengan prioritas terkecil meringkas percakapan Claude Code setelah tiap thread.
   Tanpa node ini, Wrapper yang meringkas.
+- **Tools Node**: tidak dipilih lewat prioritas; dipakai hanya oleh planner yang mendelegasikan tool kepadanya.
 - **Reviewer**: node aktif dengan prioritas terkecil memeriksa hasil executor (diff, kontrak, hasil build) di setiap
   putaran verifikasi. Tanpa node ini, verifikasi hanya memakai build. Model yang teliti lebih penting daripada model
   yang cepat: setiap temuannya memicu tugas perbaikan.
@@ -183,6 +186,42 @@ Aturannya:
 - Sebelum fitur ini ada, planner aktif otomatis menjadi cadangan satu sama lain. Saat update, migrasi mengisi node
   cadangan planner yang sudah ada sesuai urutan prioritas, jadi perilakunya tetap sama dan sekarang bisa diubah.
 
+### Tools node planner
+
+Output tool planner (isi file dari `read_file`, hasil `search_text`/`find_references`, dst.) masuk ke percakapan
+planner dan **dikirim ulang ke model planner di setiap langkah berikutnya**. Satu `read_file` 600 baris di langkah 3
+ikut terbayar lagi di langkah 4, 5, … sampai `submit_plan`. Tools node memindahkan pekerjaan itu ke model murah:
+
+1. Buat node ber-role **Tools Node** dengan model murah yang **mendukung tool calling**.
+2. Edit node Planner → bagian **Delegasi tool ke tools node**: untuk tiap tool, pilih *Planner langsung* atau tools node.
+3. Tool yang didelegasikan **dihapus** dari daftar tool planner. Sebagai gantinya planner mendapat tool
+   `investigate(question)` (plus `agent` bila ada lebih dari satu tools node). Tools node menjalankan tool-nya sendiri dalam
+   loop (maks 12 langkah), lalu mengembalikan **temuan ringkas** — `path:baris` dan kutipan pendek bila perlu, maks
+   12.000 karakter. Output mentah tidak pernah masuk ke konteks planner.
+
+| Tool | Saran |
+|---|---|
+| `read_file`, `search_text`, `find_references` | Delegasikan — output terbesar, paling boros di planner. |
+| `list_directory`, `find_files`, `read_thread`, `read_memory` | Opsional; delegasikan bila sering panjang di project Anda. |
+| `find_symbol`, `search_memory` | Biarkan di planner — hasilnya pendek, panggilan `investigate` justru lebih mahal. |
+| `run_build` | Biarkan di planner kecuali Anda ingin daftar error dirangkum tools node. |
+
+`ask_user` dan `submit_plan` tidak bisa didelegasikan.
+
+Aturannya:
+
+- Satu tool hanya ke satu tools node per planner; satu planner boleh memakai beberapa tools node (mis. satu untuk baca
+  kode, satu untuk memory). Beberapa `investigate` dalam satu langkah berjalan paralel, dibatasi *Max paralel* tools node.
+- Tools node **nonaktif** = tool-nya kembali dijalankan planner sendiri (banner node memberi catatan). Cara cepat
+  membandingkan hasil dengan dan tanpa tools node.
+- Tools node memakai [node cadangan](#node-cadangan) ber-role Tools Node bila kena rate limit. Bila tetap gagal, planner
+  menerima error dan melanjutkan dengan yang sudah ia ketahui.
+- Menghapus tools node atau mengubah role-nya melepas semua delegasi ke node itu; mengubah role planner menghapus
+  delegasinya.
+- Trade-off: planner hanya melihat apa yang dilaporkan tools node. Pakai model tools node yang teliti menyalin nama dan
+  nomor baris; model yang terlalu lemah membuat planner bertanya ulang (lebih banyak langkah).
+- Token tools node dicatat terpisah (*Token tools node* di detail thread) dan ikut dalam total token thread.
+
 ### Cara kerja *Max paralel*
 
 Setiap panggilan model ke sebuah node memakai satu slot; bila semua slot terpakai, panggilan berikutnya menunggu.
@@ -194,6 +233,7 @@ Slot dibagi di antara semua thread yang sedang berjalan (beberapa project sekali
 | Planner | Satu slot per panggilan model; slot dilepas saat planner menjalankan tool baca-kode. Dengan 2 slot, maksimal 2 thread menunggu jawaban planner bersamaan. |
 | Wrapper | Satu slot untuk ringkasan akhir dan satu untuk ekstraksi memory tiap thread. |
 | Context Keeper | Satu slot per pembaruan konteks sesi (sekali per thread Claude Code, di belakang). |
+| Tools Node | Satu slot per panggilan model dalam sebuah `investigate`; dilepas saat tools node menjalankan tool. |
 
 Selain itu, Setting → *Maks paralel* membatasi tugas serentak **per thread**. Jumlah tugas yang benar-benar berjalan
 bersamaan = nilai terkecil dari: tugas yang siap, *Maks paralel* per thread, dan total slot kosong semua executor.
@@ -219,6 +259,7 @@ Untuk menghemat lebih jauh:
 - Turunkan Setting → *Langkah planner*.
 - Hindari model langganan `cc/…` (Claude via 9router) untuk planner; pakai model/combo yang kuotanya longgar.
 - Tambahkan node Planner kedua dan pilih sebagai [node cadangan](#node-cadangan) planner utama.
+- Delegasikan tool yang outputnya besar ke [tools node](#tools-node-planner) bermodel murah.
 
 ### Memilih model
 
@@ -227,6 +268,7 @@ Untuk menghemat lebih jauh:
 | Planner | Paling cerdas, konteks besar, **wajib mendukung tool calling** (function calling). | Model kelas teratas yang Anda punya di 9router. Kualitas rencana & kontrak menentukan akurasi semua executor. |
 | Executor | Murah, cepat, patuh format. | Model murah/gratis. Tambahkan beberapa node dari provider berbeda agar beban dan rate limit tersebar; combo memberi fallback otomatis. |
 | Wrapper | Murah, bisa merangkum. | Model murah yang sama dengan executor cukup. |
+| Tools Node | Murah, **wajib mendukung tool calling**, teliti menyalin path, nomor baris, dan identifier. | Model murah yang kuat di kode; konteksnya cukup untuk beberapa file sekaligus. |
 | Context Keeper | Murah, teliti menyalin nama file & identifier, konteks cukup untuk ±15 catatan thread. | Model murah yang rapi merangkum; tidak perlu tool calling. Jangan pakai model langganan Claude agar tidak memakai kuota. |
 
 Tips:

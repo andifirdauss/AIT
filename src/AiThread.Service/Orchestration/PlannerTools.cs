@@ -1,9 +1,10 @@
+using System.Collections.Immutable;
 using System.Text.Json.Nodes;
 using AiThread.Service.Models;
 
 namespace AiThread.Service.Orchestration;
 
-// OpenAI function definitions offered to the planner.
+// OpenAI function definitions offered to the planner, and to the tools nodes it delegates tools to.
 public static class PlannerTools
 {
     public const string ListDirectory = "list_directory";
@@ -16,27 +17,57 @@ public static class PlannerTools
     public const string ReadMemory = "read_memory";
     public const string ReadThread = "read_thread";
     public const string RunBuild = "run_build";
+    public const string Investigate = "investigate";
     public const string AskUser = "ask_user";
     public const string SubmitPlan = "submit_plan";
 
+    // Ends a tools node's investigation (a reply without tool calls does too).
+    public const string ReportFindings = "report_findings";
+
+    // Tools a planner can hand to a tools node (PlannerToolDelegation), in the order they are offered.
+    public static readonly ImmutableArray<string> Delegable =
+        [ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, RunBuild];
+
     // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
-    public static readonly int NameColumn =
-        new[] { ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, RunBuild, AskUser }.Max(n => n.Length) + 2;
+    public static readonly int NameColumn = Delegable.Append(Investigate).Append(AskUser).Max(n => n.Length) + 2;
 
     // canBuild: build verification is enabled and the project has a build command AiThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
+    // groups: tools delegated to tools nodes; the planner loses them and gets investigate instead.
     // The list stays the same for the whole planner run so the provider's prompt cache keeps matching.
-    public static JsonArray All(bool canBuild = false, bool canAsk = false)
+    public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null)
     {
-        var tools = Investigation();
-        if (canBuild) tools.Insert(tools.Count - 1, RunBuildDefinition());
-        if (canAsk) tools.Insert(tools.Count - 1, AskUserDefinition());
+        var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
+        var tools = new JsonArray();
+        foreach (var name in Delegable)
+        {
+            if (delegated.Contains(name) || (name == RunBuild && !canBuild)) continue;
+            tools.Add(Definition(name));
+        }
+        if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
+        if (canAsk) tools.Add(AskUserDefinition());
+        tools.Add(SubmitPlanDefinition());
         return tools;
     }
 
-    private static JsonArray Investigation() =>
-    [
-        ChatMessages.Function(ListDirectory,
+    public static JsonArray SubmitOnly() => [SubmitPlanDefinition()];
+
+    // The tools of one tools node, plus report_findings.
+    public static JsonArray ForToolsNode(IEnumerable<string> tools)
+    {
+        var wanted = tools.ToHashSet();
+        var result = new JsonArray();
+        foreach (var name in Delegable.Where(wanted.Contains)) result.Add(Definition(name));
+        result.Add(ReportFindingsDefinition());
+        return result;
+    }
+
+    public static JsonArray ReportOnly() => [ReportFindingsDefinition()];
+
+    // A new object on every call: a JsonNode can only belong to one array.
+    private static JsonObject Definition(string name) => name switch
+    {
+        ListDirectory => ChatMessages.Function(ListDirectory,
             "List files and folders under a directory (build output, VCS and third-party folders are hidden).",
             Schema("""
             {
@@ -48,7 +79,7 @@ public static class PlannerTools
               "required": ["path"]
             }
             """)),
-        ChatMessages.Function(FindFiles,
+        FindFiles => ChatMessages.Function(FindFiles,
             "Find files by glob pattern, e.g. \"**/*User*.cs\", \"src/**/Views/User/*.cshtml\", \"*.sql\".",
             Schema("""
             {
@@ -60,7 +91,7 @@ public static class PlannerTools
               "required": ["pattern"]
             }
             """)),
-        ChatMessages.Function(SearchText,
+        SearchText => ChatMessages.Function(SearchText,
             "Search file contents (case-insensitive). Returns path:line: text for each match.",
             Schema("""
             {
@@ -74,7 +105,7 @@ public static class PlannerTools
               "required": ["query"]
             }
             """)),
-        ChatMessages.Function(FindSymbol,
+        FindSymbol => ChatMessages.Function(FindSymbol,
             "Find where a symbol is declared (class, interface, method, property, field, enum, function, ...). C# is parsed with Roslyn; JS/TS, Python and Java use declaration patterns. Returns path:line: kind signature (in Type). Faster and more precise than search_text for locating definitions.",
             Schema("""
             {
@@ -87,7 +118,7 @@ public static class PlannerTools
               "required": ["name"]
             }
             """)),
-        ChatMessages.Function(FindReferences,
+        FindReferences => ChatMessages.Function(FindReferences,
             "Find every use of an identifier, ignoring comments and (for C#) string literals; declaration lines are marked [declaration]. Use it to find all places a contract name, method or property must change. Matches by name only, so same-named members of other types appear too.",
             Schema("""
             {
@@ -99,7 +130,7 @@ public static class PlannerTools
               "required": ["name"]
             }
             """)),
-        ChatMessages.Function(ReadFile,
+        ReadFile => ChatMessages.Function(ReadFile,
             "Read a file with line numbers (max 600 lines per call; use startLine/endLine for large files). Documents (.pdf, .docx, .xlsx, .pptx, .ipynb, .odt, .ods) are returned as extracted text with page/sheet/slide/cell headers.",
             Schema("""
             {
@@ -112,7 +143,7 @@ public static class PlannerTools
               "required": ["path"]
             }
             """)),
-        ChatMessages.Function(SearchMemory,
+        SearchMemory => ChatMessages.Function(SearchMemory,
             "Search memory labels (project facts, reusable knowledge and the project's business wiki pages) by keywords. Returns ids and labels only.",
             Schema("""
             {
@@ -123,7 +154,7 @@ public static class PlannerTools
               "required": ["query"]
             }
             """)),
-        ChatMessages.Function(ReadMemory,
+        ReadMemory => ChatMessages.Function(ReadMemory,
             "Read the full description of memories, or the content of business wiki pages, by id.",
             Schema("""
             {
@@ -134,7 +165,7 @@ public static class PlannerTools
               "required": ["ids"]
             }
             """)),
-        ChatMessages.Function(ReadThread,
+        ReadThread => ChatMessages.Function(ReadThread,
             "Read the full record of an earlier turn of this conversation: request, plan, tasks with their results and the reply. Thread ids appear in the \"Session so far\" section of the brief.",
             Schema("""
             {
@@ -145,10 +176,9 @@ public static class PlannerTools
               "required": ["id"]
             }
             """)),
-        SubmitPlanDefinition()
-    ];
-
-    public static JsonArray SubmitOnly() => [SubmitPlanDefinition()];
+        RunBuild => RunBuildDefinition(),
+        _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown planner tool.")
+    };
 
     private static JsonObject RunBuildDefinition() =>
         ChatMessages.Function(RunBuild,
@@ -159,6 +189,51 @@ public static class PlannerTools
               "properties": {
                 "target": { "type": "string", "description": "Optional solution, project or manifest file (or its folder) relative to the project root, e.g. \"src/Api/Api.csproj\". Default: the main solution or project." }
               }
+            }
+            """));
+
+    // agent is only asked for when there is a choice; its enum is the keys of the groups.
+    private static JsonObject InvestigateDefinition(IReadOnlyList<ToolsNodeGroup> groups)
+    {
+        var holders = groups.Count == 1
+            ? $"The sub agent holds: {string.Join(", ", groups[0].Tools)}."
+            : "Sub agents: " + string.Join("; ", groups.Select(g => $"\"{g.Key}\" holds {string.Join(", ", g.Tools)}")) + ".";
+        var properties = new JsonObject
+        {
+            ["question"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "One precise, self-contained question: what to find, what you already know (paths, names) and what exactly you need back, e.g. \"the line range of method Save in src/UserService.cs and its full signature\" or \"every caller of IUserService.Save with path:line\". Ask for verbatim code when you will put it in a contract, a focus range or an instruction."
+            }
+        };
+        var required = new JsonArray { "question" };
+        if (groups.Count > 1)
+        {
+            properties["agent"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["enum"] = new JsonArray(groups.Select(g => (JsonNode)g.Key).ToArray()),
+                ["description"] = "The sub agent that holds the tools the question needs."
+            };
+            required.Insert(0, "agent");
+        }
+
+        return ChatMessages.Function(Investigate,
+            "Delegate a read-only investigation to a cheaper sub agent. It runs the tools itself, as many steps as needed, and returns only its findings (path:line ranges and short exact excerpts), so raw tool output never fills your context. " +
+            $"You do not have these tools yourself; use investigate for them. {holders} Several investigate calls run in parallel.",
+            new JsonObject { ["type"] = "object", ["properties"] = properties, ["required"] = required });
+    }
+
+    private static JsonObject ReportFindingsDefinition() =>
+        ChatMessages.Function(ReportFindings,
+            "Finish the investigation and send your findings to the planner. Call it once, when you can answer the question (or know that the answer cannot be found).",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "findings": { "type": "string", "description": "The answer: facts with path:startLine-endLine, exact excerpts only where the question needs them, and what could not be found." }
+              },
+              "required": ["findings"]
             }
             """));
 

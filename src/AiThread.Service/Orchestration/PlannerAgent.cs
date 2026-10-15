@@ -23,7 +23,8 @@ public sealed record PlannerInput(
 // Node is the planner that finished (a fallback when the preferred one failed). Plan is null when the planner paused
 // on a question instead (Pause). Steps and tokens are totals for the thread, including the run before a pause.
 // MemoriesUsed counts the memories (and wiki pages) the planner read in this run.
-public sealed record PlanningResult(ThreadPlan? Plan, int Steps, int Tokens, int CachedTokens, AiNode Node, PlannerPause? Pause = null, int MemoriesUsed = 0);
+// ToolsNodeTokens: spent by the tools nodes the planner delegated tools to (not part of Tokens).
+public sealed record PlanningResult(ThreadPlan? Plan, int Steps, int Tokens, int CachedTokens, AiNode Node, PlannerPause? Pause = null, int MemoriesUsed = 0, int ToolsNodeTokens = 0);
 
 public sealed record PlannerPause(PlannerQuestion Question, PlannerConversation Conversation);
 
@@ -31,11 +32,13 @@ public sealed record PlannerToolOutcome(string Output, ThreadPlan? AcceptedPlan,
 
 // The expensive model explores the repository (read-only) and ends by calling submit_plan, through a 9router
 // tool-calling loop. The planner's fallback node continues the same conversation when it is rate limited or down.
+// Tools the planner node delegated (AiNode.ToolDelegations) are run by tools nodes behind investigate instead.
 public sealed class PlannerAgent(
     NodeCaller caller,
     IMemoryService memoryService,
-    ContextKeeper contextKeeper,
-    BuildRunner buildRunner,
+    INodeService nodeService,
+    PlannerToolRunner runner,
+    ToolsNodeAgent toolsNodeAgent,
     NodePromptBuilder prompts)
 {
     private const int MaxRequestChars = 40_000;
@@ -53,13 +56,15 @@ public sealed class PlannerAgent(
         var tools = new WorkspaceTools(input.Scope);
         var build = input.Settings.BuildEnabled ? BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, null, out _) : null;
         var brief = await BuildBriefAsync(input, tools, build, cancellationToken);
+        var groups = await ToolsNodeGroupsAsync(input.Nodes[0], build is not null, cancellationToken);
 
         var run = new PlannerRun
         {
-            Messages = [await SystemMessageAsync(input.Nodes[0], cancellationToken), ChatMessages.User(brief, input.Request.Images)],
+            Messages = [await SystemMessageAsync(input.Nodes[0], groups, cancellationToken), ChatMessages.User(brief, input.Request.Images)],
             Node = input.Nodes[0],
             CanBuild = build is not null,
-            MaxSteps = input.Settings.PlannerMaxSteps
+            MaxSteps = input.Settings.PlannerMaxSteps,
+            Groups = groups
         };
         return await RunAsync(input, run, tools, recorder, progress, cancellationToken);
     }
@@ -77,8 +82,9 @@ public sealed class PlannerAgent(
 
         // The planner that asked, when it is still active; otherwise the preferred one takes the conversation over.
         var node = input.Nodes.FirstOrDefault(n => n.Id == conversation.NodeId) ?? input.Nodes[0];
+        var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, cancellationToken);
         var messages = conversation.Messages;
-        messages[0] = await SystemMessageAsync(node, cancellationToken);
+        messages[0] = await SystemMessageAsync(node, groups, cancellationToken);
         messages.Add(ChatMessages.Tool(conversation.AskCallId, toolResult));
 
         var run = new PlannerRun
@@ -88,9 +94,11 @@ public sealed class PlannerAgent(
             Step = conversation.Step,
             Tokens = conversation.Tokens,
             CachedTokens = conversation.CachedTokens,
+            ToolsNodeTokens = conversation.ToolsNodeTokens,
             QuestionsAsked = conversation.QuestionsAsked,
             CanBuild = conversation.CanBuild,
-            MaxSteps = Math.Max(input.Settings.PlannerMaxSteps, conversation.Step + StepsAfterAnswer)
+            MaxSteps = Math.Max(input.Settings.PlannerMaxSteps, conversation.Step + StepsAfterAnswer),
+            Groups = groups
         };
         return await RunAsync(input, run, new WorkspaceTools(input.Scope), recorder, progress, cancellationToken);
     }
@@ -109,7 +117,7 @@ public sealed class PlannerAgent(
 
         // The same tool list on every step: changing it invalidates the provider's prompt cache for the whole
         // conversation. Only a planner that ignored the "submit now" message gets a submit-only extra step.
-        var allTools = PlannerTools.All(run.CanBuild, input.CanAsk);
+        var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups);
 
         while (run.Step < run.MaxSteps + 1)
         {
@@ -124,7 +132,7 @@ public sealed class PlannerAgent(
             var current = node;
             var reply = await caller.ChatAsync(current, async candidate =>
             {
-                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, cancellationToken);
+                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, run.Groups, cancellationToken);
                 return new ChatCompletionRequest
                 {
                     Model = candidate.Model,
@@ -187,8 +195,8 @@ public sealed class PlannerAgent(
             if (ask is { } pause)
             {
                 run.QuestionsAsked++;
-                var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild);
-                return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count);
+                var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild, run.ToolsNodeTokens);
+                return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count, run.ToolsNodeTokens);
             }
         }
 
@@ -196,7 +204,7 @@ public sealed class PlannerAgent(
     }
 
     private static PlanningResult Finished(ThreadPlan plan, PlannerRun run, AiNode node) =>
-        new(plan, run.Step, run.Tokens, run.CachedTokens, node, MemoriesUsed: run.MemoriesRead.Count);
+        new(plan, run.Step, run.Tokens, run.CachedTokens, node, MemoriesUsed: run.MemoriesRead.Count, ToolsNodeTokens: run.ToolsNodeTokens);
 
     private static PlanningResult DirectAnswer(string text, PlannerRun run, AiNode node, ThreadRecorder recorder)
     {
@@ -214,12 +222,12 @@ public sealed class PlannerAgent(
         if (run.QuestionsAsked >= MaxQuestions)
             return new PlannerToolOutcome($"Error: you already asked {run.QuestionsAsked} questions. Decide yourself and state your assumption in the summary.", null, true);
 
-        var question = Str(args, "question");
+        var question = PlannerToolRunner.Str(args, "question");
         if (question is null) return new PlannerToolOutcome("Error: \"question\" is required.", null, true);
 
         var options = (args["options"] as JsonArray ?? [])
             .OfType<JsonObject>()
-            .Select(o => (Label: Str(o, "label"), Description: Str(o, "description")))
+            .Select(o => (Label: PlannerToolRunner.Str(o, "label"), Description: PlannerToolRunner.Str(o, "description")))
             .Where(o => o.Label is not null)
             .Take(4)
             .Select(o => new QuestionOption(o.Label!, o.Description))
@@ -236,108 +244,95 @@ public sealed class PlannerAgent(
         ClientProgress progress,
         CancellationToken cancellationToken)
     {
-        JsonObject args;
+        var args = PlannerToolRunner.ParseArguments(call.Arguments, out var error);
+        if (args is null) return error!;
+
+        // A delegated tool is not in the planner's list; a model that calls it anyway is pointed to investigate.
+        if (run.Groups.FirstOrDefault(g => g.Tools.Contains(call.Name)) is { } holder)
+            return new PlannerToolOutcome($"Error: {call.Name} is delegated to a sub agent{(run.Groups.Count > 1 ? $" (\"{holder.Key}\")" : string.Empty)}. Call investigate with your question instead.", null, true);
+
+        // investigate numbers its own line; submit_plan has none.
+        if (call.Name is not (PlannerTools.SubmitPlan or PlannerTools.Investigate))
+            await PlannerToolRunner.AnnounceAsync(call.Name, args, "Planner", string.Empty, recorder, progress, cancellationToken);
+
+        return call.Name switch
+        {
+            PlannerTools.Investigate => await InvestigateAsync(args, input, run, tools, recorder, progress, cancellationToken),
+            PlannerTools.AskUser => AskUser(args, input, run),
+            PlannerTools.SubmitPlan => SubmitPlan(call.Arguments, input.Scope, recorder),
+            _ => await runner.RunAsync(call.Name, args, input, tools, run.MemoriesRead, string.Empty, recorder, progress, cancellationToken)
+        };
+    }
+
+    // The tools node's tool calls appear under "#n" lines, since investigations run in parallel.
+    private async Task<PlannerToolOutcome> InvestigateAsync(
+        JsonObject args,
+        PlannerInput input,
+        PlannerRun run,
+        WorkspaceTools tools,
+        ThreadRecorder recorder,
+        ClientProgress progress,
+        CancellationToken cancellationToken)
+    {
+        if (run.Groups.Count == 0) return new PlannerToolOutcome("Error: there are no sub agents.", null, true);
+        var question = PlannerToolRunner.Str(args, "question");
+        if (question is null) return new PlannerToolOutcome("Error: \"question\" is required.", null, true);
+        var agent = PlannerToolRunner.Str(args, "agent");
+        var group = run.Groups.Count == 1 ? run.Groups[0] : run.Groups.FirstOrDefault(g => string.Equals(g.Key, agent, StringComparison.OrdinalIgnoreCase));
+        if (group is null)
+            return new PlannerToolOutcome($"Error: \"agent\" must be one of: {string.Join(", ", run.Groups.Select(g => g.Key))}.", null, true);
+
+        var label = $"#{Interlocked.Increment(ref run.Investigations)}";
+        var detail = $"{label} {(run.Groups.Count > 1 ? $"[{group.Key}] " : string.Empty)}{PlannerToolRunner.Describe(PlannerTools.Investigate, args)}";
+        recorder.PlannerActivity(PlannerTools.Investigate, detail);
+        recorder.Log(ActivityLevel.Debug, $"Planner → investigate {label} ({group.Node.Name}): {question}");
+        await progress.StepAsync(ClientProgress.Pad(PlannerTools.Investigate, PlannerTools.NameColumn) + detail, cancellationToken, hang: PlannerTools.NameColumn);
+
         try
         {
-            args = JsonNode.Parse(string.IsNullOrWhiteSpace(call.Arguments) ? "{}" : call.Arguments) as JsonObject ?? [];
+            var result = await toolsNodeAgent.InvestigateAsync(group, question, input, tools, run.MemoriesRead, label, recorder, progress, cancellationToken);
+            Interlocked.Add(ref run.ToolsNodeTokens, result.Tokens);
+            await progress.StepAsync($"{label} ✅ {result.Steps} langkah · {result.Tokens} token · {result.Node.Model}", cancellationToken, hang: label.Length + 3);
+            return new PlannerToolOutcome(result.Findings, null);
         }
-        catch (JsonException ex)
+        catch (NineRouterException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            return new PlannerToolOutcome($"Error: arguments are not valid JSON ({ex.Message}). Call the tool again with a JSON object.", null, true);
-        }
-
-        if (call.Name != PlannerTools.SubmitPlan)
-        {
-            var detail = Describe(call.Name, args);
-            recorder.PlannerActivity(call.Name, detail);
-            recorder.Log(ActivityLevel.Debug, $"Planner → {call.Name} {detail}");
-            // run_build writes its own lines: the command it resolved, then the result.
-            if (call.Name != PlannerTools.RunBuild)
-                await progress.StepAsync(ClientProgress.Pad(call.Name, PlannerTools.NameColumn) + detail, cancellationToken, hang: PlannerTools.NameColumn);
-        }
-
-        try
-        {
-            switch (call.Name)
-            {
-                case PlannerTools.ListDirectory:
-                    return new PlannerToolOutcome(tools.ListDirectory(Str(args, "path") ?? ".", Int(args, "depth") ?? 2), null);
-
-                case PlannerTools.FindFiles:
-                    return new PlannerToolOutcome(tools.FindFiles(Str(args, "pattern") ?? string.Empty, Str(args, "path")), null);
-
-                case PlannerTools.SearchText:
-                    return new PlannerToolOutcome(tools.SearchText(Str(args, "query") ?? string.Empty, Str(args, "glob"), Bool(args, "regex"), path: Str(args, "path")), null);
-
-                case PlannerTools.FindSymbol:
-                    return new PlannerToolOutcome(new SymbolSearch(tools.Scope).FindSymbol(Str(args, "name") ?? string.Empty, Str(args, "kind"), Str(args, "path")), null);
-
-                case PlannerTools.FindReferences:
-                    return new PlannerToolOutcome(new SymbolSearch(tools.Scope).FindReferences(Str(args, "name") ?? string.Empty, Str(args, "path")), null);
-
-                case PlannerTools.ReadFile:
-                    return new PlannerToolOutcome(await tools.ReadFileAsync(Str(args, "path") ?? string.Empty, Int(args, "startLine"), Int(args, "endLine"), cancellationToken), null);
-
-                case PlannerTools.SearchMemory:
-                    var entries = await memoryService.GetIndexAsync(input.Project.ProjectId, Str(args, "query"), 25, cancellationToken);
-                    return new PlannerToolOutcome(entries.Count == 0 ? "No matching memories." : FormatIndex(entries), null);
-
-                case PlannerTools.ReadMemory:
-                    var ids = (args["ids"] as JsonArray ?? [])
-                        .Select(n => n is JsonValue v && v.TryGetValue<string>(out var s) && Guid.TryParse(s, out var g) ? g : (Guid?)null)
-                        .Where(g => g is not null).Select(g => g!.Value).ToList();
-                    var memories = await memoryService.GetManyAsync(ids, cancellationToken);
-                    lock (run.MemoriesRead) run.MemoriesRead.UnionWith(memories.Select(m => m.Id));
-                    return new PlannerToolOutcome(memories.Count == 0
-                        ? "No memories found for those ids."
-                        : string.Join("\n\n", memories.Select(m => $"### {m.Label} ({m.Type}, {m.Level})\n{m.Description}")), null);
-
-                case PlannerTools.ReadThread:
-                    return new PlannerToolOutcome(await contextKeeper.ReadThreadAsync(input.Project.ProjectId, Str(args, "id") ?? string.Empty, cancellationToken), null);
-
-                case PlannerTools.RunBuild:
-                    return await RunBuildAsync(input, Str(args, "target"), recorder, progress, cancellationToken);
-
-                case PlannerTools.AskUser:
-                    return AskUser(args, input, run);
-
-                case PlannerTools.SubmitPlan:
-                    return SubmitPlan(call.Arguments, input.Scope, recorder);
-
-                default:
-                    return new PlannerToolOutcome($"Error: unknown tool '{call.Name}'.", null, true);
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            return new PlannerToolOutcome($"Error: {ex.Message}", null, true);
+            recorder.Log(ActivityLevel.Warning, $"Tools node '{group.Node.Name}' gagal menjawab investigasi {label}: {ex.Message}");
+            await progress.StepAsync($"{label} ❌ tools node {group.Node.Model} gagal: {ex.Message}", cancellationToken, hang: label.Length + 3);
+            return new PlannerToolOutcome($"Error: the sub agent is unavailable ({ex.Message}). Try again later or plan with what you already know.", null, true);
         }
     }
 
-    // Two progress lines: the command as soon as it is known, the result under it when the build is done.
-    private async Task<PlannerToolOutcome> RunBuildAsync(PlannerInput input, string? target, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
+    // Active tools nodes only (an inactive one gives its tools back to the planner), loaded with their skills. run_build
+    // stays out when AIT cannot build the project, as it does for the planner.
+    private async Task<IReadOnlyList<ToolsNodeGroup>> ToolsNodeGroupsAsync(AiNode planner, bool canBuild, CancellationToken cancellationToken)
     {
-        var head = ClientProgress.Pad(PlannerTools.RunBuild, PlannerTools.NameColumn);
-        if (!input.Settings.BuildEnabled)
+        var groups = new List<ToolsNodeGroup>();
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var byToolsNode = planner.ToolDelegations
+            .Where(d => PlannerTools.Delegable.Contains(d.Tool) && (canBuild || d.Tool != PlannerTools.RunBuild))
+            .GroupBy(d => d.ToolsNodeId)
+            .OrderBy(g => g.Min(d => PlannerTools.Delegable.IndexOf(d.Tool)));
+        foreach (var delegations in byToolsNode)
         {
-            await progress.StepAsync(head + (target ?? string.Empty), cancellationToken, hang: PlannerTools.NameColumn);
-            await progress.DetailAsync("🟡 build dimatikan di setting", cancellationToken, PlannerTools.NameColumn);
-            return new PlannerToolOutcome("Error: building is disabled in the AIT settings.", null, true);
+            var toolsNode = await nodeService.GetNodeAsync(delegations.Key, cancellationToken);
+            if (toolsNode is not { IsActive: true, Role: NodeRole.ToolsNode }) continue;
+            var tools = delegations.Select(d => d.Tool).OrderBy(t => PlannerTools.Delegable.IndexOf(t)).ToList();
+            groups.Add(new ToolsNodeGroup(UniqueKey(toolsNode.Name, keys), toolsNode, tools));
         }
+        return groups;
+    }
 
-        var command = BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, target, out var error);
-        if (command is null)
-        {
-            await progress.StepAsync(head + (target ?? string.Empty), cancellationToken, hang: PlannerTools.NameColumn);
-            await progress.DetailAsync($"❌ {error}", cancellationToken, PlannerTools.NameColumn);
-            return new PlannerToolOutcome($"Error: {error}", null, true);
-        }
-
-        await progress.StepAsync(head + command.Display, cancellationToken, hang: PlannerTools.NameColumn);
-        var result = await buildRunner.RunAsync(command, TimeSpan.FromSeconds(input.Settings.BuildTimeoutSeconds), cancellationToken);
-        recorder.Log(result.Passed ? ActivityLevel.Info : ActivityLevel.Warning, $"Planner → run_build `{command.Display}`: {BuildReport.Headline(result)}");
-        await progress.DetailAsync($"{(result.Passed ? "✅" : "❌")} {BuildReport.Headline(result)}", cancellationToken, PlannerTools.NameColumn);
-        return new PlannerToolOutcome(BuildReport.Format(result, input.Scope), null);
+    // A short identifier from the node name for investigate's agent enum: "Scout Murah" → "scout-murah".
+    private static string UniqueKey(string name, HashSet<string> taken)
+    {
+        var slug = new string(name.Trim().ToLowerInvariant().Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray());
+        while (slug.Contains("--")) slug = slug.Replace("--", "-");
+        slug = slug.Trim('-');
+        if (slug.Length == 0) slug = "sub";
+        var key = slug;
+        for (var i = 2; !taken.Add(key); i++) key = $"{slug}-{i}";
+        return key;
     }
 
     private static PlannerToolOutcome SubmitPlan(string arguments, WorkspaceScope scope, ThreadRecorder recorder)
@@ -388,7 +383,7 @@ public sealed class PlannerAgent(
         if (attached is not null)
         {
             builder.Append("# Context sent with the request (reference only; act on the developer request at the end)\n");
-            builder.Append(Limit(attached, MaxAttachedContextChars)).Append("\n\n");
+            builder.Append(PlannerToolRunner.Limit(attached, MaxAttachedContextChars)).Append("\n\n");
         }
 
         // With a context pack the planner sees the summary plus only the turns the summary does not cover yet.
@@ -409,10 +404,10 @@ public sealed class PlannerAgent(
         var relevant = await memoryService.GetIndexAsync(project.ProjectId, request.Prompt, 20, cancellationToken);
         var recent = await memoryService.GetIndexAsync(project.ProjectId, null, 10, cancellationToken);
         var index = relevant.Concat(recent.Where(r => r.Level is MemoryLevel.Short or MemoryLevel.Business)).DistinctBy(e => e.Id).Take(25).ToList();
-        builder.Append(index.Count == 0 ? "(empty)\n" : FormatIndex(index)).Append('\n');
+        builder.Append(index.Count == 0 ? "(empty)\n" : PlannerToolRunner.FormatIndex(index)).Append('\n');
 
         builder.Append("# Developer request\n");
-        builder.Append(Limit(request.Prompt, MaxRequestChars)).Append('\n');
+        builder.Append(PlannerToolRunner.Limit(request.Prompt, MaxRequestChars)).Append('\n');
 
         return builder.ToString();
     }
@@ -426,51 +421,9 @@ public sealed class PlannerAgent(
     }
 
     // The planner can read a skill's supporting files with its read tools.
-    private async Task<JsonObject> SystemMessageAsync(AiNode node, CancellationToken cancellationToken) =>
-        ChatMessages.System(await prompts.BuildAsync(AgentPrompts.Planner, node, cancellationToken, canReadFiles: true));
-
-    private static string FormatIndex(IEnumerable<Common.DTOs.MemoryIndexEntry> entries) =>
-        string.Concat(entries.Select(e =>
-            $"- {e.Id} [{e.Level.ToString().ToLowerInvariant()}/{e.Type.ToString().ToLowerInvariant()}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n"));
-
-    private static string Describe(string tool, JsonObject args) => tool switch
-    {
-        PlannerTools.ReadFile => $"`{Str(args, "path")}`" + (Int(args, "startLine") is { } s ? $" ({s}-{Int(args, "endLine")?.ToString() ?? "…"})" : string.Empty),
-        PlannerTools.ListDirectory => $"`{Str(args, "path") ?? "."}`",
-        PlannerTools.FindFiles => $"`{Str(args, "pattern")}`" + (Str(args, "path") is { } findIn ? $" in `{findIn}`" : string.Empty),
-        PlannerTools.SearchText => $"\"{Str(args, "query")}\"" + (Str(args, "glob") is { } g ? $" in `{g}`" : string.Empty) + (Str(args, "path") is { } searchIn ? $" under `{searchIn}`" : string.Empty),
-        PlannerTools.FindSymbol => $"`{Str(args, "name")}`" + (Str(args, "kind") is { } kind ? $" ({kind})" : string.Empty) + (Str(args, "path") is { } symbolIn ? $" under `{symbolIn}`" : string.Empty),
-        PlannerTools.FindReferences => $"`{Str(args, "name")}`" + (Str(args, "path") is { } refsIn ? $" under `{refsIn}`" : string.Empty),
-        PlannerTools.SearchMemory => $"\"{Str(args, "query")}\"",
-        PlannerTools.ReadMemory => $"{(args["ids"] as JsonArray)?.Count ?? 0} item",
-        PlannerTools.ReadThread => $"`{Str(args, "id")}`",
-        PlannerTools.RunBuild => Str(args, "target") is { } target ? $"`{target}`" : string.Empty,
-        PlannerTools.AskUser => Str(args, "question") is { } question ? $"\"{(question.Length > 120 ? question[..120] + "…" : question)}\"" : string.Empty,
-        _ => string.Empty
-    };
-
-    private static string? Str(JsonObject args, string name) =>
-        args[name] is JsonValue v && v.TryGetValue<string>(out var s) && !string.IsNullOrWhiteSpace(s) ? s : null;
-
-    private static int? Int(JsonObject args, string name)
-    {
-        if (args[name] is not JsonValue v) return null;
-        if (v.TryGetValue<int>(out var i)) return i;
-        if (v.TryGetValue<double>(out var d)) return (int)d;
-        return v.TryGetValue<string>(out var s) && int.TryParse(s, out var parsed) ? parsed : null;
-    }
-
-    private static bool Bool(JsonObject args, string name) =>
-        args[name] is JsonValue v && (v.TryGetValue<bool>(out var b) ? b : v.TryGetValue<string>(out var s) && bool.TryParse(s, out var parsed) && parsed);
-
-    // Keeps the head and the tail: the developer's instruction usually sits at the end of a long message.
-    private static string Limit(string text, int max)
-    {
-        if (text.Length <= max) return text;
-        var head = max / 3;
-        var tail = max - head;
-        return text[..head] + $"\n... ({text.Length - max} chars truncated) ...\n" + text[^tail..];
-    }
+    private async Task<JsonObject> SystemMessageAsync(AiNode node, IReadOnlyList<ToolsNodeGroup> groups, CancellationToken cancellationToken) =>
+        ChatMessages.System(await prompts.BuildAsync(
+            groups.Count == 0 ? AgentPrompts.Planner : AgentPrompts.Planner + AgentPrompts.PlannerDelegation(groups), node, cancellationToken, canReadFiles: true));
 
     private static string? AttachedContext(string? promptContext, string prompt)
     {
@@ -480,8 +433,12 @@ public sealed class PlannerAgent(
     }
 
     // Step is the last step taken; MaxSteps is when the planner is told to submit (one forced step may follow).
+    // Investigations and ToolsNodeTokens are fields: parallel investigate calls update them with Interlocked.
     private sealed class PlannerRun
     {
+        public int Investigations;
+        public int ToolsNodeTokens;
+
         public required JsonArray Messages { get; init; }
         public required AiNode Node { get; set; }
         public int Step { get; set; }
@@ -490,6 +447,7 @@ public sealed class PlannerAgent(
         public int QuestionsAsked { get; set; }
         public bool CanBuild { get; init; }
         public int MaxSteps { get; init; }
+        public IReadOnlyList<ToolsNodeGroup> Groups { get; init; } = [];
         public HashSet<Guid> MemoriesRead { get; } = [];
     }
 }
