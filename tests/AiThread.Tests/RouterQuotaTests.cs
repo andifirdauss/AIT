@@ -120,11 +120,27 @@ public class RouterQuotaTests
 
         Assert.Contains("""
             📊 **Sisa kuota**
-            - Antigravity · DS997: Gemini 3.8 Flash (High) 0% habis
-            - Claude Code · Andi: session (5h) 17% ⚠️ (reset 1j 20m) · weekly (7d) 69% (reset 4h 20j)
-            - github: chat tanpa batas
+            - **Antigravity · DS997**
+              - ⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 0% habis · Gemini 3.8 Flash (High)
+            - **Claude Code · Andi**
+              - 🟥⬜⬜⬜⬜⬜⬜⬜⬜⬜ 17% · session (5h) · reset 1j 20m
+              - 🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜ 69% · weekly (7d) · reset 4h 20j
+            - **github**
+              - 🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩 tanpa batas · chat
 
             🔗 Detail & rollback:
             """.ReplaceLineEndings("\n"), footer);
     }
+
+    [Theory]
+    [InlineData(100, "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩")]
+    [InlineData(95, "🟩🟩🟩🟩🟩🟩🟩🟩🟩⬜")]
+    [InlineData(51, "🟩🟩🟩🟩🟩⬜⬜⬜⬜⬜")]
+    [InlineData(50, "🟨🟨🟨🟨🟨⬜⬜⬜⬜⬜")]
+    [InlineData(36, "🟨🟨🟨⬜⬜⬜⬜⬜⬜⬜")]
+    [InlineData(35, "🟥🟥🟥⬜⬜⬜⬜⬜⬜⬜")]
+    [InlineData(0.4, "🟥⬜⬜⬜⬜⬜⬜⬜⬜⬜")]
+    [InlineData(0, "⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜")]
+    public void Quota_bar_is_green_above_50_yellow_above_35_red_above_0_and_empty_when_used_up(double percent, string bar) =>
+        Assert.Equal(bar, FinalReport.QuotaBar(percent));
 }
