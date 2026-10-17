@@ -7,6 +7,9 @@ namespace AiThread.Service.CodeCalls;
 
 public sealed record FunctionScanState(FunctionScanStatus Status, string BodyHash, int Calls, DateTime? UpdatedAt);
 
+// A function that calls another one, at Line of Path.
+public sealed record FunctionCaller(string Path, string Symbol, int Line);
+
 // The scanned functions of a project (CodeFunctionScans) and their calls, in the main database of this machine.
 public sealed class FunctionCallStore(IDbContextFactory<AiThreadDbContext> dbFactory)
 {
@@ -32,6 +35,20 @@ public sealed class FunctionCallStore(IDbContextFactory<AiThreadDbContext> dbFac
         return await db.CodeFunctionScans.AsNoTracking()
             .Include(s => s.Calls.OrderBy(c => c.Line))
             .FirstOrDefaultAsync(s => s.ProjectId == projectId && s.Key == key, cancellationToken);
+    }
+
+    // The recorded calls into one function (path relative, symbol as calls resolve to: "Type.Member" or a function name).
+    public async Task<IReadOnlyList<FunctionCaller>> CallersAsync(Guid projectId, string path, string symbol, int max, CancellationToken cancellationToken)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        return await db.CodeFunctionCalls.AsNoTracking()
+            .Where(c => c.ResolvedPath == path && c.ResolvedSymbol == symbol
+                        && c.CodeFunctionScan!.ProjectId == projectId && c.CodeFunctionScan.Status == FunctionScanStatus.Done)
+            .OrderBy(c => c.CodeFunctionScan!.Path)
+            .ThenBy(c => c.Line)
+            .Select(c => new FunctionCaller(c.CodeFunctionScan!.Path, c.CodeFunctionScan.Symbol, c.Line))
+            .Take(max)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<int> CountAsync(Guid projectId, CancellationToken cancellationToken)

@@ -51,6 +51,7 @@
                     <tbody id="sessionRows"><tr><td colspan="3" class="text-secondary">–</td></tr></tbody>
                 </table>
             </div>
+            <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="sessionPager"></div>
         </div>
     </div>
     <div class="col-xl-8">
@@ -62,23 +63,7 @@
                     <tbody id="threadRows"><tr><td colspan="8" class="empty-state">Memuat…</td></tr></tbody>
                 </table>
             </div>
-        </div>
-
-        <div class="card mb-3">
-            <div class="card-header d-flex flex-wrap align-items-center gap-2">
-                <span class="me-auto">Modul</span>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCheckModules" title="Cari modul yang sama tapi terpisah (beda tulisan, terjemahan, nama lain)">Cek modul ganda</button>
-            </div>
-            <div class="card-body small text-secondary border-bottom">
-                Bagian pertama label memory dan modul wiki bisnis. Nama lain dan terjemahan (alias) diarahkan ke modul yang sama.
-                Modul ganda dengan keyakinan tinggi digabung otomatis; yang ragu menunggu di <a href="/Memory#review">Memory → Perlu review</a>.
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>Modul</th><th>Alias</th><th>Memory</th><th>File</th><th></th></tr></thead>
-                    <tbody id="moduleRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
-                </table>
-            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="threadPager"></div>
         </div>
 
         <div class="card mb-3">
@@ -92,19 +77,39 @@
             <div class="card-body small text-secondary border-bottom">
                 Modul dan layer tiap file, diputuskan sekali lalu dipakai ulang. Koreksi manual tidak pernah ditimpa; planner juga bisa mengoreksi lewat prompt ("anggap UserBL modul Account").
             </div>
-            <div class="table-responsive" style="max-height: 420px">
+            <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead><tr><th>File</th><th>Modul</th><th>Layer</th><th>Area</th><th>Sumber</th><th></th></tr></thead>
                     <tbody id="codeMapRows"><tr><td colspan="6" class="text-secondary">Memuat…</td></tr></tbody>
                 </table>
             </div>
+            <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="codeMapPager"></div>
         </div>
 
         <div class="card">
             <div class="card-header">Riwayat gabung modul</div>
             <div class="list-group list-group-flush small" id="mergeRows"><div class="list-group-item text-secondary">Memuat…</div></div>
+            <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="mergePager"></div>
         </div>
     </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <span class="me-auto">Modul</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCheckModules" title="Cari modul yang sama tapi terpisah (beda tulisan, terjemahan, nama lain)">Cek modul ganda</button>
+    </div>
+    <div class="card-body small text-secondary border-bottom">
+        Bagian pertama label memory dan modul wiki bisnis. Nama lain dan terjemahan (alias) diarahkan ke modul yang sama.
+        Modul ganda dengan keyakinan tinggi digabung otomatis; yang ragu menunggu di <a href="/Memory#review">Memory → Perlu review</a>.
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Modul</th><th>Alias</th><th>Memory</th><th>File</th><th></th></tr></thead>
+            <tbody id="moduleRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="modulePager"></div>
 </div>
 
 <div class="card win mt-3" id="structureWindow" data-win-id="project-structure" data-win-persist>

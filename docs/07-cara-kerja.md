@@ -88,14 +88,18 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
    Bila permintaan tidak menyebut file (lanjutan seperti "berlaku buat yang lainnya juga"), labelnya diambil dari
    sesi: file yang diubah thread AIT terakhir di chat ini (atau yang disebut prompt-nya), bila tidak ada dari
    percakapan terakhir lalu dari konteks sesi; prompt thread terakhir itu ikut dipakai sebagai keyword;
-7. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
+7. **outline** file-file tersebut (maks 6 file, 12.000 karakter): class, member, dan function beserta rentang
+   `baris-awal-baris-akhir` dan signature-nya, dibaca langsung dari disk (sama dengan `code_outline`). Planner jadi
+   tahu kerangka file sebelum membacanya, dan cukup membaca rentang baris yang dibutuhkan. File yang modulnya belum
+   terpetakan tetap ikut;
+8. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
 
 Bila sebuah bagian melebihi batas, yang dibuang adalah bagian tengahnya; awal dan akhir teks tetap ada.
 
 Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**, kecuali `run_build` yang
 menjalankan build project (tidak mengubah kode; hanya ditawarkan bila *Build & verifikasi otomatis* menyala dan project
 punya perintah build). Path relatif dihitung dari
-root project; tool baca (`list_directory`, `find_files`, `search_text`, `find_symbol`, `find_references`, `read_file`) juga menerima **path absolut di luar
+root project; tool baca (`list_directory`, `find_files`, `search_text`, `find_symbol`, `find_references`, `code_outline` untuk file, `read_file`) juga menerima **path absolut di luar
 root**, supaya planner bisa mengecek folder atau project lain ketika Anda memintanya (mis. "cek ke
 `D:/project/otherproject`"). Di luar root hasilnya ditampilkan dengan path absolut:
 
@@ -106,6 +110,8 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `search_text(query, glob?, regex?, path?)` | tidak peka huruf besar/kecil; file ≤ 1 MB; maks 80 hasil; `path` seperti `find_files` |
 | `find_symbol(name, kind?, path?)` | lokasi deklarasi (class, method, property, field, enum, function, …) sebagai `file:baris: jenis signature (in Tipe)`; `name` boleh `Tipe.Member`; C# lewat Roslyn (syntax, tanpa build), JS/TS/Python/Java lewat pola regex (akurasi lebih rendah); maks 60 hasil |
 | `find_references(name, path?)` | semua pemakaian identifier, komentar diabaikan (C#: string literal juga), baris deklarasi ditandai `[declaration]`; cocok berdasarkan nama saja; maks 120 hasil |
+| `code_outline(path?, name?)` | kerangka kode tanpa isi, dari [Struktur kode](05-menu.md#project): **file** → setiap class/member/function dengan `baris-awal-baris-akhir` dan signature, dibaca dari disk saat itu; function yang panggilannya sudah tercatat diberi `[calls: N]` (`, changed since` bila isinya berubah sejak dibaca). **Folder** (`.` = seluruh project) → satu baris per file: class (jumlah member) dan function. **`name` saja** → class itu di seluruh project, termasuk semua file class `partial` (lebih dari 6 file → daftar lokasinya saja). C#, PHP, JS/TS, Python, Java, Kotlin; file ≤ 2 MB; maks 24.000 karakter, folder maks 300 file |
+| `function_calls(path, name)` | panggilan satu function/method (`name` atau `Tipe.Member`) yang sudah dicatat [Panggilan function](#panggilan-function): baris, jenis, target, dan lokasi deklarasinya, plus **pemanggilnya** yang tercatat (maks 40). Belum tercatat atau isinya berubah → dimasukkan antrean Tools Node. Hanya file di dalam project; maks 5 overload |
 | `read_file(path, startLine?, endLine?)` | bernomor baris; maks 600 baris per panggilan; file ≤ 2 MB |
 | `search_memory(query)` | maks 25 label |
 | `read_memory(ids)` | deskripsi lengkap |
@@ -432,7 +438,8 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 AIT mencatat apa saja yang dipanggil tiap function, sedikit demi sedikit, hanya di kode yang benar-benar disentuh:
 
 - **Pemicu**: function di baris yang dibaca planner atau tools node (`read_file`, file di dalam project saja), dan
-  function yang diubah thread (blok baris yang berbeda dari isi sebelum thread). Tidak ada scan seluruh project.
+  function yang diubah thread (blok baris yang berbeda dari isi sebelum thread), serta function yang ditanyakan
+  planner lewat `function_calls` tetapi belum tercatat atau sudah berubah. Tidak ada scan seluruh project.
 - **Pembaca**: node **Tools Node** aktif pertama (dengan node cadangannya). Tanpa Tools Node aktif, tidak ada yang
   dibaca. Satu panggilan model berisi beberapa function satu file (maks 20 function / ±16.000 karakter; function
   panjang dipotong di 8.000 karakter). Model menyebut panggilan, jenisnya (`function`, `method`, `http`, `view`,
@@ -446,6 +453,10 @@ AIT mencatat apa saja yang dipanggil tiap function, sedikit demi sedikit, hanya 
   cepat 1 jam kemudian. Antrean diproses satu file per waktu di belakang; planner dan executor tidak menunggu.
 - Hasil disimpan di database lokal (tabel `CodeFunctionScans` dan `CodeFunctionCalls`), mengikuti file clone di mesin
   ini; tampil di Project → detail → *Struktur kode*.
+- **Dipakai planner**: `function_calls` memberi panggilan sebuah function beserta pemanggilnya yang tercatat, dan
+  `code_outline` menandai function yang sudah punya catatan dengan `[calls: N]`. Planner bisa mengikuti alur
+  (layar → endpoint → action → logic) tanpa membaca setiap file di jalurnya, lalu memastikan dengan kode. Makin sering
+  project dikerjakan lewat AIT, makin lengkap catatannya.
 
 ## Konteks sesi (Context Keeper)
 

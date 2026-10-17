@@ -15,6 +15,7 @@ namespace AiThread.Service.Orchestration;
 // takes over when it is rate limited or down. CanAsk offers ask_user: the developer can answer (setting on, and a session the answer can come back through).
 // CodeMap: module and layer of the files the request names, as far as known before planning (the first search layer).
 // LabelsFromSession: set when the request names no file and CodeMap comes from the session instead (a follow-up).
+// Files: the project files behind CodeMap, also those whose module is not known yet; the brief outlines them.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -23,7 +24,8 @@ public sealed record PlannerInput(
     RuntimeSettings Settings,
     bool CanAsk = false,
     IReadOnlyList<Memory.CodeMapHit>? CodeMap = null,
-    SessionLabelSource? LabelsFromSession = null);
+    SessionLabelSource? LabelsFromSession = null,
+    IReadOnlyList<string>? Files = null);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.
@@ -48,7 +50,8 @@ public sealed class PlannerAgent(
     INodeService nodeService,
     PlannerToolRunner runner,
     ToolsNodeAgent toolsNodeAgent,
-    NodePromptBuilder prompts)
+    NodePromptBuilder prompts,
+    CodeSkeletonTools skeleton)
 {
     private const int MaxRequestChars = 40_000;
     private const int MaxAttachedContextChars = 30_000;
@@ -63,6 +66,10 @@ public sealed class PlannerAgent(
 
     // Part of the session's last prompt added to a follow-up's keyword search.
     private const int MaxSessionPromptChars = 2_000;
+
+    // Outlines of the files the request names, put in the brief so the planner reads only the lines it needs.
+    private const int MaxOutlinedFiles = 6;
+    private const int MaxOutlineChars = 12_000;
 
     public async Task<PlanningResult> PlanAsync(PlannerInput input, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
@@ -443,6 +450,15 @@ public sealed class PlannerAgent(
             foreach (var hit in codeMap.Take(30))
                 builder.Append($"- {hit.Path}: {(hit.Area is null ? string.Empty : hit.Area + " · ")}{hit.Module} · {hit.Layer}\n");
             builder.Append('\n');
+        }
+
+        var outlined = (input.Files ?? []).Concat(input.CodeMap?.Select(h => h.Path) ?? []).Distinct(StringComparer.OrdinalIgnoreCase);
+        if (await skeleton.BriefAsync(project, input.Scope, outlined, MaxOutlinedFiles, MaxOutlineChars, cancellationToken) is { } outlines)
+        {
+            builder.Append(input.LabelsFromSession is null
+                ? "# Outline of the files the request names (declarations with startLine-endLine; read only the ranges you need)\n"
+                : "# Outline of the files this session worked on (declarations with startLine-endLine; read only the ranges you need)\n");
+            builder.Append(outlines).Append('\n');
         }
 
         var summary = await memoryService.GetModuleSummaryAsync(project.ProjectId, cancellationToken);

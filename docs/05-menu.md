@@ -93,17 +93,25 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
 
 **Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), daftar file
 solution/build yang ditemukan di dalam project, sesi Claude Code (id sesi, jumlah thread, terakhir aktif), thread
-project ini, dan tautan ke memory-nya. Di bawah thread:
+project ini, dan tautan ke memory-nya. Tabel sesi, thread, modul, peta kode, dan riwayat gabung modul tampil
+10 baris per halaman (*‹ Sebelumnya* / *Berikutnya ›*; navigasi hanya muncul bila isinya lebih dari 10). Halaman yang
+sedang dibuka tetap saat data diperbarui otomatis; mengganti pencarian atau filter peta kode kembali ke halaman 1.
+Di bawah thread:
 
-- **Modul**: daftar modul project (deskripsi, alias, jumlah memory dan file). *Atur* mengganti nama (termasuk huruf
-  besar/kecil), mengubah deskripsi/alias, atau menggabungkan modul ke modul lain; *Cek modul ganda* mencari modul yang terpisah tidak sengaja. Lihat
-  [Daftar modul & gabung modul](06-memory.md#daftar-modul--gabung-modul).
 - **Peta kode**: modul, layer, area, dan sumber (aturan/AI/manual) tiap file, dengan pencarian dan filter modul.
   *Ubah* / *Atur file* (path atau nama class) menyimpan koreksi manual; *Scan* memetakan file yang belum terpetakan.
 - **Riwayat gabung modul**: merge otomatis dan manual beserta jumlah memory/file/halaman yang dipindah; *Batalkan*
   mengembalikannya.
 
-Di bawah kedua kolom, jendela **Struktur kode** menampilkan isi project tanpa compile dan tanpa dependensi tambahan:
+Di bawah kedua kolom, selebar halaman:
+
+- **Modul**: daftar modul project (deskripsi, alias, jumlah memory dan file; klik jumlah file untuk memfilter peta kode). *Atur* mengganti nama (termasuk huruf
+  besar/kecil), mengubah deskripsi/alias, atau menggabungkan modul ke modul lain; *Cek modul ganda* mencari modul yang terpisah tidak sengaja. Lihat
+  [Daftar modul & gabung modul](06-memory.md#daftar-modul--gabung-modul).
+
+Paling bawah, jendela **Struktur kode** menampilkan isi project tanpa compile dan tanpa dependensi tambahan. Data
+yang sama dipakai planner: tool `code_outline` memberi kerangka file/folder/class sebelum planner membaca file, dan file
+yang disebut prompt langsung di-outline di brief planner (lihat [Cara kerja](07-cara-kerja.md#3-planner)):
 
 - **Folder**: folder → file → class/type → member (method, constructor, property, event) dan fungsi di luar class.
   **Class**: namespace (atau folder, untuk file tanpa namespace seperti PHP lama dan JavaScript biasa) → class →

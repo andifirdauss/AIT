@@ -8,27 +8,31 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AiThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
-## Yang baru di 1.6.3
+## Yang baru di 1.7.0
 
-- **Label memory berstruktur**: setiap memory diberi label `Modul · Layer · Jenis` (mis. `User · Logic · Rule`) plus
-  maksimal 16 keyword, semuanya PascalCase. Planner menyaring per modul dulu, lalu memilih lewat keyword (per token,
-  keyword yang jarang dipakai bernilai lebih tinggi), baru membaca deskripsi yang relevan.
-- **Peta kode**: modul dan layer tiap file (`UserController` → `User · Entry`, `UserBL` → `User · Logic`) diputuskan
-  sekali lalu dipakai ulang, sehingga modul memory konsisten. File yang disebut di prompt langsung dipetakan untuk
-  planner. Peta bisa dikoreksi di menu Project atau lewat prompt ("anggap `UserBL` modul Account").
-- **Modul ganda digabung otomatis**: penulisan berbeda, jamak, dan terjemahan (mis. `Pengguna`/`User`) disatukan.
-  Daftar modulnya sama dengan wiki bisnis, setiap gabung bisa dibatalkan, dan yang meragukan masuk menu Memory →
-  *Perlu review*.
-- **Memory lama dilabeli ulang otomatis**: saat pertama kali jalan, semua memory di-backup ke
-  `%LOCALAPPDATA%\AiThread\backup` lalu dilabeli ulang di belakang. Proses ini memakai node Tools Node, Wrapper, atau
-  Planner, jadi ada pemakaian token sekali di awal.
-- **Export/Import memory** ke file JSON, untuk backup atau pindah mesin.
-- **9router ikut terpasang dan dinyalakan otomatis**: paket ini bergantung pada `9router`, dan AIT menyalakannya saat
-  start bila belum berjalan. Tombol *Jalankan 9router* di Dashboard menyalakannya ulang.
+- **Struktur kode project**: menu Project → detail kini punya jendela *Struktur kode* yang menampilkan isi project
+  tanpa compile. Tampilan **Folder** (folder → file → class → method/property) atau **Class** (namespace → class →
+  member; class `partial` C# digabung jadi satu). Klik deklarasi untuk menyalin `path:baris` yang bisa langsung
+  ditempel ke prompt, dan pencarian menemukan class, member, dan file.
+- **Banyak bahasa, tetap cepat**: C# dibaca dengan Roslyn; PHP, JavaScript/TypeScript, Python, dan Java/Kotlin dibaca
+  per baris dengan pola. Library pihak ketiga (`thirdpartylibs.xml`, file minify, folder build) dilewati. Scan ulang
+  hanya membaca file yang berubah, dan berjalan otomatis di belakang setiap kali thread mengubah file.
+- **Panggilan function**: AIT mencatat apa saja yang dipanggil sebuah function, mis. `p_InitForm` →
+  `p_initiateData` → `POST /Transaction/KlaimPending/InitiateData` → `KlaimPendingController.InitiateData`, sehingga
+  alur fitur bisa diikuti dari layar sampai database. Yang dibaca hanya kode yang disentuh planner (`read_file`) atau
+  diubah thread, oleh node **Tools Node** di belakang. Function yang isinya tidak berubah tidak dibaca ulang. Lokasi
+  deklarasi dicari AIT sendiri dari Struktur kode, bukan ditebak model.
+- **Planner melihat kerangka dulu, baru membaca**: file yang disebut di prompt langsung di-outline di brief planner
+  (class, method, rentang baris). Tool baru `code_outline` memberi kerangka file, folder, atau class mana pun, dan
+  `function_calls` memberi panggilan serta pemanggil sebuah function. Hasilnya, planner hanya membaca rentang baris
+  yang dibutuhkan, tidak salah memilih file, dan token planner lebih hemat.
+- **Tabel Project → detail lebih ringkas**: thread, sesi, modul, peta kode, dan riwayat gabung modul tampil 10 baris
+  per halaman, dan tabel modul kini selebar halaman.
 
-Sebelumnya (1.6.0): role **Tools Node** untuk mendelegasikan tool baca planner ke model murah, **Sisa kuota** provider
-di footer jawaban, build **.NET Framework** lewat MSBuild, serta dukungan **Codex CLI, Gemini CLI, opencode, dan Qwen
-Code**.
+Sebelumnya (1.6.3): **label memory berstruktur** `Modul · Layer · Jenis` + keyword, **peta kode** file → modul,
+**modul ganda digabung otomatis**, label ulang memory lama, **Export/Import memory**, dan 9router yang ikut terpasang
+serta dinyalakan otomatis. (1.6.0): role **Tools Node**, **Sisa kuota** provider di footer jawaban, build **.NET
+Framework** lewat MSBuild, serta dukungan **Codex CLI, Gemini CLI, opencode, dan Qwen Code**.
 
 ## Instalasi
 
@@ -88,6 +92,8 @@ Opsi: `--port <n>` (default 5225 atau port terakhir yang disimpan dari menu), da
 - **Memory**: short memory (≤ 24 jam), long memory di database, dan **wiki bisnis** per modul yang dirangkum otomatis
   dari thread. Setiap memory berlabel `Modul · Layer · Jenis` + keyword, dengan modul dari peta kode project. Memory
   diikat ke *project key* (git remote) sehingga bisa dibagi antar developer.
+- **Struktur kode & panggilan function**: peta class/method project dan rantai panggilannya, tanpa compile, di menu
+  Project. Planner memakainya untuk melihat kerangka kode sebelum membaca file.
 - **Node cadangan**: node lain dengan role yang sama mengambil alih bila sebuah model kena rate limit.
 - **Skill**: tarik repository skill (mis. `anthropics/skills`) ke gudang lokal, lalu tempel ke node lewat Skill
   Orchestrator.

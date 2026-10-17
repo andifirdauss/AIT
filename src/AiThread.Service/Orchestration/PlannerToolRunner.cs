@@ -19,7 +19,8 @@ public sealed class PlannerToolRunner(
     ContextKeeper contextKeeper,
     BuildRunner buildRunner,
     CodeMapper codeMapper,
-    FunctionCallQueue functionCalls)
+    FunctionCallQueue functionCalls,
+    CodeSkeletonTools skeleton)
 {
     // Paths and queries are shortened in the client progress so a tool line rarely wraps; the activity log keeps them whole.
     private const int ProgressPathChars = 48;
@@ -93,6 +94,12 @@ public sealed class PlannerToolRunner(
                     }
                     return new PlannerToolOutcome(content, null);
                 }
+
+                case PlannerTools.CodeOutline:
+                    return new PlannerToolOutcome(await skeleton.OutlineAsync(input.Project, tools.Scope, Str(args, "path"), Str(args, "name"), cancellationToken), null);
+
+                case PlannerTools.FunctionCalls:
+                    return new PlannerToolOutcome(await skeleton.CallsAsync(input.Project, tools.Scope, Str(args, "path"), Str(args, "name"), cancellationToken), null);
 
                 case PlannerTools.SearchMemory:
                     var entries = await memoryService.SearchAsync(new MemorySearch(
@@ -235,6 +242,8 @@ public sealed class PlannerToolRunner(
             PlannerTools.SearchText => $"\"{Query("query")}\"" + (Path("glob") is { } g ? $" in `{g}`" : string.Empty) + (Path("path") is { } searchIn ? $" under `{searchIn}`" : string.Empty),
             PlannerTools.FindSymbol => $"`{Str(args, "name")}`" + (Str(args, "kind") is { } kind ? $" ({kind})" : string.Empty) + (Path("path") is { } symbolIn ? $" under `{symbolIn}`" : string.Empty),
             PlannerTools.FindReferences => $"`{Str(args, "name")}`" + (Path("path") is { } refsIn ? $" under `{refsIn}`" : string.Empty),
+            PlannerTools.CodeOutline => string.Join(" ", new[] { Path("path") is { } outlined ? $"`{outlined}`" : null, Str(args, "name") is { } type ? $"`{type}`" : null }.Where(s => s is not null)),
+            PlannerTools.FunctionCalls => $"`{Path("path")}` {Str(args, "name")}",
             PlannerTools.SearchMemory => string.Join(" ", new[]
             {
                 Str(args, "module"), Str(args, "layer"), Str(args, "kind"),

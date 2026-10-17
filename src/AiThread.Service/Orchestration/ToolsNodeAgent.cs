@@ -96,8 +96,9 @@ public sealed class ToolsNodeAgent(NodeCaller caller, PlannerToolRunner runner, 
         ClientProgress progress,
         CancellationToken cancellationToken)
     {
-        if (!group.Tools.Contains(call.Name))
-            return new PlannerToolOutcome($"Error: tool '{call.Name}' is not available. Available: {string.Join(", ", group.Tools)}, {PlannerTools.ReportFindings}.", null, true);
+        var available = PlannerTools.ToolsNodeTools(group.Tools);
+        if (!available.Contains(call.Name))
+            return new PlannerToolOutcome($"Error: tool '{call.Name}' is not available. Available: {string.Join(", ", available)}, {PlannerTools.ReportFindings}.", null, true);
 
         var args = PlannerToolRunner.ParseArguments(call.Arguments, out var error);
         if (args is null) return error!;

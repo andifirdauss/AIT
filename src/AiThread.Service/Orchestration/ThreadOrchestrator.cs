@@ -164,8 +164,8 @@ public sealed class ThreadOrchestrator(
             var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
             // A question needs a way back: a session to answer in, and not a dashboard run nobody is watching.
             var canAsk = settings.PlannerCanAsk && request.Source != ThreadSource.Dashboard && !string.IsNullOrEmpty(request.SessionId);
-            var (codeMap, labelsFromSession) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
-            var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession);
+            var (codeMap, labelsFromSession, promptFiles) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
+            var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles);
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
@@ -515,13 +515,13 @@ public sealed class ThreadOrchestrator(
     // sure rules now, the model in the background (the memory extraction waits for it). A follow-up that names no file
     // ("berlaku buat yang lainnya juga") continues the session instead: the files the session's last thread changed or
     // named, else the ones the recent conversation or the session summary names. Never fails the thread.
-    private async Task<(IReadOnlyList<Memory.CodeMapHit> CodeMap, SessionLabelSource? FromSession)> PromptCodeMapAsync(
+    private async Task<(IReadOnlyList<Memory.CodeMapHit> CodeMap, SessionLabelSource? FromSession, IReadOnlyList<string> Files)> PromptCodeMapAsync(
         ProjectContext project, ThreadRequest request, Guid currentThreadId, CancellationToken cancellationToken)
     {
         try
         {
             var files = await codeMapper.ResolveReferencesAsync(project, request.Prompt, cancellationToken);
-            if (files.Count > 0) return (await codeMapper.MapQuicklyAsync(project, files, cancellationToken), null);
+            if (files.Count > 0) return (await codeMapper.MapQuicklyAsync(project, files, cancellationToken), null, files);
 
             var last = await LastSessionThreadAsync(request.Session, currentThreadId, cancellationToken);
             files = last?.Files ?? Array.Empty<string>();
@@ -530,13 +530,13 @@ public sealed class ThreadOrchestrator(
             if (files.Count == 0) files = await codeMapper.ResolveReferencesAsync(project, request.Session?.Pack, cancellationToken);
 
             var hits = files.Count == 0 ? [] : await codeMapper.MapQuicklyAsync(project, files.Take(MaxSessionLabelFiles), cancellationToken);
-            if (last is null && hits.Count == 0) return ([], null);
-            return (hits, new SessionLabelSource(last?.Id, last?.Prompt));
+            if (last is null && hits.Count == 0) return ([], null, []);
+            return (hits, new SessionLabelSource(last?.Id, last?.Prompt), files);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Code map of the prompt's files failed.");
-            return ([], null);
+            return ([], null, []);
         }
     }
 

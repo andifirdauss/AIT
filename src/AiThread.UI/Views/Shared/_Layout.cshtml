@@ -55,8 +55,8 @@
             <div id="updateBar" class="alert alert-info win-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
                 <win-controls for="alert" />
                 <div>
-                    <strong>🚀 AIT versi @appVersion</strong> — Label memory kini berstruktur: <strong>Modul · Layer · Jenis</strong> + keyword, jadi planner menyaring per modul dulu lalu memilih lewat keyword. Modul diambil dari <strong>peta kode</strong> (modul &amp; layer tiap file) dan modul ganda digabung otomatis. Memory lama dilabeli ulang otomatis setelah di-backup (pantau di menu Memory → <strong>Perlu review</strong>). Juga baru: <strong>Export/Import memory</strong> dan 9router dinyalakan otomatis saat AIT start.
-                    <a href="~/Docs/06-memory#isi-satu-memory" class="alert-link ms-2">Detail →</a>
+                    <strong>🚀 AIT versi @appVersion</strong> — Baru di menu Project → detail: jendela <strong>Struktur kode</strong> menampilkan folder, class, dan method project tanpa compile (C#, PHP, JS/TS, Python, Java), dan klik deklarasi untuk menyalin <span class="mono">path:baris</span> ke prompt. <strong>Panggilan function</strong> dicatat otomatis oleh Tools Node dari kode yang dibaca planner atau diubah thread, misalnya function JS → endpoint → action controller. <strong>Planner kini melihat kerangka kode dulu</strong> (tool <span class="mono">code_outline</span> &amp; <span class="mono">function_calls</span>, plus outline file yang disebut di prompt), jadi ia hanya membaca baris yang perlu dan tidak salah memilih file. Tabel di halaman detail kini dipaginasi 10 baris.
+                    <a href="~/Docs/05-menu#project" class="alert-link ms-2">Detail →</a>
                 </div>
             </div>
             @RenderBody()
