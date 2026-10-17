@@ -103,6 +103,29 @@ project ini, dan tautan ke memory-nya. Di bawah thread:
 - **Riwayat gabung modul**: merge otomatis dan manual beserta jumlah memory/file/halaman yang dipindah; *Batalkan*
   mengembalikannya.
 
+Di bawah kedua kolom, jendela **Struktur kode** menampilkan isi project tanpa compile dan tanpa dependensi tambahan:
+
+- **Folder**: folder → file → class/type → member (method, constructor, property, event) dan fungsi di luar class.
+  **Class**: namespace (atau folder, untuk file tanpa namespace seperti PHP lama dan JavaScript biasa) → class →
+  member. Class `partial` C# yang tersebar di banyak file tampil sebagai satu class; daftar file-nya terlipat di
+  *Dideklarasikan di N file*.
+- Klik baris deklarasi untuk menyalin `path:baris` (bisa langsung ditempel ke prompt). Pencarian mencari nama class,
+  member, dan file (100 hasil teratas). Pilihan Folder/Class diingat browser.
+- C# dibaca dengan Roslyn (syntax saja, tepat). PHP, JavaScript/TypeScript, Python, dan Java/Kotlin dibaca per baris
+  dengan pola, dan isi class ditentukan dari indentasi. Cocok untuk kode yang rapi; closure dan class anonim tidak
+  dihitung. File lain tampil sebagai file saja.
+- Tidak dibaca (ditandai *pihak ketiga*): lokasi yang terdaftar di `thirdpartylibs.xml` (Moodle dan plugin-nya),
+  `*.min.js`/`*.min.css`/`*.bundle.js`, folder `amd/build` dan `yui/build`, file di atas 2 MB, dan JavaScript hasil
+  minify. Folder yang diabaikan di seluruh AIT (`bin`, `obj`, `node_modules`, `vendor` untuk PHP, dll.) tidak tampil.
+- Project dipindai saat jendela dibuka, lalu lagi bila hasil terakhir lebih dari 1 menit atau saat *Scan ulang*.
+  Selain itu, setiap thread yang selesai mengubah file (juga thread yang dibatalkan/gagal di tengah, dan rollback)
+  memindai ulang project-nya di latar belakang tanpa menahan thread. Antreannya satu per project: permintaan baru
+  membatalkan pemindaian sebelumnya (yang masih menunggu atau sedang berjalan) dan mengambil alih, dengan jeda 1 detik
+  agar thread dari beberapa CLI yang selesai hampir bersamaan berakhir dalam satu pemindaian.
+  File yang ukuran dan waktu ubahnya sama memakai hasil sebelumnya, jadi pindai ulang biasanya kurang dari 1 detik
+  (scan pertama ±1 detik untuk ±1.100 file C#, ±2–4 detik untuk ±14.000 file PHP/JS). Hasil disimpan di memori server
+  untuk 4 project yang terakhir dibuka; maks 100.000 file per project.
+
 ## Memory
 
 Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi tiga tab: **Short & long memory**, **Perlu review**

@@ -101,6 +101,13 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `GET` | `/api/projects/{id}/codemap?search=&module=` | peta kode: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (maks 500 baris) |
 | `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — koreksi manual, tidak pernah ditimpa; nama class/file dicari ke file project (400 bila tidak ada atau lebih dari satu) |
 | `POST` | `/api/projects/{id}/codemap/scan` | memetakan file sumber yang belum terpetakan (maks 3.000) → `files`, `mapped`, `modules` |
+| `GET` | `/api/projects/{id}/structure?rescan=false` | Struktur kode: `folders`, `files`, `parsedFiles`, `thirdPartyFiles`, `types`, `members`, `languages[]` (`language`, `files`, `types`), `scanMs`, `reparsed`, `scannedAt`, `truncated`. Memindai bila hasil terakhir > 1 menit atau `rescan=true` |
+| `GET` | `/api/projects/{id}/structure/folder?path=` | isi satu folder (`path` kosong = root): `folders[]` (`name`, `path`, `files`, `types`, `thirdParty`), `files[]` (`name`, `path`, `language`, `types`, `members`, `thirdParty`, `parsed`), `hiddenFiles` (lebih dari 1.000 file) |
+| `GET` | `/api/projects/{id}/structure/file?path=` | `types[]` (`name`, `kind`, `namespace`, `container`, `line`, `isPartial`, `members[]`) dan `functions[]`; member: `name`, `kind` (`method`/`constructor`/`property`/`event`/`function`), `line`, `signature` |
+| `GET` | `/api/projects/{id}/structure/groups` | tampilan Class: `key`, `name`, `isFolder` (file tanpa namespace dikelompokkan per folder; `key` diawali `/`), `types` |
+| `GET` | `/api/projects/{id}/structure/types?group=` | `name`, `container`, `kind`, `files`, `members`, `isPartial` |
+| `GET` | `/api/projects/{id}/structure/class?group=&name=&container=` | class yang digabung dari semua deklarasinya: `files[]` (`path`, `line`), `members[]` (+ `path` bila class tersebar di beberapa file) |
+| `GET` | `/api/projects/{id}/structure/search?q=` | min. 2 karakter; maks 100: `kind` (`type`/`member`/`file`), `name`, `detail`, `path`, `line` |
 | `DELETE` | `/api/projects/{id}?includeSharedMemory=false` | thread dipertahankan; memory di mesin ini dihapus, memory di store bersama hanya bila `includeSharedMemory=true`; bila clone lain dengan key sama masih terdaftar, memory pindah ke clone itu |
 
 ### Memory
