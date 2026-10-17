@@ -8,17 +8,27 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AiThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
-## Yang baru di 1.6.0
+## Yang baru di 1.6.3
 
-- **Tools Node**: role node baru. Tool baca planner (`read_file`, `search_text`, `find_references`, …) bisa
-  didelegasikan ke model murah. Planner hanya menerima temuan ringkas, sehingga output mentah tidak ikut terbayar
-  ulang di setiap langkah dan token planner jauh lebih hemat.
-- **Sisa kuota** di footer jawaban: bar sisa kuota per akun provider (mis. jendela 5 jam / 7 hari Claude, kuota
-  per model Antigravity) dibaca dari 9router, lengkap dengan waktu reset.
-- **Build .NET Framework**: project format lama dibuild memakai MSBuild Visual Studio. Project .NET modern memakai
-  `dotnet build --no-incremental`, dan build tetap jalan walau ada file output yang terkunci aplikasi yang sedang berjalan.
-- **Dukungan CLI lain**: menu *CLI* bisa mengarahkan Codex CLI, Gemini CLI, opencode, dan Qwen Code ke AIT dengan
-  satu switch, di samping Claude Code dan oh-my-pi. Provider asli tetap bisa dipakai.
+- **Label memory berstruktur**: setiap memory diberi label `Modul · Layer · Jenis` (mis. `User · Logic · Rule`) plus
+  maksimal 16 keyword, semuanya PascalCase. Planner menyaring per modul dulu, lalu memilih lewat keyword (per token,
+  keyword yang jarang dipakai bernilai lebih tinggi), baru membaca deskripsi yang relevan.
+- **Peta kode**: modul dan layer tiap file (`UserController` → `User · Entry`, `UserBL` → `User · Logic`) diputuskan
+  sekali lalu dipakai ulang, sehingga modul memory konsisten. File yang disebut di prompt langsung dipetakan untuk
+  planner. Peta bisa dikoreksi di menu Project atau lewat prompt ("anggap `UserBL` modul Account").
+- **Modul ganda digabung otomatis**: penulisan berbeda, jamak, dan terjemahan (mis. `Pengguna`/`User`) disatukan.
+  Daftar modulnya sama dengan wiki bisnis, setiap gabung bisa dibatalkan, dan yang meragukan masuk menu Memory →
+  *Perlu review*.
+- **Memory lama dilabeli ulang otomatis**: saat pertama kali jalan, semua memory di-backup ke
+  `%LOCALAPPDATA%\AiThread\backup` lalu dilabeli ulang di belakang. Proses ini memakai node Tools Node, Wrapper, atau
+  Planner, jadi ada pemakaian token sekali di awal.
+- **Export/Import memory** ke file JSON, untuk backup atau pindah mesin.
+- **9router ikut terpasang dan dinyalakan otomatis**: paket ini bergantung pada `9router`, dan AIT menyalakannya saat
+  start bila belum berjalan. Tombol *Jalankan 9router* di Dashboard menyalakannya ulang.
+
+Sebelumnya (1.6.0): role **Tools Node** untuk mendelegasikan tool baca planner ke model murah, **Sisa kuota** provider
+di footer jawaban, build **.NET Framework** lewat MSBuild, serta dukungan **Codex CLI, Gemini CLI, opencode, dan Qwen
+Code**.
 
 ## Instalasi
 
@@ -33,7 +43,9 @@ Web UI juga menampilkan *Update tersedia* di sidebar bila ada versi baru.
 ### Prasyarat
 
 - **SQL Server**. Defaultnya LocalDB `(localdb)\MSSQLLocalDB`, dan migrasi database diterapkan otomatis saat start.
-- **9router**: `npm i -g 9router` lalu `9router` (dashboard di http://localhost:20128).
+- **9router**: ikut terpasang bersama paket ini dan dinyalakan AIT saat start (dashboard di http://localhost:20128).
+  Hubungkan minimal satu provider di dashboard itu. Bila ingin versi terbaru, pasang juga `npm i -g 9router`; AIT
+  memakai yang global lebih dulu.
 
 Redis/Docker tidak perlu dipasang, karena short memory memakai Garnet yang berjalan di dalam proses AIT.
 
@@ -74,7 +86,8 @@ Opsi: `--port <n>` (default 5225 atau port terakhir yang disimpan dari menu), da
   `cargo check`, `mvn compile`) dan reviewer opsional memeriksa hasilnya. Error dijadikan tugas perbaikan hingga 2
   putaran.
 - **Memory**: short memory (≤ 24 jam), long memory di database, dan **wiki bisnis** per modul yang dirangkum otomatis
-  dari thread. Memory diikat ke *project key* (git remote) sehingga bisa dibagi antar developer.
+  dari thread. Setiap memory berlabel `Modul · Layer · Jenis` + keyword, dengan modul dari peta kode project. Memory
+  diikat ke *project key* (git remote) sehingga bisa dibagi antar developer.
 - **Node cadangan**: node lain dengan role yang sama mengambil alih bila sebuah model kena rate limit.
 - **Skill**: tarik repository skill (mis. `anthropics/skills`) ke gudang lokal, lalu tempel ke node lewat Skill
   Orchestrator.
