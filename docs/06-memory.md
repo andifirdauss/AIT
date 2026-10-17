@@ -217,7 +217,11 @@ file disebut prompt / disentuh tugas
 - **Koreksi manual** dari menu Project → detail → *Peta kode* (*Atur file* / *Ubah*), atau lewat prompt: planner
   punya tool `set_module` ("anggap `UserBL` modul Account"). Koreksi manual tidak pernah ditimpa aturan atau model.
 - **Scan** memetakan semua file sumber yang belum terpetakan (maks 3.000 file per scan; `bin`, `obj`, `node_modules`,
-  `wwwroot/lib`, dsb. dilewati). Dijalankan otomatis saat migrasi label untuk project yang belum punya peta.
+  `wwwroot/lib`, dsb. dilewati). Setiap file pasti mendapat entri (dari model atau nama file), jadi scan yang terputus
+  (mis. AIT di-restart) dilanjutkan dari file yang belum terpetakan. Dijalankan otomatis saat migrasi label.
+- Panggilan model berisi 40 grup file (per stem nama). Batch pertama jalan sendiri untuk mengisi daftar modul, sisanya
+  3 panggilan sekaligus (tetap dibatasi *Max concurrency* node); hasilnya disimpan bergantian agar modul baru dari satu
+  batch dipakai batch berikutnya, bukan dibuat ganda.
 
 ## Daftar modul & gabung modul
 
@@ -249,12 +253,22 @@ otomatis oleh worker saat AIT start lalu tiap `MemoryRelabelIntervalMinutes` (de
    (plus modul & label halaman wiki), sekali per versi label. Bila backup gagal, migrasi tidak jalan.
 2. **Wiki bisnis**: modul halaman diselaraskan dengan daftar modul (mengisi daftar awal) dan label halaman dinormalisasi
    PascalCase. Isi halaman tidak diubah, tidak membuat revisi.
-3. **Peta kode**: scan project terdaftar yang belum punya peta.
-4. **Relabel** per 20 memory per panggilan model: path/identifier di deskripsi dicocokkan ke peta kode dulu, model
-   menentukan modul (dari daftar), layer, jenis, dan keyword. Label lama disimpan sebagai *label lama*. Setiap baris
-   diklaim dulu (update bersyarat), jadi beberapa mesin yang berbagi store tidak memproses baris yang sama.
+3. **Per project** terdaftar yang punya memory menunggu (yang paling banyak lebih dulu):
+   - **Peta kode**: hanya file yang disebut deskripsi memory itu (path dan nama class, maks 10 per memory, maks 3 file
+     per nama), dicari dengan satu kali jelajah folder project. Hanya itu yang dibaca saat relabel;
+   - **Relabel** memory project itu, 20 memory per panggilan model: path/identifier di deskripsi dicocokkan ke peta
+     kode dulu, model menentukan modul (dari daftar), layer, jenis, dan keyword. Label lama disimpan sebagai *label
+     lama*. Setiap baris diklaim dulu (update bersyarat), jadi beberapa mesin yang berbagi store tidak memproses baris
+     yang sama.
+4. **Relabel sisa**: knowledge memory, memory project yang terdaftar di mesin lain, dan memory tanpa project key.
 5. Memory yang modulnya tidak bisa ditentukan, atau gagal 3 kali, masuk **Memory → Perlu review**.
-6. **Cek modul ganda** dan daftar **kandidat memory duplikat** (modul & jenis sama, keyword sangat mirip; hanya saran).
+6. **Peta kode lengkap**: scan penuh semua project terdaftar (yang punya memory lebih dulu), setelah semua label
+   selesai. Sekali per proses AIT; scan yang terputus dilanjutkan.
+7. **Cek modul ganda** dan daftar **kandidat memory duplikat** (modul & jenis sama, keyword sangat mirip; hanya saran).
+
+Banner *Migrasi label memory* menampilkan fase dan kemajuannya, mis.
+`Peta kode: KN2018_KCO (1/5) · 12/40 file disebut memory`, `Relabel: KN2018_KCO (1/5)`, atau
+`Peta kode lengkap: KN2018_KCO (1/12) · 363/1.700 file`.
 
 Selama migrasi, memory lama tetap terlihat oleh planner sebagai `unlabeled` (dicocokkan dengan label lamanya). Kolom
 `Label` lama tetap diisi gabungan `Modul · Layer · Jenis | keyword` supaya AIT versi lama yang berbagi store masih bisa

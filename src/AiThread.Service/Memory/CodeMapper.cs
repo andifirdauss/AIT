@@ -18,11 +18,15 @@ public sealed record CodeMapHit(string Path, string Module, MemoryLayer Layer, s
 
 // The modules and layers of a project's files, decided once and stored (CodeMapEntry) so the same file always gets the
 // same answer. Lookup order: stored entry → rules (CodeMapHeuristics) when they are sure → the model, one call per batch
-// of files grouped by name stem. A file being mapped by the model is mapped once: later callers wait for that call.
+// of files grouped by name stem (the first batch alone, the rest a few at a time). A file being mapped by the model is
+// mapped once: later callers wait for that call.
 public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, MemoryAi ai, ILogger<CodeMapper> logger)
 {
     private const int GroupsPerCall = 40;
+    private const int ParallelCalls = 3;
     private const int MaxTokens = 4_000;
+    private const int LookupReferences = 10;
+    private const int FilesPerReference = 3;
 
     private readonly ConcurrentDictionary<string, Task> _inflight = new(StringComparer.OrdinalIgnoreCase);
 
@@ -101,8 +105,11 @@ public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, M
         return hit;
     }
 
-    // Maps every source file of the project that has no entry yet (first registration, relabeling of old memory).
-    public async Task<(int Files, int Mapped)> ScanAsync(ProjectContext project, int maxFiles, CancellationToken cancellationToken)
+    // Maps every source file of the project that has no entry yet (first registration, relabeling of old memory). Every
+    // file gets an entry (by the model or by its name stem), so a scan cut off halfway picks up where it stopped.
+    // progress: (files mapped so far, files in the scan), after the stored/rule pass and after every model batch.
+    public async Task<(int Files, int Mapped)> ScanAsync(ProjectContext project, int maxFiles, CancellationToken cancellationToken,
+        Action<int, int>? progress = null)
     {
         if (string.IsNullOrEmpty(project.Key) || !Directory.Exists(project.RootPath)) return (0, 0);
         var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
@@ -111,8 +118,72 @@ public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, M
             .Where(p => p.Length <= CodeMapEntry.MaxPathLength && !scope.IsIgnoredPath(p) && CodeMapHeuristics.IsMappable(p))
             .Take(maxFiles)
             .ToList();
-        var mapped = await MapAsync(project, files, cancellationToken);
-        return (files.Count, mapped.Count);
+        return await MapFilesAsync(project, files, progress, cancellationToken);
+    }
+
+    // The files the texts name (paths and identifiers, read the way LookupAsync reads them), mapped: all the code map
+    // that labeling those texts needs, without scanning the whole project. progress as in ScanAsync.
+    public async Task<(int Files, int Mapped)> MapReferencedAsync(ProjectContext project, IEnumerable<string?> texts, CancellationToken cancellationToken,
+        Action<int, int>? progress = null)
+    {
+        if (string.IsNullOrEmpty(project.Key) || !Directory.Exists(project.RootPath)) return (0, 0);
+        var files = FindReferenced(project, texts);
+        return files.Count == 0 ? (0, 0) : await MapFilesAsync(project, files, progress, cancellationToken);
+    }
+
+    private async Task<(int Files, int Mapped)> MapFilesAsync(ProjectContext project, IReadOnlyList<string> files, Action<int, int>? progress,
+        CancellationToken cancellationToken)
+    {
+        var (hits, unsure) = await QuickAsync(project, files, cancellationToken);
+        progress?.Invoke(hits.Count, files.Count);
+        if (unsure.Count == 0) return (files.Count, hits.Count);
+
+        await MapUnsureAsync(project, unsure, cancellationToken, decided => progress?.Invoke(hits.Count + decided, files.Count));
+        var stored = await StoredAsync(project.Key, unsure, cancellationToken);
+        return (files.Count, hits.Count + stored.Count);
+    }
+
+    // One walk of the project for every path and identifier the texts name (the first LookupReferences of each text),
+    // at most FilesPerReference files each (an identifier like "Index" names many files).
+    private static List<string> FindReferenced(ProjectContext project, IEnumerable<string?> texts)
+    {
+        var pathsByName = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var identifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var text in texts)
+        {
+            var (paths, names) = CodeMapHeuristics.References(text, LookupReferences);
+            foreach (var path in paths.Select(p => p.Replace('\\', '/').TrimStart('.', '/')).Where(p => p.Length > 0))
+            {
+                var name = Path.GetFileName(path);
+                if (!pathsByName.TryGetValue(name, out var list)) pathsByName[name] = list = [];
+                if (!list.Contains(path, StringComparer.OrdinalIgnoreCase)) list.Add(path);
+            }
+            identifiers.UnionWith(names);
+        }
+        if (pathsByName.Count == 0 && identifiers.Count == 0) return [];
+
+        var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
+        var perReference = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>();
+        foreach (var file in scope.EnumerateFiles(maxFiles: 20_000))
+        {
+            var relative = scope.ToRelative(file);
+            if (relative.Length > CodeMapEntry.MaxPathLength || scope.IsIgnoredPath(relative) || !CodeMapHeuristics.IsMappable(relative)) continue;
+
+            var name = Path.GetFileName(relative);
+            var reference = pathsByName.TryGetValue(name, out var candidates)
+                ? candidates.FirstOrDefault(p => relative.Equals(p, StringComparison.OrdinalIgnoreCase) || relative.EndsWith("/" + p, StringComparison.OrdinalIgnoreCase))
+                : null;
+            var stem = CodeMapHeuristics.FileStem(name);
+            if (reference is null && identifiers.Contains(stem)) reference = "#" + stem;
+            if (reference is null) continue;
+
+            var count = perReference.GetValueOrDefault(reference);
+            if (count >= FilesPerReference) continue;
+            perReference[reference] = count + 1;
+            result.Add(relative);
+        }
+        return result;
     }
 
     // Project files a text refers to: paths that exist, and identifiers matched to file names (code map first, then the
@@ -194,12 +265,6 @@ public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, M
         return await query.OrderBy(e => e.Path).Take(take).ToListAsync(cancellationToken);
     }
 
-    public async Task<bool> HasEntriesAsync(string key, CancellationToken cancellationToken)
-    {
-        await using var db = await store.CreateCatalogAsync(cancellationToken);
-        return await db.CodeMapEntries.AnyAsync(e => e.ProjectKey == key, cancellationToken);
-    }
-
     // Stored entries of the given paths, for callers that only read the map.
     public async Task<IReadOnlyDictionary<string, CodeMapEntry>> StoredAsync(string key, IReadOnlyCollection<string> paths, CancellationToken cancellationToken)
     {
@@ -215,7 +280,8 @@ public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, M
     }
 
     // Files already handed to the model by another caller are awaited instead of being sent again.
-    private async Task MapUnsureAsync(ProjectContext project, IReadOnlyList<string> unsure, CancellationToken cancellationToken)
+    private async Task MapUnsureAsync(ProjectContext project, IReadOnlyList<string> unsure, CancellationToken cancellationToken,
+        Action<int>? decided = null)
     {
         var waits = new List<Task>();
         var mine = new List<string>();
@@ -230,7 +296,7 @@ public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, M
 
         try
         {
-            if (mine.Count > 0) await DecideAsync(project, mine, cancellationToken);
+            if (mine.Count > 0) await DecideAsync(project, mine, decided, cancellationToken);
             completion.TrySetResult();
         }
         catch (Exception ex)
@@ -256,7 +322,8 @@ public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, M
         }
     }
 
-    private async Task DecideAsync(ProjectContext project, IReadOnlyList<string> paths, CancellationToken cancellationToken)
+    // decided: the number of these paths saved so far, after every batch.
+    private async Task DecideAsync(ProjectContext project, IReadOnlyList<string> paths, Action<int>? decided, CancellationToken cancellationToken)
     {
         var areas = CodeMapHeuristics.AreaFolders(project);
         var groups = paths
@@ -267,44 +334,75 @@ public sealed class CodeMapper(LongMemoryStore store, ModuleRegistry registry, M
         if (!await ai.IsAvailableAsync(cancellationToken))
         {
             await SaveFallbackAsync(project.Key, groups, areas, cancellationToken);
+            decided?.Invoke(paths.Count);
             return;
         }
 
-        foreach (var batch in groups.Chunk(GroupsPerCall))
+        // Model calls run side by side; their answers are saved one at a time, so a module created by one batch is
+        // resolved (not created again) by the next. The first batch runs alone and seeds the module list the others see.
+        var batches = groups.Chunk(GroupsPerCall).ToList();
+        var done = 0;
+        using var apply = new SemaphoreSlim(1, 1);
+        async ValueTask RunAsync(FileGroup[] batch, CancellationToken token)
         {
-            var modules = await registry.ListAsync(project.Key, cancellationToken: cancellationToken);
-            JsonNode? json = null;
+            var answers = await AskAsync(project, batch, token);
+            await apply.WaitAsync(token);
             try
             {
-                (json, _) = await ai.AskJsonAsync(AgentPrompts.CodeMapper, Input(project, modules, batch), MaxTokens, cancellationToken);
+                done += await ApplyAsync(project.Key, batch, answers, areas, token);
+                decided?.Invoke(done);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            finally
             {
-                logger.LogWarning(ex, "Code map model call failed; using name stems for {Count} group(s).", batch.Length);
+                apply.Release();
             }
-
-            var answers = (json?["groups"] as JsonArray ?? []).OfType<JsonObject>()
-                .Where(o => SkillAi.Text(o["id"]) is not null)
-                .GroupBy(o => SkillAi.Text(o["id"])!, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-            var hits = new List<CodeMapHit>();
-            foreach (var group in batch)
-            {
-                answers.TryGetValue(group.Id, out var answer);
-                var moduleName = SkillAi.Text(answer?["module"]) ?? FallbackModule(group);
-                var (module, _) = await registry.EnsureAsync(project.Key, moduleName, SkillAi.Text(answer?["description"]),
-                    MemoryAi.Strings(answer?["aliases"]), cancellationToken);
-                var layers = answer?["layers"] as JsonObject;
-                foreach (var path in group.Paths)
-                {
-                    var layer = CodeMapHeuristics.Layer(path)
-                                ?? (MemoryLabels.TryParseLayer(SkillAi.Text(layers?[path]), out var byModel) ? byModel : MemoryLayer.Logic);
-                    hits.Add(new CodeMapHit(path, module, layer, CodeMapHeuristics.AreaOf(path, areas), answer is null ? CodeMapSource.Heuristic : CodeMapSource.AI));
-                }
-            }
-            await SaveAsync(project.Key, hits, cancellationToken);
         }
+
+        await RunAsync(batches[0], cancellationToken);
+        await Parallel.ForEachAsync(batches.Skip(1), new ParallelOptions { MaxDegreeOfParallelism = ParallelCalls, CancellationToken = cancellationToken }, RunAsync);
+    }
+
+    // The model's answer per group id; empty when the call failed (the groups then fall back to their name stem).
+    private async Task<Dictionary<string, JsonObject>> AskAsync(ProjectContext project, FileGroup[] batch, CancellationToken cancellationToken)
+    {
+        var modules = await registry.ListAsync(project.Key, cancellationToken: cancellationToken);
+        JsonNode? json = null;
+        try
+        {
+            (json, _) = await ai.AskJsonAsync(AgentPrompts.CodeMapper, Input(project, modules, batch), MaxTokens, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Code map model call failed; using name stems for {Count} group(s).", batch.Length);
+        }
+
+        return (json?["groups"] as JsonArray ?? []).OfType<JsonObject>()
+            .Where(o => SkillAi.Text(o["id"]) is not null)
+            .GroupBy(o => SkillAi.Text(o["id"])!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+    }
+
+    // Saves a batch; returns the number of files saved.
+    private async Task<int> ApplyAsync(string key, FileGroup[] batch, IReadOnlyDictionary<string, JsonObject> answers, IReadOnlyList<string> areas,
+        CancellationToken cancellationToken)
+    {
+        var hits = new List<CodeMapHit>();
+        foreach (var group in batch)
+        {
+            answers.TryGetValue(group.Id, out var answer);
+            var moduleName = SkillAi.Text(answer?["module"]) ?? FallbackModule(group);
+            var (module, _) = await registry.EnsureAsync(key, moduleName, SkillAi.Text(answer?["description"]),
+                MemoryAi.Strings(answer?["aliases"]), cancellationToken);
+            var layers = answer?["layers"] as JsonObject;
+            foreach (var path in group.Paths)
+            {
+                var layer = CodeMapHeuristics.Layer(path)
+                            ?? (MemoryLabels.TryParseLayer(SkillAi.Text(layers?[path]), out var byModel) ? byModel : MemoryLayer.Logic);
+                hits.Add(new CodeMapHit(path, module, layer, CodeMapHeuristics.AreaOf(path, areas), answer is null ? CodeMapSource.Heuristic : CodeMapSource.AI));
+            }
+        }
+        await SaveAsync(key, hits, cancellationToken);
+        return hits.Count;
     }
 
     private async Task SaveFallbackAsync(string key, IReadOnlyList<FileGroup> groups, IReadOnlyList<string> areas, CancellationToken cancellationToken)
