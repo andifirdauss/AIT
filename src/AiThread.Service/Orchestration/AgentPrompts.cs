@@ -114,7 +114,8 @@ public static class AgentPrompts
     // The label every memory carries, shared by the extractor and the relabeler so both decide the same way.
     public const string MemoryLabelRules = """
         Every memory has a label of four parts:
-        - "module": the project module the fact is about. Pick it from "# Modules" (the name, not an alias); the code map of the files the fact is about gives the usual answer. Only when none fits, give a new name: a singular business term in PascalCase, English unless the project names it otherwise (for example "Invoice", "UserAccess"), and prefer the broader existing module ("Order" for order lines). For knowledge memory the module is the technology or domain (for example "EFCore", "Redis", "Auth"), from "# Knowledge modules" when one fits.
+        - "module": the project module the fact is about. Pick it from "# Modules" (the name, not an alias); the code map of the files the fact is about gives the usual answer. Only when none fits, give a new name: a singular business term in PascalCase, English unless the project names it otherwise (for example "Invoice", "UserAccess"), and prefer the broader existing module ("Order" for order lines). Write abbreviations in capitals as the project does: "MKPP" (all abbreviation), "KlaimDF" (Klaim + the abbreviation DF), never "Mkpp" or "Klaimdf". For knowledge memory the module is the technology or domain (for example "EFCore", "Redis", "Auth"), from "# Knowledge modules" when one fits.
+          "other_modules" (optional, at most 3): other modules the same fact equally concerns, chosen the same way, for example a flow that hands an Order over to Invoice. Leave it out when the fact belongs to one module; never list a module only because a file of it is mentioned in passing.
         - "layers": the roles of the code the fact is about, one or more of UI, Entry, Logic, Data, Infra, Test. UI = views, pages, components, styles; Entry = controllers, routes, handlers, CLI commands, consumers; Logic = services, business logic, validators, stores, outbound clients; Data = repositories, DbContext, queries, migrations, entities, DTOs; Infra = startup, DI, configuration, build; Test = tests. Take them from the code map when it covers the files.
         - "kind": answer these questions in order and take the first "yes":
           1. Is it a mistake or trap to avoid (with its fix)? → Pitfall
@@ -129,6 +130,7 @@ public static class AgentPrompts
         Examples of labels:
         - {"type":"project","module":"User","layers":["Logic"],"kind":"Rule","keywords":["Description","Deskripsi","UserValidator","MaxLength"]}
         - {"type":"project","module":"Order","layers":["Entry","Logic","Data"],"kind":"Flow","keywords":["Checkout","Payment","OrderService","Email"]}
+        - {"type":"project","module":"Order","other_modules":["Invoice"],"layers":["Logic"],"kind":"Flow","keywords":["Posting","InvoiceNumber","OrderStatus"]}
         - {"type":"project","module":"Report","layers":["Data"],"kind":"Pitfall","keywords":["SaveChanges","Loop","Timeout","BulkInsert"]}
         - {"type":"project","module":"Core","layers":["UI"],"kind":"Convention","keywords":["WinControls","Modal","BahasaIndonesia"]}
         - {"type":"project","module":"Memory","layers":["Data","Infra"],"kind":"Architecture","keywords":["ExternalStore","SwitchableStore","Garnet"]}
@@ -148,7 +150,7 @@ public static class AgentPrompts
         "description": a self-contained explanation of 2-6 sentences, in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors).
 
         Skip trivia, one-off details and anything the existing memories of the module already cover ("# Existing memories" lists them per module). Return at most 5 memories; return an empty list when nothing is worth remembering.
-        Respond with JSON only: {"memories":[{"type":"project","module":"...","layers":["..."],"kind":"...","keywords":["..."],"description":"..."}]}
+        Respond with JSON only: {"memories":[{"type":"project","module":"...","other_modules":[],"layers":["..."],"kind":"...","keywords":["..."],"description":"..."}]}
         """;
 
     // Old memories written with free keywords, relabeled once by MemoryRelabelWorker.
@@ -158,7 +160,7 @@ public static class AgentPrompts
         {{MemoryLabelRules}}
 
         Keep what the old label says as keywords when it is still useful. When you cannot tell the module with reasonable confidence (the description is too vague, or several modules fit equally), answer "review" with a short reason in English instead of guessing.
-        Respond with JSON only: {"memories":[{"id":"...","module":"...","layers":["..."],"kind":"...","keywords":["..."]},{"id":"...","review":"reason"}]}
+        Respond with JSON only: {"memories":[{"id":"...","module":"...","other_modules":[],"layers":["..."],"kind":"...","keywords":["..."]},{"id":"...","review":"reason"}]}
         """;
 
     public const string CodeMapper = """
@@ -166,7 +168,7 @@ public static class AgentPrompts
 
         You get "# Modules" (existing modules with aliases and descriptions) and "# Groups": files that share a name stem, each line "path [layer]" where [?] means the layer is unknown.
         For every group:
-        - "module": an existing module (its name, not an alias) whenever one fits; prefer the broader one ("Order" for OrderLine). Only when none fits, a new module: a singular business term in PascalCase, English unless the project names it otherwise, with a one-line "description" and "aliases" (other names or translations, for example ["Pengguna"] for User).
+        - "module": an existing module (its name, not an alias) whenever one fits; prefer the broader one ("Order" for OrderLine). Only when none fits, a new module: a singular business term in PascalCase with abbreviations in capitals ("MKPP", "KlaimDF"), English unless the project names it otherwise, with a one-line "description" and "aliases" (other names or translations, for example ["Pengguna"] for User).
         - Shared plumbing without a feature of its own (startup, helpers, base classes, layouts, site-wide scripts and styles) goes to "Core".
         - "layers": only for files marked [?], an object from path to one of UI, Entry, Logic, Data, Infra, Test (UI = views, pages, components; Entry = controllers, routes, handlers, commands; Logic = services, business logic, stores, clients; Data = repositories, queries, entities, DTOs; Infra = startup, configuration, build).
         Respond with JSON only: {"groups":[{"id":"G1","module":"User","description":"(new module only)","aliases":["(new module only)"],"layers":{"src/x.js":"Logic"}}]}

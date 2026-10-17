@@ -23,4 +23,5 @@ public sealed record ShortMemoryRecord(
     int? LabelVersion = null,
     string? LegacyLabel = null,
     string? ReviewReason = null,
-    int? RelabelAttempts = null);
+    int? RelabelAttempts = null,
+    string? ExtraModules = null);

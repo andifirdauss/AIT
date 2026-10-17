@@ -498,23 +498,28 @@ public sealed class MemoryRelabeler(
         var type = candidate.Key == MemoryLabels.KnowledgeKey ? MemoryType.Knowledge : candidate.Type;
         if (!MemoryLabels.KindAllowedFor(type, kind)) kind = MemoryKind.Pattern;
         var (module, _) = await registry.EnsureAsync(key, moduleText, cancellationToken: cancellationToken);
+        var resolved = new List<string>();
+        foreach (var name in MemoryLabels.ExtraModules(MemoryAi.Strings(answer["other_modules"]), module))
+            resolved.Add((await registry.EnsureAsync(key, name, cancellationToken: cancellationToken)).Name);
+        var extra = MemoryLabels.ExtraModules(resolved, module);
+        string[] all = [module, .. extra];
 
         var layers = MemoryAi.Strings(answer["layers"])
             .Select(l => MemoryLabels.TryParseLayer(l, out var layer) ? layer : (MemoryLayer?)null)
             .OfType<MemoryLayer>().Distinct().Order().ToList();
-        var ofModule = hints.Where(h => string.Equals(h.Module, module, StringComparison.OrdinalIgnoreCase)).ToList();
+        var ofModule = hints.Where(h => all.Contains(h.Module, StringComparer.OrdinalIgnoreCase)).ToList();
         if (layers.Count == 0) layers = ofModule.Select(h => h.Layer).Distinct().Order().ToList();
         var areas = ofModule.Select(h => h.Area).Distinct().ToList();
 
-        var keywords = MemoryLabels.Keywords(MemoryAi.Strings(answer["keywords"]), module);
-        if (keywords.Count == 0) keywords = MemoryLabels.Keywords(MemoryLabels.SplitCsv(candidate.Label), module);
+        var keywords = MemoryLabels.Keywords(MemoryAi.Strings(answer["keywords"]), all);
+        if (keywords.Count == 0) keywords = MemoryLabels.Keywords(MemoryLabels.SplitCsv(candidate.Label), all);
         if (keywords.Count == 0) return null;
-        return new NewLabel(module, layers, kind, areas is [{ } area] ? area : null, keywords);
+        return new NewLabel(module, extra, layers, kind, areas is [{ } area] ? area : null, keywords);
     }
 
     private async Task<bool> SaveLabelAsync(Candidate candidate, NewLabel label, CancellationToken cancellationToken)
     {
-        var composed = MemoryLabels.Compose(MemoryLabels.Display(label.Area, label.Module, label.Layers, label.Kind), label.Keywords);
+        var composed = MemoryLabels.Compose(MemoryLabels.Display(label.Area, label.Module, label.Layers, label.Kind, label.ExtraModules), label.Keywords);
         try
         {
             if (candidate.Level == MemoryLevel.Short)
@@ -522,7 +527,8 @@ public sealed class MemoryRelabeler(
                 if (await shortStore.GetAsync(candidate.Id) is not { } record) return false;
                 await shortStore.SaveAsync(record with
                 {
-                    Label = composed, LegacyLabel = record.LegacyLabel ?? record.Label, Module = label.Module, Layers = MemoryLabels.LayersCsv(label.Layers),
+                    Label = composed, LegacyLabel = record.LegacyLabel ?? record.Label, Module = label.Module,
+                    ExtraModules = MemoryLabels.JoinCsv(label.ExtraModules), Layers = MemoryLabels.LayersCsv(label.Layers),
                     Kind = label.Kind, Area = label.Area, Keywords = MemoryLabels.JoinCsv(label.Keywords), LabelVersion = MemoryLabels.CurrentVersion,
                     ReviewReason = null
                 });
@@ -535,6 +541,7 @@ public sealed class MemoryRelabeler(
             row.LegacyLabel ??= row.Label;
             row.Label = composed;
             row.Module = label.Module;
+            row.ExtraModules = MemoryLabels.JoinCsv(label.ExtraModules);
             row.Layers = MemoryLabels.LayersCsv(label.Layers);
             row.Kind = label.Kind;
             row.Area = label.Area;
@@ -712,5 +719,6 @@ public sealed class MemoryRelabeler(
 
     private sealed record Candidate(Guid Id, MemoryLevel Level, MemoryType Type, string? Key, string? ProjectName, string Label, string Description, int Attempts);
 
-    private sealed record NewLabel(string Module, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind, string? Area, IReadOnlyList<string> Keywords);
+    private sealed record NewLabel(string Module, IReadOnlyList<string> ExtraModules, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind, string? Area,
+        IReadOnlyList<string> Keywords);
 }

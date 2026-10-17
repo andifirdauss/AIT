@@ -76,6 +76,7 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
         row.SourceThreadId = record.SourceThreadId;
         row.CreatedAt = record.CreatedAt;
         row.Module = record.Module;
+        row.ExtraModules = record.ExtraModules;
         row.Layers = record.Layers;
         row.Kind = record.Kind;
         row.Area = record.Area;
@@ -170,5 +171,5 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
 
     private static ShortMemoryRecord ToRecord(ShortMemoryRow r) =>
         new(r.Id, r.ProjectId, r.Type, r.Label, r.Description, r.SourceThreadId, r.CreatedAt, r.ProjectKey, r.ProjectName,
-            r.Module, r.Layers, r.Kind, r.Area, r.Keywords, r.LabelVersion, r.LegacyLabel, r.ReviewReason, r.RelabelAttempts);
+            r.Module, r.Layers, r.Kind, r.Area, r.Keywords, r.LabelVersion, r.LegacyLabel, r.ReviewReason, r.RelabelAttempts, r.ExtraModules);
 }

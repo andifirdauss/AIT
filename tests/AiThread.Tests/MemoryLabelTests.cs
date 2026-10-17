@@ -37,6 +37,40 @@ public class MemoryLabelTests
     public void Pascal_keeps_acronyms_in_capitals_and_identifiers_as_written(string input, string expected) =>
         Assert.Equal(expected, MemoryLabels.Pascal(input));
 
+    [Theory]
+    [InlineData("MKPP", "MKPP")]
+    [InlineData("KlaimDF", "KlaimDF")]
+    [InlineData("Klaim DF", "KlaimDF")]
+    [InlineData("klaimdf", "Klaimdf")]
+    [InlineData("MKPP approval", "MKPPApproval")]
+    [InlineData("transfer order", "TransferOrder")]
+    [InlineData("user dto", "UserDTO")]
+    public void Module_names_keep_their_abbreviations_in_capitals(string input, string expected) =>
+        Assert.Equal(expected, MemoryLabels.Module(input));
+
+    [Fact]
+    public void Extra_modules_drop_the_main_module_and_duplicates_and_show_in_the_label()
+    {
+        var extra = MemoryLabels.ExtraModules(["invoice", "Users", "Invoices", "payment", "tax", "shipping"], "User");
+
+        Assert.Equal(["Invoice", "Payment", "Tax"], extra);
+        Assert.Equal("Order+Invoice · Logic · Flow", MemoryLabels.Display(null, "Order", [MemoryLayer.Logic], MemoryKind.Flow, ["Invoice"]));
+        Assert.True(MemoryLabels.HasModule("Order", "Invoice,Payment", "payment"));
+        Assert.False(MemoryLabels.HasModule("Order", "Invoice", "Pay"));
+    }
+
+    [Fact]
+    public void Ranking_narrowed_by_module_finds_memory_of_that_module_as_an_extra_one()
+    {
+        var shared = Entry("Order", MemoryKind.Flow, ["Posting"]) with { ExtraModules = ["Invoice"] };
+        var invoiceOnly = Entry("Invoice", MemoryKind.Rule, ["Number"]);
+        var orderOnly = Entry("Order", MemoryKind.Rule, ["Status"]);
+
+        var ranked = MemoryRanker.RankLabeled([shared, invoiceOnly, orderOnly], ["Invoice"], null, null, [], 10);
+
+        Assert.Equal(new[] { invoiceOnly.Id, shared.Id }.Order(), ranked.Select(e => e.Id).Order());
+    }
+
     [Fact]
     public void Keywords_are_normalized_deduplicated_cut_at_sixteen_and_never_repeat_the_label()
     {
@@ -302,6 +336,69 @@ public class MemoryLabelTests
     }
 
     [Fact]
+    public async Task Memory_of_several_modules_is_found_through_each_of_them()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        using var shortDb = new TempWorkspace();
+        var memory = CreateMemoryService(harness, shortDb);
+        await harness.Service<ModuleRegistry>().EnsureAsync("k", "Invoice", aliases: ["Tagihan"]);
+
+        var flow = await memory.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "order", MemoryKind.Flow,
+            ["Posting", "Invoice"], "Order yang diposting membuat tagihan.", [MemoryLayer.Logic], ExtraModules: ["tagihan", "Orders"]));
+
+        Assert.Equal(["Invoice"], flow.ExtraModules);
+        Assert.Equal("Order+Invoice · Logic · Flow", flow.Label);
+        Assert.Equal(["Posting"], flow.Keywords);
+
+        var byFilter = await memory.QueryAsync(new MemoryQuery(null, null, harness.ProjectId, null, Module: "Invoice"));
+        Assert.Equal(flow.Id, Assert.Single(byFilter.Items).Id);
+        var bySearch = await memory.SearchAsync(new MemorySearch(harness.ProjectId, Module: "Invoice"));
+        Assert.Contains(bySearch, e => e.Id == flow.Id);
+        var summary = await memory.GetModuleSummaryAsync(harness.ProjectId);
+        Assert.Equal(["Invoice", "Order"], summary.Select(s => s.Module).Order());
+
+        // Consolidated into long memory, the extra module goes along.
+        Assert.True(await memory.PromoteAsync(flow.Id));
+        Assert.Equal("Invoice", (await LongAsync(harness, flow.Id)).ExtraModules);
+    }
+
+    [Fact]
+    public async Task Renaming_a_module_follows_into_memory_code_map_wiki_and_keeps_the_old_name_as_alias()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        var registry = harness.Service<ModuleRegistry>();
+        await registry.EnsureAsync("k", "klaimdf");
+        await registry.EnsureAsync("k", "Order");
+        var main = await AddLabeledLongAsync(harness, "k", "Klaimdf", MemoryKind.Rule, ["BtnSave"]);
+        var extra = await AddLabeledLongAsync(harness, "k", "Order", MemoryKind.Flow, ["Posting"], ["Klaimdf"]);
+        await using (var catalog = await harness.Service<LongMemoryStore>().CreateCatalogAsync())
+        {
+            catalog.CodeMapEntries.Add(new CodeMapEntry { ProjectKey = "k", Path = "Scripts/klaimdfscript.js", Module = "Klaimdf", Layer = MemoryLayer.UI, Source = CodeMapSource.AI });
+            await catalog.SaveChangesAsync();
+        }
+        await harness.Service<AiThread.Service.Business.BusinessPageStore>().SaveAsync(new AiThread.Service.Business.BusinessPageDraft(
+            null, "k", "Demo", "Klaimdf", "Klaim DF", null, "klaim", "# Klaim DF\nIsi halaman.", true, null, BusinessEditKind.Manual, "dev", null, []), default);
+        var merger = harness.Service<ModuleMerger>();
+
+        // Only the casing.
+        Assert.Equal("KlaimDF", await merger.RenameAsync("k", "Klaimdf", "KlaimDF", "dev", default));
+        Assert.Equal(("KlaimDF", "KlaimDF · Rule | BtnSave"), ((await LongAsync(harness, main)).Module, (await LongAsync(harness, main)).Label));
+        Assert.Equal("KlaimDF", (await LongAsync(harness, extra)).ExtraModules);
+        Assert.Equal("KlaimDF", (await harness.Service<CodeMapper>().ListAsync("k", null, null, 10, default)).Single().Module);
+        await using (var business = await harness.Service<BusinessMemoryStore>().CreateAsync())
+            Assert.Equal("KlaimDF", (await business.BusinessPages.AsNoTracking().SingleAsync()).Module);
+        Assert.Null((await registry.ListAsync("k")).Single(m => m.Name == "KlaimDF").Aliases);
+
+        // Another name: the old one stays an alias; a name another module has is refused.
+        Assert.Equal("ClaimDF", await merger.RenameAsync("k", "KlaimDF", "ClaimDF", "dev", default));
+        Assert.Equal("ClaimDF", await registry.ResolveAsync("k", "klaimdf"));
+        Assert.Equal("Order+ClaimDF · Flow | Posting", (await LongAsync(harness, extra)).Label);
+        await Assert.ThrowsAsync<AppValidationException>(() => merger.RenameAsync("k", "ClaimDF", "orders", "dev", default));
+    }
+
+    [Fact]
     public async Task Saving_requires_a_full_label()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
@@ -506,14 +603,15 @@ public class MemoryLabelTests
         return row.Id;
     }
 
-    private static async Task<Guid> AddLabeledLongAsync(OrchestrationHarness harness, string key, string module, MemoryKind kind, IReadOnlyList<string> keywords)
+    private static async Task<Guid> AddLabeledLongAsync(OrchestrationHarness harness, string key, string module, MemoryKind kind, IReadOnlyList<string> keywords,
+        IReadOnlyList<string>? extraModules = null)
     {
         await using var db = await harness.CreateDbAsync();
         var row = new LongMemory
         {
             Id = Guid.NewGuid(), ProjectId = harness.ProjectId, ProjectKey = key, Type = MemoryType.Project, Description = "d",
-            Module = module, Kind = kind, Keywords = MemoryLabels.JoinCsv(keywords), LabelVersion = MemoryLabels.CurrentVersion,
-            Label = MemoryLabels.Compose(MemoryLabels.Display(null, module, [], kind), keywords)
+            Module = module, ExtraModules = MemoryLabels.JoinCsv(extraModules), Kind = kind, Keywords = MemoryLabels.JoinCsv(keywords),
+            LabelVersion = MemoryLabels.CurrentVersion, Label = MemoryLabels.Compose(MemoryLabels.Display(null, module, [], kind, extraModules), keywords)
         };
         db.LongMemories.Add(row);
         await db.SaveChangesAsync();

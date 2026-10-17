@@ -24,13 +24,17 @@ public static class MemorySchema
     [
         nameof(LongMemory.Module), nameof(LongMemory.Layers), nameof(LongMemory.Kind), nameof(LongMemory.Area),
         nameof(LongMemory.Keywords), nameof(LongMemory.LabelVersion), nameof(LongMemory.LegacyLabel),
-        nameof(LongMemory.ReviewReason), nameof(LongMemory.RelabelAttempts)
+        nameof(LongMemory.ReviewReason), nameof(LongMemory.RelabelAttempts), nameof(LongMemory.ExtraModules)
     ];
+
+    // Room for MemoryLabels.MaxExtraModules names of ModuleLength plus separators.
+    public const int ExtraModulesLength = 310;
 
     // The structured label columns of long memory, the same in the main and in an external database.
     public static void ConfigureLabel(EntityTypeBuilder<LongMemory> e)
     {
         e.Property(x => x.Module).HasMaxLength(ModuleLength);
+        e.Property(x => x.ExtraModules).HasMaxLength(ExtraModulesLength);
         e.Property(x => x.Layers).HasMaxLength(100);
         e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
         e.Property(x => x.Area).HasMaxLength(ModuleLength);

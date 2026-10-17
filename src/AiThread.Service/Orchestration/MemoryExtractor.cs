@@ -67,14 +67,15 @@ public sealed class MemoryExtractor(
                 // Without a registered project only knowledge memory can be kept.
                 var type = thread.ProjectId is null ? MemoryType.Knowledge : memory.Type;
                 var kind = MemoryLabels.KindAllowedFor(type, memory.Kind) ? memory.Kind : MemoryKind.Pattern;
-                var fromMap = type == MemoryType.Project ? map.Where(h => string.Equals(h.Module, memory.Module, StringComparison.OrdinalIgnoreCase)).ToList() : [];
+                var memoryModules = memory.OtherModules.Prepend(memory.Module).ToList();
+                var fromMap = type == MemoryType.Project ? map.Where(h => memoryModules.Contains(h.Module, StringComparer.OrdinalIgnoreCase)).ToList() : [];
                 var layers = memory.Layers.Count > 0 ? memory.Layers : fromMap.Select(h => h.Layer).Distinct().ToList();
                 var areas = fromMap.Select(h => h.Area).Distinct().ToList();
                 var area = areas is [{ } single] ? single : null;
                 try
                 {
                     saved.Add(await memoryService.AddShortAsync(new SaveMemoryRequest(type, thread.ProjectId, memory.Module, kind, memory.Keywords,
-                        memory.Description, layers, area), thread.Id, cancellationToken));
+                        memory.Description, layers, area, memory.OtherModules), thread.Id, cancellationToken));
                 }
                 catch (AppValidationException ex)
                 {
@@ -196,10 +197,11 @@ public sealed class MemoryExtractor(
                 .ToList();
             var keywords = MemoryAi.Strings(item["keywords"]);
             if (keywords.Count == 0) continue;
-            list.Add(new ExtractedMemory(type, module, layers, kind, keywords, description));
+            list.Add(new ExtractedMemory(type, module, MemoryAi.Strings(item["other_modules"]), layers, kind, keywords, description));
         }
         return list;
     }
 
-    private sealed record ExtractedMemory(MemoryType Type, string Module, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind, IReadOnlyList<string> Keywords, string Description);
+    private sealed record ExtractedMemory(MemoryType Type, string Module, IReadOnlyList<string> OtherModules, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind,
+        IReadOnlyList<string> Keywords, string Description);
 }

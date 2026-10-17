@@ -7,7 +7,7 @@ penjelasan.
 
 | Bagian | Fungsi |
 |---|---|
-| **Label** | `[Area ·] Modul · Layer · Jenis`, mis. `User · Logic · Rule`. Lapis pertama pencarian: planner menyaring berdasarkan modul (dan bila perlu layer/jenis). |
+| **Label** | `[Area ·] Modul · Layer · Jenis`, mis. `User · Logic · Rule`; memory yang membahas beberapa modul: `Order+Invoice · Logic · Flow`. Lapis pertama pencarian: planner menyaring berdasarkan modul (dan bila perlu layer/jenis). |
 | **Keyword** | Maks 16 kata, mis. `Description, Deskripsi, UserValidator`. Lapis kedua: di dalam hasil lapis pertama, mana yang memuat istilah yang dicari. |
 | **Deskripsi** | Penjelasan mandiri 2–6 kalimat. Untuk project memory berisi path file dan identifier. Hanya dibaca setelah lolos dua lapis. |
 
@@ -17,12 +17,22 @@ Semua bagian label dan keyword ditulis **PascalCase**, dinormalisasi oleh AIT (b
 ditambah lewat `AiThread:MemoryAcronyms`. Identifier dari kode tetap seperti aslinya (`UserDto`, `UserBL`), hanya huruf
 pertamanya dibesarkan.
 
+**Nama modul** sering berupa singkatan, jadi bagian yang ditulis kapital selalu dipertahankan, berapa pun panjangnya:
+`MKPP` tetap `MKPP` (singkatan penuh), `KlaimDF` / `Klaim DF` → `KlaimDF` (PascalCase + singkatan). Yang ditulis huruf
+kecil semua hanya diberi huruf besar di depan (`klaimdf` → `Klaimdf`), karena AIT tidak bisa menebak singkatannya. Nama
+yang kurang tepat diperbaiki lewat [ganti nama modul](#daftar-modul--gabung-modul).
+
 ### Modul
 
 Fitur atau entitas bisnis (`User`, `Invoice`, `TransferOrder`), sama untuk semua layer fitur itu: `UserController`,
 `UserBL`, `UserRepository`, dan `Views/User/Index.cshtml` semuanya modul `User`. Untuk knowledge memory, modulnya adalah
 teknologi atau domain (`EFCore`, `Redis`, `Auth`). Modul diambil dari [daftar modul](#daftar-modul--gabung-modul) project
 yang sama dengan modul wiki bisnis, dan untuk project memory diturunkan dari [peta kode](#peta-kode) file yang dibahas.
+
+Satu memory punya satu **modul utama** dan boleh punya sampai 3 **modul lain** bila fakta yang sama memang membahas
+beberapa modul (mis. alur posting `Order` yang membuat `Invoice`). Filter modul di menu Memory, pencarian planner, peta
+memory, dan jumlah memory per modul ikut menghitung modul lain itu. Modul utama tersimpan di kolom `Module` (dibaca juga
+oleh AIT versi lama), modul lain di kolom `ExtraModules`.
 
 ### Layer
 
@@ -243,6 +253,12 @@ Menggabungkan modul memindahkan memory (short & long, label ikut ditulis ulang),
 nama dan alias modul asal menjadi alias modul tujuan. Halaman wiki yang judulnya sudah ada di modul tujuan tidak
 dipindah (dilaporkan di log). **Batalkan** di riwayat gabung modul (Project → detail) mengembalikan tepat baris yang
 dipindah. Saran yang ditolak tidak diusulkan lagi.
+
+**Ganti nama modul** (form memory: tombol *Ubah nama* di samping dropdown modul; Project → detail: field *Nama* di
+*Atur*) juga bisa hanya mengganti huruf besar/kecil, mis. `Klaimdf` → `KlaimDF`. Memory (modul utama maupun modul
+lain, label ikut ditulis ulang), peta kode, halaman wiki bisnis, pengalih modul yang sudah digabung, dan riwayat gabung
+ikut berganti nama. Nama lama yang berbeda (bukan hanya huruf besar/kecil) disimpan sebagai alias. Nama yang sudah
+dipakai modul lain (termasuk aliasnya atau bentuk jamaknya) ditolak — pakai *Gabungkan* untuk itu.
 
 ## Migrasi label (memory lama)
 

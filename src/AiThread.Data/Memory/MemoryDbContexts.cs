@@ -62,6 +62,7 @@ public sealed class ShortMemoryDbContext(DbContextOptions<ShortMemoryDbContext> 
             e.Property(x => x.Label).HasMaxLength(300).IsRequired();
             e.Property(x => x.Description).IsRequired();
             e.Property(x => x.Module).HasMaxLength(MemorySchema.ModuleLength);
+            e.Property(x => x.ExtraModules).HasMaxLength(MemorySchema.ExtraModulesLength);
             e.Property(x => x.Layers).HasMaxLength(100);
             e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.Area).HasMaxLength(MemorySchema.ModuleLength);
@@ -85,6 +86,7 @@ public sealed class ShortMemoryRow
     public Guid? SourceThreadId { get; set; }
     public DateTime CreatedAt { get; set; }
     public string? Module { get; set; }
+    public string? ExtraModules { get; set; }
     public string? Layers { get; set; }
     public MemoryKind? Kind { get; set; }
     public string? Area { get; set; }

@@ -63,5 +63,5 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | **Short memory** | Memory baru, disimpan di Garnet (server protokol Redis di dalam AIT) selama ±24 jam. |
 | **Long memory** | Memory yang sudah dipindah dari short memory ke database. |
 | **Project memory / Knowledge memory** | Pengetahuan khusus satu project / pola umum yang berguna lintas project. |
-| **Label memory** | `Modul · Layer · Jenis` (mis. `User · Logic · Rule`) + maksimal 16 keyword, PascalCase. Modul menyaring, keyword memilih. |
+| **Label memory** | `Modul · Layer · Jenis` (mis. `User · Logic · Rule`; beberapa modul: `Order+Invoice · Logic · Flow`) + maksimal 16 keyword, PascalCase (singkatan kapital pada nama modul dipertahankan: `MKPP`, `KlaimDF`). Modul menyaring, keyword memilih. |
 | **Peta kode** | Modul dan layer tiap file project, diputuskan sekali (aturan, model, atau manual) dan dipakai ulang untuk label memory. |

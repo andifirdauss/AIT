@@ -53,7 +53,7 @@ public sealed class ModuleRegistry(LongMemoryStore store, ILogger<ModuleRegistry
         IEnumerable<string>? aliases = null, CancellationToken cancellationToken = default)
     {
         var normalized = MemoryLabels.Module(name) ?? CoreModule;
-        var aliasList = (aliases ?? []).Select(MemoryLabels.Pascal).Where(a => a.Length > 1).ToList();
+        var aliasList = (aliases ?? []).Select(MemoryLabels.Module).OfType<string>().Where(a => a.Length > 1).ToList();
 
         for (var attempt = 0; attempt < 2; attempt++)
         {
@@ -62,7 +62,7 @@ public sealed class ModuleRegistry(LongMemoryStore store, ILogger<ModuleRegistry
             if (Resolve(modules, normalized) is { } existing)
             {
                 var module = modules.First(m => m.Name == existing);
-                if (MergeAliases(module, aliasList.Append(normalized).Where(a => a != module.Name)))
+                if (MergeAliases(module, aliasList.Append(normalized).Where(a => !string.Equals(a, module.Name, StringComparison.OrdinalIgnoreCase))))
                 {
                     module.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync(cancellationToken);
@@ -105,7 +105,8 @@ public sealed class ModuleRegistry(LongMemoryStore store, ILogger<ModuleRegistry
         if (aliases is not null)
         {
             module.Aliases = null;
-            MergeAliases(module, aliases.Select(MemoryLabels.Pascal).Where(a => a.Length > 1 && a != module.Name));
+            MergeAliases(module, aliases.Select(MemoryLabels.Module).OfType<string>()
+                .Where(a => a.Length > 1 && !string.Equals(a, module.Name, StringComparison.OrdinalIgnoreCase)));
         }
         module.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);

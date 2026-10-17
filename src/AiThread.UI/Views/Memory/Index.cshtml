@@ -294,8 +294,10 @@
                 <div class="row g-2 mb-2">
                     <div class="col-md-5">
                         <label class="form-label small" for="memoryModule">Modul</label>
-                        <input type="text" class="form-control" id="memoryModule" maxlength="100" list="memoryModuleList" placeholder="User" required />
-                        <datalist id="memoryModuleList"></datalist>
+                        <div class="input-group">
+                            <select class="form-select" id="memoryModule" required></select>
+                            <button type="button" class="btn btn-outline-secondary" id="btnModuleRename" title="Ubah nama atau huruf besar-kecil modul ini; semua memory, peta kode, dan wiki modul ini ikut berubah">Ubah nama</button>
+                        </div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small" for="memoryKind">Jenis</label>
@@ -312,6 +314,21 @@
                         <label class="form-label small" for="memoryArea">Area <span class="text-secondary">(opsional)</span></label>
                         <input type="text" class="form-control" id="memoryArea" maxlength="100" placeholder="Web" title="Aplikasi di repo multi-aplikasi" />
                     </div>
+                </div>
+                <div class="input-group input-group-sm mb-2 d-none" id="memoryModuleEdit">
+                    <span class="input-group-text" id="memoryModuleEditLabel">Modul baru</span>
+                    <input type="text" class="form-control" id="memoryModuleName" maxlength="100" placeholder="KlaimDF" aria-labelledby="memoryModuleEditLabel" />
+                    <button type="button" class="btn btn-primary" id="btnModuleNameSave">Simpan</button>
+                    <button type="button" class="btn btn-outline-secondary" id="btnModuleNameCancel">Batal</button>
+                </div>
+                <div class="form-text mt-0 mb-2">Singkatan ditulis kapital: <span class="mono">MKPP</span>, <span class="mono">KlaimDF</span>.</div>
+                <div class="mb-2">
+                    <label class="form-label small" for="memoryExtraSelect">Modul lain <span class="text-secondary">(opsional, maksimal 3)</span></label>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <div class="d-flex flex-wrap gap-1" id="memoryExtraModules"></div>
+                        <select class="form-select form-select-sm w-auto" id="memoryExtraSelect"></select>
+                    </div>
+                    <div class="form-text">Modul lain yang juga dibahas memory ini. Filter modul dan pencarian planner ikut menemukan memory ini lewat modul-modul tersebut.</div>
                 </div>
                 <div class="mb-2">
                     <span class="form-label small d-block">Layer</span>

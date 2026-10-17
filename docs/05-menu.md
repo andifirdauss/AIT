@@ -95,8 +95,8 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
 solution/build yang ditemukan di dalam project, sesi Claude Code (id sesi, jumlah thread, terakhir aktif), thread
 project ini, dan tautan ke memory-nya. Di bawah thread:
 
-- **Modul**: daftar modul project (deskripsi, alias, jumlah memory dan file). *Atur* mengubah deskripsi/alias atau
-  menggabungkan modul ke modul lain; *Cek modul ganda* mencari modul yang terpisah tidak sengaja. Lihat
+- **Modul**: daftar modul project (deskripsi, alias, jumlah memory dan file). *Atur* mengganti nama (termasuk huruf
+  besar/kecil), mengubah deskripsi/alias, atau menggabungkan modul ke modul lain; *Cek modul ganda* mencari modul yang terpisah tidak sengaja. Lihat
   [Daftar modul & gabung modul](06-memory.md#daftar-modul--gabung-modul).
 - **Peta kode**: modul, layer, area, dan sumber (aturan/AI/manual) tiap file, dengan pencarian dan filter modul.
   *Ubah* / *Atur file* (path atau nama class) menyimpan koreksi manual; *Scan* memetakan file yang belum terpetakan.
@@ -118,10 +118,13 @@ Tab *Short & long memory*:
 - **Filter**: level, tipe, project, pencarian label/deskripsi, modul (project terpilih + knowledge), layer, jenis,
   berlabel/belum. Datang dari halaman project? Filter project sudah terisi.
 - **Tabel**: level (short menampilkan perkiraan sisa jam sebelum pindah ke DB), tipe, project, label
-  `Modul · Layer · Jenis` + keyword sebagai chip (memory lama: tanda *belum berlabel* + label lamanya) dan cuplikan
+  sebagai satu tag bersegmen `Modul | Modul lain | Layer | Jenis` diikuti `#keyword` (memory lama: tanda *belum
+  berlabel* + label lamanya) dan cuplikan
   deskripsi, waktu dibuat & tautan thread sumber, jumlah dipakai (long memory).
 - **Aksi**: *Buka* (lihat/ubah), *→ DB* (pindahkan short ke long sekarang), *Hapus*.
-- **Tambah memory / Buka**: tipe, project, modul (saran dari daftar modul), jenis, area (opsional), layer (centang),
+- **Tambah memory / Buka**: tipe, project, modul (dropdown daftar modul; *＋ Modul baru…* menambah nama baru yang
+  dibuat saat disimpan; *Ubah nama* mengganti nama modul terpilih di semua memory, peta kode, dan wiki), modul lain
+  (opsional, maks 3, dipilih dari dropdown yang sama dan tampil sebagai chip), jenis, area (opsional), layer (centang),
   keyword (dipisah koma, maks 16, dihitung), deskripsi. Knowledge memory tidak terikat project dan hanya boleh jenis
   Pitfall/Pattern/Architecture. Entri baru masuk sebagai short memory.
 - **Konsolidasi sekarang**: memindahkan semua short memory yang sudah melewati masa simpan.

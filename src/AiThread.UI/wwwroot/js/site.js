@@ -35,14 +35,18 @@
   api.put = (url, body) => api('PUT', url, body ?? {});
   api.del = url => api('DELETE', url);
 
+  // A neutral notification card; the type shows as an accent stripe and icon (site.css .app-toast), so the red close
+  // button never sits on a colored background.
+  const toastIcons = { success: '✓', error: '✕', warning: '!', info: 'i' };
+
   function toast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    const color = { success: 'text-bg-success', error: 'text-bg-danger', warning: 'text-bg-warning', info: 'text-bg-primary' }[type] || 'text-bg-secondary';
+    if (!toastIcons[type]) type = 'info';
     const element = document.createElement('div');
-    element.className = `toast align-items-center border-0 ${color}`;
+    element.className = `toast app-toast app-toast-${type}`;
     element.setAttribute('role', 'status');
-    element.innerHTML = `<div class="win-dismissible ps-3">${winControls({ kind: 'toast' })}<div class="toast-body ps-0">${escapeHtml(message)}</div></div>`;
+    element.innerHTML = `<div class="win-dismissible">${winControls({ kind: 'toast' })}<span class="app-toast-icon" aria-hidden="true">${toastIcons[type]}</span><div class="toast-body">${escapeHtml(message)}</div></div>`;
     container.appendChild(element);
     element.addEventListener('hidden.bs.toast', () => element.remove());
     bootstrap.Toast.getOrCreateInstance(element, { delay: type === 'error' ? 7000 : 3500 }).show();

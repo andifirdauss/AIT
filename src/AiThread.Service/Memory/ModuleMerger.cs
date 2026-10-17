@@ -111,6 +111,72 @@ public sealed class ModuleMerger(
         ModuleMergeLog NewLog() => new() { Id = Guid.NewGuid(), ProjectKey = key, CreatedAt = DateTime.UtcNow };
     }
 
+    // Gives a module another name, or only another casing ("Klaimdf" → "KlaimDF"): the registry, redirects of merged
+    // modules, merge history, code map, memories (main or extra module) and business pages follow. A different name
+    // keeps the old one as an alias, so a model that still writes it lands on the renamed module. Returns the new name.
+    public async Task<string> RenameAsync(string key, string name, string newName, string decidedBy, CancellationToken cancellationToken)
+    {
+        var target = MemoryLabels.Module(newName) ?? throw new AppValidationException("Nama modul baru wajib diisi.");
+        string from;
+        await using (var catalog = await longStore.CreateCatalogAsync(cancellationToken))
+        {
+            var modules = await catalog.ProjectModules.Where(m => m.ProjectKey == key).ToListAsync(cancellationToken);
+            var source = modules.FirstOrDefault(m => m.MergedInto is null && string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
+                         ?? throw new AppValidationException($"Modul '{name}' tidak ditemukan.");
+            from = source.Name;
+            if (from == target) return target;
+
+            // SameName also covers case, separators and plurals, so the new name cannot shadow another module.
+            var compact = MemoryLabels.Compact(target);
+            if (modules.FirstOrDefault(m => m.Id != source.Id && (MemoryLabels.SameName(m.Name, target)
+                    || MemoryLabels.SplitCsv(m.Aliases).Any(a => MemoryLabels.SameName(a, target)))) is { } taken)
+                throw new AppValidationException($"Nama '{target}' sudah dipakai modul {taken.MergedInto ?? taken.Name}. Gabungkan lewat Merge bila keduanya sama.");
+
+            source.Name = target;
+            source.Aliases = MemoryLabels.JoinCsv(MemoryLabels.SplitCsv(source.Aliases).Where(a => !string.Equals(a, target, StringComparison.OrdinalIgnoreCase)));
+            if (MemoryLabels.Compact(from) != compact) ModuleRegistry.MergeAliases(source, [from]);
+            source.UpdatedAt = DateTime.UtcNow;
+            foreach (var redirect in modules.Where(m => m.MergedInto == from)) redirect.MergedInto = target;
+
+            var logs = await catalog.ModuleMergeLogs.Where(l => l.ProjectKey == key && (l.FromModule == from || l.IntoModule == from)).ToListAsync(cancellationToken);
+            foreach (var log in logs)
+            {
+                if (log.FromModule == from) log.FromModule = target;
+                if (log.IntoModule == from) log.IntoModule = target;
+            }
+
+            var mapRows = await catalog.CodeMapEntries.Where(e => e.ProjectKey == key && e.Module == from).ToListAsync(cancellationToken);
+            foreach (var row in mapRows)
+            {
+                row.Module = target;
+                row.UpdatedAt = DateTime.UtcNow;
+            }
+            await catalog.SaveChangesAsync(cancellationToken);
+        }
+
+        var knowledge = key == MemoryLabels.KnowledgeKey;
+        List<Guid> memories = [];
+        await MoveLongAsync(key, knowledge, from, target, null, memories, cancellationToken);
+        await MoveShortAsync(key, knowledge, from, target, null, memories);
+        if (!knowledge)
+        {
+            try
+            {
+                await using var business = await businessStore.CreateAsync(cancellationToken);
+                await business.BusinessPages.Where(p => p.ProjectKey == key && p.Module == from)
+                    .ExecuteUpdateAsync(s => s.SetProperty(p => p.Module, target), cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Could not rename the module of business pages from {From} to {Into}.", from, target);
+            }
+        }
+
+        activityLog.Info("memory", $"Modul {from} diganti nama menjadi {target} ({decidedBy}): {memories.Count} memory ikut diperbarui.");
+        Publish("renamed", key);
+        return target;
+    }
+
     public async Task UndoAsync(Guid logId, string decidedBy, CancellationToken cancellationToken)
     {
         ModuleMergeLog log;
@@ -281,6 +347,18 @@ public sealed class ModuleMerger(
             log.DecidedAt, (moves?.LongMemories.Count ?? 0) + (moves?.ShortMemories.Count ?? 0), moves?.CodeMap.Count ?? 0, moves?.Pages.Count ?? 0);
     }
 
+    // A memory's main module or one of its extra modules is renamed; when the memory already has the target, the source
+    // name is dropped (an undo then gives the row the source back in place of the target).
+    private static (string? Module, string? ExtraModules)? Rename(string? module, string? extraCsv, string from, string into)
+    {
+        if (!MemoryLabels.HasModule(module, extraCsv, from)) return null;
+        var all = MemoryLabels.AllModules(module, MemoryLabels.SplitCsv(extraCsv))
+            .Select(m => string.Equals(m, from, StringComparison.OrdinalIgnoreCase) ? into : m)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return (all[0], MemoryLabels.JoinCsv(all.Skip(1)));
+    }
+
     // restrictTo: only these rows (an undo); moved collects the ids that changed.
     private async Task MoveLongAsync(string key, bool knowledge, string from, string into, HashSet<Guid>? restrictTo, List<Guid> moved, CancellationToken cancellationToken)
     {
@@ -288,14 +366,19 @@ public sealed class ModuleMerger(
         {
             await using var db = await longStore.CreateAsync(cancellationToken);
             var query = knowledge
-                ? db.LongMemories.Where(m => m.Type == MemoryType.Knowledge && m.Module == from)
-                : db.LongMemories.Where(m => m.ProjectKey == key && m.Type != MemoryType.Knowledge && m.Module == from);
-            var rows = await query.ToListAsync(cancellationToken);
+                ? db.LongMemories.Where(m => m.Type == MemoryType.Knowledge)
+                : db.LongMemories.Where(m => m.ProjectKey == key && m.Type != MemoryType.Knowledge);
+            var rows = await query.Where(m => m.Module == from || (m.ExtraModules != null && ("," + m.ExtraModules + ",").Contains("," + from + ",")))
+                .ToListAsync(cancellationToken);
             foreach (var row in rows.Where(r => restrictTo is null || restrictTo.Contains(r.Id)))
             {
-                row.Module = into;
+                if (Rename(row.Module, row.ExtraModules, from, into) is not { } renamed) continue;
+                var (module, extra) = renamed;
+                row.Module = module;
+                row.ExtraModules = extra;
                 if (row.Kind is { } kind)
-                    row.Label = MemoryLabels.Compose(MemoryLabels.Display(row.Area, into, MemoryLabels.ParseLayers(row.Layers), kind), MemoryLabels.SplitCsv(row.Keywords));
+                    row.Label = MemoryLabels.Compose(MemoryLabels.Display(row.Area, module!, MemoryLabels.ParseLayers(row.Layers), kind, MemoryLabels.SplitCsv(extra)),
+                        MemoryLabels.SplitCsv(row.Keywords));
                 row.UpdatedAt = DateTime.UtcNow;
                 moved.Add(row.Id);
             }
@@ -313,15 +396,18 @@ public sealed class ModuleMerger(
         try
         {
             var records = (await shortStore.GetAllAsync())
-                .Where(r => r.Module == from && (knowledge ? r.Type == MemoryType.Knowledge : r.ProjectKey == key && r.Type != MemoryType.Knowledge))
+                .Where(r => knowledge ? r.Type == MemoryType.Knowledge : r.ProjectKey == key && r.Type != MemoryType.Knowledge)
                 .Where(r => restrictTo is null || restrictTo.Contains(r.Id))
                 .ToList();
             foreach (var record in records)
             {
+                if (Rename(record.Module, record.ExtraModules, from, into) is not { } renamed) continue;
+                var (module, extra) = renamed;
                 var label = record.Kind is { } kind
-                    ? MemoryLabels.Compose(MemoryLabels.Display(record.Area, into, MemoryLabels.ParseLayers(record.Layers), kind), MemoryLabels.SplitCsv(record.Keywords))
+                    ? MemoryLabels.Compose(MemoryLabels.Display(record.Area, module!, MemoryLabels.ParseLayers(record.Layers), kind, MemoryLabels.SplitCsv(extra)),
+                        MemoryLabels.SplitCsv(record.Keywords))
                     : record.Label;
-                await shortStore.SaveAsync(record with { Module = into, Label = label });
+                await shortStore.SaveAsync(record with { Module = module, ExtraModules = extra, Label = label });
                 moved.Add(record.Id);
             }
         }

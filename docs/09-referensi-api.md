@@ -110,7 +110,7 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (maks 200) |
 | `GET` | `/api/memory/stats` | — (+ `unlabeledCount`, `reviewCount`) |
 | `GET` | `/api/memory/{level}/{id}` | — |
-| `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → short memory. `module`, `kind`, minimal satu keyword (maks 16), dan `description` wajib; knowledge hanya `Pitfall`/`Pattern`/`Architecture`. Modul dicocokkan ke daftar modul (nama/alias/jamak) atau ditambahkan; semua dinormalisasi PascalCase |
+| `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "extraModules": ["Invoice"], "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → short memory. `module`, `kind`, minimal satu keyword (maks 16), dan `description` wajib; `extraModules` opsional (maks 3); knowledge hanya `Pitfall`/`Pattern`/`Architecture`. Modul dicocokkan ke daftar modul (nama/alias/jamak) atau ditambahkan; semua dinormalisasi PascalCase (singkatan kapital pada nama modul dipertahankan: `MKPP`, `KlaimDF`). Respons memory memuat `extraModules[]`; filter `module` di `GET /api/memory` ikut mencocokkan modul lain |
 | `PUT` | `/api/memory/{level}/{id}` | sama dengan POST; memory yang belum berlabel jadi berlabel (label lama disimpan di `legacyLabel`) |
 | `DELETE` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory/{id}/promote` | — (short → long) |
@@ -118,7 +118,7 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `GET` | `/api/memory/export` | `level`, `type`, `projectId`, `search` → file JSON `aithread-memory` (lihat [Memory](06-memory.md#export--import)) |
 | `POST` | `/api/memory/import` | body = file export (v1 atau v2); query `mode` (`Skip` default / `Overwrite`), `dryRun` (`true` = hanya ringkasan) |
 | `GET` | `/api/memory/modules?projectId=&knowledge=false` | daftar modul: `name`, `aliases[]`, `description`, `memories`, `files` (`knowledge=true` = modul knowledge memory) |
-| `PUT` | `/api/memory/modules/{name}?projectId=&knowledge=` | `{ "description": "...", "aliases": ["Pengguna"] }` |
+| `PUT` | `/api/memory/modules/{name}?projectId=&knowledge=` | `{ "name": "KlaimDF", "description": "...", "aliases": ["Pengguna"] }`; semua field opsional. `name` mengganti nama modul (boleh hanya huruf besar/kecil): memory, peta kode, dan wiki ikut; nama yang dipakai modul lain ditolak |
 | `POST` | `/api/memory/modules/merge?knowledge=` | `{ "projectId": "...", "from": "Pengguna", "into": "User" }` → riwayat merge |
 | `POST` | `/api/memory/modules/check?projectId=&knowledge=` | cek modul ganda sekarang → jumlah merge + saran |
 | `GET` | `/api/memory/merges?projectId=&knowledge=` | riwayat: `from`, `into`, `status` (`Applied`/`Undone`/`Suggested`/`Rejected`), `reason`, `confidence`, `decidedBy`, jumlah `memories`/`files`/`pages` |

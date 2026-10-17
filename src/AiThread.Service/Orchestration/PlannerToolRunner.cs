@@ -184,7 +184,7 @@ public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeepe
             if (e.Labeled)
             {
                 var keywords = e.Keywords is { Count: > 0 } list ? " — " + string.Join(", ", list) : string.Empty;
-                return $"- {e.Id} [{level}/{type}, {e.CreatedAt:yyyy-MM-dd}] {MemoryLabels.Display(e.Area, e.Module!, e.Layers, e.Kind!.Value)}{keywords}\n";
+                return $"- {e.Id} [{level}/{type}, {e.CreatedAt:yyyy-MM-dd}] {MemoryLabels.Display(e.Area, e.Module!, e.Layers, e.Kind!.Value, e.ExtraModules)}{keywords}\n";
             }
             var tag = e.Type == MemoryType.Business ? type : $"{level}/{type}/unlabeled";
             return $"- {e.Id} [{tag}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n";

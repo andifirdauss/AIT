@@ -41,7 +41,7 @@ public static class MemoryRanker
         if (take <= 0) return [];
         IEnumerable<MemoryIndexEntry> candidates = entries.Where(e => e.Labeled);
         var narrowed = modules is { Count: > 0 };
-        if (narrowed) candidates = candidates.Where(e => modules!.Contains(e.Module!, StringComparer.OrdinalIgnoreCase));
+        if (narrowed) candidates = candidates.Where(e => e.Modules.Any(m => modules!.Contains(m, StringComparer.OrdinalIgnoreCase)));
         if (layer is { } l) candidates = candidates.Where(e => e.Layers?.Contains(l) == true);
         if (kind is { } k) candidates = candidates.Where(e => e.Kind == k);
         var list = candidates.ToList();

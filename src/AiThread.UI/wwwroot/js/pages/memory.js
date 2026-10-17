@@ -5,6 +5,7 @@
   const shortMemoryHours = 24;
   const pageSize = 30;
   const maxKeywords = 16;
+  const maxExtraModules = 3;
   const items = new Map();
   let page = 1;
   let total = 0;
@@ -18,11 +19,28 @@
     return (values || []).map(k => `<span class="chip">${escapeHtml(k)}</span>`).join('');
   }
 
-  // Labeled: "Module · Layers · Kind" then the keywords. Unlabeled (older versions): the free label, until the
-  // relabeling worker (or a save from the form) gives it a label.
+  // One segmented tag: [Area] Module(s) | Layers | Kind, the parts of MemoryLabels.Display. Every module of a memory
+  // gets its own segment, the main one first.
+  function labelTag(m) {
+    const part = (text, cls = '') => `<span class="mem-tag-part ${cls}">${escapeHtml(text)}</span>`;
+    const layers = (m.layers || []).join('/');
+    return `<span class="mem-tag" title="${escapeHtml(m.label)}">`
+      + (m.area ? part(m.area, 'mem-tag-area') : '')
+      + [m.module, ...(m.extraModules || [])].map(name => part(name, 'mem-tag-module')).join('')
+      + (layers ? part(layers) : '')
+      + part(m.kind, 'mem-tag-kind')
+      + '</span>';
+  }
+
+  function keywords(values) {
+    return (values || []).map(k => `<span class="mem-kw">${escapeHtml(k)}</span>`).join('');
+  }
+
+  // Labeled: the tag then the keywords. Unlabeled (older versions): the free label, until the relabeling worker (or a
+  // save from the form) gives it a label.
   function labelCell(m) {
     if (m.labeled) {
-      return `<div><span class="badge text-bg-light border me-1">${escapeHtml(m.label)}</span>${chips(m.keywords)}</div>`;
+      return `<div class="mem-label">${labelTag(m)}${keywords(m.keywords)}</div>`;
     }
     const old = m.label.split(',').map(k => k.trim()).filter(Boolean);
     const review = m.reviewReason ? `<div class="small text-warning">Perlu review: ${escapeHtml(m.reviewReason)}</div>` : '';
@@ -173,27 +191,114 @@
     return el('memoryKeywords').value.split(',').map(k => k.trim()).filter(Boolean);
   }
 
+  // --- Module fields: a dropdown of the key's modules; a new name is created on save, a rename applies right away ---
+
+  const newModuleValue = '__new__';
+  let formModules = [];
+  let extraModules = [];
+  let moduleEditMode = null; // 'new' | 'extra' | 'rename'
+
+  function sameModule(a, b) {
+    return (a || '').toLowerCase() === (b || '').toLowerCase();
+  }
+
+  function renderModuleSelect(selected) {
+    const names = formModules.map(m => m.name);
+    if (selected && !names.some(n => sameModule(n, selected))) names.push(selected);
+    const option = name => {
+      const info = formModules.find(m => m.name === name);
+      const hint = info ? [info.description, info.aliases.join(', ')].filter(Boolean).join(' · ') : '';
+      return `<option value="${escapeHtml(name)}" title="${escapeHtml(hint)}">${escapeHtml(name)}</option>`;
+    };
+    el('memoryModule').innerHTML = '<option value="" disabled>Pilih modul…</option>'
+      + names.sort((a, b) => a.localeCompare(b)).map(option).join('')
+      + `<option value="${newModuleValue}">＋ Modul baru…</option>`;
+    el('memoryModule').value = names.find(n => sameModule(n, selected)) || '';
+    el('btnModuleRename').disabled = !formModules.some(m => m.name === el('memoryModule').value);
+  }
+
+  function renderExtraModules() {
+    const main = el('memoryModule').value;
+    extraModules = extraModules.filter(name => !sameModule(name, main));
+    el('memoryExtraModules').innerHTML = extraModules.map(name => `<span class="mem-chip">${escapeHtml(name)}`
+      + `<button type="button" class="mem-chip-remove" data-remove-extra="${escapeHtml(name)}" title="Lepas ${escapeHtml(name)}" aria-label="Lepas ${escapeHtml(name)}">×</button></span>`).join('');
+    const available = formModules.map(m => m.name).filter(name => !sameModule(name, main) && !extraModules.some(e => sameModule(e, name)));
+    const full = extraModules.length >= maxExtraModules;
+    el('memoryExtraSelect').innerHTML = `<option value="">${full ? 'Sudah 3 modul' : '＋ Tambah modul lain'}</option>`
+      + (full ? '' : available.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')
+        + `<option value="${newModuleValue}">＋ Modul baru…</option>`);
+    el('memoryExtraSelect').disabled = full;
+  }
+
+  function openModuleEdit(mode) {
+    moduleEditMode = mode;
+    el('memoryModuleEditLabel').textContent = mode === 'rename' ? `Ubah nama ${el('memoryModule').value}` : mode === 'extra' ? 'Modul lain baru' : 'Modul baru';
+    el('memoryModuleName').value = mode === 'rename' ? el('memoryModule').value : '';
+    el('memoryModuleEdit').classList.remove('d-none');
+    el('memoryModuleName').focus();
+  }
+
+  function closeModuleEdit() {
+    moduleEditMode = null;
+    el('memoryModuleEdit').classList.add('d-none');
+  }
+
+  function moduleScope() {
+    const knowledge = el('memoryType').value === 'Knowledge';
+    const params = new URLSearchParams({ knowledge });
+    if (!knowledge && el('memoryProject').value) params.set('projectId', el('memoryProject').value);
+    return params;
+  }
+
+  async function saveModuleEdit() {
+    const name = el('memoryModuleName').value.trim();
+    if (!name) {
+      el('memoryModuleName').focus();
+      return;
+    }
+    if (moduleEditMode === 'new') {
+      renderModuleSelect(name);
+      renderExtraModules();
+    } else if (moduleEditMode === 'extra') {
+      if (!extraModules.some(e => sameModule(e, name)) && !sameModule(name, el('memoryModule').value)) extraModules.push(name);
+      renderExtraModules();
+    } else if (moduleEditMode === 'rename') {
+      const old = el('memoryModule').value;
+      try {
+        const module = await api.put(`/api/memory/modules/${encodeURIComponent(old)}?${moduleScope()}`, { name });
+        extraModules = extraModules.map(e => sameModule(e, old) ? module.name : e);
+        await syncModuleList(module.name);
+        toast(`Modul ${old} → ${module.name}.`);
+        refreshAll();
+      } catch (error) {
+        toast(error.message, 'error');
+        return;
+      }
+    }
+    closeModuleEdit();
+  }
+
   function syncKeywordCount() {
     const count = keywordList().length;
     el('memoryKeywordCount').textContent = `(${count}/${maxKeywords})`;
     el('memoryKeywordCount').className = count > maxKeywords ? 'text-danger' : 'text-secondary';
   }
 
-  async function syncModuleList() {
+  async function syncModuleList(selected = el('memoryModule').value) {
     const knowledge = el('memoryType').value === 'Knowledge';
-    const modules = await modulesOf(knowledge ? null : el('memoryProject').value, knowledge);
-    el('memoryModuleList').innerHTML = modules
-      .map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml([m.description, m.aliases.join(', ')].filter(Boolean).join(' · '))}</option>`)
-      .join('');
+    formModules = await modulesOf(knowledge ? null : el('memoryProject').value, knowledge);
+    renderModuleSelect(selected === newModuleValue ? '' : selected);
+    renderExtraModules();
   }
 
-  function syncProjectField() {
+  function syncProjectField(selected) {
     const knowledge = el('memoryType').value === 'Knowledge';
     el('memoryProject').disabled = knowledge;
     // Knowledge memory is never project specific: business rules, flows and conventions are project memory.
     [...el('memoryKind').options].forEach(o => { o.disabled = knowledge && !['Pitfall', 'Pattern', 'Architecture'].includes(o.value); });
     if (el('memoryKind').selectedOptions[0]?.disabled) el('memoryKind').value = 'Pattern';
-    syncModuleList();
+    closeModuleEdit();
+    syncModuleList(selected);
   }
 
   function openModal(memory) {
@@ -201,7 +306,7 @@
     el('memoryLevel').value = memory?.level || '';
     el('memoryType').value = memory?.type || 'Project';
     el('memoryProject').value = memory?.projectId || el('filterProject').value || (projects[0]?.id ?? '');
-    el('memoryModule').value = memory?.module || '';
+    extraModules = [...(memory?.extraModules || [])];
     el('memoryKind').value = memory?.kind || 'Rule';
     el('memoryArea').value = memory?.area || '';
     document.querySelectorAll('#memoryLayers input').forEach(box => { box.checked = (memory?.layers || []).includes(box.value); });
@@ -217,7 +322,7 @@
     el('memoryMeta').textContent = memory
       ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? ` · dipindah ke DB ${fmt.dateTime(memory.promotedAt)}` : ''}${memory.reviewReason ? ` · perlu review: ${memory.reviewReason}` : ''}`
       : '';
-    syncProjectField();
+    syncProjectField(memory?.module || '');
     syncKeywordCount();
     modal.show();
   }
@@ -229,12 +334,17 @@
       toast(`Maksimal ${maxKeywords} keyword.`, 'error');
       return;
     }
+    if (!el('memoryModule').value || el('memoryModule').value === newModuleValue) {
+      toast('Pilih modul dulu.', 'error');
+      return;
+    }
     const id = el('memoryId').value;
     const type = el('memoryType').value;
     const body = {
       type,
       projectId: type === 'Knowledge' ? null : (el('memoryProject').value || null),
-      module: el('memoryModule').value.trim(),
+      module: el('memoryModule').value,
+      extraModules,
       kind: el('memoryKind').value,
       keywords,
       layers: [...document.querySelectorAll('#memoryLayers input:checked')].map(box => box.value),
@@ -486,6 +596,7 @@
 
   function refreshAll() {
     load();
+    loadModuleFilter();
     loadStats();
     loadRelabel();
     if (reviewLoaded) loadReview();
@@ -493,8 +604,47 @@
 
   const resetAndLoad = () => { page = 1; load(); };
   el('btnAdd').addEventListener('click', () => openModal(null));
-  el('memoryType').addEventListener('change', syncProjectField);
-  el('memoryProject').addEventListener('change', syncModuleList);
+  el('memoryType').addEventListener('change', () => syncProjectField(el('memoryModule').value));
+  el('memoryProject').addEventListener('change', () => syncModuleList());
+  el('memoryModule').addEventListener('change', () => {
+    closeModuleEdit();
+    if (el('memoryModule').value === newModuleValue) {
+      el('memoryModule').value = '';
+      el('btnModuleRename').disabled = true;
+      openModuleEdit('new');
+      return;
+    }
+    el('btnModuleRename').disabled = !formModules.some(m => m.name === el('memoryModule').value);
+    renderExtraModules();
+  });
+  el('btnModuleRename').addEventListener('click', () => openModuleEdit('rename'));
+  el('memoryExtraSelect').addEventListener('change', () => {
+    const value = el('memoryExtraSelect').value;
+    if (value === newModuleValue) openModuleEdit('extra');
+    else if (value) extraModules.push(value);
+    renderExtraModules();
+  });
+  el('memoryExtraModules').addEventListener('click', event => {
+    const button = event.target.closest('[data-remove-extra]');
+    if (!button) return;
+    extraModules = extraModules.filter(name => name !== button.dataset.removeExtra);
+    renderExtraModules();
+  });
+  el('btnModuleNameSave').addEventListener('click', saveModuleEdit);
+  el('btnModuleNameCancel').addEventListener('click', () => {
+    if (moduleEditMode === 'new') renderModuleSelect('');
+    closeModuleEdit();
+  });
+  el('memoryModuleName').addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveModuleEdit();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeModuleEdit();
+    }
+  });
   el('memoryKeywords').addEventListener('input', syncKeywordCount);
   ['filterLevel', 'filterType', 'filterModule', 'filterLayer', 'filterKind', 'filterLabeled'].forEach(id => el(id).addEventListener('change', resetAndLoad));
   el('filterProject').addEventListener('change', () => { loadModuleFilter(); resetAndLoad(); });

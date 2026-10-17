@@ -37,7 +37,8 @@ public record MemoryExportItem(
     MemoryKind? Kind = null,
     string? Area = null,
     IReadOnlyList<string>? Keywords = null,
-    string? LegacyLabel = null);
+    string? LegacyLabel = null,
+    IReadOnlyList<string>? ExtraModules = null);
 
 public enum MemoryImportMode
 {
