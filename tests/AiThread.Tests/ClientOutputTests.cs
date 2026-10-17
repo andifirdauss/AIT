@@ -67,6 +67,18 @@ public class ClientOutputTests
     }
 
     [Fact]
+    public void Label_line_names_the_module_layers_of_the_prompt_files_and_the_memories_found()
+    {
+        var codeMap = new[] { "Thread", "Thread", "Memory", "Node", "Skill", "Proxy" }
+            .Select((module, i) => new AiThread.Service.Memory.CodeMapHit($"src/F{i}.cs", module, i == 2 ? MemoryLayer.Data : MemoryLayer.Logic, null, CodeMapSource.Heuristic))
+            .ToList();
+
+        Assert.Equal("🔖 Label · 6 file → Thread·Logic, Memory·Data, Node·Logic, Skill·Logic, +1 lainnya · 14 memory relevan",
+            PlannerAgent.LabelLine(codeMap, 14));
+        Assert.Equal("🔖 Label · belum ada memory relevan", PlannerAgent.LabelLine(null, 0));
+    }
+
+    [Fact]
     public void Wrap_keeps_lines_within_the_width_with_the_tree_prefix()
     {
         var text = string.Join(' ', Enumerable.Repeat("kata", 40));
