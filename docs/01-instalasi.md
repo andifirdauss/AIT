@@ -7,7 +7,7 @@
 | .NET SDK 10 | Ya | `dotnet --list-sdks` | Solusi menargetkan `net10.0`. |
 | SQL Server | Ya | `sqllocaldb info` | Default memakai LocalDB `(localdb)\MSSQLLocalDB` (terpasang bersama Visual Studio). |
 | Redis / Docker | Tidak | — | Short memory memakai Garnet yang berjalan di dalam AIT (lihat langkah 1). |
-| Node.js + 9router | Ya | `9router --help` | Sumber semua model AI. |
+| Node.js + 9router | Ya | `node --version` | Sumber semua model AI. Node.js 18+ wajib; 9router ikut terpasang lewat npm `aithread` dan dinyalakan AIT (lihat langkah 2). |
 | Git | Disarankan | `git --version` | Executor menulis langsung ke file project; git memudahkan meninjau/membatalkan. |
 
 ## 1. Short memory (Garnet)
@@ -37,6 +37,17 @@ container hidup ±24 jam agar worker memindahkannya). Setelah itu: `docker rm -f
 npm install -g 9router
 9router --no-browser        # atau cukup: 9router
 ```
+
+Langkah di atas opsional bila AIT dipasang lewat npm (`npm i -g aithread`): paket itu bergantung pada `9router`, dan
+saat start AIT menyalakan 9router sendiri bila belum berjalan.
+
+| Perilaku | Penjelasan |
+|---|---|
+| Kapan dinyalakan | Sekali saat AIT start, bila 9router *Offline* dan Base URL di Setting alamat lokal (`localhost`, `127.0.0.1`, `[::1]`). Port diambil dari URL itu. Bila 9router mati belakangan, AIT hanya melaporkannya (mungkin sengaja ditutup); klik **Jalankan 9router** di Dashboard untuk menyalakan ulang. |
+| 9router mana | Urutan: `NineRouter:CliPath` → 9router global npm (`npm i -g 9router`, biasanya versi terbaru) → salinan di dalam paket `aithread`. Jadi menghapus 9router global tidak mematikan fitur ini. |
+| Cara jalan | `node cli.js --tray --no-browser --skip-update -p <port>`, sama dengan *Hide to Tray* milik 9router: tanpa jendela, ikon tray 9router muncul. Output ke `%LOCALAPPDATA%\AiThread\logs\9router.log`. Tetap hidup walau AIT berhenti, kecuali `NineRouter:StopOnExit` = `true`. |
+| Port terpakai | Saat start, 9router mematikan proses lain di port-nya. Karena itu AIT tidak menyalakan 9router bila port itu sudah dipakai program lain yang tidak menjawab sebagai 9router. |
+| Belum terpasang | Tidak ada 9router sama sekali (mis. exe standalone tanpa npm): tombol **Jalankan 9router** di Dashboard menjalankan `npm install -g 9router` lalu menyalakannya. Saat start, pemasangan otomatis hanya bila `NineRouter:AutoInstall` = `true` (sekali per proses). Butuh Node.js + npm dan internet. |
 
 1. Buka dashboard http://localhost:20128.
 2. Hubungkan minimal satu provider (menu *Providers*). Idealnya satu provider kuat untuk planner dan satu yang
@@ -109,8 +120,8 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 | Stop | Lewat `POST /api/system/shutdown`: thread yang sedang berjalan dibatalkan dan dicatat (maks. ±15 detik), lalu proses keluar. Bila tidak berhenti dalam 45 detik, proses dihentikan paksa. |
 | Mati mendadak | Logoff, crash, atau dihentikan paksa: saat start berikutnya, thread yang tertinggal ditandai *Cancelled* dengan pesan *AIT berhenti saat thread ini berjalan.* |
 
-9router tetap dijalankan terpisah dan harus hidup; AIT menyambung ulang otomatis bila 9router baru menyala
-setelah AIT. Short memory (Garnet) ikut berjalan di dalam proses AIT.
+9router berjalan sebagai proses terpisah. AIT menyalakannya saat start bila belum hidup (lihat langkah 2), dan
+menyambung ulang otomatis bila 9router baru menyala setelah AIT. Short memory (Garnet) ikut berjalan di dalam proses AIT.
 
 ## 6. AiThread.exe standalone (tanpa .NET)
 
@@ -121,7 +132,8 @@ Untuk dipakai tanpa .NET SDK atau `dotnet run`, buat `AiThread.exe` self-contain
 ```
 
 Folder `dist\AiThread` berisi `AiThread.exe`, `appsettings.json` (boleh diubah, mis. connection string),
-`wwwroot\` dan `docs\`; salin seluruh folder ke komputer lain. SQL Server (LocalDB) dan 9router tetap diperlukan.
+`wwwroot\` dan `docs\`; salin seluruh folder ke komputer lain. SQL Server (LocalDB) dan Node.js tetap diperlukan;
+9router dipasang dengan `npm i -g 9router` atau tombol **Jalankan 9router** di Dashboard.
 Jalankan `AiThread.exe` tanpa argumen untuk **menu interaktif**; server berjalan di jendela itu, lognya ke file:
 
 | Menu | Fungsi |
@@ -160,7 +172,7 @@ instance kedua mendeteksi yang pertama dan hanya membuka dashboard.
 ### Lewat npm
 
 `.\scripts\publish-npm.ps1` membuat dua paket di `dist\npm`: `aithread-win-x64` (berisi `AiThread.exe`, ±60 MB) dan
-`aithread` (launcher kecil, `optionalDependencies` ke paket platform). Pasang dengan
+`aithread` (launcher kecil, `optionalDependencies` ke paket platform, `dependencies` ke `9router`). Pasang dengan
 `npm i -g dist\npm\aithread-win-x64-<versi>.tgz dist\npm\aithread-<versi>.tgz`, lalu jalankan `aithread` (perintah dan
 opsinya sama dengan exe). `-Publish` menjalankan `npm publish` untuk kedua paket; versi diambil dari `<Version>` di
 `AiThread.UI.csproj`. Hanya Windows x64.
@@ -196,6 +208,12 @@ Bagian `AiThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di
 | `EmbeddedRedis:DataDirectory` | *(kosong)* | Lokasi data Garnet. Kosong = `%LOCALAPPDATA%\AiThread\garnet\<port>`. |
 | `EmbeddedRedis:MemorySize` | `16m` | Batas RAM log Garnet. Record tertua di luar batas ini dibuang, jadi jangan diperkecil (satu short memory ±1 KB). |
 | `EmbeddedRedis:CheckpointIntervalMinutes` | `60` | Interval checkpoint yang memangkas *append-only file*. |
+| `NineRouter:AutoStart` | `true` | Nyalakan 9router lokal saat AIT start bila belum berjalan (lihat [langkah 2](#2-9router)). |
+| `NineRouter:AutoInstall` | `false` | Saat start, jalankan `npm install -g 9router` bila 9router tidak ditemukan. Tombol *Jalankan 9router* selalu boleh memasang. |
+| `NineRouter:StopOnExit` | `false` | Hentikan 9router yang dinyalakan AIT ketika AIT berhenti. 9router yang Anda jalankan sendiri tidak pernah dihentikan. |
+| `NineRouter:StartTimeoutSeconds` | `90` | Batas tunggu 9router menjawab setelah dinyalakan (start pertama ikut menyiapkan runtime SQLite-nya). |
+| `NineRouter:InstallTimeoutSeconds` | `300` | Batas waktu `npm install -g 9router`. |
+| `NineRouter:NodePath` / `NineRouter:CliPath` | *(kosong)* | Path `node.exe` / `cli.js` 9router tertentu. Kosong = cari di PATH, folder global npm, dan paket `aithread`. |
 
 Restart aplikasi setelah mengubah `appsettings.json`.
 

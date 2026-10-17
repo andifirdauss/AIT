@@ -54,7 +54,8 @@ serta perbandingan "waktu nyata" vs "jika sekuensial".
 
 - .NET SDK 10
 - SQL Server — default ke LocalDB `(localdb)\MSSQLLocalDB` (ubah `ConnectionStrings:Default` bila perlu)
-- 9router — `npm install -g 9router` lalu `9router` (dashboard di http://localhost:20128)
+- Node.js 18+ dan 9router — ikut terpasang lewat `npm i -g aithread` dan dinyalakan otomatis oleh AIT bila belum
+  berjalan; tanpa npm `aithread`: `npm install -g 9router` (dashboard di http://localhost:20128)
 
 Redis/Docker tidak diperlukan: short memory memakai [Garnet](https://microsoft.github.io/garnet/) (server protokol
 Redis dari Microsoft) yang berjalan di dalam proses AIT — lihat

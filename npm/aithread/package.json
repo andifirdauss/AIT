@@ -29,6 +29,9 @@
     "cpu":  [
                 "x64"
             ],
+    "dependencies":  {
+                         "9router":  "^0.5.104"
+                     },
     "optionalDependencies":  {
                                  "aithread-win-x64":  "1.6.0"
                              }

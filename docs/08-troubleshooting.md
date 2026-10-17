@@ -6,8 +6,14 @@ halaman detail thread → *Aktivitas*.
 ## 9router
 
 **Kartu 9router *Offline*: "No connection could be made…" / "Timeout (5 detik)"**
-9router tidak berjalan atau URL salah. Jalankan `9router`, pastikan dashboard terbuka di URL yang sama dengan
-Setting → Base URL, lalu *Test koneksi*.
+9router tidak berjalan atau URL salah. Klik **Jalankan 9router** di Dashboard (atau jalankan `9router`), pastikan
+dashboard terbuka di URL yang sama dengan Setting → Base URL, lalu *Test koneksi*.
+
+**AIT tidak menyalakan 9router saat start**
+Lihat log kategori *9router* di Dashboard. Penyebab umum: Base URL bukan alamat lokal; *Node.js tidak ditemukan*
+(pasang Node.js 18+); *9router belum terpasang* (klik **Jalankan 9router**, atau set `AiThread:NineRouter:AutoInstall`);
+*Port … sudah dipakai* oleh program lain (ganti port 9router dan Base URL, atau hentikan program itu); atau 9router
+berhenti saat dinyalakan, yang detailnya ada di `%LOCALAPPDATA%\AiThread\logs\9router.log`.
 
 **"9router HTTP 401 untuk model '…': Missing API key" padahal Setting terlihat terhubung**
 Belum ada API key **tersimpan**. *Test koneksi* hanya menguji key yang diketik di form tanpa menyimpannya, dan

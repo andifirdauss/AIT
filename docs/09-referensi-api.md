@@ -112,6 +112,8 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `DELETE` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory/{id}/promote` | — (short → long) |
 | `POST` | `/api/memory/consolidate` | — (jumlah yang dipindah) |
+| `GET` | `/api/memory/export` | `level`, `type`, `projectId`, `search` → file JSON `aithread-memory` (lihat [Memory](06-memory.md#export--import)) |
+| `POST` | `/api/memory/import` | body = file export; query `mode` (`Skip` default / `Overwrite`), `dryRun` (`true` = hanya ringkasan) |
 | `GET` | `/api/settings/memory-storage` | — (`shortMemory`, `longMemory`, `businessMemory` beserta status masing-masing; password tidak pernah dikembalikan) |
 | `PUT` | `/api/settings/memory-storage` | `{ "shortMemory": {…}, "longMemory": {…}, "businessMemory": {…}, "copyExistingData": true }` — `businessMemory` boleh dihilangkan (store tidak berubah). Hasil: `settings`, `copiedShort`, `copiedLong`, `copiedBusiness`, `warnings[]` |
 | `POST` | `/api/settings/memory-storage/test` | `{ "level": "Short"\|"Long"\|"Business", "store": {…} }` |

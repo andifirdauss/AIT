@@ -26,6 +26,24 @@
         : `${status.baseUrl} — ${status.error || 'tidak terhubung'}`,
       keyWarn);
     renderRouterPill(status);
+    el('btnStartRouter').classList.toggle('d-none', status.isOnline);
+  }
+
+  // Can take minutes when 9router has to be installed first; the request waits until it answers or gives up.
+  async function startRouter() {
+    const button = el('btnStartRouter');
+    button.disabled = true;
+    button.textContent = 'Menyalakan…';
+    try {
+      const result = await api.post('/api/router/start');
+      toast(result.message, result.isOnline ? 'success' : 'warning');
+      renderRouter(await api.get('/api/router/status?refresh=true'));
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Jalankan 9router';
+    }
   }
 
   function renderSummary(summary) {
@@ -143,6 +161,7 @@
     logPaused = !logPaused;
     event.target.textContent = logPaused ? 'Lanjut' : 'Jeda';
   });
+  el('btnStartRouter').addEventListener('click', startRouter);
   el('btnRefreshRouter').addEventListener('click', async () => {
     try {
       renderRouter(await api.get('/api/router/status?refresh=true'));

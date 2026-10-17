@@ -193,7 +193,31 @@ berbagi store, jadi isinya tidak dipercaya mentah-mentah.
 - **→ DB**: pindahkan short memory ke long memory sekarang.
 - **Hapus**: hapus memory yang salah atau usang.
 - **Konsolidasi sekarang**: jalankan pemindahan short → long tanpa menunggu worker.
+- **Export / Import**: simpan memory ke file atau masukkan dari file — lihat [Export & import](#export--import).
 - Tab **Bisnis (wiki)**: halaman wiki bisnis per project — lihat [Business memory](#business-memory-wiki-bisnis).
+
+### Export & import
+
+Untuk backup, pindah mesin, atau mengirim memory satu project ke rekan tanpa store bersama. Untuk pindah store di
+mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpanan-memory).
+
+- **Export** mengunduh short dan long memory **sesuai filter** tabel (level, tipe, project, pencarian) sebagai file JSON
+  (`"format": "aithread-memory"`). Bila short memory ikut dipilih tetapi store-nya tidak terhubung, export ditolak
+  (pilih level *Long* untuk long memory saja), supaya tidak ada yang hilang diam-diam. Business memory tidak termasuk.
+- Project ditulis dengan **project key**-nya (memory lama tanpa key memakai key project-nya di mesin ini), jadi di
+  mesin lain memory masuk ke clone project yang sama walau folder root-nya berbeda.
+- **Import** memeriksa file dulu (*dry run*) dan menampilkan ringkasan: yang ditambahkan, ditimpa, sudah ada, tidak
+  valid, serta project di file dan apakah sudah terdaftar di mesin ini. Data baru ditulis setelah tombol *Import*.
+- Id memory dipertahankan: memory yang id-nya sudah ada **dilewati** (default) atau **ditimpa** (tipe, project, label,
+  deskripsi dari file). Memory dengan isi sama (project, tipe, label, deskripsi — huruf besar/kecil dan spasi
+  diabaikan) tapi id lain juga dilewati. Import aman diulang.
+- Short memory tetap short dengan waktu dibuat aslinya, lalu dipindah worker ke long memory sesuai umurnya. Bila store
+  short memory tidak terhubung, short memory dari file langsung disimpan sebagai long memory.
+- Project yang belum terdaftar: memory tetap disimpan di bawah key-nya dan muncul begitu project itu ditambahkan.
+  Project memory tanpa key dan tanpa project terdaftar menjadi knowledge memory. Key **lokal** (`local:…`) dari mesin
+  lain tidak akan cocok dengan project mana pun — beri project key bersama di mesin asal sebelum mengekspor.
+- File berisi teks biasa (deskripsi bisa memuat path, potongan kode, atau info internal). Setting koneksi store dan
+  password tidak pernah ikut. Maksimal 100.000 memory per import.
 
 Tips menulis memory manual:
 
