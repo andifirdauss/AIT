@@ -20,6 +20,32 @@ public class AiThreadOptions
     public TelegramOptions Telegram { get; set; } = new();
 
     public EmbeddedRedisOptions EmbeddedRedis { get; set; } = new();
+
+    public NineRouterLaunchOptions NineRouter { get; set; } = new();
+}
+
+// Starting (and installing) 9router for the user. Only applies when the 9router URL in Setting is a local address.
+public class NineRouterLaunchOptions
+{
+    // Start 9router when AiThread starts and finds it offline.
+    public bool AutoStart { get; set; } = true;
+
+    // Run `npm install -g 9router` when no 9router is found at startup (global npm, or the copy installed with the
+    // aithread npm package). The dashboard's "Jalankan 9router" button always may install.
+    public bool AutoInstall { get; set; }
+
+    // Stop the 9router that AiThread started when AiThread stops. A 9router started by the user is never stopped.
+    public bool StopOnExit { get; set; }
+
+    // The first start also prepares 9router's SQLite runtime, which can download packages.
+    public int StartTimeoutSeconds { get; set; } = 90;
+
+    public int InstallTimeoutSeconds { get; set; } = 300;
+
+    // Overrides; empty = search PATH, the global npm folder and the aithread npm package.
+    public string? NodePath { get; set; }
+
+    public string? CliPath { get; set; }
 }
 
 // Short memory server (Microsoft Garnet, Redis protocol) hosted inside AiThread, so no Redis/Docker install is needed.

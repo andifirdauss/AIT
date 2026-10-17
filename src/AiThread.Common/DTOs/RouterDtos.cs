@@ -20,6 +20,9 @@ public record RouterModelDto(
 
 public record TestRouterRequest(string? BaseUrl, string? ApiKey);
 
+// Outcome of asking AiThread to start 9router. Started/Installed say what AiThread did; Message is for the user.
+public record RouterLaunchResultDto(bool IsOnline, bool Started, bool Installed, string Message);
+
 // Remaining quota of one 9router provider account (connection), from 9router's GET /api/usage/{connectionId}.
 // Plan: 9router's label for the subscription (e.g. "Claude Code"); Name: the account name in the 9router dashboard.
 public record RouterQuotaDto(

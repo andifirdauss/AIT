@@ -22,6 +22,9 @@
 <div class="tab-content">
 <div class="tab-pane active" id="tab-memory-list" role="tabpanel" aria-labelledby="memory-list-tab" tabindex="0">
 <div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnExport" title="Unduh memory sesuai filter di bawah sebagai file JSON">Export</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnImport" title="Masukkan memory dari file export AIT">Import</button>
+    <input type="file" class="d-none" id="importFile" accept="application/json,.json" />
     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsolidate">Konsolidasi sekarang</button>
     <button type="button" class="btn btn-primary btn-sm" id="btnAdd">Tambah memory</button>
 </div>
@@ -243,6 +246,33 @@
                 <button type="submit" class="btn btn-primary">Simpan</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="importModalTitle">Import memory</h5>
+            </div>
+            <div class="modal-body">
+                <div class="small text-secondary mb-2" id="importFileInfo"></div>
+                <div class="mb-3">
+                    <label class="form-label small" for="importMode">Memory dengan id yang sudah ada</label>
+                    <select class="form-select form-select-sm" id="importMode">
+                        <option value="Skip">Lewati — biarkan yang sudah ada</option>
+                        <option value="Overwrite">Timpa — pakai tipe, project, label, dan deskripsi dari file</option>
+                    </select>
+                </div>
+                <div id="importPreview"><span class="text-secondary small">Memeriksa file…</span></div>
+                <div class="form-text mt-3">Memory yang isinya sama (project, tipe, label, deskripsi) dengan memory yang sudah ada tidak digandakan. Import aman diulang. Short memory tetap short dan pindah ke long memory sesuai umurnya.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-primary" id="btnImportConfirm" disabled>Import</button>
+            </div>
+        </div>
     </div>
 </div>
 

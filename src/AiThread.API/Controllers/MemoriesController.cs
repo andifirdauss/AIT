@@ -1,4 +1,6 @@
-﻿using AiThread.Common.DTOs;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using AiThread.Common.DTOs;
 using AiThread.Common.Enums;
 using AiThread.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -7,8 +9,14 @@ namespace AiThread.API.Controllers;
 
 [ApiController]
 [Route("api/memory")]
-public class MemoriesController(IMemoryService memoryService) : ControllerBase
+public class MemoriesController(IMemoryService memoryService, IMemoryTransferService transferService) : ControllerBase
 {
+    private static readonly JsonSerializerOptions ExportJson = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     [HttpGet]
     public async Task<ActionResult<ApiResponse<PagedResult<MemoryItemDto>>>> Query([FromQuery] MemoryQuery query, CancellationToken cancellationToken) =>
         ApiResponse<PagedResult<MemoryItemDto>>.Ok(await memoryService.QueryAsync(query, cancellationToken));
@@ -45,6 +53,24 @@ public class MemoriesController(IMemoryService memoryService) : ControllerBase
         await memoryService.PromoteAsync(id, cancellationToken)
             ? ApiResponse<bool>.Ok(true, "Memory dipindah ke long memory.")
             : NotFound(ApiResponse<bool>.Fail("Short memory tidak ditemukan."));
+
+    // The memories matching the Memory menu filters, as a file to download.
+    [HttpGet("export")]
+    public async Task<IActionResult> Export([FromQuery] MemoryQuery query, CancellationToken cancellationToken)
+    {
+        var file = await transferService.ExportAsync(query, cancellationToken);
+        return File(JsonSerializer.SerializeToUtf8Bytes(file, ExportJson), "application/json", $"ait-memory-{DateTime.Now:yyyyMMdd-HHmm}.json");
+    }
+
+    // The body is an exported file. dryRun=true only reports what would happen.
+    [HttpPost("import")]
+    public async Task<ActionResult<ApiResponse<MemoryImportResultDto>>> Import(MemoryExportFile file, [FromQuery] MemoryImportMode mode = MemoryImportMode.Skip,
+        [FromQuery] bool dryRun = false, CancellationToken cancellationToken = default)
+    {
+        var result = await transferService.ImportAsync(file, mode, dryRun, cancellationToken);
+        return ApiResponse<MemoryImportResultDto>.Ok(result, dryRun ? null
+            : $"{result.Added} memory ditambahkan, {result.Updated} ditimpa, {result.Skipped + result.Duplicates} dilewati.");
+    }
 
     [HttpPost("consolidate")]
     public async Task<ActionResult<ApiResponse<int>>> Consolidate(CancellationToken cancellationToken)
