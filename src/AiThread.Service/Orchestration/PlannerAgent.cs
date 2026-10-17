@@ -52,13 +52,17 @@ public sealed class PlannerAgent(
     // A resumed run always gets a few steps to act on the answer, even when the question came late.
     private const int StepsAfterAnswer = 3;
 
+    // Module·layer labels named in the label line; the rest are counted.
+    private const int MaxLabelsShown = 4;
+
     public async Task<PlanningResult> PlanAsync(PlannerInput input, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
         if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
 
         var tools = new WorkspaceTools(input.Scope);
         var build = input.Settings.BuildEnabled ? BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, null, out _) : null;
-        var brief = await BuildBriefAsync(input, tools, build, cancellationToken);
+        var (brief, relevant) = await BuildBriefAsync(input, tools, build, cancellationToken);
+        await progress.StepAsync(LabelLine(input.CodeMap, relevant), cancellationToken, hang: 3);
         var groups = await ToolsNodeGroupsAsync(input.Nodes[0], build is not null, cancellationToken);
 
         var run = new PlannerRun
@@ -353,7 +357,24 @@ public sealed class PlannerAgent(
         return new PlannerToolOutcome("Plan accepted.", plan);
     }
 
-    private async Task<string> BuildBriefAsync(PlannerInput input, WorkspaceTools tools, BuildCommand? build, CancellationToken cancellationToken)
+    // First entry of the planner phase: what the label search put in the brief, before the model is called.
+    // "🔖 Label · 2 file → Thread·Logic, Memory·Data · 14 memory relevan"
+    public static string LabelLine(IReadOnlyList<Memory.CodeMapHit>? codeMap, int relevant)
+    {
+        var parts = new List<string> { "🔖 Label" };
+        if (codeMap is { Count: > 0 })
+        {
+            var labels = codeMap.Select(h => $"{h.Module}·{h.Layer}").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var shown = string.Join(", ", labels.Take(MaxLabelsShown));
+            if (labels.Count > MaxLabelsShown) shown += $", +{labels.Count - MaxLabelsShown} lainnya";
+            parts.Add($"{codeMap.Count} file → {shown}");
+        }
+        parts.Add(relevant > 0 ? $"{relevant} memory relevan" : "belum ada memory relevan");
+        return string.Join(" · ", parts);
+    }
+
+    // Brief: the planner's first user message. Relevant: memories the label search found for the request.
+    private async Task<(string Brief, int Relevant)> BuildBriefAsync(PlannerInput input, WorkspaceTools tools, BuildCommand? build, CancellationToken cancellationToken)
     {
         var request = input.Request;
         var project = input.Project;
@@ -428,7 +449,7 @@ public sealed class PlannerAgent(
         builder.Append("# Developer request\n");
         builder.Append(PlannerToolRunner.Limit(request.Prompt, MaxRequestChars)).Append('\n');
 
-        return builder.ToString();
+        return (builder.ToString(), relevant.Count);
     }
 
     // Where inside the project the session was opened, when that is below the root (a repository root can hold several apps).
