@@ -46,7 +46,7 @@ public class ThreadOrchestratorTests
             .OnExecutor(FarewellFile, ScriptedRouter.Create("namespace Demo;\n\npublic class Farewell { }", "Farewell dibuat."))
             .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai: sapaan jadi Halo dan Farewell ditambahkan."))
             .On(ScriptedAgent.MemoryExtractor, ScriptedRouter.Text("""
-                {"memories": [{"type": "project", "label": "Sapaan Greeter memakai Halo", "description": "Greeter.Hello() mengembalikan \"Halo\"."}]}
+                {"memories": [{"type": "project", "module": "greeter", "layers": ["logic"], "kind": "rule", "keywords": ["sapaan", "Greeter.Hello", "halo"], "description":"Greeter.Hello() mengembalikan \"Halo\"."}]}
                 """));
 
         var (result, observer) = await harness.RunAsync("Ganti sapaan jadi Halo dan tambah class Farewell");
@@ -91,7 +91,10 @@ public class ThreadOrchestratorTests
 
         await harness.Memory.WaitForSaveAsync(TimeSpan.FromSeconds(10));
         var (memory, sourceThread) = Assert.Single(harness.Memory.Saved);
-        Assert.Equal("Sapaan Greeter memakai Halo", memory.Label);
+        Assert.Equal("greeter", memory.Module);
+        Assert.Equal(MemoryKind.Rule, memory.Kind);
+        Assert.Equal([MemoryLayer.Logic], memory.Layers);
+        Assert.Contains("halo", memory.Keywords);
         Assert.Equal(harness.ProjectId, memory.ProjectId);
         Assert.Equal(result.ThreadId, sourceThread);
     }

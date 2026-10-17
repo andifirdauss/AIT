@@ -19,6 +19,7 @@ public static class PlannerTools
     public const string RunBuild = "run_build";
     public const string Investigate = "investigate";
     public const string AskUser = "ask_user";
+    public const string SetModule = "set_module";
     public const string SubmitPlan = "submit_plan";
 
     // Ends a tools node's investigation (a reply without tool calls does too).
@@ -44,6 +45,7 @@ public static class PlannerTools
             if (delegated.Contains(name) || (name == RunBuild && !canBuild)) continue;
             tools.Add(Definition(name));
         }
+        tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());
         tools.Add(SubmitPlanDefinition());
@@ -144,14 +146,17 @@ public static class PlannerTools
             }
             """)),
         SearchMemory => ChatMessages.Function(SearchMemory,
-            "Search memory labels (project facts, reusable knowledge and the project's business wiki pages) by keywords. Returns ids and labels only.",
+            "Search memory (project facts, reusable knowledge and the project's business wiki pages) in two layers: module (optionally layer and kind) narrows the list, keywords rank inside it. Returns ids and labels only. Without a module, the modules named in the keywords are used, else all memories are ranked by keywords.",
             Schema("""
             {
               "type": "object",
               "properties": {
-                "query": { "type": "string", "description": "Keywords, e.g. \"user validation description\"." }
-              },
-              "required": ["query"]
+                "module": { "type": "string", "description": "Module from the memory map or the code map, e.g. \"User\"." },
+                "layer": { "type": "string", "enum": ["UI", "Entry", "Logic", "Data", "Infra", "Test"], "description": "Optional: only memories about this layer." },
+                "kind": { "type": "string", "enum": ["Pitfall", "Rule", "Flow", "Convention", "Architecture", "Pattern"], "description": "Optional: only memories of this kind." },
+                "keywords": { "type": "array", "items": { "type": "string" }, "description": "Search terms: entities, fields, identifiers, in English and in the developer's words, e.g. [\"Description\", \"Deskripsi\", \"UserValidator\"]." },
+                "query": { "type": "string", "description": "Free text instead of keywords." }
+              }
             }
             """)),
         ReadMemory => ChatMessages.Function(ReadMemory,
@@ -223,6 +228,21 @@ public static class PlannerTools
             $"You do not have these tools yourself; use investigate for them. {holders} Several investigate calls run in parallel.",
             new JsonObject { ["type"] = "object", ["properties"] = properties, ["required"] = required });
     }
+
+    private static JsonObject SetModuleDefinition() =>
+        ChatMessages.Function(SetModule,
+            "Correct the code map: the module (and optionally the layer) a file belongs to. Use it when the developer says so (\"treat UserBL as module Account\") or when the code clearly shows the map is wrong. It is remembered for every later thread and never overwritten automatically.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "File path relative to the project root, or a class/file name such as \"UserBL\"." },
+                "module": { "type": "string", "description": "Module name, an existing one from the memory map when it fits." },
+                "layer": { "type": "string", "enum": ["UI", "Entry", "Logic", "Data", "Infra", "Test"] }
+              },
+              "required": ["path", "module"]
+            }
+            """));
 
     private static JsonObject ReportFindingsDefinition() =>
         ChatMessages.Function(ReportFindings,

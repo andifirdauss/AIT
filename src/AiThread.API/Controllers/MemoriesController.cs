@@ -9,7 +9,7 @@ namespace AiThread.API.Controllers;
 
 [ApiController]
 [Route("api/memory")]
-public class MemoriesController(IMemoryService memoryService, IMemoryTransferService transferService) : ControllerBase
+public class MemoriesController(IMemoryService memoryService, IMemoryTransferService transferService, IMemoryCatalogService catalog) : ControllerBase
 {
     private static readonly JsonSerializerOptions ExportJson = new(JsonSerializerDefaults.Web)
     {
@@ -70,6 +70,77 @@ public class MemoriesController(IMemoryService memoryService, IMemoryTransferSer
         var result = await transferService.ImportAsync(file, mode, dryRun, cancellationToken);
         return ApiResponse<MemoryImportResultDto>.Ok(result, dryRun ? null
             : $"{result.Added} memory ditambahkan, {result.Updated} ditimpa, {result.Skipped + result.Duplicates} dilewati.");
+    }
+
+    // Modules of a project (memory labels and wiki), or of knowledge memory with knowledge=true.
+    [HttpGet("modules")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectModuleDto>>>> Modules([FromQuery] Guid? projectId, [FromQuery] bool knowledge = false,
+        CancellationToken cancellationToken = default) =>
+        ApiResponse<IReadOnlyList<ProjectModuleDto>>.Ok(await catalog.GetModulesAsync(projectId, knowledge, cancellationToken));
+
+    [HttpPut("modules/{name}")]
+    public async Task<ActionResult<ApiResponse<ProjectModuleDto>>> UpdateModule(string name, SaveModuleRequest request, [FromQuery] Guid? projectId,
+        [FromQuery] bool knowledge = false, CancellationToken cancellationToken = default) =>
+        await catalog.UpdateModuleAsync(projectId, knowledge, name, request, cancellationToken) is { } module
+            ? ApiResponse<ProjectModuleDto>.Ok(module, "Modul diperbarui.")
+            : NotFound(ApiResponse<ProjectModuleDto>.Fail("Modul tidak ditemukan."));
+
+    [HttpPost("modules/merge")]
+    public async Task<ActionResult<ApiResponse<ModuleMergeDto>>> MergeModules(MergeModulesRequest request, [FromQuery] bool knowledge = false,
+        CancellationToken cancellationToken = default)
+    {
+        var merge = await catalog.MergeAsync(request, knowledge, cancellationToken);
+        return ApiResponse<ModuleMergeDto>.Ok(merge, $"Modul {merge.From} digabung ke {merge.Into}.");
+    }
+
+    [HttpPost("modules/check")]
+    public async Task<ActionResult<ApiResponse<int>>> CheckModules([FromQuery] Guid? projectId, [FromQuery] bool knowledge = false,
+        CancellationToken cancellationToken = default)
+    {
+        var found = await catalog.CheckModulesAsync(projectId, knowledge, cancellationToken);
+        return ApiResponse<int>.Ok(found, found == 0 ? "Tidak ada modul ganda." : $"{found} modul ganda digabung atau disarankan.");
+    }
+
+    [HttpGet("merges")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ModuleMergeDto>>>> Merges([FromQuery] Guid? projectId, [FromQuery] bool knowledge = false,
+        CancellationToken cancellationToken = default) =>
+        ApiResponse<IReadOnlyList<ModuleMergeDto>>.Ok(await catalog.GetMergesAsync(projectId, knowledge, cancellationToken));
+
+    [HttpPost("merges/{id:guid}/undo")]
+    public async Task<ActionResult<ApiResponse<bool>>> UndoMerge(Guid id, CancellationToken cancellationToken)
+    {
+        await catalog.UndoMergeAsync(id, cancellationToken);
+        return ApiResponse<bool>.Ok(true, "Merge modul dibatalkan.");
+    }
+
+    [HttpPost("merges/{id:guid}/accept")]
+    public async Task<ActionResult<ApiResponse<bool>>> AcceptMerge(Guid id, CancellationToken cancellationToken)
+    {
+        await catalog.AcceptMergeAsync(id, cancellationToken);
+        return ApiResponse<bool>.Ok(true, "Saran merge diterapkan.");
+    }
+
+    [HttpPost("merges/{id:guid}/reject")]
+    public async Task<ActionResult<ApiResponse<bool>>> RejectMerge(Guid id, CancellationToken cancellationToken)
+    {
+        await catalog.RejectMergeAsync(id, cancellationToken);
+        return ApiResponse<bool>.Ok(true, "Saran merge ditolak.");
+    }
+
+    // Memories waiting for a label, suggested module merges and likely duplicate memories.
+    [HttpGet("review")]
+    public async Task<ActionResult<ApiResponse<MemoryReviewDto>>> Review([FromQuery] Guid? projectId, CancellationToken cancellationToken) =>
+        ApiResponse<MemoryReviewDto>.Ok(await catalog.GetReviewAsync(projectId, cancellationToken));
+
+    [HttpGet("relabel")]
+    public async Task<ActionResult<ApiResponse<MemoryRelabelStatusDto>>> RelabelStatus(CancellationToken cancellationToken) =>
+        ApiResponse<MemoryRelabelStatusDto>.Ok(await catalog.GetRelabelStatusAsync(cancellationToken));
+
+    [HttpPost("relabel")]
+    public ActionResult<ApiResponse<bool>> StartRelabel()
+    {
+        catalog.StartRelabel();
+        return ApiResponse<bool>.Ok(true, "Migrasi label dijalankan di belakang.");
     }
 
     [HttpPost("consolidate")]

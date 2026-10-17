@@ -1,7 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using AiThread.Common.DTOs;
 using AiThread.Common.Enums;
+using AiThread.Common.Memory;
 using AiThread.Service.Interfaces;
+using AiThread.Service.Memory;
+using AiThread.Service.Models;
 using AiThread.Service.Verification;
 using AiThread.Service.Workspace;
 
@@ -9,7 +13,7 @@ namespace AiThread.Service.Orchestration;
 
 // Runs the read-only investigation tools and run_build, for the planner and for the tools nodes it delegates tools to.
 // prefix marks the progress lines of a tools node ("#1 › "); empty for the planner itself.
-public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeeper contextKeeper, BuildRunner buildRunner)
+public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeeper contextKeeper, BuildRunner buildRunner, CodeMapper codeMapper)
 {
     // Paths and queries are shortened in the client progress so a tool line rarely wraps; the activity log keeps them whole.
     private const int ProgressPathChars = 48;
@@ -74,8 +78,18 @@ public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeepe
                     return new PlannerToolOutcome(await tools.ReadFileAsync(Str(args, "path") ?? string.Empty, Int(args, "startLine"), Int(args, "endLine"), cancellationToken), null);
 
                 case PlannerTools.SearchMemory:
-                    var entries = await memoryService.GetIndexAsync(input.Project.ProjectId, Str(args, "query"), 25, cancellationToken);
+                    var entries = await memoryService.SearchAsync(new MemorySearch(
+                        input.Project.ProjectId,
+                        Str(args, "module"),
+                        MemoryLabels.TryParseLayer(Str(args, "layer"), out var layer) ? layer : null,
+                        MemoryLabels.TryParseKind(Str(args, "kind"), out var kind) ? kind : null,
+                        MemoryAi.Strings(args["keywords"]),
+                        Str(args, "query"),
+                        25), cancellationToken);
                     return new PlannerToolOutcome(entries.Count == 0 ? "No matching memories." : FormatIndex(entries), null);
+
+                case PlannerTools.SetModule:
+                    return await SetModuleAsync(input, Str(args, "path"), Str(args, "module"), Str(args, "layer"), recorder, cancellationToken);
 
                 case PlannerTools.ReadMemory:
                     var ids = (args["ids"] as JsonArray ?? [])
@@ -98,6 +112,33 @@ public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeepe
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return new PlannerToolOutcome($"Error: {ex.Message}", null, true);
+        }
+    }
+
+    // A class or file name is resolved to the project's file first.
+    private async Task<PlannerToolOutcome> SetModuleAsync(PlannerInput input, string? path, string? module, string? layerText, ThreadRecorder recorder,
+        CancellationToken cancellationToken)
+    {
+        if (path is null || module is null) return new PlannerToolOutcome("Error: path and module are required.", null, true);
+        var target = path;
+        if (!path.Contains('/') && !path.Contains('\\') && !Path.HasExtension(path))
+        {
+            var found = await codeMapper.ResolveReferencesAsync(input.Project, path, cancellationToken);
+            if (found.Count == 0) return new PlannerToolOutcome($"Error: no file named '{path}' in the project. Give its path.", null, true);
+            if (found.Count > 1) return new PlannerToolOutcome($"Error: '{path}' matches several files ({string.Join(", ", found.Take(5))}). Give the path.", null, true);
+            target = found[0];
+        }
+
+        try
+        {
+            var hit = await codeMapper.SetManualAsync(input.Project, target, module,
+                MemoryLabels.TryParseLayer(layerText, out var layer) ? layer : null, cancellationToken);
+            recorder.Log(ActivityLevel.Info, $"Planner → set_module `{hit.Path}` → {hit.Module} · {hit.Layer}");
+            return new PlannerToolOutcome($"Code map updated: {hit.Path} → {hit.Module} · {hit.Layer}.", null);
+        }
+        catch (AppValidationException ex)
         {
             return new PlannerToolOutcome($"Error: {ex.Message}", null, true);
         }
@@ -134,9 +175,35 @@ public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeepe
     // Wrapped lines of a tool call line up with its arguments.
     public static int Hang(string prefix) => ClientProgress.DisplayWidth(prefix) + PlannerTools.NameColumn;
 
-    public static string FormatIndex(IEnumerable<Common.DTOs.MemoryIndexEntry> entries) =>
+    // Labeled: "Module · Layers · Kind — keywords"; business wiki pages and unlabeled (older) memory keep their label.
+    public static string FormatIndex(IEnumerable<MemoryIndexEntry> entries) =>
         string.Concat(entries.Select(e =>
-            $"- {e.Id} [{e.Level.ToString().ToLowerInvariant()}/{e.Type.ToString().ToLowerInvariant()}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n"));
+        {
+            var level = e.Level.ToString().ToLowerInvariant();
+            var type = e.Type.ToString().ToLowerInvariant();
+            if (e.Labeled)
+            {
+                var keywords = e.Keywords is { Count: > 0 } list ? " — " + string.Join(", ", list) : string.Empty;
+                return $"- {e.Id} [{level}/{type}, {e.CreatedAt:yyyy-MM-dd}] {MemoryLabels.Display(e.Area, e.Module!, e.Layers, e.Kind!.Value)}{keywords}\n";
+            }
+            var tag = e.Type == MemoryType.Business ? type : $"{level}/{type}/unlabeled";
+            return $"- {e.Id} [{tag}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n";
+        }));
+
+    // The planner's memory map: labeled memories per module, with their layers and kinds.
+    public static string FormatModuleMap(IReadOnlyList<MemoryModuleSummary> modules, int maxProject = 40, int maxKnowledge = 20)
+    {
+        var builder = new System.Text.StringBuilder();
+        foreach (var module in modules.Where(m => !m.Knowledge).Take(maxProject))
+        {
+            var layers = string.Join(" · ", module.Layers.OrderByDescending(l => l.Value).Select(l => $"{l.Key} {l.Value}"));
+            var kinds = string.Join(" · ", module.Kinds.OrderByDescending(k => k.Value).Select(k => $"{k.Key} {k.Value}"));
+            builder.Append($"- {module.Module} ({module.Count}): {(layers.Length > 0 ? layers + " | " : string.Empty)}{kinds}\n");
+        }
+        var knowledge = modules.Where(m => m.Knowledge).Take(maxKnowledge).Select(m => $"{m.Module} ({m.Count})").ToList();
+        if (knowledge.Count > 0) builder.Append("- Knowledge: ").Append(string.Join(" · ", knowledge)).Append('\n');
+        return builder.ToString();
+    }
 
     // compact: the client progress version, with long paths and queries shortened.
     public static string Describe(string tool, JsonObject args, bool compact = false)
@@ -151,7 +218,13 @@ public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeepe
             PlannerTools.SearchText => $"\"{Query("query")}\"" + (Path("glob") is { } g ? $" in `{g}`" : string.Empty) + (Path("path") is { } searchIn ? $" under `{searchIn}`" : string.Empty),
             PlannerTools.FindSymbol => $"`{Str(args, "name")}`" + (Str(args, "kind") is { } kind ? $" ({kind})" : string.Empty) + (Path("path") is { } symbolIn ? $" under `{symbolIn}`" : string.Empty),
             PlannerTools.FindReferences => $"`{Str(args, "name")}`" + (Path("path") is { } refsIn ? $" under `{refsIn}`" : string.Empty),
-            PlannerTools.SearchMemory => $"\"{Query("query")}\"",
+            PlannerTools.SearchMemory => string.Join(" ", new[]
+            {
+                Str(args, "module"), Str(args, "layer"), Str(args, "kind"),
+                MemoryAi.Strings(args["keywords"]) is { Count: > 0 } words ? "\"" + Clip(string.Join(", ", words), ProgressQueryChars) + "\"" : null,
+                Str(args, "query") is not null ? $"\"{Query("query")}\"" : null
+            }.Where(s => s is not null)),
+            PlannerTools.SetModule => $"`{Path("path")}` → {Str(args, "module")}" + (Str(args, "layer") is { } setLayer ? $" · {setLayer}" : string.Empty),
             PlannerTools.ReadMemory => $"{(args["ids"] as JsonArray)?.Count ?? 0} item",
             PlannerTools.ReadThread => $"`{Str(args, "id")}`",
             PlannerTools.RunBuild => Path("target") is { } target ? $"`{target}`" : string.Empty,

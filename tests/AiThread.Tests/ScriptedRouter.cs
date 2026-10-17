@@ -18,6 +18,9 @@ public enum ScriptedAgent
     MemoryExtractor,
     BusinessRouter,
     BusinessWriter,
+    CodeMapper,
+    MemoryRelabeler,
+    ModuleDuplicates,
     Other
 }
 
@@ -30,7 +33,8 @@ public sealed record RouterCall(ScriptedAgent Agent, string Model, JsonArray Mes
 }
 
 // Stands in for 9router: answers each agent from a script, recognising the agent by its role prompt. Executor replies
-// are keyed by target file because executors run in parallel. Memory extraction answers "no memories" unless scripted.
+// are keyed by target file because executors run in parallel. Memory extraction, the code map, relabeling and the
+// duplicate module check answer "nothing" unless scripted.
 public sealed class ScriptedRouter : INineRouterService
 {
     private readonly ConcurrentDictionary<ScriptedAgent, ConcurrentQueue<Func<RouterCall, ChatCompletionResult>>> _replies = new();
@@ -68,9 +72,13 @@ public sealed class ScriptedRouter : INineRouterService
         _calls.Enqueue(call);
 
         var reply = NextReply(call)
-                    ?? (call.Agent == ScriptedAgent.MemoryExtractor
-                        ? _ => Text("""{"memories": []}""")
-                        : throw new InvalidOperationException($"Unscripted {call.Agent} call (model {call.Model})."));
+                    ?? call.Agent switch
+                    {
+                        ScriptedAgent.MemoryExtractor or ScriptedAgent.MemoryRelabeler => _ => Text("""{"memories": []}"""),
+                        ScriptedAgent.CodeMapper => _ => Text("""{"groups": []}"""),
+                        ScriptedAgent.ModuleDuplicates => _ => Text("""{"merges": []}"""),
+                        _ => throw new InvalidOperationException($"Unscripted {call.Agent} call (model {call.Model}).")
+                    };
         var result = reply(call);
         if (onDelta is not null && result.Content.Length > 0) await onDelta(result.Content);
         return result;
@@ -148,6 +156,9 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.MemoryExtractor, StringComparison.Ordinal)) return ScriptedAgent.MemoryExtractor;
         if (system.StartsWith(AgentPrompts.BusinessRouter, StringComparison.Ordinal)) return ScriptedAgent.BusinessRouter;
         if (system.StartsWith(AgentPrompts.BusinessWriter, StringComparison.Ordinal)) return ScriptedAgent.BusinessWriter;
+        if (system.StartsWith(AgentPrompts.CodeMapper, StringComparison.Ordinal)) return ScriptedAgent.CodeMapper;
+        if (system.StartsWith(AgentPrompts.MemoryRelabeler, StringComparison.Ordinal)) return ScriptedAgent.MemoryRelabeler;
+        if (system.StartsWith(AgentPrompts.ModuleDuplicates, StringComparison.Ordinal)) return ScriptedAgent.ModuleDuplicates;
         return ScriptedAgent.Other;
     }
 }

@@ -199,6 +199,8 @@ Bagian `AiThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di
 |---|---|---|
 | `ShortMemoryHours` | `24` | Umur short memory sebelum dipindah ke database. |
 | `MemoryConsolidationIntervalMinutes` | `10` | Interval worker yang memindahkan short → long memory. |
+| `MemoryRelabelIntervalMinutes` | `10` | Interval worker yang memberi label berstruktur ke memory lama dan mengecek modul ganda (lihat [Memory](06-memory.md#migrasi-label-memory-lama)). |
+| `MemoryAcronyms` | `[]` | Singkatan tambahan yang ditulis kapital di label memory, mis. `["SKU", "GL"]` (API, DTO, UI, dll. sudah bawaan). |
 | `RouterMonitorIntervalSeconds` | `15` | Interval cek kesehatan 9router untuk dashboard. |
 | `ActivityLogRetentionDays` | `14` | Log dashboard yang lebih tua dihapus otomatis. |
 | `ExecutorFullFileMaxLines` | `400` | File sampai sepanjang ini dikirim utuh ke executor; file lebih besar dikirim sebagai potongan. |
