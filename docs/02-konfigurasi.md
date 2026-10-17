@@ -206,7 +206,9 @@ ikut terbayar lagi di langkah 4, 5, … sampai `submit_plan`. Tools node meminda
 | `find_symbol`, `search_memory` | Biarkan di planner — hasilnya pendek, panggilan `investigate` justru lebih mahal. |
 | `run_build` | Biarkan di planner kecuali Anda ingin daftar error dirangkum tools node. |
 
-`ask_user` dan `submit_plan` tidak bisa didelegasikan.
+`ask_user` dan `submit_plan` tidak bisa didelegasikan. `code_outline` dan `function_calls` juga tidak: hasilnya
+pendek, jadi selalu ada di planner supaya ia melihat kerangka kode lebih dulu dan bertanya ke tools node dengan file,
+member, dan rentang baris yang tepat. Tools node yang memegang `read_file` otomatis ikut mendapat kedua tool ini.
 
 Aturannya:
 
