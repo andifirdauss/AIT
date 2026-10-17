@@ -7,8 +7,56 @@ penjelasan.
 
 | Bagian | Fungsi |
 |---|---|
-| **Label** | 3–8 keyword dipisah koma, mis. `user, pengguna, description, deskripsi, form, validation`. Planner memindai label **tanpa** membaca deskripsi, lalu hanya membuka yang relevan. |
-| **Deskripsi** | Penjelasan mandiri 2–6 kalimat. Untuk project memory berisi path file dan identifier. |
+| **Label** | `[Area ·] Modul · Layer · Jenis`, mis. `User · Logic · Rule`. Lapis pertama pencarian: planner menyaring berdasarkan modul (dan bila perlu layer/jenis). |
+| **Keyword** | Maks 16 kata, mis. `Description, Deskripsi, UserValidator`. Lapis kedua: di dalam hasil lapis pertama, mana yang memuat istilah yang dicari. |
+| **Deskripsi** | Penjelasan mandiri 2–6 kalimat. Untuk project memory berisi path file dan identifier. Hanya dibaca setelah lolos dua lapis. |
+
+Semua bagian label dan keyword ditulis **PascalCase**, dinormalisasi oleh AIT (bukan dipercayakan ke model):
+`user dto` → `UserDTO`, `api client` → `APIClient`, `users` → `Users`. Singkatan ditulis kapital semua: daftar bawaan
+(API, DTO, UI, SQL, DB, ID, URL, JSON, …) ditambah kata 2–3 huruf yang memang ditulis kapital (`TO`, `PO`, `SKU`); daftar bisa
+ditambah lewat `AiThread:MemoryAcronyms`. Identifier dari kode tetap seperti aslinya (`UserDto`, `UserBL`), hanya huruf
+pertamanya dibesarkan.
+
+### Modul
+
+Fitur atau entitas bisnis (`User`, `Invoice`, `TransferOrder`), sama untuk semua layer fitur itu: `UserController`,
+`UserBL`, `UserRepository`, dan `Views/User/Index.cshtml` semuanya modul `User`. Untuk knowledge memory, modulnya adalah
+teknologi atau domain (`EFCore`, `Redis`, `Auth`). Modul diambil dari [daftar modul](#daftar-modul--gabung-modul) project
+yang sama dengan modul wiki bisnis, dan untuk project memory diturunkan dari [peta kode](#peta-kode) file yang dibahas.
+
+### Layer
+
+Peran file di codebase-nya sendiri, bukan posisinya di FE atau BE. Satu memory boleh punya beberapa layer (memory alur).
+
+| Layer | Peran | Contoh |
+|---|---|---|
+| `UI` | Tampilan & interaksi | `.cshtml`, component React/Vue, CSS, `pages/*.js` |
+| `Entry` | Pintu masuk request/perintah | controller, route, handler, CLI command, consumer |
+| `Logic` | Aturan & proses bisnis, klien keluar | service, BL, validator, store, API client |
+| `Data` | Penyimpanan & bentuk data | repository, DbContext, migration, query, entity, DTO |
+| `Infra` | Wiring, konfigurasi, build | `Program.cs`, DI, `appsettings`, Dockerfile, CI |
+| `Test` | Pengujian | `*Tests.cs`, `*.spec.ts` |
+
+### Jenis
+
+Macam fakta yang disimpan. Ditentukan dengan pertanyaan **berurutan** — jawaban "ya" pertama yang dipakai, supaya kasus
+ambigu selalu jatuh ke jenis yang sama:
+
+1. Kesalahan atau jebakan yang harus dihindari (beserta solusinya)? → `Pitfall`
+2. Syarat bisnis yang dipaksakan sistem (boleh, wajib, dihitung, divalidasi)? → `Rule`
+3. Urutan langkah lintas komponen atau waktu? → `Flow`
+4. Cara developer menulis kode di project ini? → `Convention`
+5. Susunan/hubungan komponen atau alasan desain? → `Architecture`
+6. Selain itu → `Pattern`
+
+Knowledge memory hanya boleh `Pitfall`, `Pattern`, atau `Architecture`. Satu memory satu jenis; fakta dengan dua jenis
+dipecah jadi dua memory.
+
+### Area
+
+Aplikasi di repository yang berisi beberapa aplikasi (mis. `apps/web` React dan `apps/api` .NET): folder manifest
+terdekat, tanpa awalan yang sama di semua area. Hanya diisi bila manifest-nya berbeda stack atau ada beberapa aplikasi di
+`apps/`, `packages/`, `services/`, `projects/`; solusi .NET berisi beberapa project tetap satu aplikasi tanpa area.
 
 ## Tipe
 
@@ -94,9 +142,12 @@ berlaku tanpa restart.
 - **Test koneksi** memakai isi form tanpa menyimpan. Password kosong = memakai password tersimpan.
 - Saat **disimpan**, AIT menghubungi store baru dan membuat database (bila belum ada dan user punya hak) serta
   tabel `ShortMemories`/`LongMemories`, atau `BusinessPages`/`BusinessPageRevisions`/`BusinessAssets` untuk business
-  memory. Store yang tidak bisa dihubungi ditolak, jadi setting lama tetap berlaku. Database eksternal tidak memakai
-  migrasi EF; tabel dibuat sendiri pada pemakaian pertama, dan tabel dari versi lama otomatis mendapat kolom baru
-  (`ProjectKey`, `ProjectName`) — user perlu hak `ALTER TABLE` sekali itu.
+  memory. Daftar modul, peta kode, dan riwayat gabung modul (`ProjectModules`, `CodeMapEntries`, `ModuleMergeLogs`)
+  ikut tinggal di database long memory, jadi store bersama juga berbagi daftar modulnya. Store yang tidak bisa dihubungi
+  ditolak, jadi setting lama tetap berlaku. Database eksternal tidak memakai migrasi EF; tabel dibuat sendiri pada
+  pemakaian pertama, dan tabel dari versi lama otomatis mendapat kolom baru (`ProjectKey`, `ProjectName`, kolom label
+  `Module`, `Layers`, `Kind`, `Area`, `Keywords`, `LabelVersion`, `LegacyLabel`, `ReviewReason`, `RelabelAttempts`) —
+  user perlu hak `ALTER TABLE` sekali itu.
 - **Salin memory yang ada** (default aktif) menyalin memory dari store lama ke store baru berdasarkan id, jadi aman
   diulang dan tidak menggandakan. Store lama tidak dihapus atau diubah. Tanpa salinan, memory lama tidak terlihat
   sampai provider dikembalikan.
@@ -110,25 +161,104 @@ berlaku tanpa restart.
 
 ## Kapan memory dibuat
 
-Setelah thread selesai (minimal satu tugas berhasil, atau planner menjawab langsung), model **Wrapper** membaca
-permintaan, rencana, kontrak, hasil tugas, dan ringkasan, lalu menulis **maksimal 5** memory baru. Label yang sudah
-ada ikut dikirim agar tidak terjadi duplikasi. Karena hanya sesi di dalam sebuah project (folder dengan `.git` atau file build) yang diorkestrasi,
+Setelah thread selesai (minimal satu tugas berhasil, atau planner menjawab langsung), file yang direncanakan, disentuh
+tugas, dan disebut di prompt dipetakan dulu ke modul dan layer ([peta kode](#peta-kode); bila perlu menunggu model peta
+kode). Lalu model **Wrapper** membaca permintaan, rencana, kontrak, hasil tugas, ringkasan, peta kode file itu, daftar
+modul, dan memory yang sudah ada **di modul yang sama**, lalu menulis **maksimal 5** memory baru lengkap dengan label
+(modul dari daftar, layer dari peta kode, jenis lewat pertanyaan berurutan, keyword). AIT memvalidasi dan
+menormalisasi hasilnya; memory yang labelnya tidak lengkap dilewati. Karena hanya sesi di dalam sebuah project (folder dengan `.git` atau file build) yang diorkestrasi,
 setiap thread selalu punya project; bila project dihapus saat thread berjalan, hanya knowledge memory yang disimpan.
 Proses ini berjalan di belakang dan tidak menunda balasan ke Claude Code.
 
 ## Cara planner memakai memory
 
-1. Brief planner berisi **indeks memory** (hanya id + label): memory yang label-nya cocok dengan keyword prompt,
-   ditambah short memory terbaru — maksimal 25 baris. Halaman wiki bisnis project ikut masuk indeks (tipe
-   `business`, label = `Modul — Judul (business wiki): label halaman`) dengan jatah sendiri (maks 8), supaya tidak
-   tergeser oleh banyaknya memory lain.
-2. Planner memanggil `read_memory` untuk membaca deskripsi yang relevan, dan `search_memory` untuk topik lain. Untuk
-   halaman bisnis, `read_memory` mengembalikan isi halaman (gambar diganti keterangannya, maks 15.000 karakter);
-   planner diminta membaca halaman modul sebelum mengubah perilakunya dan mengikuti aturannya.
-3. Setiap kali long memory dibaca, kolom *Dipakai* bertambah — penanda memory yang bernilai.
+```
+Lapis 1 — Modul (· Layer · Jenis)  → daftar memory modul itu
+Lapis 2 — Keyword                  → di dalam daftar itu, yang memuat istilah yang dicari
+read_memory                        → baru deskripsinya dibaca
+```
 
-Pencocokan memakai keyword (huruf kecil, minimal 3 karakter, kata umum seperti "yang", "tambah", "the" diabaikan).
-Karena itu label sebaiknya memuat istilah bahasa Inggris **dan** istilah yang Anda pakai sehari-hari.
+1. Sebelum planner jalan, file dan class yang disebut prompt dipetakan ke modul (peta kode yang tersimpan + aturan;
+   yang ragu dipetakan model di belakang tanpa menahan planner).
+2. Brief planner berisi:
+   - **Peta kode** file yang disebut prompt (`path: Modul · Layer`);
+   - **Peta memory**: tiap modul dengan jumlah memory per layer dan jenis, mis. `User (12): Logic 5 · Entry 3 | Rule 4 · Flow 3`;
+   - **Indeks memory** (id + label + keyword, maks 25 baris): memory modul dari peta kode atau yang disebut prompt (nama
+     atau alias modul), diurutkan berdasarkan keyword; ditambah short memory terbaru. Halaman wiki bisnis punya jatah
+     sendiri (maks 8), memory lama yang belum berlabel juga (tanda `unlabeled`).
+3. `search_memory` menerima `module`, `layer`, `kind`, dan `keywords`. Tanpa modul, modul yang disebut di keyword dipakai;
+   bila lapis 2 kosong, seluruh isi lapis 1 dikembalikan supaya planner tidak buta.
+4. `read_memory` membaca deskripsi (atau isi halaman wiki, gambar diganti keterangannya, maks 15.000 karakter); planner
+   diminta membaca halaman modul sebelum mengubah perilakunya dan mengikuti aturannya.
+5. Setiap kali long memory dibaca, kolom *Dipakai* bertambah — penanda memory yang bernilai.
+
+Pencocokan keyword **per token**, bukan substring: `UserValidator` cocok dengan `user`, `validator`, dan
+`uservalidator`; `form` tidak cocok dengan `information`. Bentuk jamak `-s`/`-es` dianggap sama. Keyword yang dipakai banyak
+memory project (mis. `Service`) bernilai kecil, keyword yang jarang (identifier) bernilai besar. Karena itu keyword
+sebaiknya memuat istilah bahasa Inggris **dan** istilah yang Anda pakai sehari-hari, plus nama class yang relevan.
+
+## Peta kode
+
+Modul dan layer setiap file, diputuskan sekali lalu disimpan (per project key + path relatif root, jadi berlaku di mesin
+semua developer) supaya file yang sama selalu mendapat jawaban yang sama.
+
+```
+file disebut prompt / disentuh tugas
+  ① peta tersimpan? ──ya──► pakai
+  ② aturan: layer dari akhiran/folder/ekstensi (Controller→Entry, BL/Service→Logic, Repository→Data, .cshtml→UI, …),
+     modul dari nama tanpa kata peran (UserController→User) yang cocok dengan daftar modul ──yakin──► simpan (aturan)
+  ③ ragu: model (Tools node → Wrapper → Planner), satu panggilan per kelompok nama yang sama, wajib memilih modul
+     yang ada; modul baru hanya bila tidak ada yang cocok ──► simpan (AI)
+```
+
+- Sebelum planner hanya ① dan ② yang ditunggu; ③ berjalan paralel, dan ekstraksi memory menunggu hasilnya.
+- File plumbing tanpa fitur (startup, konfigurasi, layout, helper) masuk modul `Core`.
+- Tanpa node model aktif, modul diambil dari nama file.
+- **Koreksi manual** dari menu Project → detail → *Peta kode* (*Atur file* / *Ubah*), atau lewat prompt: planner
+  punya tool `set_module` ("anggap `UserBL` modul Account"). Koreksi manual tidak pernah ditimpa aturan atau model.
+- **Scan** memetakan semua file sumber yang belum terpetakan (maks 3.000 file per scan; `bin`, `obj`, `node_modules`,
+  `wwwroot/lib`, dsb. dilewati). Dijalankan otomatis saat migrasi label untuk project yang belum punya peta.
+
+## Daftar modul & gabung modul
+
+Satu daftar modul per project key (dan satu untuk knowledge memory), dipakai bersama label memory dan modul wiki bisnis.
+Nama dicocokkan tanpa melihat huruf besar/kecil dan pemisah, lewat **alias** (nama lain/terjemahan, mis. `Pengguna`
+untuk `User`), lalu bentuk jamak bahasa Inggris. Modul yang sudah digabung tetap tersimpan sebagai pengalih, jadi nama
+lamanya masih diarahkan ke modul tujuan.
+
+**Modul ganda** (terpisah tidak sengaja) dicari saat migrasi, setiap kali modul baru dibuat, dan lewat tombol *Cek
+modul ganda*:
+
+| Kondisi | Aksi |
+|---|---|
+| Nama sama dengan penulisan berbeda (huruf besar/kecil, pemisah, jamak) | Digabung otomatis ke modul yang lebih banyak dipakai |
+| Model menilai sama dengan keyakinan ≥ 85% (terjemahan, nama lebih panjang, typo) | Digabung otomatis, tercatat, bisa dibatalkan |
+| Model ragu | Saran di **Memory → Perlu review** (*Gabungkan* / *Bukan duplikat*) |
+
+Menggabungkan modul memindahkan memory (short & long, label ikut ditulis ulang), peta kode, dan halaman wiki bisnis;
+nama dan alias modul asal menjadi alias modul tujuan. Halaman wiki yang judulnya sudah ada di modul tujuan tidak
+dipindah (dilaporkan di log). **Batalkan** di riwayat gabung modul (Project → detail) mengembalikan tepat baris yang
+dipindah. Saran yang ditolak tidak diusulkan lagi.
+
+## Migrasi label (memory lama)
+
+Memory dari versi sebelum label berstruktur (dan dari AIT versi lama developer lain di store bersama) dimigrasi
+otomatis oleh worker saat AIT start lalu tiap `MemoryRelabelIntervalMinutes` (default 10 menit):
+
+1. **Backup** semua short & long memory ke `%LOCALAPPDATA%\AiThread\backup\memory-before-labels-v1-<waktu>.json`
+   (plus modul & label halaman wiki), sekali per versi label. Bila backup gagal, migrasi tidak jalan.
+2. **Wiki bisnis**: modul halaman diselaraskan dengan daftar modul (mengisi daftar awal) dan label halaman dinormalisasi
+   PascalCase. Isi halaman tidak diubah, tidak membuat revisi.
+3. **Peta kode**: scan project terdaftar yang belum punya peta.
+4. **Relabel** per 20 memory per panggilan model: path/identifier di deskripsi dicocokkan ke peta kode dulu, model
+   menentukan modul (dari daftar), layer, jenis, dan keyword. Label lama disimpan sebagai *label lama*. Setiap baris
+   diklaim dulu (update bersyarat), jadi beberapa mesin yang berbagi store tidak memproses baris yang sama.
+5. Memory yang modulnya tidak bisa ditentukan, atau gagal 3 kali, masuk **Memory → Perlu review**.
+6. **Cek modul ganda** dan daftar **kandidat memory duplikat** (modul & jenis sama, keyword sangat mirip; hanya saran).
+
+Selama migrasi, memory lama tetap terlihat oleh planner sebagai `unlabeled` (dicocokkan dengan label lamanya). Kolom
+`Label` lama tetap diisi gabungan `Modul · Layer · Jenis | keyword` supaya AIT versi lama yang berbagi store masih bisa
+membacanya. Migrasi butuh node Tools node, Wrapper, atau Planner yang aktif; tanpa itu worker menunggu.
 
 ## Business memory (wiki bisnis)
 
@@ -188,8 +318,15 @@ berbagi store, jadi isinya tidak dipercaya mentah-mentah.
 ## Mengelola dari menu Memory
 
 - **Tambah memory**: tulis pengetahuan yang ingin selalu diingat planner, mis. aturan bisnis penting atau konvensi
-  tim. Masuk sebagai short memory, lalu otomatis pindah ke long memory.
+  tim. Isi modul (saran dari daftar modul), jenis, layer, keyword (maks 16), dan deskripsi. Masuk sebagai short memory,
+  lalu otomatis pindah ke long memory.
 - **Buka**: ubah tipe, project, label, deskripsi. Perbaiki memory yang kurang tepat — planner mempercayainya.
+  Menyimpan memory yang belum berlabel memberinya label (label lamanya tetap tercatat).
+- **Filter** modul, layer, jenis, dan *berlabel / belum berlabel* di atas tabel; banner *Migrasi label memory* tampil
+  selama masih ada memory yang menunggu label (tombol *Jalankan sekarang*).
+- Tab **Perlu review**: memory tanpa label (*Beri label*), saran gabung modul, dan kandidat memory duplikat.
+- Menu **Project → detail**: daftar modul (deskripsi, alias, gabung ke modul lain, *Cek modul ganda*), peta kode
+  (cari, *Atur file*, *Scan*), dan riwayat gabung modul (*Batalkan*).
 - **→ DB**: pindahkan short memory ke long memory sekarang.
 - **Hapus**: hapus memory yang salah atau usang.
 - **Konsolidasi sekarang**: jalankan pemindahan short → long tanpa menunggu worker.
@@ -208,6 +345,8 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
   mesin lain memory masuk ke clone project yang sama walau folder root-nya berbeda.
 - **Import** memeriksa file dulu (*dry run*) dan menampilkan ringkasan: yang ditambahkan, ditimpa, sudah ada, tidak
   valid, serta project di file dan apakah sudah terdaftar di mesin ini. Data baru ditulis setelah tombol *Import*.
+- Format file v2 membawa label berstruktur (modul, layer, jenis, area, keyword, label lama); modulnya masuk daftar modul
+  key-nya di mesin tujuan. Item tanpa label (file v1) masuk sebagai *belum berlabel* dan dimigrasi worker.
 - Id memory dipertahankan: memory yang id-nya sudah ada **dilewati** (default) atau **ditimpa** (tipe, project, label,
   deskripsi dari file). Memory dengan isi sama (project, tipe, label, deskripsi — huruf besar/kecil dan spasi
   diabaikan) tapi id lain juga dilewati. Import aman diulang.
@@ -221,9 +360,10 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
 
 Tips menulis memory manual:
 
-- Label spesifik: `invoice, faktur, tax, pajak, rounding` lebih berguna daripada `bisnis`.
+- Pilih modul yang sudah ada (lihat saran di kolom Modul); buat modul baru hanya bila memang fitur lain.
+- Keyword spesifik: `Tax, Pajak, Rounding, InvoiceService` lebih berguna daripada `Bisnis`.
 - Deskripsi menyebut lokasi: "Perhitungan pajak ada di `InvoiceService.CalculateTax`; pembulatan ke atas per baris."
-- Satu topik per memory.
+- Satu fakta, satu jenis per memory.
 
 ## Konfigurasi
 
@@ -231,6 +371,8 @@ Tips menulis memory manual:
 |---|---|
 | `AiThread:ShortMemoryHours` | 24 |
 | `AiThread:MemoryConsolidationIntervalMinutes` | 10 |
+| `AiThread:MemoryRelabelIntervalMinutes` | 10 (interval migrasi label & cek modul ganda) |
+| `AiThread:MemoryAcronyms` | `[]` (singkatan tambahan yang ditulis kapital di label, mis. `["SKU", "GL"]`) |
 | `ConnectionStrings:Redis` | `localhost:6379` (port Garnet; lihat [Instalasi](01-instalasi.md#1-short-memory-garnet)) |
 | `AiThread:EmbeddedRedis:Enabled` | `true` |
 

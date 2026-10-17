@@ -153,12 +153,15 @@ diabaikan: tanpa orkestrasi, tanpa memory.
 
 ## Memory
 
-- Setelah thread selesai, wrapper model menyarikan maksimal 5 memory: **label** (keyword, dipindai planner tanpa
-  membaca isi) dan **deskripsi**.
+- Setelah thread selesai, wrapper model menyarikan maksimal 5 memory: **label** `Modul · Layer · Jenis` (mis.
+  `User · Logic · Rule`), maksimal 16 **keyword**, dan **deskripsi**, semuanya PascalCase. Modul dan layer diturunkan dari
+  **peta kode** (modul & layer tiap file, disimpan sekali per project key), modul dari daftar modul yang sama dengan wiki
+  bisnis; modul ganda digabung otomatis (bisa dibatalkan). Memory lama dilabeli ulang otomatis (dengan backup dulu).
 - **Short memory** disimpan di Garnet (protokol Redis, di dalam AIT, tahan restart/crash) tanpa TTL; worker konsolidasi (tiap 10 menit) memindahkan yang berumur
   > 24 jam ke **long memory** di database dengan id yang sama (idempoten).
-- Planner menerima indeks label (relevan dengan prompt + short memory terbaru) dan bisa memanggil `search_memory` /
-  `read_memory`.
+- Planner menerima peta memory (modul → jumlah per layer/jenis) dan indeks label (lapis 1: modul dari file/istilah di
+  prompt; lapis 2: keyword), lalu memanggil `search_memory` (module/layer/kind/keywords) / `read_memory`, dan
+  `set_module` untuk mengoreksi peta kode.
 - *Knowledge memory* tidak terikat project dan terlihat oleh semua project.
 - Memory project diikat ke **project key** (git remote, `.aithread/project.json`, atau key manual), bukan ke folder:
   arahkan long memory semua developer ke database yang sama (Setting → Penyimpanan memory) agar memory sebuah project

@@ -97,29 +97,42 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A", "D:\\Source\\B"] }` → `registered`, `alreadyRegistered`, `errors` |
 | `GET` | `/api/projects/browse?path=` | tanpa `path` = daftar drive. Hasil: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (root project di folder itu: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
 | `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Hasil: `root`, `projects[]` (bentuk sama dengan `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
-| `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — key manual (kosong/`null` = hapus); `.aithread/project.json` tetap menang. Memory di bawah key lokal lama ikut pindah |
+| `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — key manual (kosong/`null` = hapus); `.aithread/project.json` tetap menang. Memory di bawah key lokal lama ikut pindah (juga daftar modul & peta kodenya) |
+| `GET` | `/api/projects/{id}/codemap?search=&module=` | peta kode: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (maks 500 baris) |
+| `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — koreksi manual, tidak pernah ditimpa; nama class/file dicari ke file project (400 bila tidak ada atau lebih dari satu) |
+| `POST` | `/api/projects/{id}/codemap/scan` | memetakan file sumber yang belum terpetakan (maks 3.000) → `files`, `mapped`, `modules` |
 | `DELETE` | `/api/projects/{id}?includeSharedMemory=false` | thread dipertahankan; memory di mesin ini dihapus, memory di store bersama hanya bila `includeSharedMemory=true`; bila clone lain dengan key sama masih terdaftar, memory pindah ke clone itu |
 
 ### Memory
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `page`, `pageSize` (maks 200) |
-| `GET` | `/api/memory/stats` | — |
+| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (maks 200) |
+| `GET` | `/api/memory/stats` | — (+ `unlabeledCount`, `reviewCount`) |
 | `GET` | `/api/memory/{level}/{id}` | — |
-| `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "label": "...", "description": "..." }` → short memory |
-| `PUT` | `/api/memory/{level}/{id}` | sama dengan POST |
+| `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → short memory. `module`, `kind`, minimal satu keyword (maks 16), dan `description` wajib; knowledge hanya `Pitfall`/`Pattern`/`Architecture`. Modul dicocokkan ke daftar modul (nama/alias/jamak) atau ditambahkan; semua dinormalisasi PascalCase |
+| `PUT` | `/api/memory/{level}/{id}` | sama dengan POST; memory yang belum berlabel jadi berlabel (label lama disimpan di `legacyLabel`) |
 | `DELETE` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory/{id}/promote` | — (short → long) |
 | `POST` | `/api/memory/consolidate` | — (jumlah yang dipindah) |
 | `GET` | `/api/memory/export` | `level`, `type`, `projectId`, `search` → file JSON `aithread-memory` (lihat [Memory](06-memory.md#export--import)) |
-| `POST` | `/api/memory/import` | body = file export; query `mode` (`Skip` default / `Overwrite`), `dryRun` (`true` = hanya ringkasan) |
+| `POST` | `/api/memory/import` | body = file export (v1 atau v2); query `mode` (`Skip` default / `Overwrite`), `dryRun` (`true` = hanya ringkasan) |
+| `GET` | `/api/memory/modules?projectId=&knowledge=false` | daftar modul: `name`, `aliases[]`, `description`, `memories`, `files` (`knowledge=true` = modul knowledge memory) |
+| `PUT` | `/api/memory/modules/{name}?projectId=&knowledge=` | `{ "description": "...", "aliases": ["Pengguna"] }` |
+| `POST` | `/api/memory/modules/merge?knowledge=` | `{ "projectId": "...", "from": "Pengguna", "into": "User" }` → riwayat merge |
+| `POST` | `/api/memory/modules/check?projectId=&knowledge=` | cek modul ganda sekarang → jumlah merge + saran |
+| `GET` | `/api/memory/merges?projectId=&knowledge=` | riwayat: `from`, `into`, `status` (`Applied`/`Undone`/`Suggested`/`Rejected`), `reason`, `confidence`, `decidedBy`, jumlah `memories`/`files`/`pages` |
+| `POST` | `/api/memory/merges/{id}/undo` \| `accept` \| `reject` | batalkan merge yang diterapkan; terima atau tolak saran |
+| `GET` | `/api/memory/review?projectId=` | `memories[]` (perlu review), `merges[]` (saran), `duplicates[]` (`first`, `second`, `similarity`) |
+| `GET` | `/api/memory/relabel` | status migrasi label: `running`, `phase`, `pending`, `labeled`, `needsReview`, `lastRunAt`, `lastMessage`, `backupPath` |
+| `POST` | `/api/memory/relabel` | jalankan migrasi label sekarang (di belakang) |
 | `GET` | `/api/settings/memory-storage` | — (`shortMemory`, `longMemory`, `businessMemory` beserta status masing-masing; password tidak pernah dikembalikan) |
 | `PUT` | `/api/settings/memory-storage` | `{ "shortMemory": {…}, "longMemory": {…}, "businessMemory": {…}, "copyExistingData": true }` — `businessMemory` boleh dihilangkan (store tidak berubah). Hasil: `settings`, `copiedShort`, `copiedLong`, `copiedBusiness`, `warnings[]` |
 | `POST` | `/api/settings/memory-storage/test` | `{ "level": "Short"\|"Long"\|"Business", "store": {…} }` |
 
 Item memory membawa `projectKey`; `projectId`/`projectName` menunjuk project di mesin ini (clone lain dari project yang
-sama bila memory ditulis developer lain).
+sama bila memory ditulis developer lain). Label berstruktur: `label` (tampilan `Modul · Layer · Jenis`, atau label lama
+bila belum berlabel), `module`, `layers[]`, `kind`, `area`, `keywords[]`, `labeled`, `legacyLabel`, `reviewReason`.
 
 ### Business memory (wiki bisnis)
 
@@ -218,7 +231,7 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `thread.output` | aktivitas planner: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | objek tugas lengkap (status, node, durasi, diff, error, …) |
 | `task.output` | potongan output model executor: `taskId`, `taskKey`, `text` |
-| `memory.changed` | `id`, `action` (`created`, `updated`, `deleted`, `promoted`, `consolidated`) |
+| `memory.changed` | `id`, `action` (`created`, `updated`, `deleted`, `promoted`, `consolidated`, `imported`, `relabel`, `merged`, `unmerged`, `suggested`, `rejected`) |
 | `project.changed` | `id`, `action` |
 | `node.changed` | `id`, `action` |
 | `telegram.changed` | `action` (`status`, `created`, `allowed`, `deleted`, `project`); `id` chat untuk perubahan chat, `status` untuk perubahan status bot |

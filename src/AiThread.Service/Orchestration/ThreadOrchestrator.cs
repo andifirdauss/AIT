@@ -32,6 +32,7 @@ public sealed class ThreadOrchestrator(
     VerificationStage verificationStage,
     WrapperAgent wrapperAgent,
     MemoryExtractor memoryExtractor,
+    Memory.CodeMapper codeMapper,
     ContextKeeper contextKeeper,
     PendingQuestionStore questions,
     INineRouterService router,
@@ -157,7 +158,7 @@ public sealed class ThreadOrchestrator(
             var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
             // A question needs a way back: a session to answer in, and not a dashboard run nobody is watching.
             var canAsk = settings.PlannerCanAsk && request.Source != ThreadSource.Dashboard && !string.IsNullOrEmpty(request.SessionId);
-            var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk);
+            var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, await PromptCodeMapAsync(project, request.Prompt, cancellationToken));
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
@@ -492,6 +493,22 @@ public sealed class ThreadOrchestrator(
 
         if (pipeline.KeepContext) ScheduleContextKeeping(thread, request);
         return new ThreadResult(thread.Id, status, progress.Transcript, TotalTokens(thread));
+    }
+
+    // Module and layer of the files the prompt names, for the planner's first memory search layer: stored entries and
+    // sure rules now, the model in the background (the memory extraction waits for it). Never fails the thread.
+    private async Task<IReadOnlyList<Memory.CodeMapHit>> PromptCodeMapAsync(ProjectContext project, string prompt, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var files = await codeMapper.ResolveReferencesAsync(project, prompt, cancellationToken);
+            return files.Count == 0 ? [] : await codeMapper.MapQuicklyAsync(project, files, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Code map of the prompt's files failed.");
+            return [];
+        }
     }
 
     // The memory extraction runs on the application's token, so the memories are kept even when the client hangs up

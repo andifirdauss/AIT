@@ -1,7 +1,10 @@
 using AiThread.Common.Entities;
 using AiThread.Common.Enums;
+using AiThread.Common.Memory;
 using AiThread.Data.Memory;
+using AiThread.Service.Memory;
 using AiThread.Service.Models;
+using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
 namespace AiThread.Service.Business;
@@ -26,12 +29,14 @@ public sealed record BusinessPageDraft(
 
 // Saving business pages and their images. Every save writes a revision; a page changed by someone else since it was
 // read is never overwritten (BusinessPageConflictException), since several developers may share the store.
-public sealed class BusinessPageStore(BusinessMemoryStore store)
+// The module is the one of the project's module list (shared with memory labels) and the labels are PascalCase.
+public sealed class BusinessPageStore(BusinessMemoryStore store, ModuleRegistry registry, ILogger<BusinessPageStore> logger)
 {
     public const int MaxContentChars = 200_000;
 
     public async Task<BusinessPage> SaveAsync(BusinessPageDraft draft, CancellationToken cancellationToken)
     {
+        draft = await NormalizeAsync(draft, cancellationToken);
         await using var db = await store.CreateAsync(cancellationToken);
         var now = DateTime.UtcNow;
 
@@ -153,11 +158,24 @@ public sealed class BusinessPageStore(BusinessMemoryStore store)
         ? "Halaman ini baru saja diubah orang lain. Muat ulang halaman, lalu terapkan perubahan Anda lagi."
         : $"Halaman ini sudah diubah {current.UpdatedBy ?? "orang lain"} (versi {current.Version}) sejak Anda membukanya. Muat ulang halaman, lalu terapkan perubahan Anda lagi.");
 
+    private async Task<BusinessPageDraft> NormalizeAsync(BusinessPageDraft draft, CancellationToken cancellationToken)
+    {
+        var module = MemoryLabels.Module(draft.Module) ?? draft.Module;
+        try
+        {
+            (module, _) = await registry.EnsureAsync(draft.ProjectKey, module, draft.Summary, cancellationToken: cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The module list lives with long memory; while that store is down the name is kept as written.
+            logger.LogWarning(ex, "Module {Module} of a business page could not be resolved.", module);
+        }
+        var labels = string.Join(", ", MemoryLabels.Keywords(MemoryLabels.SplitCsv(draft.Labels)));
+        return draft with { Module = module, Labels = labels };
+    }
+
     private static string DefaultLabels(string module, string title) =>
-        string.Join(", ", $"{module} {title}".Split([' ', ',', '-', '/'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(w => w.ToLowerInvariant())
-            .Where(w => w.Length >= 2)
-            .Distinct());
+        string.Join(", ", MemoryLabels.Keywords($"{module} {title}".Split([' ', ',', '-', '/'], StringSplitOptions.RemoveEmptyEntries)));
 
     private static string Clip(string value, int max) => value.Length > max ? value[..max] : value;
 }

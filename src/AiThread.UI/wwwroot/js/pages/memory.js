@@ -4,15 +4,29 @@
   const el = id => document.getElementById(id);
   const shortMemoryHours = 24;
   const pageSize = 30;
+  const maxKeywords = 16;
   const items = new Map();
   let page = 1;
   let total = 0;
   let projects = [];
+  let reviewLoaded = false;
 
   const modal = bootstrap.Modal.getOrCreateInstance(el('memoryModal'));
+  const reviewTab = el('review-tab');
 
-  function labelChips(label) {
-    return label.split(',').map(k => k.trim()).filter(Boolean).map(k => `<span class="chip">${escapeHtml(k)}</span>`).join('');
+  function chips(values) {
+    return (values || []).map(k => `<span class="chip">${escapeHtml(k)}</span>`).join('');
+  }
+
+  // Labeled: "Module · Layers · Kind" then the keywords. Unlabeled (older versions): the free label, until the
+  // relabeling worker (or a save from the form) gives it a label.
+  function labelCell(m) {
+    if (m.labeled) {
+      return `<div><span class="badge text-bg-light border me-1">${escapeHtml(m.label)}</span>${chips(m.keywords)}</div>`;
+    }
+    const old = m.label.split(',').map(k => k.trim()).filter(Boolean);
+    const review = m.reviewReason ? `<div class="small text-warning">Perlu review: ${escapeHtml(m.reviewReason)}</div>` : '';
+    return `<div><span class="badge text-bg-warning me-1">belum berlabel</span>${chips(old)}</div>${review}`;
   }
 
   // Short memories move to the database once they are older than the short-term window.
@@ -28,7 +42,7 @@
       <td>${levelCell(m)}</td>
       <td><span class="badge ${m.type === 'Project' ? 'text-bg-primary' : 'text-bg-success'}">${m.type}</span></td>
       <td class="small">${escapeHtml(m.projectName || (m.type === 'Knowledge' ? 'semua project' : '–'))}</td>
-      <td><div>${labelChips(m.label)}</div><div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
+      <td>${labelCell(m)}<div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
       <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}</td>
       <td>${m.level === 'Long' ? fmt.number(m.hitCount) : '–'}</td>
       <td class="text-end text-nowrap">
@@ -46,11 +60,37 @@
       el('statLong').textContent = fmt.number(s.longCount);
       el('statProject').textContent = fmt.number(s.projectCount);
       el('statKnowledge').textContent = fmt.number(s.knowledgeCount);
+      el('statUnlabeled').textContent = fmt.number(s.unlabeledCount);
+      el('statReview').innerHTML = s.reviewCount
+        ? `<a href="#review" data-open-review>${fmt.number(s.reviewCount)} perlu review</a>`
+        : 'dilabeli ulang otomatis';
+      el('reviewBadge').textContent = s.reviewCount ? fmt.number(s.reviewCount) : '';
+      el('reviewBadge').classList.toggle('d-none', !s.reviewCount);
       el('statRedis').innerHTML = s.redisConnected
         ? `<span class="text-success">Terhubung</span> · ${escapeHtml(s.shortStore || '')}`
         : `<span class="text-danger">${escapeHtml(s.shortStore || 'Short memory')} tidak terhubung — memory baru langsung ke long memory</span>`;
     } catch (error) {
       toast(error.message, 'error');
+    }
+  }
+
+  // The relabeling of memory written by older versions: shown while anything waits or runs.
+  async function loadRelabel() {
+    try {
+      const s = await api.get('/api/memory/relabel');
+      const show = s.running || s.pending > 0;
+      el('relabelBanner').classList.toggle('d-none', !show);
+      if (!show) return;
+      const parts = [
+        `<strong>Migrasi label memory</strong>: ${fmt.number(s.pending)} menunggu · ${fmt.number(s.labeled)} sudah berlabel · ${fmt.number(s.needsReview)} perlu review`,
+        s.running ? `sedang berjalan${s.phase ? ` (${escapeHtml(s.phase)})` : ''}` : (s.lastRunAt ? `terakhir ${fmt.relative(s.lastRunAt)}` : 'menunggu giliran'),
+        s.lastMessage ? escapeHtml(s.lastMessage) : null,
+        s.backupPath ? `backup: <span class="mono">${escapeHtml(s.backupPath)}</span>` : null
+      ].filter(Boolean);
+      el('relabelText').innerHTML = parts.join(' · ');
+      el('btnRelabel').disabled = s.running;
+    } catch {
+      el('relabelBanner').classList.add('d-none');
     }
   }
 
@@ -62,14 +102,46 @@
     }
     const options = projects.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
     el('filterProject').innerHTML = `<option value="">Semua project</option>${options}`;
+    el('reviewProject').innerHTML = `<option value="">Semua project (memory saja)</option>${options}`;
     el('memoryProject').innerHTML = options || '<option value="">(belum ada project)</option>';
-    if (window.initialProjectId) el('filterProject').value = window.initialProjectId;
+    if (window.initialProjectId) {
+      el('filterProject').value = window.initialProjectId;
+      el('reviewProject').value = window.initialProjectId;
+    }
+  }
+
+  async function modulesOf(projectId, knowledge) {
+    if (!projectId && !knowledge) return [];
+    const params = new URLSearchParams({ knowledge });
+    if (projectId) params.set('projectId', projectId);
+    try {
+      return await api.get(`/api/memory/modules?${params}`);
+    } catch {
+      return [];
+    }
+  }
+
+  // The project's modules and the knowledge modules, for the module filter.
+  async function loadModuleFilter() {
+    const projectId = el('filterProject').value;
+    const [project, knowledge] = await Promise.all([modulesOf(projectId, false), modulesOf(null, true)]);
+    const option = m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)} (${fmt.number(m.memories)})</option>`;
+    const current = el('filterModule').value;
+    el('filterModule').innerHTML = '<option value="">Semua modul</option>'
+      + (project.length ? `<optgroup label="Project">${project.map(option).join('')}</optgroup>` : '')
+      + (knowledge.length ? `<optgroup label="Knowledge">${knowledge.map(option).join('')}</optgroup>` : '');
+    if ([...project, ...knowledge].some(m => m.name === current)) el('filterModule').value = current;
   }
 
   function filterParams(params = new URLSearchParams()) {
-    if (el('filterLevel').value) params.set('level', el('filterLevel').value);
-    if (el('filterType').value) params.set('type', el('filterType').value);
-    if (el('filterProject').value) params.set('projectId', el('filterProject').value);
+    const set = (name, id) => { if (el(id).value) params.set(name, el(id).value); };
+    set('level', 'filterLevel');
+    set('type', 'filterType');
+    set('projectId', 'filterProject');
+    set('module', 'filterModule');
+    set('layer', 'filterLayer');
+    set('kind', 'filterKind');
+    set('labeled', 'filterLabeled');
     if (el('filterSearch').value.trim()) params.set('search', el('filterSearch').value.trim());
     return params;
   }
@@ -80,7 +152,6 @@
     try {
       const result = await api.get(`/api/memory?${params}`);
       total = result.total;
-      items.clear();
       result.items.forEach(m => items.set(m.id, m));
       tbody.innerHTML = result.items.length
         ? result.items.map(row).join('')
@@ -94,9 +165,33 @@
     }
   }
 
+  // --- Form: every save writes the full label ---
+
+  function keywordList() {
+    return el('memoryKeywords').value.split(',').map(k => k.trim()).filter(Boolean);
+  }
+
+  function syncKeywordCount() {
+    const count = keywordList().length;
+    el('memoryKeywordCount').textContent = `(${count}/${maxKeywords})`;
+    el('memoryKeywordCount').className = count > maxKeywords ? 'text-danger' : 'text-secondary';
+  }
+
+  async function syncModuleList() {
+    const knowledge = el('memoryType').value === 'Knowledge';
+    const modules = await modulesOf(knowledge ? null : el('memoryProject').value, knowledge);
+    el('memoryModuleList').innerHTML = modules
+      .map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml([m.description, m.aliases.join(', ')].filter(Boolean).join(' · '))}</option>`)
+      .join('');
+  }
+
   function syncProjectField() {
     const knowledge = el('memoryType').value === 'Knowledge';
     el('memoryProject').disabled = knowledge;
+    // Knowledge memory is never project specific: business rules, flows and conventions are project memory.
+    [...el('memoryKind').options].forEach(o => { o.disabled = knowledge && !['Pitfall', 'Pattern', 'Architecture'].includes(o.value); });
+    if (el('memoryKind').selectedOptions[0]?.disabled) el('memoryKind').value = 'Pattern';
+    syncModuleList();
   }
 
   function openModal(memory) {
@@ -104,24 +199,44 @@
     el('memoryLevel').value = memory?.level || '';
     el('memoryType').value = memory?.type || 'Project';
     el('memoryProject').value = memory?.projectId || el('filterProject').value || (projects[0]?.id ?? '');
-    el('memoryLabel').value = memory?.label || '';
+    el('memoryModule').value = memory?.module || '';
+    el('memoryKind').value = memory?.kind || 'Rule';
+    el('memoryArea').value = memory?.area || '';
+    document.querySelectorAll('#memoryLayers input').forEach(box => { box.checked = (memory?.layers || []).includes(box.value); });
+    // An unlabeled memory starts from its old keywords.
+    el('memoryKeywords').value = memory
+      ? (memory.labeled ? memory.keywords : memory.label.split(',').map(k => k.trim()).filter(Boolean)).join(', ')
+      : '';
+    const legacy = memory?.legacyLabel || (memory && !memory.labeled ? memory.label : null);
+    el('memoryLegacy').textContent = legacy ? `Label lama: ${legacy}` : '';
+    el('memoryLegacy').classList.toggle('d-none', !legacy);
     el('memoryDescription').value = memory?.description || '';
     el('memoryModalTitle').textContent = memory ? `Memory · ${memory.level === 'Short' ? 'Short' : 'Long'}` : 'Tambah memory (masuk ke short memory)';
     el('memoryMeta').textContent = memory
-      ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? ` · dipindah ke DB ${fmt.dateTime(memory.promotedAt)}` : ''}`
+      ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? ` · dipindah ke DB ${fmt.dateTime(memory.promotedAt)}` : ''}${memory.reviewReason ? ` · perlu review: ${memory.reviewReason}` : ''}`
       : '';
     syncProjectField();
+    syncKeywordCount();
     modal.show();
   }
 
   el('memoryForm').addEventListener('submit', async event => {
     event.preventDefault();
+    const keywords = keywordList();
+    if (keywords.length > maxKeywords) {
+      toast(`Maksimal ${maxKeywords} keyword.`, 'error');
+      return;
+    }
     const id = el('memoryId').value;
     const type = el('memoryType').value;
     const body = {
       type,
       projectId: type === 'Knowledge' ? null : (el('memoryProject').value || null),
-      label: el('memoryLabel').value.trim(),
+      module: el('memoryModule').value.trim(),
+      kind: el('memoryKind').value,
+      keywords,
+      layers: [...document.querySelectorAll('#memoryLayers input:checked')].map(box => box.value),
+      area: el('memoryArea').value.trim() || null,
       description: el('memoryDescription').value.trim()
     };
     try {
@@ -129,58 +244,145 @@
       else await api.post('/api/memory', body);
       modal.hide();
       toast('Memory tersimpan.');
-      load();
-      loadStats();
+      refreshAll();
     } catch (error) {
       toast(error.message, 'error');
     }
   });
 
-  el('memoryRows').addEventListener('click', async event => {
+  async function promote(id) {
+    try {
+      await api.post(`/api/memory/${id}/promote`);
+      toast('Memory dipindah ke long memory.');
+      refreshAll();
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
+  async function remove(memory) {
+    if (!confirm(`Hapus memory "${memory.label}"?`)) return;
+    try {
+      await api.del(`/api/memory/${memory.level}/${memory.id}`);
+      toast('Memory dihapus.');
+      refreshAll();
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
+  el('memoryRows').addEventListener('click', event => {
     const target = event.target.closest('button');
     if (!target) return;
-
-    if (target.dataset.edit) {
-      openModal(items.get(target.dataset.edit));
-      return;
-    }
-
-    if (target.dataset.promote) {
-      try {
-        await api.post(`/api/memory/${target.dataset.promote}/promote`);
-        toast('Memory dipindah ke long memory.');
-        load();
-        loadStats();
-      } catch (error) {
-        toast(error.message, 'error');
-      }
-      return;
-    }
-
-    if (target.dataset.delete) {
-      const memory = items.get(target.dataset.delete);
-      if (!confirm(`Hapus memory "${memory.label}"?`)) return;
-      try {
-        await api.del(`/api/memory/${memory.level}/${memory.id}`);
-        toast('Memory dihapus.');
-        load();
-        loadStats();
-      } catch (error) {
-        toast(error.message, 'error');
-      }
-    }
+    if (target.dataset.edit) openModal(items.get(target.dataset.edit));
+    else if (target.dataset.promote) promote(target.dataset.promote);
+    else if (target.dataset.delete) remove(items.get(target.dataset.delete));
   });
 
   el('btnConsolidate').addEventListener('click', async () => {
     try {
       const moved = await api.post('/api/memory/consolidate');
       toast(moved ? `${moved} memory dipindah ke long memory.` : 'Tidak ada short memory yang sudah lewat 1 hari.', 'info');
-      load();
-      loadStats();
+      refreshAll();
     } catch (error) {
       toast(error.message, 'error');
     }
   });
+
+  el('btnRelabel').addEventListener('click', async () => {
+    try {
+      await api.post('/api/memory/relabel');
+      toast('Migrasi label dijalankan di belakang.', 'info');
+      setTimeout(loadRelabel, 800);
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
+
+  // --- Perlu review: memories without a label, suggested merges, likely duplicates ---
+
+  function memoryItem(m, actions) {
+    return `<div class="list-group-item">
+      <div class="d-flex flex-wrap align-items-start gap-2">
+        <div class="me-auto">
+          <div class="small text-secondary">${m.level} · ${m.type}${m.projectName ? ` · ${escapeHtml(m.projectName)}` : ''}</div>
+          ${labelCell(m)}
+          <div class="small text-truncate-2">${escapeHtml(m.description)}</div>
+        </div>
+        <div class="text-nowrap">${actions}</div>
+      </div>
+    </div>`;
+  }
+
+  async function loadReview() {
+    reviewLoaded = true;
+    const projectId = el('reviewProject').value;
+    try {
+      const review = await api.get(`/api/memory/review${projectId ? `?projectId=${projectId}` : ''}`);
+      [...review.memories, ...review.duplicates.flatMap(d => [d.first, d.second])].forEach(m => items.set(m.id, m));
+
+      el('reviewMemoryCount').textContent = review.memories.length ? `(${review.memories.length})` : '';
+      el('reviewMemories').innerHTML = review.memories.length
+        ? review.memories.map(m => memoryItem(m, `
+            <button type="button" class="btn btn-sm btn-outline-primary" data-edit="${m.id}">Beri label</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-delete="${m.id}">Hapus</button>`)).join('')
+        : '<div class="list-group-item text-secondary small">Tidak ada memory yang menunggu label.</div>';
+
+      el('reviewMergeCount').textContent = review.merges.length ? `(${review.merges.length})` : '';
+      el('reviewMerges').innerHTML = review.merges.length
+        ? review.merges.map(g => `<div class="list-group-item d-flex flex-wrap align-items-center gap-2">
+            <div class="me-auto">
+              <span class="fw-semibold">${escapeHtml(g.from)}</span> → <span class="fw-semibold">${escapeHtml(g.into)}</span>
+              ${g.confidence != null ? `<span class="badge text-bg-light border ms-1">keyakinan ${Math.round(g.confidence * 100)}%</span>` : ''}
+              ${g.reason ? `<div class="small text-secondary">${escapeHtml(g.reason)}</div>` : ''}
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-accept="${g.id}">Gabungkan</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-reject="${g.id}">Bukan duplikat</button>
+          </div>`).join('')
+        : `<div class="list-group-item text-secondary small">${projectId ? 'Tidak ada saran gabung modul.' : 'Pilih project untuk melihat saran gabung modulnya.'}</div>`;
+
+      el('reviewDuplicateCount').textContent = review.duplicates.length ? `(${review.duplicates.length})` : '';
+      el('reviewDuplicates').innerHTML = review.duplicates.length
+        ? review.duplicates.map(d => `<div class="list-group-item">
+            <div class="small text-secondary mb-1">Kemiripan keyword ${Math.round(d.similarity * 100)}%</div>
+            <div class="row g-2">
+              ${[d.first, d.second].map(m => `<div class="col-md-6"><div class="border rounded p-2 h-100">
+                ${labelCell(m)}<div class="small text-truncate-2">${escapeHtml(m.description)}</div>
+                <div class="mt-1"><button type="button" class="btn btn-sm btn-outline-secondary" data-edit="${m.id}">Buka</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-delete="${m.id}">Hapus</button></div>
+              </div></div>`).join('')}
+            </div>
+          </div>`).join('')
+        : '<div class="list-group-item text-secondary small">Tidak ada kandidat duplikat.</div>';
+    } catch (error) {
+      el('reviewMemories').innerHTML = `<div class="list-group-item text-danger small">${escapeHtml(error.message)}</div>`;
+    }
+  }
+
+  el('tab-review').addEventListener('click', async event => {
+    const target = event.target.closest('button');
+    if (!target) return;
+    if (target.dataset.edit) return openModal(items.get(target.dataset.edit));
+    if (target.dataset.delete) return remove(items.get(target.dataset.delete));
+    const action = target.dataset.accept ? 'accept' : target.dataset.reject ? 'reject' : null;
+    if (!action) return;
+    try {
+      await api.post(`/api/memory/merges/${target.dataset.accept || target.dataset.reject}/${action}`);
+      toast(action === 'accept' ? 'Modul digabung.' : 'Saran ditolak.');
+      refreshAll();
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
+
+  reviewTab.addEventListener('shown.bs.tab', () => { if (!reviewLoaded) loadReview(); });
+  el('reviewProject').addEventListener('change', loadReview);
+  document.addEventListener('click', event => {
+    if (!event.target.closest('[data-open-review]')) return;
+    event.preventDefault();
+    bootstrap.Tab.getOrCreateInstance(reviewTab).show();
+  });
+  if (location.hash === '#review') bootstrap.Tab.getOrCreateInstance(reviewTab).show();
 
   // Export: the memories matching the filters, downloaded as JSON. Fetched first so an error shows as a toast.
   el('btnExport').addEventListener('click', async () => {
@@ -272,8 +474,7 @@
       const result = await api.post(`/api/memory/import?mode=${el('importMode').value}`, importDocument);
       importModal.hide();
       toast(`${result.added} memory ditambahkan, ${result.updated} ditimpa, ${result.skipped + result.duplicates} dilewati.`);
-      load();
-      loadStats();
+      refreshAll();
     } catch (error) {
       toast(error.message, 'error');
       el('btnImportConfirm').disabled = false;
@@ -281,15 +482,26 @@
   });
   el('importModal').addEventListener('hidden.bs.modal', () => { importDocument = null; });
 
+  function refreshAll() {
+    load();
+    loadStats();
+    loadRelabel();
+    if (reviewLoaded) loadReview();
+  }
+
   const resetAndLoad = () => { page = 1; load(); };
   el('btnAdd').addEventListener('click', () => openModal(null));
   el('memoryType').addEventListener('change', syncProjectField);
-  ['filterLevel', 'filterType', 'filterProject'].forEach(id => el(id).addEventListener('change', resetAndLoad));
+  el('memoryProject').addEventListener('change', syncModuleList);
+  el('memoryKeywords').addEventListener('input', syncKeywordCount);
+  ['filterLevel', 'filterType', 'filterModule', 'filterLayer', 'filterKind', 'filterLabeled'].forEach(id => el(id).addEventListener('change', resetAndLoad));
+  el('filterProject').addEventListener('change', () => { loadModuleFilter(); resetAndLoad(); });
   el('filterSearch').addEventListener('input', debounce(resetAndLoad, 350));
   el('btnPrev').addEventListener('click', () => { page = Math.max(1, page - 1); load(); });
   el('btnNext').addEventListener('click', () => { page += 1; load(); });
 
   loadStats();
-  loadProjects().then(load);
-  stream('types=memory', { 'memory.changed': debounce(() => { load(); loadStats(); }, 500) });
+  loadRelabel();
+  loadProjects().then(() => { loadModuleFilter(); load(); });
+  stream('types=memory', { 'memory.changed': debounce(refreshAll, 500) });
 })();

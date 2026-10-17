@@ -38,7 +38,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | 3 | [Integrasi Claude Code](03-integrasi-claude-code.md) | Mengarahkan Claude Code (dan Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi) ke AIT lewat menu CLI, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
 | 5 | [Panduan menu](05-menu.md) | Dashboard, detail thread, Project, Memory, Node, CLI, Setting |
-| 6 | [Memory](06-memory.md) | Short vs long memory, project vs knowledge memory, siklus hidup, pengelolaan |
+| 6 | [Memory](06-memory.md) | Short vs long memory, project vs knowledge memory, label (modul · layer · jenis + keyword), peta kode, daftar & gabung modul, migrasi label, siklus hidup, pengelolaan |
 | 7 | [Cara kerja](07-cara-kerja.md) | Detail pipeline: klasifikasi request, planner, kontrak, validator, executor, verifikasi (build & reviewer), wrapper |
 | 8 | [Troubleshooting](08-troubleshooting.md) | Pesan error umum dan solusinya |
 | 9 | [Referensi API](09-referensi-api.md) | Endpoint proxy Anthropic, REST `/api`, event SSE |
@@ -63,3 +63,5 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | **Short memory** | Memory baru, disimpan di Garnet (server protokol Redis di dalam AIT) selama ±24 jam. |
 | **Long memory** | Memory yang sudah dipindah dari short memory ke database. |
 | **Project memory / Knowledge memory** | Pengetahuan khusus satu project / pola umum yang berguna lintas project. |
+| **Label memory** | `Modul · Layer · Jenis` (mis. `User · Logic · Rule`) + maksimal 16 keyword, PascalCase. Modul menyaring, keyword memilih. |
+| **Peta kode** | Modul dan layer tiap file project, diputuskan sekali (aturan, model, atau manual) dan dipakai ulang untuk label memory. |

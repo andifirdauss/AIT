@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h1>Memory</h1>
-        <p class="page-subtitle">Pengetahuan yang disarikan dari thread. Planner membaca <strong>label</strong> dulu (keyword), lalu deskripsi yang relevan saja. Memory project dibagi antar developer lewat <a href="/Project">project key</a>.</p>
+        <p class="page-subtitle">Pengetahuan yang disarikan dari thread. Planner menyaring lewat <strong>label</strong> (Modul · Layer · Jenis), memilih dengan <strong>keyword</strong>, lalu membaca deskripsi yang relevan saja. Memory project dibagi antar developer lewat <a href="/Project">project key</a>.</p>
     </div>
 </div>
 
@@ -15,9 +15,17 @@
         <button class="nav-link active" id="memory-list-tab" data-bs-toggle="tab" data-bs-target="#tab-memory-list" data-tab="" type="button" role="tab" aria-controls="tab-memory-list" aria-selected="true">Short &amp; long memory</button>
     </li>
     <li class="nav-item" role="presentation">
+        <button class="nav-link" id="review-tab" data-bs-toggle="tab" data-bs-target="#tab-review" data-tab="review" type="button" role="tab" aria-controls="tab-review" aria-selected="false">Perlu review <span class="badge text-bg-warning d-none" id="reviewBadge"></span></button>
+    </li>
+    <li class="nav-item" role="presentation">
         <button class="nav-link" id="business-tab" data-bs-toggle="tab" data-bs-target="#tab-business" data-tab="bisnis" type="button" role="tab" aria-controls="tab-business" aria-selected="false">Bisnis (wiki)</button>
     </li>
 </ul>
+
+<div class="alert alert-info d-none d-flex flex-wrap align-items-center gap-2 small" id="relabelBanner" role="status">
+    <div class="me-auto" id="relabelText"></div>
+    <button type="button" class="btn btn-outline-primary btn-sm" id="btnRelabel">Jalankan sekarang</button>
+</div>
 
 <div class="tab-content">
 <div class="tab-pane active" id="tab-memory-list" role="tabpanel" aria-labelledby="memory-list-tab" tabindex="0">
@@ -42,6 +50,9 @@
     <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
         <div class="stat-label">Knowledge memory</div><div class="stat-value" id="statKnowledge">–</div><div class="stat-hint">pola umum lintas project</div>
     </div></div></div>
+    <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
+        <div class="stat-label">Belum berlabel</div><div class="stat-value" id="statUnlabeled">–</div><div class="stat-hint" id="statReview">&nbsp;</div>
+    </div></div></div>
 </div>
 
 <div class="card">
@@ -64,6 +75,26 @@
                 <input type="search" class="form-control form-control-sm" id="filterSearch" placeholder="Cari label atau deskripsi…" />
             </div>
         </div>
+        <div class="row g-2 mt-0">
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="filterModule" title="Modul dari project yang dipilih (dan knowledge)"><option value="">Semua modul</option></select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterLayer">
+                    <option value="">Semua layer</option><option>UI</option><option>Entry</option><option>Logic</option><option>Data</option><option>Infra</option><option>Test</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterKind">
+                    <option value="">Semua jenis</option><option>Pitfall</option><option>Rule</option><option>Flow</option><option>Convention</option><option>Architecture</option><option>Pattern</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterLabeled">
+                    <option value="">Berlabel &amp; belum</option><option value="true">Berlabel</option><option value="false">Belum berlabel</option>
+                </select>
+            </div>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -79,6 +110,35 @@
         </div>
     </div>
 </div>
+</div>
+
+<div class="tab-pane" id="tab-review" role="tabpanel" aria-labelledby="review-tab" tabindex="0">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5 col-xl-4">
+                    <label class="form-label small text-secondary" for="reviewProject">Project</label>
+                    <select class="form-select form-select-sm" id="reviewProject"><option value="">Semua project (memory saja)</option></select>
+                </div>
+                <div class="col small text-secondary">
+                    Memory yang tidak bisa dilabeli otomatis, saran gabung modul yang keyakinannya rendah, dan pasangan memory yang kemungkinan sama.
+                    Merge dengan keyakinan tinggi sudah diterapkan otomatis dan bisa dibatalkan di detail project.
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-header">Memory tanpa label <span class="text-secondary small" id="reviewMemoryCount"></span></div>
+        <div class="list-group list-group-flush" id="reviewMemories"><div class="list-group-item text-secondary small">Memuat…</div></div>
+    </div>
+    <div class="card mb-3">
+        <div class="card-header">Saran gabung modul <span class="text-secondary small" id="reviewMergeCount"></span></div>
+        <div class="list-group list-group-flush" id="reviewMerges"><div class="list-group-item text-secondary small">Memuat…</div></div>
+    </div>
+    <div class="card">
+        <div class="card-header">Kandidat memory duplikat <span class="text-secondary small" id="reviewDuplicateCount"></span></div>
+        <div class="list-group list-group-flush" id="reviewDuplicates"><div class="list-group-item text-secondary small">Memuat…</div></div>
+    </div>
 </div>
 
 <div class="tab-pane" id="tab-business" role="tabpanel" aria-labelledby="business-tab" tabindex="0">
@@ -135,7 +195,7 @@
                     <div class="row g-2 mb-2">
                         <div class="col-md-3">
                             <label class="form-label small" for="bizModule">Modul</label>
-                            <input type="text" class="form-control" id="bizModule" maxlength="100" placeholder="TO" required />
+                            <input type="text" class="form-control" id="bizModule" maxlength="100" placeholder="TransferOrder" title="Modul yang sama dengan label memory; alias dan penulisan lain diarahkan ke modul yang sudah ada" required />
                         </div>
                         <div class="col-md-9">
                             <label class="form-label small" for="bizTitle">Judul</label>
@@ -147,8 +207,8 @@
                         <input type="text" class="form-control" id="bizSummary" maxlength="1000" placeholder="Satu-dua kalimat: modul ini untuk apa" />
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small" for="bizLabels">Label (keyword dipisah koma, untuk planner)</label>
-                        <input type="text" class="form-control" id="bizLabels" maxlength="500" placeholder="to, transfer order, mutasi, gudang" />
+                        <label class="form-label small" for="bizLabels">Label (keyword dipisah koma untuk planner, disimpan PascalCase)</label>
+                        <input type="text" class="form-control" id="bizLabels" maxlength="500" placeholder="TransferOrder, Mutasi, Gudang" />
                     </div>
                     <div class="d-flex align-items-center gap-2 mb-1">
                         <label class="form-label small mb-0" for="bizBody">Isi (Markdown — tabel didukung)</label>
@@ -231,10 +291,45 @@
                         <select class="form-select" id="memoryProject"></select>
                     </div>
                 </div>
-                <div class="mb-2">
-                    <label class="form-label small" for="memoryLabel">Label (keyword dipisah koma)</label>
-                    <input type="text" class="form-control" id="memoryLabel" maxlength="300" required />
+                <div class="row g-2 mb-2">
+                    <div class="col-md-5">
+                        <label class="form-label small" for="memoryModule">Modul</label>
+                        <input type="text" class="form-control" id="memoryModule" maxlength="100" list="memoryModuleList" placeholder="User" required />
+                        <datalist id="memoryModuleList"></datalist>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small" for="memoryKind">Jenis</label>
+                        <select class="form-select" id="memoryKind" required>
+                            <option value="Pitfall">Pitfall — jebakan/bug &amp; solusinya</option>
+                            <option value="Rule">Rule — aturan bisnis &amp; validasi</option>
+                            <option value="Flow">Flow — urutan langkah</option>
+                            <option value="Convention">Convention — cara menulis kode di sini</option>
+                            <option value="Architecture">Architecture — susunan &amp; alasan desain</option>
+                            <option value="Pattern">Pattern — solusi teknis umum</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small" for="memoryArea">Area <span class="text-secondary">(opsional)</span></label>
+                        <input type="text" class="form-control" id="memoryArea" maxlength="100" placeholder="Web" title="Aplikasi di repo multi-aplikasi" />
+                    </div>
                 </div>
+                <div class="mb-2">
+                    <span class="form-label small d-block">Layer</span>
+                    <div class="d-flex flex-wrap gap-3" id="memoryLayers">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" value="UI" id="layerUI"><label class="form-check-label small" for="layerUI">UI</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Entry" id="layerEntry"><label class="form-check-label small" for="layerEntry">Entry</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Logic" id="layerLogic"><label class="form-check-label small" for="layerLogic">Logic</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Data" id="layerData"><label class="form-check-label small" for="layerData">Data</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Infra" id="layerInfra"><label class="form-check-label small" for="layerInfra">Infra</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" value="Test" id="layerTest"><label class="form-check-label small" for="layerTest">Test</label></div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small" for="memoryKeywords">Keyword <span class="text-secondary" id="memoryKeywordCount"></span></label>
+                    <input type="text" class="form-control" id="memoryKeywords" placeholder="Description, Deskripsi, UserValidator" required />
+                    <div class="form-text">Dipisah koma, maksimal 16. Ditulis dalam PascalCase otomatis (singkatan seperti API, DTO, UI jadi kapital); nama class dari kode tetap seperti aslinya.</div>
+                </div>
+                <div class="small text-secondary mb-2 d-none" id="memoryLegacy"></div>
                 <div>
                     <label class="form-label small" for="memoryDescription">Deskripsi</label>
                     <textarea class="form-control" id="memoryDescription" rows="8" required></textarea>

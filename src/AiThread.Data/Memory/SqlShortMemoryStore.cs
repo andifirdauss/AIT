@@ -75,6 +75,15 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
         row.Description = record.Description;
         row.SourceThreadId = record.SourceThreadId;
         row.CreatedAt = record.CreatedAt;
+        row.Module = record.Module;
+        row.Layers = record.Layers;
+        row.Kind = record.Kind;
+        row.Area = record.Area;
+        row.Keywords = record.Keywords;
+        row.LabelVersion = record.LabelVersion;
+        row.LegacyLabel = record.LegacyLabel;
+        row.ReviewReason = record.ReviewReason;
+        row.RelabelAttempts = record.RelabelAttempts;
         await db.SaveChangesAsync();
         return true;
     });
@@ -123,7 +132,8 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
             if (!_schemaReady)
             {
                 await MemorySchema.EnsureAsync(_connection, db, (c, ct) => c.ShortMemories.AnyAsync(ct), cancellationToken);
-                await MemorySchema.EnsureColumnsAsync<ShortMemoryRow>(db, cancellationToken, nameof(ShortMemoryRow.ProjectKey), nameof(ShortMemoryRow.ProjectName));
+                await MemorySchema.EnsureColumnsAsync<ShortMemoryRow>(db, cancellationToken,
+                    [nameof(ShortMemoryRow.ProjectKey), nameof(ShortMemoryRow.ProjectName), .. MemorySchema.LabelColumns]);
                 _schemaReady = true;
             }
             return db;
@@ -159,5 +169,6 @@ public sealed class SqlShortMemoryStore : IShortMemoryStore
     }
 
     private static ShortMemoryRecord ToRecord(ShortMemoryRow r) =>
-        new(r.Id, r.ProjectId, r.Type, r.Label, r.Description, r.SourceThreadId, r.CreatedAt, r.ProjectKey, r.ProjectName);
+        new(r.Id, r.ProjectId, r.Type, r.Label, r.Description, r.SourceThreadId, r.CreatedAt, r.ProjectKey, r.ProjectName,
+            r.Module, r.Layers, r.Kind, r.Area, r.Keywords, r.LabelVersion, r.LegacyLabel, r.ReviewReason, r.RelabelAttempts);
 }
