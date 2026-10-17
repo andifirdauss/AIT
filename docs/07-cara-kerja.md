@@ -424,6 +424,28 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
   lihat [Business memory](06-memory.md#business-memory-wiki-bisnis). Gambar yang dilampirkan di prompt disimpan
   sampai saat itu, agar screenshot bisa masuk ke halaman modulnya.
 - Untuk thread dari Claude Code (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
+- Bila ada file yang diubah (juga thread yang dibatalkan/gagal di tengah), Struktur kode project dipindai ulang dan
+  function yang diubah dibaca panggilannya (lihat [Panggilan function](#panggilan-function)), keduanya di belakang.
+
+## Panggilan function
+
+AIT mencatat apa saja yang dipanggil tiap function, sedikit demi sedikit, hanya di kode yang benar-benar disentuh:
+
+- **Pemicu**: function di baris yang dibaca planner atau tools node (`read_file`, file di dalam project saja), dan
+  function yang diubah thread (blok baris yang berbeda dari isi sebelum thread). Tidak ada scan seluruh project.
+- **Pembaca**: node **Tools Node** aktif pertama (dengan node cadangannya). Tanpa Tools Node aktif, tidak ada yang
+  dibaca. Satu panggilan model berisi beberapa function satu file (maks 20 function / ±16.000 karakter; function
+  panjang dipotong di 8.000 karakter). Model menyebut panggilan, jenisnya (`function`, `method`, `http`, `view`,
+  `sql`, `other`), dan barisnya; library/framework (jQuery DOM, LINQ, logging, …) diabaikan.
+- **Pemeriksaan**: panggilan yang namanya tidak tertulis di baris yang disebut (±1 baris) dibuang; untuk `http`, bagian
+  URL-nya harus ada di badan function. **Lokasi** deklarasi dicari AIT sendiri dari Struktur kode, bukan oleh model:
+  file yang sama dulu, lalu class yang disebut (`clsKlaimDFBL.GetByDocNo` → file class itu, termasuk class partial),
+  lalu nama yang unik di project. URL dicocokkan ke `{Controller}Controller.{Action}` (dua segmen terakhir, jadi area
+  di depannya tidak masalah) atau ke file script dengan path itu. Yang ragu dibiarkan *belum ditemukan*.
+- **Hemat**: function yang isinya sama dengan saat terakhir dibaca tidak dikirim lagi; yang gagal dicoba lagi paling
+  cepat 1 jam kemudian. Antrean diproses satu file per waktu di belakang; planner dan executor tidak menunggu.
+- Hasil disimpan di database lokal (tabel `CodeFunctionScans` dan `CodeFunctionCalls`), mengikuti file clone di mesin
+  ini; tampil di Project → detail → *Struktur kode*.
 
 ## Konteks sesi (Context Keeper)
 

@@ -111,6 +111,11 @@ Di bawah kedua kolom, jendela **Struktur kode** menampilkan isi project tanpa co
   *Dideklarasikan di N file*.
 - Klik baris deklarasi untuk menyalin `path:baris` (bisa langsung ditempel ke prompt). Pencarian mencari nama class,
   member, dan file (100 hasil teratas). Pilihan Folder/Class diingat browser.
+- **Panggilan function** (`N panggilan`): apa saja yang dipanggil sebuah method/function, mis. `p_InitForm` →
+  `p_InitiateDetail`, `p_initiateData`; `p_initiateData` → `POST /Transaction/KlaimPending/InitiateData` →
+  `KlaimPendingController.InitiateData`. Klik function untuk membuka daftarnya; tiap panggilan menunjuk ke file dan
+  baris deklarasinya (klik untuk menyalin), atau tampil redup *belum ditemukan di project*. Lihat
+  [Panggilan function](07-cara-kerja.md#panggilan-function) untuk kapan dan bagaimana dibaca.
 - C# dibaca dengan Roslyn (syntax saja, tepat). PHP, JavaScript/TypeScript, Python, dan Java/Kotlin dibaca per baris
   dengan pola, dan isi class ditentukan dari indentasi. Cocok untuk kode yang rapi; closure dan class anonim tidak
   dihitung. File lain tampil sebagai file saja.
