@@ -7,6 +7,7 @@ using AiThread.Common.Enums;
 using AiThread.Data.Context;
 using AiThread.Data.Messaging;
 using AiThread.Service.Business;
+using AiThread.Service.CodeCalls;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
 using AiThread.Service.Verification;
@@ -35,6 +36,7 @@ public sealed class ThreadOrchestrator(
     Memory.CodeMapper codeMapper,
     ContextKeeper contextKeeper,
     ICodeStructureService codeStructure,
+    FunctionCallQueue functionCalls,
     PendingQuestionStore questions,
     INineRouterService router,
     IHostApplicationLifetime lifetime,
@@ -486,8 +488,7 @@ public sealed class ThreadOrchestrator(
         if (succeeded < execution.Results.Count) notes.Add($"{execution.Results.Count - succeeded} tugas tidak berhasil.");
         if (verification?.Report.Outcome == VerificationReport.Failed) notes.Add(VerificationNote(verification.Report));
         await FinishAsync(recorder, status, finalText, pipeline.Total, wrapTokens, wrapClock.ElapsedMilliseconds, notes.Count > 0 ? string.Join(" ", notes) : null);
-        // The tasks are done: Project > Detail → Struktur kode shows the files as they are now.
-        if (succeeded > 0) codeStructure.Refresh(pipeline.Project.ProjectId);
+        if (succeeded > 0) CodeChanged(pipeline.Project.ProjectId, thread.Id);
 
         recorder.Log(status == ThreadStatus.Completed ? ActivityLevel.Success : ActivityLevel.Error,
             $"Thread selesai: {succeeded}/{execution.Results.Count} tugas berhasil dalam {Seconds(pipeline.Total.ElapsedMilliseconds)}.");
@@ -500,6 +501,14 @@ public sealed class ThreadOrchestrator(
 
         if (pipeline.KeepContext) ScheduleContextKeeping(thread, request);
         return new ThreadResult(thread.Id, status, progress.Transcript, TotalTokens(thread));
+    }
+
+    // The thread's tasks are done (or stopped): Project > Detail → Struktur kode is walked again, and the functions the
+    // thread changed get their calls read by the tools node. Both in the background.
+    private void CodeChanged(Guid projectId, Guid threadId)
+    {
+        codeStructure.Refresh(projectId);
+        functionCalls.ThreadChanged(projectId, threadId);
     }
 
     // Module and layer of the files the prompt names, for the planner's first memory search layer: stored entries and
@@ -657,7 +666,7 @@ public sealed class ThreadOrchestrator(
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // Tasks that finished before the cancel may have written files.
-            codeStructure.Refresh(request.ProjectId);
+            CodeChanged(request.ProjectId, thread.Id);
             await progress.CloseAsync();
             await MarkUnfinishedTasksCancelledAsync(thread.Id);
             await FinishAsync(recorder, ThreadStatus.Cancelled, null, total, 0, null, "Thread dibatalkan.");
@@ -668,7 +677,7 @@ public sealed class ThreadOrchestrator(
         {
             if (ex is not (OrchestrationException or NineRouterException)) logger.LogError(ex, "Thread {ThreadId} crashed", thread.Id);
             var message = ex is OrchestrationException or NineRouterException ? ex.Message : $"Kesalahan internal: {ex.Message}";
-            codeStructure.Refresh(request.ProjectId);
+            CodeChanged(request.ProjectId, thread.Id);
             await MarkUnfinishedTasksCancelledAsync(thread.Id);
             var failed = await FailAsync(recorder, progress, total, message);
             if (keepContext) ScheduleContextKeeping(thread, request);

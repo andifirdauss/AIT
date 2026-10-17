@@ -97,6 +97,13 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
         [FromQuery] string? container, CancellationToken cancellationToken) =>
         ApiResponse<StructureClassDto>.Ok(await structure.GetClassAsync(id, group, name, container, cancellationToken));
 
+    // What one function calls, as read by the tools node; key from a member of /structure/file or /structure/class.
+    [HttpGet("{id:guid}/structure/calls")]
+    public async Task<ActionResult<ApiResponse<StructureFunctionCallsDto>>> StructureCalls(Guid id, [FromQuery] string key, CancellationToken cancellationToken) =>
+        await structure.GetCallsAsync(id, key, cancellationToken) is { } calls
+            ? ApiResponse<StructureFunctionCallsDto>.Ok(calls)
+            : NotFound(ApiResponse<StructureFunctionCallsDto>.Fail("Panggilan function ini belum pernah dibaca."));
+
     [HttpGet("{id:guid}/structure/search")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<StructureSearchHitDto>>>> StructureSearch(Guid id, [FromQuery] string q, CancellationToken cancellationToken) =>
         ApiResponse<IReadOnlyList<StructureSearchHitDto>>.Ok(await structure.SearchAsync(id, q, cancellationToken));
