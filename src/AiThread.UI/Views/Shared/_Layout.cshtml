@@ -55,8 +55,8 @@
             <div id="updateBar" class="alert alert-info win-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
                 <win-controls for="alert" />
                 <div>
-                    <strong>🚀 AIT versi @appVersion</strong> — Perbaikan stabilitas: judul dan rangkuman sesi dari Claude Code tidak lagi menjadi thread, thread tetap berjalan walau database <strong>long memory</strong> mati, <strong>tugas perbaikan build</strong> kini melihat pola kode di file yang sama dan diarahkan ke file yang tepat, dan akun provider 9router yang perlu login ulang langsung dialihkan ke <strong>node cadangan</strong>.
-                    <a href="~/Docs/07-cara-kerja#5-verifikasi-build-dan-reviewer" class="alert-link ms-2">Detail →</a>
+                    <strong>🚀 AIT versi @appVersion</strong> — Label memory kini berstruktur: <strong>Modul · Layer · Jenis</strong> + keyword, jadi planner menyaring per modul dulu lalu memilih lewat keyword. Modul diambil dari <strong>peta kode</strong> (modul &amp; layer tiap file) dan modul ganda digabung otomatis. Memory lama dilabeli ulang otomatis setelah di-backup (pantau di menu Memory → <strong>Perlu review</strong>). Juga baru: <strong>Export/Import memory</strong> dan 9router dinyalakan otomatis saat AIT start.
+                    <a href="~/Docs/06-memory#isi-satu-memory" class="alert-link ms-2">Detail →</a>
                 </div>
             </div>
             @RenderBody()
