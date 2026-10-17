@@ -43,7 +43,8 @@ public class ToolsNodeTests
         var subCalls = router.CallsTo(ScriptedAgent.ToolsNode);
         Assert.Equal(2, subCalls.Count);
         Assert.Equal("scout-model", subCalls[0].Model);
-        Assert.Equal([PlannerTools.SearchText, PlannerTools.ReadFile, PlannerTools.ReportFindings], subCalls[0].ToolNames);
+        // A sub node that reads files gets the skeleton tools too.
+        Assert.Equal([PlannerTools.SearchText, PlannerTools.ReadFile, PlannerTools.CodeOutline, PlannerTools.FunctionCalls, PlannerTools.ReportFindings], subCalls[0].ToolNames);
         Assert.Contains("What does Greeter.Hello return?", subCalls[0].LastUser);
         Assert.Contains("Hello()", LastToolResult(subCalls[1].Messages));
 
