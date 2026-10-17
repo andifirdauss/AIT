@@ -14,6 +14,7 @@ namespace AiThread.Service.Orchestration;
 // Nodes are the active planners in priority order; the first one plans, and its fallback chain (AiNode.FallbackNodeId)
 // takes over when it is rate limited or down. CanAsk offers ask_user: the developer can answer (setting on, and a session the answer can come back through).
 // CodeMap: module and layer of the files the request names, as far as known before planning (the first search layer).
+// LabelsFromSession: set when the request names no file and CodeMap comes from the session instead (a follow-up).
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -21,7 +22,12 @@ public sealed record PlannerInput(
     WorkspaceScope Scope,
     RuntimeSettings Settings,
     bool CanAsk = false,
-    IReadOnlyList<Memory.CodeMapHit>? CodeMap = null);
+    IReadOnlyList<Memory.CodeMapHit>? CodeMap = null,
+    SessionLabelSource? LabelsFromSession = null);
+
+// Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
+// ThreadId null — the recent conversation or the session summary.
+public sealed record SessionLabelSource(Guid? ThreadId, string? Prompt);
 
 // Node is the planner that finished (a fallback when the preferred one failed). Plan is null when the planner paused
 // on a question instead (Pause). Steps and tokens are totals for the thread, including the run before a pause.
@@ -55,6 +61,9 @@ public sealed class PlannerAgent(
     // Module·layer labels named in the label line; the rest are counted.
     private const int MaxLabelsShown = 4;
 
+    // Part of the session's last prompt added to a follow-up's keyword search.
+    private const int MaxSessionPromptChars = 2_000;
+
     public async Task<PlanningResult> PlanAsync(PlannerInput input, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
         if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
@@ -62,7 +71,7 @@ public sealed class PlannerAgent(
         var tools = new WorkspaceTools(input.Scope);
         var build = input.Settings.BuildEnabled ? BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, null, out _) : null;
         var (brief, relevant) = await BuildBriefAsync(input, tools, build, cancellationToken);
-        await progress.StepAsync(LabelLine(input.CodeMap, relevant), cancellationToken, hang: 3);
+        await progress.StepAsync(LabelLine(input.CodeMap, relevant, input.LabelsFromSession), cancellationToken, hang: 3);
         var groups = await ToolsNodeGroupsAsync(input.Nodes[0], build is not null, cancellationToken);
 
         var run = new PlannerRun
@@ -358,10 +367,12 @@ public sealed class PlannerAgent(
     }
 
     // First entry of the planner phase: what the label search put in the brief, before the model is called.
-    // "🔖 Label · 2 file → Thread·Logic, Memory·Data · 14 memory relevan"
-    public static string LabelLine(IReadOnlyList<Memory.CodeMapHit>? codeMap, int relevant)
+    // "🔖 Label · 2 file → Thread·Logic, Memory·Data · 14 memory relevan"; a follow-up adds "dari sesi (thread …)".
+    public static string LabelLine(IReadOnlyList<Memory.CodeMapHit>? codeMap, int relevant, SessionLabelSource? fromSession = null)
     {
         var parts = new List<string> { "🔖 Label" };
+        if (fromSession is not null)
+            parts.Add(fromSession.ThreadId is { } threadId ? $"dari sesi (thread {ThreadAnchor.ShortId(threadId)})" : "dari sesi");
         if (codeMap is { Count: > 0 })
         {
             var labels = codeMap.Select(h => $"{h.Module}·{h.Layer}").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -426,7 +437,9 @@ public sealed class PlannerAgent(
 
         if (input.CodeMap is { Count: > 0 } codeMap)
         {
-            builder.Append("# Code map of the files the request names (module · layer)\n");
+            builder.Append(input.LabelsFromSession is null
+                ? "# Code map of the files the request names (module · layer)\n"
+                : "# Code map of the files this session worked on (module · layer; the request names none, so it most likely continues that work)\n");
             foreach (var hit in codeMap.Take(30))
                 builder.Append($"- {hit.Path}: {(hit.Area is null ? string.Empty : hit.Area + " · ")}{hit.Module} · {hit.Layer}\n");
             builder.Append('\n');
@@ -441,7 +454,11 @@ public sealed class PlannerAgent(
 
         builder.Append("# Memory index (labels only — call read_memory with ids to read the details)\n");
         var focusModules = input.CodeMap?.Select(h => h.Module).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        var relevant = await memoryService.SearchAsync(new MemorySearch(project.ProjectId, Text: request.Prompt, Take: 20, Modules: focusModules), cancellationToken);
+        // A follow-up's own words rarely match a keyword ("berlaku buat yang lainnya"): the prompt it follows joins them.
+        var searchText = input.LabelsFromSession?.Prompt is { Length: > 0 } earlier
+            ? request.Prompt + "\n" + PlannerToolRunner.Limit(earlier, MaxSessionPromptChars)
+            : request.Prompt;
+        var relevant = await memoryService.SearchAsync(new MemorySearch(project.ProjectId, Text: searchText, Take: 20, Modules: focusModules), cancellationToken);
         var recent = await memoryService.GetIndexAsync(project.ProjectId, null, 10, cancellationToken);
         var index = relevant.Concat(recent.Where(r => r.Level is MemoryLevel.Short or MemoryLevel.Business)).DistinctBy(e => e.Id).Take(25).ToList();
         builder.Append(index.Count == 0 ? "(empty)\n" : PlannerToolRunner.FormatIndex(index)).Append('\n');

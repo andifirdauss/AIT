@@ -83,7 +83,11 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
    [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
 5. percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
    ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
-6. indeks memory (id + label, maks 25);
+6. **peta kode** file yang disebut permintaan (modul · layer), **peta memory** per modul, dan **indeks memory**
+   (id + label, maks 25) hasil pencarian label: memory modul file tersebut lebih dulu, lalu diurutkan per keyword.
+   Bila permintaan tidak menyebut file (lanjutan seperti "berlaku buat yang lainnya juga"), labelnya diambil dari
+   sesi: file yang diubah thread AIT terakhir di chat ini (atau yang disebut prompt-nya), bila tidak ada dari
+   percakapan terakhir lalu dari konteks sesi; prompt thread terakhir itu ikut dipakai sebagai keyword;
 7. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
 
 Bila sebuah bagian melebihi batas, yang dibuang adalah bagian tengahnya; awal dan akhir teks tetap ada.
