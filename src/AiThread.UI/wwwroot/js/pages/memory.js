@@ -83,7 +83,9 @@
       if (!show) return;
       const parts = [
         `<strong>Migrasi label memory</strong>: ${fmt.number(s.pending)} menunggu · ${fmt.number(s.labeled)} sudah berlabel · ${fmt.number(s.needsReview)} perlu review`,
-        s.running ? `sedang berjalan${s.phase ? ` (${escapeHtml(s.phase)})` : ''}` : (s.lastRunAt ? `terakhir ${fmt.relative(s.lastRunAt)}` : 'menunggu giliran'),
+        s.running
+          ? `sedang berjalan${s.phase ? ` (${escapeHtml(s.phase)}${s.detail ? `: ${escapeHtml(s.detail)}` : ''})` : ''}`
+          : (s.lastRunAt ? `terakhir ${fmt.relative(s.lastRunAt)}` : 'menunggu giliran'),
         s.lastMessage ? escapeHtml(s.lastMessage) : null,
         s.backupPath ? `backup: <span class="mono">${escapeHtml(s.backupPath)}</span>` : null
       ].filter(Boolean);

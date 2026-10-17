@@ -41,7 +41,8 @@ public record MemoryReviewDto(
     IReadOnlyList<ModuleMergeDto> Merges,
     IReadOnlyList<MemoryDuplicateDto> Duplicates);
 
-// Progress of the automatic relabeling of memory written by older versions.
+// Progress of the automatic relabeling of memory written by older versions. Detail: what the phase is working on
+// (e.g. "KN2018_KCO (1/5) · 363/1.700 file").
 public record MemoryRelabelStatusDto(
     bool Running,
     string? Phase,
@@ -50,6 +51,7 @@ public record MemoryRelabelStatusDto(
     int NeedsReview,
     DateTime? LastRunAt,
     string? LastMessage,
-    string? BackupPath);
+    string? BackupPath,
+    string? Detail = null);
 
 public record CodeMapScanResultDto(int Files, int Mapped, int Modules);

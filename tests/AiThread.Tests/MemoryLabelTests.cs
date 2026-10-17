@@ -347,6 +347,77 @@ public class MemoryLabelTests
     }
 
     [Fact]
+    public async Task Code_map_scan_reports_progress_and_resumes_where_it_stopped()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
+        harness.Project.Write("src/Bl/OrderBL.cs", "class OrderBL {}");
+        harness.Project.Write("src/Bl/InvoiceBL.cs", "class InvoiceBL {}");
+        harness.Router.On(ScriptedAgent.CodeMapper, call => ScriptedRouter.Text("""{"groups": [{"id": "G1", "module": "Sales"}]}"""));
+        var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
+        var mapper = harness.Service<CodeMapper>();
+
+        // A scan cut off after the first file: only the rest goes to the model.
+        await mapper.MapAsync(project, ["src/Bl/OrderBL.cs"], default);
+        var progress = new List<(int Done, int Total)>();
+        var (files, mapped) = await mapper.ScanAsync(project, 3_000, default, (done, total) => progress.Add((done, total)));
+
+        var calls = harness.Router.CallsTo(ScriptedAgent.CodeMapper);
+        Assert.Equal(2, calls.Count);
+        Assert.Contains("InvoiceBL.cs", calls[1].LastUser);
+        Assert.DoesNotContain("OrderBL.cs", calls[1].LastUser);
+        Assert.Equal(files, mapped);
+        Assert.True(progress[0].Done < files);
+        Assert.Equal((files, files), progress[^1]);
+
+        // A finished scan asks the model nothing.
+        progress.Clear();
+        await mapper.ScanAsync(project, 3_000, default, (done, total) => progress.Add((done, total)));
+        Assert.Equal(2, harness.Router.CallsTo(ScriptedAgent.CodeMapper).Count);
+        Assert.Equal([(files, files)], progress);
+    }
+
+    [Fact]
+    public async Task Code_map_of_memory_maps_only_the_files_it_names()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
+        harness.Project.Write("src/Bl/UserBL.cs", "class UserBL {}");
+        harness.Project.Write("src/Web/Controllers/OrderController.cs", "class OrderController {}");
+        harness.Project.Write("src/Bl/InvoiceBL.cs", "class InvoiceBL {}");
+        var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
+        var mapper = harness.Service<CodeMapper>();
+
+        var (files, mapped) = await mapper.MapReferencedAsync(project,
+            ["Validasi email ada di UserBL.", "Lihat Controllers/OrderController.cs untuk status.", "Tanpa referensi file."], default);
+
+        Assert.Equal((2, 2), (files, mapped));
+        var stored = await mapper.StoredAsync("k", ["src/Bl/UserBL.cs", "src/Web/Controllers/OrderController.cs", "src/Bl/InvoiceBL.cs"], default);
+        Assert.Equal(["src/Bl/UserBL.cs", "src/Web/Controllers/OrderController.cs"], stored.Keys.Order());
+    }
+
+    [Fact]
+    public async Task Code_map_batches_run_in_parallel_and_map_every_file()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
+        var paths = Enumerable.Range(1, 90).Select(i => $"src/Bl/Feature{(char)('A' + i / 26)}{(char)('a' + i % 26)}BL.cs").ToList();
+        foreach (var path in paths) harness.Project.Write(path, "class X {}");
+        var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
+        var mapper = harness.Service<CodeMapper>();
+        var progress = new List<int>();
+
+        await mapper.ScanAsync(project, 3_000, default, (done, _) => { lock (progress) progress.Add(done); });
+
+        Assert.Equal(3, harness.Router.CallsTo(ScriptedAgent.CodeMapper).Count);
+        Assert.Equal(paths.Count, (await mapper.StoredAsync("k", paths, default)).Count);
+        Assert.Equal(progress.Order(), progress);
+    }
+
+    [Fact]
     public async Task Relabeling_backs_up_then_labels_or_queues_for_review()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();

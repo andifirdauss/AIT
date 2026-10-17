@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -21,7 +22,9 @@ namespace AiThread.Service.Memory;
 
 // Brings memory written before the structured label (or by an older AIT sharing the store) to the new label, in this
 // order: backup (once per label version) → business wiki modules and labels normalized (they seed the module list) →
-// code map scan of the projects registered here → relabeling in batches by the model → duplicate module check.
+// per registered project with waiting memory (most first): code map of the files that memory names, then relabeling of
+// that memory in batches by the model → the remaining memory (knowledge, projects not registered here) → full code map
+// scan of every registered project → duplicate module check. Labels never wait for a full scan.
 // Every row is claimed before it is sent (RelabelAttempts, conditional update), so several machines sharing a store
 // never label the same row twice; after MaxAttempts failures a row waits in Memory → Perlu review instead.
 public sealed class MemoryRelabeler(
@@ -51,11 +54,21 @@ public sealed class MemoryRelabeler(
         Converters = { new JsonStringEnumConverter() }
     };
 
+    private static readonly CultureInfo Indonesian = CultureInfo.GetCultureInfo("id-ID");
+    private static readonly TimeSpan ProgressInterval = TimeSpan.FromSeconds(3);
+
     private readonly SemaphoreSlim _gate = new(1, 1);
     private volatile string? _phase;
+    private volatile string? _detail;
     private volatile string? _lastMessage;
     private volatile string? _backupPath;
     private DateTime? _lastRunAt;
+    private DateTime _lastProgressAt;
+    private int _batchesLeft;
+
+    // Keys whose code map scan finished in this process (touched only inside the gate). A scan cut off by a restart is
+    // resumed on the next pass: it only sends the files without an entry to the model.
+    private readonly HashSet<string> _scannedKeys = new(StringComparer.Ordinal);
 
     public static string BackupDirectory { get; set; } =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AiThread", "backup");
@@ -80,7 +93,8 @@ public sealed class MemoryRelabeler(
             else if (record.LabelVersion is null) pending++;
             else labeled++;
         }
-        return new MemoryRelabelStatusDto(_gate.CurrentCount == 0, _phase, pending, labeled, review, _lastRunAt, _lastMessage, _backupPath ?? ExistingBackup());
+        return new MemoryRelabelStatusDto(_gate.CurrentCount == 0, _phase, pending, labeled, review, _lastRunAt, _lastMessage, _backupPath ?? ExistingBackup(),
+            _phase is null ? null : _detail);
     }
 
     // One full pass. modulesOnly: only the duplicate check of modules created since the last pass.
@@ -93,33 +107,42 @@ public sealed class MemoryRelabeler(
             var relabeledKeys = new HashSet<string>(StringComparer.Ordinal);
             if (!modulesOnly)
             {
-                var pending = await CountPendingAsync(cancellationToken);
+                var projects = await ProjectsAsync(cancellationToken);
+                var pendingByKey = await PendingByKeyAsync(projects, cancellationToken);
+                var pending = pendingByKey.Values.Sum(d => d.Count);
                 if (pending > 0)
                 {
-                    _phase = "Backup";
+                    SetPhase("Backup");
                     if (!await BackupAsync(cancellationToken)) return;
                 }
 
-                _phase = "Wiki bisnis";
+                SetPhase("Wiki bisnis");
                 await NormalizeWikiAsync(cancellationToken);
 
                 if (pending > 0)
                 {
-                    _phase = "Peta kode";
-                    await ScanProjectsAsync(cancellationToken);
-
-                    _phase = "Relabel";
-                    var (labeled, reviewed, keys) = await RelabelAsync(cancellationToken);
+                    var registered = projects
+                        .Where(p => !string.IsNullOrEmpty(p.Value.Key))
+                        .DistinctBy(p => p.Value.Key)
+                        .Select(p => new RegisteredProject(p.Key, p.Value.Key!, p.Value.Name))
+                        .ToList();
+                    var (labeled, reviewed) = await MigrateAsync(projects, registered, pendingByKey, relabeledKeys, cancellationToken);
                     if (labeled + reviewed > 0)
                     {
                         _lastMessage = $"{labeled} memory dilabeli ulang, {reviewed} perlu review.";
                         activityLog.Info("memory", $"Migrasi label memory: {_lastMessage}");
                     }
-                    relabeledKeys.UnionWith(keys);
+
+                    // The full code map only helps later threads; it comes after every label, projects with memory first.
+                    var scans = registered.Where(p => !_scannedKeys.Contains(p.Key))
+                        .OrderByDescending(p => pendingByKey.GetValueOrDefault(p.Key)?.Count ?? 0)
+                        .ToList();
+                    for (var i = 0; i < scans.Count; i++)
+                        await ScanProjectAsync(scans[i], $"{scans[i].Name} ({i + 1}/{scans.Count})", cancellationToken);
                 }
             }
 
-            _phase = "Cek modul ganda";
+            SetPhase("Cek modul ganda");
             await CheckModulesAsync(relabeledKeys, cancellationToken);
             _lastRunAt = DateTime.UtcNow;
         }
@@ -131,24 +154,67 @@ public sealed class MemoryRelabeler(
         finally
         {
             _phase = null;
+            _detail = null;
             _gate.Release();
             Publish("relabel");
         }
     }
 
-    private async Task<int> CountPendingAsync(CancellationToken cancellationToken)
+    // The descriptions of the memories waiting for a label, per registry key (string.Empty: a project memory without a
+    // key): their count orders the projects, their text names the files to map before labeling.
+    private async Task<Dictionary<string, List<string>>> PendingByKeyAsync(IReadOnlyDictionary<Guid, (string? Key, string Name)> projects,
+        CancellationToken cancellationToken)
     {
-        var count = (await ShortRecordsAsync()).Count(r => r.LabelVersion is null && r.ReviewReason is null);
+        var pending = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var record in (await ShortRecordsAsync()).Where(r => r.LabelVersion is null && r.ReviewReason is null))
+            Add(pending, KeyOf(record.Type, record.ProjectKey, record.ProjectId, projects), record.Description);
         try
         {
             await using var db = await longStore.CreateAsync(cancellationToken);
-            count += await db.LongMemories.CountAsync(m => m.LabelVersion == null && m.ReviewReason == null, cancellationToken);
+            var rows = await db.LongMemories.AsNoTracking()
+                .Where(m => m.LabelVersion == null && m.ReviewReason == null)
+                .Select(m => new { m.Type, m.ProjectKey, m.ProjectId, m.Description })
+                .ToListAsync(cancellationToken);
+            foreach (var row in rows) Add(pending, KeyOf(row.Type, row.ProjectKey, row.ProjectId, projects), row.Description);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogStoreWarning(ex, "Could not count memories waiting for a label");
         }
-        return count;
+        return pending;
+
+        static void Add(Dictionary<string, List<string>> pending, string? key, string description)
+        {
+            if (!pending.TryGetValue(key ?? string.Empty, out var list)) pending[key ?? string.Empty] = list = [];
+            list.Add(description);
+        }
+    }
+
+    // F2b + F3: the registered projects with waiting memory, most first: the files their memory names are mapped, then
+    // that memory is relabeled. Then every memory still waiting (knowledge, keys of projects registered elsewhere,
+    // project memory known only by project id).
+    private async Task<(int Labeled, int Reviewed)> MigrateAsync(IReadOnlyDictionary<Guid, (string? Key, string Name)> projects,
+        IReadOnlyList<RegisteredProject> registered, IReadOnlyDictionary<string, List<string>> pendingByKey, ISet<string> relabeledKeys,
+        CancellationToken cancellationToken)
+    {
+        _batchesLeft = MaxBatchesPerRun;
+        var withMemory = registered.Where(p => pendingByKey.ContainsKey(p.Key)).OrderByDescending(p => pendingByKey[p.Key].Count).ToList();
+        int labeled = 0, reviewed = 0;
+        for (var i = 0; i < withMemory.Count; i++)
+        {
+            var project = withMemory[i];
+            var label = $"{project.Name} ({i + 1}/{withMemory.Count})";
+            await MapReferencedAsync(project, label, pendingByKey[project.Key], cancellationToken);
+
+            SetPhase("Relabel", label);
+            var (l, r) = await RelabelAsync(projects, project.Key, relabeledKeys, cancellationToken);
+            labeled += l;
+            reviewed += r;
+        }
+
+        SetPhase("Relabel", withMemory.Count > 0 ? "memory lainnya" : null);
+        var (restLabeled, restReviewed) = await RelabelAsync(projects, null, relabeledKeys, cancellationToken);
+        return (labeled + restLabeled, reviewed + restReviewed);
     }
 
     // F1: everything as it is before the first relabeling, once per label version. No backup, no relabeling.
@@ -240,71 +306,86 @@ public sealed class MemoryRelabeler(
         if (changed > 0) activityLog.Info("memory", $"Migrasi label: modul dan label {changed} halaman wiki bisnis dinormalisasi.");
     }
 
-    // F2b: the projects registered here whose key has no code map yet.
-    private async Task ScanProjectsAsync(CancellationToken cancellationToken)
+    // Before relabeling a project: only the files its waiting memory names, which is all LookupAsync reads. Progress
+    // goes to the status detail, e.g. "KN2018_KCO (1/5) · 12/40 file disebut memory".
+    private async Task MapReferencedAsync(RegisteredProject project, string label, IReadOnlyList<string> descriptions, CancellationToken cancellationToken)
     {
-        List<(Guid Id, string Key, string Name)> projects;
-        await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
-            projects = (await db.Projects.AsNoTracking().Where(p => p.ProjectKey != "").Select(p => new { p.Id, p.ProjectKey, p.Name }).ToListAsync(cancellationToken))
-                .Select(p => (p.Id, p.ProjectKey, p.Name)).ToList();
-
-        foreach (var project in projects.DistinctBy(p => p.Key))
+        SetPhase("Peta kode", label);
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
-            {
-                if (await codeMapper.HasEntriesAsync(project.Key, cancellationToken)) continue;
-                var context = await projectService.GetContextAsync(project.Id, cancellationToken);
-                if (context is null) continue;
-                var (files, mapped) = await codeMapper.ScanAsync(context, ScanMaxFiles, cancellationToken);
-                if (files > 0) activityLog.Info("memory", $"Peta kode {project.Name}: {mapped} dari {files} file dipetakan ke modul.");
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogWarning(ex, "Code map scan of {Project} failed.", project.Name);
-            }
+            var context = await projectService.GetContextAsync(project.Id, cancellationToken);
+            if (context is null) return;
+            await codeMapper.MapReferencedAsync(context, descriptions, cancellationToken, (done, total) => ReportFiles(label, done, total, " disebut memory"));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Code map of the files named by {Project}'s memory failed.", project.Name);
         }
     }
 
-    // F3. Returns the counts and the keys whose memory changed.
-    private async Task<(int Labeled, int Reviewed, HashSet<string> Keys)> RelabelAsync(CancellationToken cancellationToken)
+    // After every label: the files of a registered project that have no entry yet, at most once per process (see
+    // _scannedKeys). Progress goes to the status detail, e.g. "KN2018_KCO (1/12) · 363/1.700 file".
+    private async Task ScanProjectAsync(RegisteredProject project, string label, CancellationToken cancellationToken)
     {
-        var keys = new HashSet<string>(StringComparer.Ordinal);
+        if (_scannedKeys.Contains(project.Key)) return;
+        SetPhase("Peta kode lengkap", label);
+        try
+        {
+            var context = await projectService.GetContextAsync(project.Id, cancellationToken);
+            if (context is null) return;
+            var (files, mapped) = await codeMapper.ScanAsync(context, ScanMaxFiles, cancellationToken, (done, total) => ReportFiles(label, done, total));
+            _scannedKeys.Add(project.Key);
+            if (files > 0) activityLog.Info("memory", $"Peta kode {project.Name}: {mapped} dari {files} file dipetakan ke modul.");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Code map scan of {Project} failed.", project.Name);
+        }
+    }
+
+    // F3 for one registry key (null: every memory still waiting), within the batch budget of the run. Returns the
+    // counts; the keys whose memory changed are added to relabeledKeys.
+    private async Task<(int Labeled, int Reviewed)> RelabelAsync(IReadOnlyDictionary<Guid, (string? Key, string Name)> projects, string? onlyKey,
+        ISet<string> relabeledKeys, CancellationToken cancellationToken)
+    {
         if (!await ai.IsAvailableAsync(cancellationToken))
         {
             _lastMessage = "Migrasi label menunggu: belum ada node Tools node, Wrapper, atau Planner yang aktif.";
-            return (0, 0, keys);
+            return (0, 0);
         }
 
-        var projects = await ProjectsAsync(cancellationToken);
         int labeled = 0, reviewed = 0;
-        for (var batch = 0; batch < MaxBatchesPerRun; batch++)
+        while (_batchesLeft > 0)
         {
-            var candidates = await ClaimAsync(projects, cancellationToken);
+            var candidates = await ClaimAsync(projects, onlyKey, cancellationToken);
             if (candidates.Count == 0) break;
+            _batchesLeft--;
 
             foreach (var group in candidates.GroupBy(c => c.Key))
             {
                 var (l, r) = await LabelGroupAsync(group.Key, group.ToList(), projects, cancellationToken);
                 labeled += l;
                 reviewed += r;
-                if (group.Key is { } key) keys.Add(key);
+                if (group.Key is { } key) relabeledKeys.Add(key);
             }
             Publish("relabel");
         }
-        return (labeled, reviewed, keys);
+        return (labeled, reviewed);
     }
 
-    // Claims up to BatchSize rows (long memory first): a row is only taken when its attempt count is still the one
-    // read, so two machines never take the same row.
-    private async Task<List<Candidate>> ClaimAsync(IReadOnlyDictionary<Guid, (string? Key, string Name)> projects, CancellationToken cancellationToken)
+    // Claims up to BatchSize rows (long memory first), only of onlyKey when given: a row is only taken when its attempt
+    // count is still the one read, so two machines never take the same row.
+    private async Task<List<Candidate>> ClaimAsync(IReadOnlyDictionary<Guid, (string? Key, string Name)> projects, string? onlyKey,
+        CancellationToken cancellationToken)
     {
         var claimed = new List<Candidate>();
         try
         {
             await using var db = await longStore.CreateAsync(cancellationToken);
-            var rows = await db.LongMemories.AsNoTracking()
-                .Where(m => m.LabelVersion == null && m.ReviewReason == null && (m.RelabelAttempts == null || m.RelabelAttempts < MaxAttempts))
+            var query = db.LongMemories.AsNoTracking()
+                .Where(m => m.LabelVersion == null && m.ReviewReason == null && (m.RelabelAttempts == null || m.RelabelAttempts < MaxAttempts));
+            if (onlyKey is not null) query = query.Where(m => m.ProjectKey == onlyKey);
+            var rows = await query
                 .OrderBy(m => m.ProjectKey).ThenBy(m => m.CreatedAt)
                 .Take(BatchSize)
                 .ToListAsync(cancellationToken);
@@ -328,7 +409,8 @@ public sealed class MemoryRelabeler(
         if (claimed.Count < BatchSize)
         {
             foreach (var record in (await ShortRecordsAsync())
-                         .Where(r => r.LabelVersion is null && r.ReviewReason is null && (r.RelabelAttempts ?? 0) < MaxAttempts)
+                         .Where(r => r.LabelVersion is null && r.ReviewReason is null && (r.RelabelAttempts ?? 0) < MaxAttempts
+                                     && (onlyKey is null || KeyOf(r.Type, r.ProjectKey, r.ProjectId, projects) == onlyKey))
                          .Take(BatchSize - claimed.Count))
             {
                 var attempts = (record.RelabelAttempts ?? 0) + 1;
@@ -602,6 +684,31 @@ public sealed class MemoryRelabeler(
 
     private void Publish(string action) =>
         eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = (Guid?)null, action }));
+
+    private void SetPhase(string phase, string? detail = null)
+    {
+        _phase = phase;
+        _detail = detail;
+        Publish("relabel");
+        _lastProgressAt = DateTime.UtcNow;
+    }
+
+    private void ReportFiles(string label, int done, int total, string suffix = "")
+    {
+        _detail = $"{label} · {done.ToString("N0", Indonesian)}/{total.ToString("N0", Indonesian)} file{suffix}";
+        PublishProgress();
+    }
+
+    // Scan progress arrives after every model batch; the page reloads on each event, so at most one per interval.
+    private void PublishProgress()
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastProgressAt < ProgressInterval) return;
+        _lastProgressAt = now;
+        Publish("relabel");
+    }
+
+    private sealed record RegisteredProject(Guid Id, string Key, string Name);
 
     private sealed record Candidate(Guid Id, MemoryLevel Level, MemoryType Type, string? Key, string? ProjectName, string Label, string Description, int Attempts);
 

@@ -124,7 +124,7 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `GET` | `/api/memory/merges?projectId=&knowledge=` | riwayat: `from`, `into`, `status` (`Applied`/`Undone`/`Suggested`/`Rejected`), `reason`, `confidence`, `decidedBy`, jumlah `memories`/`files`/`pages` |
 | `POST` | `/api/memory/merges/{id}/undo` \| `accept` \| `reject` | batalkan merge yang diterapkan; terima atau tolak saran |
 | `GET` | `/api/memory/review?projectId=` | `memories[]` (perlu review), `merges[]` (saran), `duplicates[]` (`first`, `second`, `similarity`) |
-| `GET` | `/api/memory/relabel` | status migrasi label: `running`, `phase`, `pending`, `labeled`, `needsReview`, `lastRunAt`, `lastMessage`, `backupPath` |
+| `GET` | `/api/memory/relabel` | status migrasi label: `running`, `phase`, `pending`, `labeled`, `needsReview`, `lastRunAt`, `lastMessage`, `backupPath`, `detail` (yang sedang dikerjakan fase itu, mis. `KN2018_KCO (1/5) · 12/40 file disebut memory`) |
 | `POST` | `/api/memory/relabel` | jalankan migrasi label sekarang (di belakang) |
 | `GET` | `/api/settings/memory-storage` | — (`shortMemory`, `longMemory`, `businessMemory` beserta status masing-masing; password tidak pernah dikembalikan) |
 | `PUT` | `/api/settings/memory-storage` | `{ "shortMemory": {…}, "longMemory": {…}, "businessMemory": {…}, "copyExistingData": true }` — `businessMemory` boleh dihilangkan (store tidak berubah). Hasil: `settings`, `copiedShort`, `copiedLong`, `copiedBusiness`, `warnings[]` |

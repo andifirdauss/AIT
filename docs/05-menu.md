@@ -107,7 +107,8 @@ project ini, dan tautan ke memory-nya. Di bawah thread:
 
 Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi tiga tab: **Short & long memory**, **Perlu review**
 (`/Memory#review`), dan **Bisnis (wiki)** (`/Memory#bisnis`). Selama masih ada memory lama yang menunggu label, banner
-*Migrasi label memory* menampilkan progres (menunggu, sudah berlabel, perlu review, fase, lokasi backup) dengan tombol
+*Migrasi label memory* menampilkan progres (menunggu, sudah berlabel, perlu review, fase beserta project dan jumlah
+file yang sedang dipetakan, lokasi backup) dengan tombol
 *Jalankan sekarang*.
 
 Tab *Short & long memory*:
