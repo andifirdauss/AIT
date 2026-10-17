@@ -6,7 +6,7 @@ namespace AiThread.API.Controllers;
 
 [ApiController]
 [Route("api/projects")]
-public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog) : ControllerBase
+public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog, ICodeStructureService structure) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectDto>>>> GetAll(CancellationToken cancellationToken) =>
@@ -69,6 +69,37 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
         var result = await catalog.ScanCodeMapAsync(id, cancellationToken);
         return ApiResponse<CodeMapScanResultDto>.Ok(result, $"{result.Mapped} dari {result.Files} file terpetakan ke {result.Modules} modul.");
     }
+
+    // Folder and class tree of the project (Struktur kode): counts of the latest walk; rescan=true walks again now.
+    [HttpGet("{id:guid}/structure")]
+    public async Task<ActionResult<ApiResponse<CodeStructureSummaryDto>>> Structure(Guid id, [FromQuery] bool rescan = false, CancellationToken cancellationToken = default) =>
+        ApiResponse<CodeStructureSummaryDto>.Ok(await structure.GetSummaryAsync(id, rescan, cancellationToken));
+
+    [HttpGet("{id:guid}/structure/folder")]
+    public async Task<ActionResult<ApiResponse<StructureFolderDto>>> StructureFolder(Guid id, [FromQuery] string? path, CancellationToken cancellationToken) =>
+        ApiResponse<StructureFolderDto>.Ok(await structure.GetFolderAsync(id, path, cancellationToken));
+
+    [HttpGet("{id:guid}/structure/file")]
+    public async Task<ActionResult<ApiResponse<StructureFileDto>>> StructureFile(Guid id, [FromQuery] string path, CancellationToken cancellationToken) =>
+        ApiResponse<StructureFileDto>.Ok(await structure.GetFileAsync(id, path, cancellationToken));
+
+    // Class view: namespaces (or folders, for files without one), the types in one, and one type with its members.
+    [HttpGet("{id:guid}/structure/groups")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<StructureGroupDto>>>> StructureGroups(Guid id, CancellationToken cancellationToken) =>
+        ApiResponse<IReadOnlyList<StructureGroupDto>>.Ok(await structure.GetGroupsAsync(id, cancellationToken));
+
+    [HttpGet("{id:guid}/structure/types")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<StructureTypeSummaryDto>>>> StructureTypes(Guid id, [FromQuery] string group, CancellationToken cancellationToken) =>
+        ApiResponse<IReadOnlyList<StructureTypeSummaryDto>>.Ok(await structure.GetTypesAsync(id, group, cancellationToken));
+
+    [HttpGet("{id:guid}/structure/class")]
+    public async Task<ActionResult<ApiResponse<StructureClassDto>>> StructureClass(Guid id, [FromQuery] string group, [FromQuery] string name,
+        [FromQuery] string? container, CancellationToken cancellationToken) =>
+        ApiResponse<StructureClassDto>.Ok(await structure.GetClassAsync(id, group, name, container, cancellationToken));
+
+    [HttpGet("{id:guid}/structure/search")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<StructureSearchHitDto>>>> StructureSearch(Guid id, [FromQuery] string q, CancellationToken cancellationToken) =>
+        ApiResponse<IReadOnlyList<StructureSearchHitDto>>.Ok(await structure.SearchAsync(id, q, cancellationToken));
 
     // Memory in a shared (external) store is kept for the other developers unless includeSharedMemory=true.
     [HttpDelete("{id:guid}")]

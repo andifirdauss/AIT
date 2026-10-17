@@ -18,7 +18,8 @@ public sealed class ThreadRollback(
     ThreadRegistry registry,
     FileLockProvider fileLocks,
     IEventBus eventBus,
-    IActivityLogService activityLog)
+    IActivityLogService activityLog,
+    ICodeStructureService codeStructure)
 {
     public const string Restore = "restore";
     public const string Delete = "delete";
@@ -77,6 +78,7 @@ public sealed class ThreadRollback(
                 }
 
                 await MarkRolledBackAsync(state.Thread, files);
+                if (state.Thread.ProjectId is { } projectId && files.Any(f => f.Action is Restore or Delete)) codeStructure.Refresh(projectId);
                 return new RollbackResultDto(files.Count(f => f.Action == Restore), files.Count(f => f.Action == Delete), files);
             }
             finally

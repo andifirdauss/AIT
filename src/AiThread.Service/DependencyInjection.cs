@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddSingleton<ModuleMerger>();
         services.AddSingleton<MemoryRelabeler>();
         services.AddSingleton<IMemoryCatalogService, MemoryCatalogService>();
+        services.AddSingleton<ICodeStructureService, CodeStructureService>();
         services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
         services.AddSingleton<IMemoryTransferService, MemoryTransferService>();
         services.AddSingleton<IThreadService, ThreadService>();

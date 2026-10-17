@@ -107,6 +107,25 @@
     </div>
 </div>
 
+<div class="card win mt-3" id="structureWindow" data-win-id="project-structure" data-win-persist>
+    <div class="card-header win-bar flex-wrap">
+        <win-controls disabled="close" />
+        <span class="win-title">Struktur kode</span>
+        <div class="win-actions flex-wrap">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Tampilan struktur">
+                <input type="radio" class="btn-check" name="structureView" id="structureViewFolder" value="folder" checked />
+                <label class="btn btn-outline-secondary" for="structureViewFolder">Folder</label>
+                <input type="radio" class="btn-check" name="structureView" id="structureViewClass" value="class" />
+                <label class="btn btn-outline-secondary" for="structureViewClass">Class</label>
+            </div>
+            <input type="search" class="form-control form-control-sm structure-search" id="structureSearch" placeholder="Cari class, method, file…" aria-label="Cari di struktur kode" />
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnStructureRescan" title="Baca ulang file yang berubah sejak scan terakhir">Scan ulang</button>
+        </div>
+    </div>
+    <div class="card-body small text-secondary border-bottom py-2" id="structureSummary">Memuat…</div>
+    <div class="structure-tree" id="structureTree" role="tree" aria-label="Struktur kode"></div>
+</div>
+
 <div class="modal fade" id="moduleModal" tabindex="-1" aria-labelledby="moduleModalTitle" aria-hidden="true">
     <div class="modal-dialog">
         <form class="modal-content" id="moduleForm" autocomplete="off">
@@ -182,4 +201,5 @@
 @section Scripts {
     <script>window.projectId = '@projectId';</script>
     <script src="~/js/pages/project-detail.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
 }
