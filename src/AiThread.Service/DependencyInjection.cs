@@ -42,11 +42,13 @@ public static class DependencyInjection
         // which the orchestrator and background workers need.
         services.AddSingleton<ISettingService, SettingService>();
         services.AddSingleton<INineRouterService, NineRouterService>();
+        services.AddSingleton<INineRouterLauncher, NineRouterLauncher>();
         services.AddSingleton<INodeService, NodeService>();
         services.AddSingleton<ProjectMemoryKeys>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IMemoryService, MemoryService>();
         services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
+        services.AddSingleton<IMemoryTransferService, MemoryTransferService>();
         services.AddSingleton<IThreadService, ThreadService>();
         services.AddSingleton<IDashboardService, DashboardService>();
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
@@ -110,6 +112,7 @@ public static class DependencyInjection
         services.AddHostedService<MemoryStorageInitializer>();
         services.AddHostedService<ProjectKeyBackfill>();
         services.AddHostedService<ActivityLogWriter>();
+        services.AddHostedService<NineRouterAutoStartWorker>();
         services.AddHostedService<RouterMonitorWorker>();
         services.AddHostedService<MemoryConsolidationWorker>();
         services.AddHostedService<TelegramPollingWorker>();
