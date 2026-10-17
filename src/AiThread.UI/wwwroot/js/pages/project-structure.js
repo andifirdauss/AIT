@@ -47,15 +47,18 @@
   const note = (text, cls = 'text-secondary') => `<div class="st-note ${cls}">${text}</div>`;
   const count = (n, word) => `${fmt.number(n)} ${word}`;
 
+  // A function whose calls the tools node has read opens onto them; any other member copies where it is.
   function memberLeaf(member, path) {
     const where = member.path || path;
-    return leaf({
+    const args = {
       badge: memberBadges[member.kind] || 'm',
       badgeClass: 't-member',
       name: member.name,
-      meta: `<span class="st-sig">${escapeHtml(member.signature || '')}</span> · ${member.path ? escapeHtml(fileName(member.path)) : ''}:${member.line}`,
+      meta: `<span class="st-sig">${escapeHtml(member.signature || '')}</span> · ${member.path ? escapeHtml(fileName(member.path)) : ''}:${member.line}`
+        + (member.calls != null ? ` · <span class="st-calls">${count(member.calls, 'panggilan')}</span>` : ''),
       ref: `${where}:${member.line}`
-    });
+    };
+    return member.key && member.calls ? branch({ ...args, data: { load: 'calls', key: member.key } }) : leaf(args);
   }
 
   function typeBranch(type, path) {
@@ -140,11 +143,33 @@
     return type.files.length === 1 ? files + members : (members || note('Tidak ada member.')) + files;
   }
 
+  const callBadges = { Function: 'f', Method: 'm', Http: 'http', View: 'view', Sql: 'sql', Other: '·' };
+
+  // What a function calls (read by the tools node); each call points at its declaration when AIT found it.
+  async function loadCalls(key) {
+    const fn = await api.get(url('/calls', { key }));
+    const head = leaf({ badge: '↳', name: 'deklarasi', meta: `${escapeHtml(fn.path)}:${fn.startLine}-${fn.endLine}`, ref: `${fn.path}:${fn.startLine}` });
+    const calls = fn.calls.map(c => leaf({
+      badge: callBadges[c.kind] || '·',
+      badgeClass: 't-call',
+      name: c.target,
+      meta: c.resolvedPath
+        ? `→ ${escapeHtml(c.resolvedSymbol || fileName(c.resolvedPath))} · ${escapeHtml(c.resolvedPath)}:${c.resolvedLine ?? 1}`
+        : `:${c.line} · belum ditemukan di project`,
+      ref: c.resolvedPath ? `${c.resolvedPath}:${c.resolvedLine ?? 1}` : `${fn.path}:${c.line}`,
+      dim: !c.resolvedPath
+    })).join('');
+    const changed = fn.changed ? note('Isi function sudah berubah sejak dibaca; dibaca ulang saat planner membacanya atau thread mengubahnya.', 'text-warning') : '';
+    return head + (calls || note('Tidak memanggil kode project.')) + changed
+      + note(`Dibaca ${fmt.relative(fn.scannedAt)}${fn.model ? ` oleh ${escapeHtml(fn.model)}` : ''}.`);
+  }
+
   const loaders = {
     folder: node => loadFolder(node.dataset.path),
     file: node => loadFile(node.dataset.path),
     group: node => loadTypes(node.dataset.group),
-    class: node => loadClass(node.dataset.group, node.dataset.name, node.dataset.container)
+    class: node => loadClass(node.dataset.group, node.dataset.name, node.dataset.container),
+    calls: node => loadCalls(node.dataset.key)
   };
 
   async function toggle(node) {
@@ -185,6 +210,7 @@
     el('structureSummary').innerHTML = `${count(s.folders, 'folder')} · ${count(s.files, 'file')} · <strong>${count(s.types, 'class/type')}</strong> · ${count(s.members, 'member')}`
       + ` · ${fmt.number(s.parsedFiles)} file dibaca${s.thirdPartyFiles ? ` · ${fmt.number(s.thirdPartyFiles)} file pihak ketiga/build dilewati` : ''}`
       + ` · scan ${fmt.number(s.scanMs)} ms (${fmt.number(s.reparsed)} file dibaca ulang) · ${fmt.relative(s.scannedAt)}`
+      + (s.functionsWithCalls ? ` · <span class="st-calls">${count(s.functionsWithCalls, 'function')} sudah dibaca panggilannya</span>` : '')
       + (languages ? `<div class="mt-1">${languages}</div>` : '')
       + (s.truncated ? '<div class="text-warning mt-1">Project terlalu besar: hanya 100.000 file pertama yang ditampilkan.</div>' : '');
   }

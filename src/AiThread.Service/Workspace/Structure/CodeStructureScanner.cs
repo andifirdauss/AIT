@@ -9,6 +9,7 @@ public sealed record StructureFile(string Path, long Length, DateTime Modified, 
 public sealed class StructureSnapshot
 {
     private readonly Lazy<StructureClassIndex> _classes;
+    private readonly Lazy<StructureSymbolIndex> _symbols;
 
     public StructureSnapshot(IReadOnlyDictionary<string, StructureFile> files, int folders, bool truncated, long scanMs, int reparsed, DateTime scannedAt)
     {
@@ -19,6 +20,7 @@ public sealed class StructureSnapshot
         Reparsed = reparsed;
         ScannedAt = scannedAt;
         _classes = new Lazy<StructureClassIndex>(() => StructureClassIndex.Build(this));
+        _symbols = new Lazy<StructureSymbolIndex>(() => StructureSymbolIndex.Build(this));
     }
 
     public IReadOnlyDictionary<string, StructureFile> Files { get; }
@@ -30,6 +32,9 @@ public sealed class StructureSnapshot
 
     // Built on the first class view, then reused until the next scan.
     public StructureClassIndex Classes => _classes.Value;
+
+    // Built when the first function call is resolved against this snapshot.
+    public StructureSymbolIndex Symbols => _symbols.Value;
 }
 
 // Walks the project and outlines its source files in parallel. A file whose size and write time did not change since

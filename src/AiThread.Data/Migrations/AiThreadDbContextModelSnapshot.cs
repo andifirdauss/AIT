@@ -295,6 +295,123 @@ namespace AiThread.Data.Migrations
                     b.ToTable("BusinessPageRevisions", (string)null);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.CodeFunctionCall", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CodeFunctionScanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("Line")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ResolvedLine")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResolvedPath")
+                        .HasMaxLength(800)
+                        .HasColumnType("nvarchar(800)");
+
+                    b.Property<string>("ResolvedSymbol")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeFunctionScanId");
+
+                    b.ToTable("CodeFunctionCalls", (string)null);
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.CodeFunctionScan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BodyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EndLine")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(800)
+                        .HasColumnType("nvarchar(800)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Signature")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<int>("StartLine")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Tokens")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "Key")
+                        .IsUnique();
+
+                    b.HasIndex("ProjectId", "Path");
+
+                    b.ToTable("CodeFunctionScans", (string)null);
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.CodeMapEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1243,6 +1360,28 @@ namespace AiThread.Data.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
                 });
 
+            modelBuilder.Entity("AiThread.Common.Entities.CodeFunctionCall", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.CodeFunctionScan", "CodeFunctionScan")
+                        .WithMany("Calls")
+                        .HasForeignKey("CodeFunctionScanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CodeFunctionScan");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.CodeFunctionScan", b =>
+                {
+                    b.HasOne("AiThread.Common.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("AiThread.Common.Entities.LongMemory", b =>
                 {
                     b.HasOne("AiThread.Common.Entities.Project", "Project")
@@ -1492,6 +1631,11 @@ namespace AiThread.Data.Migrations
                     b.Navigation("Skills");
 
                     b.Navigation("ToolDelegations");
+                });
+
+            modelBuilder.Entity("AiThread.Common.Entities.CodeFunctionScan", b =>
+                {
+                    b.Navigation("Calls");
                 });
 
             modelBuilder.Entity("AiThread.Common.Entities.Project", b =>

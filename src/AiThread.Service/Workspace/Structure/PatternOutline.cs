@@ -5,13 +5,19 @@ namespace AiThread.Service.Workspace.Structure;
 // Types and members of PHP, JavaScript/TypeScript, Python and Java/Kotlin files from line patterns. No parser: what
 // belongs to a type is decided by indentation (a type's block ends at a "}" on its own indentation, or at any line
 // indented less; in Python at the next line indented no deeper). Members are taken only at the indentation of the
-// type's first member, so helpers inside method bodies are not listed. Good for formatted code; generated or
+// type's first member, so helpers inside method bodies are not listed. A body ends where its braces close again
+// (strings and comments skipped), in Python at the next line indented no deeper. Functions declared inside another
+// function's body (callbacks such as "success: function") are left out. Good for formatted code; generated or
 // minified files are skipped.
 public static partial class PatternOutline
 {
     private const int MaxSignature = 160;
     private const int MinifiedLineLength = 1_000;
     private const int MinifiedProbeLines = 30;
+
+    // A declaration whose "{" is not found within this many lines has no body ("abstract function x();").
+    private const int MaxHeadLines = 5;
+    private const int MaxBlockLines = 5_000;
 
     private static readonly HashSet<string> Keywords = new(StringComparer.Ordinal)
     {
@@ -66,7 +72,7 @@ public static partial class PatternOutline
             if (rules.Type.Match(raw) is { Success: true } typeMatch)
             {
                 var type = new TypeBuilder(typeMatch.Groups[2].Value, NormalizeKind(typeMatch.Groups[1].Value), ns,
-                    open.Count > 0 ? open.Peek().Name : null, line, indent);
+                    open.Count > 0 ? open.Peek().Name : null, line, indent, BlockEnd(lines, i, rules, indent));
                 types.Add(type);
                 if (OpensBlock(trimmed, rules)) open.Push(type);
                 continue;
@@ -75,8 +81,8 @@ public static partial class PatternOutline
             if (rules.Prototype?.Match(raw) is { Success: true } proto)
             {
                 var owner = types.FirstOrDefault(t => t.Name == proto.Groups[1].Value && t.Container is null)
-                            ?? Add(types, new TypeBuilder(proto.Groups[1].Value, "class", ns, null, line, indent));
-                owner.Members.Add(new OutlineMember(proto.Groups[2].Value, "method", line, Signature(trimmed)));
+                            ?? Add(types, new TypeBuilder(proto.Groups[1].Value, "class", ns, null, line, indent, line));
+                owner.Members.Add(new OutlineMember(proto.Groups[2].Value, "method", line, Signature(trimmed), BlockEnd(lines, i, rules, indent)));
                 continue;
             }
 
@@ -86,15 +92,86 @@ public static partial class PatternOutline
                 if (MemberOf(rules, owner, raw) is not { } name) continue;
                 owner.MemberIndent ??= indent;
                 if (indent != owner.MemberIndent) continue;
-                owner.Members.Add(new OutlineMember(name, IsConstructor(name, owner.Name) ? "constructor" : "method", line, Signature(trimmed)));
+                owner.Members.Add(new OutlineMember(name, IsConstructor(name, owner.Name) ? "constructor" : "method", line, Signature(trimmed),
+                    BlockEnd(lines, i, rules, indent)));
                 continue;
             }
 
             if (FunctionOf(rules, raw) is { } function)
-                functions.Add(new OutlineMember(function, "function", line, Signature(trimmed)));
+                functions.Add(new OutlineMember(function, "function", line, Signature(trimmed), BlockEnd(lines, i, rules, indent)));
         }
 
-        return new FileOutline(types.Select(t => t.Build()).ToList(), functions);
+        var outer = functions.Where(f => !functions.Any(o => o.Line < f.Line && f.Line <= o.EndLine)).ToList();
+        return new FileOutline(types.Select(t => t.Build()).ToList(), outer);
+    }
+
+    // Last line (1-based) of the declaration starting at lines[start]. Brace languages: where the first "{" from here
+    // closes again, skipping strings and comments; a ";" before any "{" (or no "{" within MaxHeadLines) means no body.
+    // Python: the last line indented deeper than the declaration.
+    private static int BlockEnd(string[] lines, int start, Rules rules, int indent)
+    {
+        if (!rules.Braces)
+        {
+            var last = start;
+            for (var i = start + 1; i < lines.Length; i++)
+            {
+                var t = lines[i].Trim();
+                if (t.Length == 0 || t.StartsWith('#')) continue;
+                if (Indent(lines[i]) <= indent) break;
+                last = i;
+            }
+            return last + 1;
+        }
+
+        var depth = 0;
+        var opened = false;
+        var quote = '\0';
+        var blockComment = false;
+        for (var i = start; i < lines.Length && i < start + MaxBlockLines; i++)
+        {
+            var text = lines[i];
+            for (var j = 0; j < text.Length; j++)
+            {
+                var c = text[j];
+                if (blockComment)
+                {
+                    if (c == '*' && j + 1 < text.Length && text[j + 1] == '/') { blockComment = false; j++; }
+                    continue;
+                }
+                if (quote != '\0')
+                {
+                    if (c == '\\') j++;
+                    else if (c == quote) quote = '\0';
+                    continue;
+                }
+                if (c == '/' && j + 1 < text.Length)
+                {
+                    if (text[j + 1] == '/') break;
+                    if (text[j + 1] == '*') { blockComment = true; j++; continue; }
+                }
+                if (c == '#' && rules.HashComments) break;
+                switch (c)
+                {
+                    case '"' or '\'' or '`':
+                        quote = c;
+                        break;
+                    case '{':
+                        depth++;
+                        opened = true;
+                        break;
+                    case '}':
+                        depth--;
+                        if (opened && depth <= 0) return i + 1;
+                        break;
+                    case ';' when !opened:
+                        return i + 1;
+                }
+            }
+            // Only template literals span lines.
+            if (quote is '"' or '\'') quote = '\0';
+            if (!opened && i - start >= MaxHeadLines) return start + 1;
+        }
+        return opened ? Math.Min(lines.Length, start + MaxBlockLines) : start + 1;
     }
 
     private static TypeBuilder Add(List<TypeBuilder> types, TypeBuilder type)
@@ -176,7 +253,8 @@ public static partial class PatternOutline
         return text.Length > MaxSignature ? text[..MaxSignature] + "…" : text;
     }
 
-    private sealed class TypeBuilder(string name, string kind, string? ns, string? container, int line, int indent)
+    // endLine: of the declaration's own block; a JavaScript prototype "class" has none and ends with its last member.
+    private sealed class TypeBuilder(string name, string kind, string? ns, string? container, int line, int indent, int endLine)
     {
         public string Name { get; } = name;
         public string? Container { get; } = container;
@@ -184,7 +262,7 @@ public static partial class PatternOutline
         public int? MemberIndent { get; set; }
         public List<OutlineMember> Members { get; } = [];
 
-        public OutlineType Build() => new(Name, kind, ns, Container, line, false, Members);
+        public OutlineType Build() => new(Name, kind, ns, Container, line, false, Members, Math.Max(endLine, Members.Count == 0 ? line : Members.Max(m => m.EndLine)));
     }
 
     // Members: matched only inside a type, at its member indentation. Functions: matched outside any type.

@@ -1010,3 +1010,5 @@ body.win-modal-docked .modal-backdrop { opacity: 0 !important; pointer-events: n
 .st-sig { font-family: var(--bs-font-monospace); font-size: 0.75rem; }
 .st-dim > .st-row { opacity: 0.55; }
 .st-note { padding: 0.2rem 0.75rem 0.2rem 2rem; font-size: 0.8rem; }
+.st-badge.t-call { background: var(--bs-info-bg-subtle); color: var(--bs-info-text-emphasis); }
+.st-calls { color: var(--bs-info-text-emphasis); }

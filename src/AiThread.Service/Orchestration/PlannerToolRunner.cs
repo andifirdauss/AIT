@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using AiThread.Common.DTOs;
 using AiThread.Common.Enums;
 using AiThread.Common.Memory;
+using AiThread.Service.CodeCalls;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Memory;
 using AiThread.Service.Models;
@@ -13,7 +14,12 @@ namespace AiThread.Service.Orchestration;
 
 // Runs the read-only investigation tools and run_build, for the planner and for the tools nodes it delegates tools to.
 // prefix marks the progress lines of a tools node ("#1 › "); empty for the planner itself.
-public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeeper contextKeeper, BuildRunner buildRunner, CodeMapper codeMapper)
+public sealed class PlannerToolRunner(
+    IMemoryService memoryService,
+    ContextKeeper contextKeeper,
+    BuildRunner buildRunner,
+    CodeMapper codeMapper,
+    FunctionCallQueue functionCalls)
 {
     // Paths and queries are shortened in the client progress so a tool line rarely wraps; the activity log keeps them whole.
     private const int ProgressPathChars = 48;
@@ -75,7 +81,18 @@ public sealed class PlannerToolRunner(IMemoryService memoryService, ContextKeepe
                     return new PlannerToolOutcome(new SymbolSearch(tools.Scope).FindReferences(Str(args, "name") ?? string.Empty, Str(args, "path")), null);
 
                 case PlannerTools.ReadFile:
-                    return new PlannerToolOutcome(await tools.ReadFileAsync(Str(args, "path") ?? string.Empty, Int(args, "startLine"), Int(args, "endLine"), cancellationToken), null);
+                {
+                    var path = Str(args, "path") ?? string.Empty;
+                    var (from, to) = (Int(args, "startLine"), Int(args, "endLine"));
+                    var content = await tools.ReadFileAsync(path, from, to, cancellationToken);
+                    // The functions in the lines just read get their calls read in the background (project files only).
+                    if (!content.StartsWith("Error:", StringComparison.Ordinal) && tools.Scope.TryResolve(path, out var full, out _))
+                    {
+                        var start = Math.Max(1, from ?? 1);
+                        functionCalls.Read(input.Project.ProjectId, input.Project.RootPath, tools.Scope.ToRelative(full), start, to ?? start + WorkspaceTools.MaxReadLines - 1);
+                    }
+                    return new PlannerToolOutcome(content, null);
+                }
 
                 case PlannerTools.SearchMemory:
                     var entries = await memoryService.SearchAsync(new MemorySearch(

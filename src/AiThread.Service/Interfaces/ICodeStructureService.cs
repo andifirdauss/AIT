@@ -21,6 +21,9 @@ public interface ICodeStructureService
 
     Task<IReadOnlyList<StructureSearchHitDto>> SearchAsync(Guid projectId, string query, CancellationToken cancellationToken = default);
 
+    // What one function calls (key from a member of /structure/file or /structure/class); null when it was never read.
+    Task<StructureFunctionCallsDto?> GetCallsAsync(Guid projectId, string key, CancellationToken cancellationToken = default);
+
     // After a thread or a rollback changed files: walks the project again in the background, so the tree is current
     // when it is opened. Never blocks or fails the caller; requests made while one is waiting share it.
     void Refresh(Guid projectId);

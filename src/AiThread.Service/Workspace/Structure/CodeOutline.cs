@@ -1,7 +1,8 @@
 namespace AiThread.Service.Workspace.Structure;
 
 // The declarations of one source file, as shown in Project > Detail → Struktur kode. Signature is one trimmed line.
-public sealed record OutlineMember(string Name, string Kind, int Line, string? Signature);
+// EndLine: the last line of the body (the line itself for a declaration without one).
+public sealed record OutlineMember(string Name, string Kind, int Line, string? Signature, int EndLine);
 
 // Container: the enclosing type of a nested type. Namespace: the file's namespace, when the language has one.
 public sealed record OutlineType(
@@ -11,7 +12,8 @@ public sealed record OutlineType(
     string? Container,
     int Line,
     bool IsPartial,
-    IReadOnlyList<OutlineMember> Members);
+    IReadOnlyList<OutlineMember> Members,
+    int EndLine);
 
 // Functions: declarations outside any type (PHP/JS/Python functions, JS object-literal methods).
 public sealed record FileOutline(IReadOnlyList<OutlineType> Types, IReadOnlyList<OutlineMember> Functions)
