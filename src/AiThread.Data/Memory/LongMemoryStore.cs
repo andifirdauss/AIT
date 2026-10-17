@@ -9,7 +9,7 @@ namespace AiThread.Data.Memory;
 // external one chosen in the Setting menu, whose LongMemories table is created on first use.
 public sealed class LongMemoryStore(IDbContextFactory<AiThreadDbContext> mainFactory)
 {
-    private volatile Backend _current = new(MemoryStoreConnection.Default, null);
+    private volatile Backend _current = Backend.Create(MemoryStoreConnection.Default);
 
     public MemoryStoreConnection Connection => _current.Connection;
 
@@ -22,6 +22,9 @@ public sealed class LongMemoryStore(IDbContextFactory<AiThreadDbContext> mainFac
 
     public Task<ILongMemoryDb> CreateAsync(CancellationToken cancellationToken = default) => _current.OpenAsync(mainFactory, cancellationToken);
 
+    // The module registry, code map and merge log, kept in the same database as long memory.
+    public Task<IMemoryCatalogDb> CreateCatalogAsync(CancellationToken cancellationToken = default) => _current.OpenCatalogAsync(mainFactory, cancellationToken);
+
     // Invalid settings throw before anything changes.
     public void Configure(MemoryStoreConnection connection)
     {
@@ -33,17 +36,54 @@ public sealed class LongMemoryStore(IDbContextFactory<AiThreadDbContext> mainFac
     public Task<ILongMemoryDb> OpenAsync(MemoryStoreConnection connection, CancellationToken cancellationToken = default) =>
         (connection == _current.Connection ? _current : Backend.Create(connection)).OpenAsync(mainFactory, cancellationToken);
 
-    private sealed class Backend(MemoryStoreConnection connection, DbContextOptions<LongMemoryDbContext>? options)
+    // The catalog next to long memory in a database that is not put in use, e.g. to copy it there.
+    public Task<IMemoryCatalogDb> OpenCatalogAsync(MemoryStoreConnection connection, CancellationToken cancellationToken = default) =>
+        (connection == _current.Connection ? _current : Backend.Create(connection)).OpenCatalogAsync(mainFactory, cancellationToken);
+
+    private sealed class Backend(
+        MemoryStoreConnection connection,
+        DbContextOptions<LongMemoryDbContext>? options,
+        DbContextOptions<MemoryCatalogDbContext>? catalogOptions)
     {
         private readonly SemaphoreSlim _schemaLock = new(1, 1);
         private volatile bool _schemaReady;
+        private volatile bool _catalogReady;
 
         public MemoryStoreConnection Connection => connection;
         public DbContextOptions<LongMemoryDbContext>? Options => options;
 
         public static Backend Create(MemoryStoreConnection connection) => connection.Provider == MemoryStoreProvider.Default
-            ? new Backend(connection, null)
-            : new Backend(connection, connection.BuildDbContextOptions<LongMemoryDbContext>());
+            ? new Backend(connection, null, null)
+            : new Backend(connection, connection.BuildDbContextOptions<LongMemoryDbContext>(), connection.BuildDbContextOptions<MemoryCatalogDbContext>());
+
+        public async Task<IMemoryCatalogDb> OpenCatalogAsync(IDbContextFactory<AiThreadDbContext> mainFactory, CancellationToken cancellationToken)
+        {
+            if (catalogOptions is null) return await mainFactory.CreateDbContextAsync(cancellationToken);
+
+            var db = new MemoryCatalogDbContext(catalogOptions);
+            if (_catalogReady) return db;
+
+            await _schemaLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (!_catalogReady)
+                {
+                    // The three tables are created together, so probing one tells whether they exist.
+                    await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.ProjectModules.AnyAsync(ct), cancellationToken);
+                    _catalogReady = true;
+                }
+                return db;
+            }
+            catch
+            {
+                await db.DisposeAsync();
+                throw;
+            }
+            finally
+            {
+                _schemaLock.Release();
+            }
+        }
 
         public async Task<ILongMemoryDb> OpenAsync(IDbContextFactory<AiThreadDbContext> mainFactory, CancellationToken cancellationToken)
         {
@@ -58,7 +98,8 @@ public sealed class LongMemoryStore(IDbContextFactory<AiThreadDbContext> mainFac
                 if (!_schemaReady)
                 {
                     await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.LongMemories.AnyAsync(ct), cancellationToken);
-                    await MemorySchema.EnsureColumnsAsync<LongMemory>(db, cancellationToken, nameof(LongMemory.ProjectKey), nameof(LongMemory.ProjectName));
+                    await MemorySchema.EnsureColumnsAsync<LongMemory>(db, cancellationToken,
+                        [nameof(LongMemory.ProjectKey), nameof(LongMemory.ProjectName), .. MemorySchema.LabelColumns]);
                     _schemaReady = true;
                 }
                 return db;

@@ -8,6 +8,14 @@ public class AiThreadOptions
 
     public int ShortMemoryHours { get; set; } = 24;
     public int MemoryConsolidationIntervalMinutes { get; set; } = 10;
+
+    // How often MemoryRelabelWorker looks for memory without the structured label (older versions sharing a store
+    // keep writing it).
+    public int MemoryRelabelIntervalMinutes { get; set; } = 10;
+
+    // Acronyms written in capitals in memory labels, on top of the built-in list (API, DTO, UI, ...).
+    public string[] MemoryAcronyms { get; set; } = [];
+
     public int RouterMonitorIntervalSeconds { get; set; } = 15;
     public int ActivityLogRetentionDays { get; set; } = 14;
 

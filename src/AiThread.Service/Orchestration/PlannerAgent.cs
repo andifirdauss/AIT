@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using AiThread.Common.DTOs;
 using AiThread.Common.Entities;
 using AiThread.Common.Enums;
 using AiThread.Service.Interfaces;
@@ -12,13 +13,15 @@ namespace AiThread.Service.Orchestration;
 
 // Nodes are the active planners in priority order; the first one plans, and its fallback chain (AiNode.FallbackNodeId)
 // takes over when it is rate limited or down. CanAsk offers ask_user: the developer can answer (setting on, and a session the answer can come back through).
+// CodeMap: module and layer of the files the request names, as far as known before planning (the first search layer).
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
     IReadOnlyList<AiNode> Nodes,
     WorkspaceScope Scope,
     RuntimeSettings Settings,
-    bool CanAsk = false);
+    bool CanAsk = false,
+    IReadOnlyList<Memory.CodeMapHit>? CodeMap = null);
 
 // Node is the planner that finished (a fallback when the preferred one failed). Plan is null when the planner paused
 // on a question instead (Pause). Steps and tokens are totals for the thread, including the run before a pause.
@@ -400,8 +403,24 @@ public sealed class PlannerAgent(
             builder.Append(request.ConversationContext).Append("\n\n");
         }
 
+        if (input.CodeMap is { Count: > 0 } codeMap)
+        {
+            builder.Append("# Code map of the files the request names (module · layer)\n");
+            foreach (var hit in codeMap.Take(30))
+                builder.Append($"- {hit.Path}: {(hit.Area is null ? string.Empty : hit.Area + " · ")}{hit.Module} · {hit.Layer}\n");
+            builder.Append('\n');
+        }
+
+        var summary = await memoryService.GetModuleSummaryAsync(project.ProjectId, cancellationToken);
+        if (summary.Count > 0)
+        {
+            builder.Append("# Memory map (labeled memories per module: layers | kinds)\n");
+            builder.Append(PlannerToolRunner.FormatModuleMap(summary)).Append('\n');
+        }
+
         builder.Append("# Memory index (labels only — call read_memory with ids to read the details)\n");
-        var relevant = await memoryService.GetIndexAsync(project.ProjectId, request.Prompt, 20, cancellationToken);
+        var focusModules = input.CodeMap?.Select(h => h.Module).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var relevant = await memoryService.SearchAsync(new MemorySearch(project.ProjectId, Text: request.Prompt, Take: 20, Modules: focusModules), cancellationToken);
         var recent = await memoryService.GetIndexAsync(project.ProjectId, null, 10, cancellationToken);
         var index = relevant.Concat(recent.Where(r => r.Level is MemoryLevel.Short or MemoryLevel.Business)).DistinctBy(e => e.Id).Take(25).ToList();
         builder.Append(index.Count == 0 ? "(empty)\n" : PlannerToolRunner.FormatIndex(index)).Append('\n');

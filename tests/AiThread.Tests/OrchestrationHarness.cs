@@ -229,11 +229,18 @@ public sealed class RecordingMemoryService : IMemoryService
         _saved.Enqueue((request, sourceThreadId));
         _firstSave.TrySetResult();
         return Task.FromResult(new MemoryItemDto(Guid.NewGuid(), MemoryLevel.Short, request.Type, request.ProjectId, null,
-            request.Label, request.Description, sourceThreadId, DateTime.UtcNow, null, 0));
+            $"{request.Module} · {request.Kind}", request.Description, sourceThreadId, DateTime.UtcNow, null, 0, Module: request.Module,
+            Kind: request.Kind, Keywords: request.Keywords, Labeled: true));
     }
 
     public Task<IReadOnlyList<MemoryIndexEntry>> GetIndexAsync(Guid? projectId, string? query, int take, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<MemoryIndexEntry>>([]);
+
+    public Task<IReadOnlyList<MemoryIndexEntry>> SearchAsync(MemorySearch search, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<MemoryIndexEntry>>([]);
+
+    public Task<IReadOnlyList<MemoryModuleSummary>> GetModuleSummaryAsync(Guid? projectId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<MemoryModuleSummary>>([]);
 
     public Task<IReadOnlyList<MemoryItemDto>> GetManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<MemoryItemDto>>([]);

@@ -1,7 +1,9 @@
+using AiThread.Common.Entities;
 using AiThread.Common.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -14,6 +16,29 @@ public static class MemorySchema
 {
     public const int ProjectKeyLength = 300;
     public const int ProjectNameLength = 200;
+    public const int ModuleLength = 100;
+    public const int KeywordsLength = 1000;
+
+    // Columns of the structured label, added to LongMemories/ShortMemories tables made by an older version.
+    public static readonly string[] LabelColumns =
+    [
+        nameof(LongMemory.Module), nameof(LongMemory.Layers), nameof(LongMemory.Kind), nameof(LongMemory.Area),
+        nameof(LongMemory.Keywords), nameof(LongMemory.LabelVersion), nameof(LongMemory.LegacyLabel),
+        nameof(LongMemory.ReviewReason), nameof(LongMemory.RelabelAttempts)
+    ];
+
+    // The structured label columns of long memory, the same in the main and in an external database.
+    public static void ConfigureLabel(EntityTypeBuilder<LongMemory> e)
+    {
+        e.Property(x => x.Module).HasMaxLength(ModuleLength);
+        e.Property(x => x.Layers).HasMaxLength(100);
+        e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+        e.Property(x => x.Area).HasMaxLength(ModuleLength);
+        e.Property(x => x.Keywords).HasMaxLength(KeywordsLength);
+        e.Property(x => x.LegacyLabel).HasMaxLength(300);
+        e.Property(x => x.ReviewReason).HasMaxLength(500);
+        e.HasIndex(x => new { x.ProjectKey, x.Module });
+    }
 
     // Columns added to a memory table after a release created it: a table made by an older version gets the missing
     // ones (nullable) here, since external stores are not migrated. The SQL comes from the provider's own migrations

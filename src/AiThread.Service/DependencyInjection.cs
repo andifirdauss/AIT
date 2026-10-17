@@ -1,9 +1,11 @@
+using AiThread.Common.Memory;
 using AiThread.Common.Options;
 using AiThread.Service.Background;
 using AiThread.Service.Business;
 using AiThread.Service.Implementations;
 using AiThread.Service.Implementations.Cli;
 using AiThread.Service.Interfaces;
+using AiThread.Service.Memory;
 using AiThread.Service.Orchestration;
 using AiThread.Service.Skills;
 using AiThread.Service.Telegram;
@@ -21,6 +23,7 @@ public static class DependencyInjection
     public static IServiceCollection AddServiceLayer(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<AiThreadOptions>(configuration.GetSection(AiThreadOptions.SectionName));
+        MemoryLabels.AddAcronyms(configuration.GetSection($"{AiThreadOptions.SectionName}:{nameof(AiThreadOptions.MemoryAcronyms)}").Get<string[]>());
         services.AddDataProtection().SetApplicationName("AiThread");
 
         // Streaming completions can legitimately run for minutes; timeouts are enforced per call instead.
@@ -47,6 +50,12 @@ public static class DependencyInjection
         services.AddSingleton<ProjectMemoryKeys>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IMemoryService, MemoryService>();
+        services.AddSingleton<ModuleRegistry>();
+        services.AddSingleton<MemoryAi>();
+        services.AddSingleton<CodeMapper>();
+        services.AddSingleton<ModuleMerger>();
+        services.AddSingleton<MemoryRelabeler>();
+        services.AddSingleton<IMemoryCatalogService, MemoryCatalogService>();
         services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
         services.AddSingleton<IMemoryTransferService, MemoryTransferService>();
         services.AddSingleton<IThreadService, ThreadService>();
@@ -115,6 +124,7 @@ public static class DependencyInjection
         services.AddHostedService<NineRouterAutoStartWorker>();
         services.AddHostedService<RouterMonitorWorker>();
         services.AddHostedService<MemoryConsolidationWorker>();
+        services.AddHostedService<MemoryRelabelWorker>();
         services.AddHostedService<TelegramPollingWorker>();
         services.AddHostedService<SkillImportWorker>();
         services.AddHostedService<BusinessMemoryWorker>();

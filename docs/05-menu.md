@@ -93,22 +93,46 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
 
 **Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), daftar file
 solution/build yang ditemukan di dalam project, sesi Claude Code (id sesi, jumlah thread, terakhir aktif), thread
-project ini, dan tautan ke memory-nya.
+project ini, dan tautan ke memory-nya. Di bawah thread:
+
+- **Modul**: daftar modul project (deskripsi, alias, jumlah memory dan file). *Atur* mengubah deskripsi/alias atau
+  menggabungkan modul ke modul lain; *Cek modul ganda* mencari modul yang terpisah tidak sengaja. Lihat
+  [Daftar modul & gabung modul](06-memory.md#daftar-modul--gabung-modul).
+- **Peta kode**: modul, layer, area, dan sumber (aturan/AI/manual) tiap file, dengan pencarian dan filter modul.
+  *Ubah* / *Atur file* (path atau nama class) menyimpan koreksi manual; *Scan* memetakan file yang belum terpetakan.
+- **Riwayat gabung modul**: merge otomatis dan manual beserta jumlah memory/file/halaman yang dipindah; *Batalkan*
+  mengembalikannya.
 
 ## Memory
 
-Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi dua tab: **Short & long memory** dan **Bisnis (wiki)**
-(`/Memory#bisnis`).
+Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi tiga tab: **Short & long memory**, **Perlu review**
+(`/Memory#review`), dan **Bisnis (wiki)** (`/Memory#bisnis`). Selama masih ada memory lama yang menunggu label, banner
+*Migrasi label memory* menampilkan progres (menunggu, sudah berlabel, perlu review, fase, lokasi backup) dengan tombol
+*Jalankan sekarang*.
 
 Tab *Short & long memory*:
 
-- **Statistik**: jumlah short & long memory, project & knowledge, status store short memory.
-- **Filter**: level, tipe, project, pencarian label/deskripsi. Datang dari halaman project? Filter project sudah terisi.
-- **Tabel**: level (short menampilkan perkiraan sisa jam sebelum pindah ke DB), tipe, project, label sebagai chip +
-  cuplikan deskripsi, waktu dibuat & tautan thread sumber, jumlah dipakai (long memory).
+- **Statistik**: jumlah short & long memory, project & knowledge, belum berlabel (dan yang perlu review), status store
+  short memory.
+- **Filter**: level, tipe, project, pencarian label/deskripsi, modul (project terpilih + knowledge), layer, jenis,
+  berlabel/belum. Datang dari halaman project? Filter project sudah terisi.
+- **Tabel**: level (short menampilkan perkiraan sisa jam sebelum pindah ke DB), tipe, project, label
+  `Modul · Layer · Jenis` + keyword sebagai chip (memory lama: tanda *belum berlabel* + label lamanya) dan cuplikan
+  deskripsi, waktu dibuat & tautan thread sumber, jumlah dipakai (long memory).
 - **Aksi**: *Buka* (lihat/ubah), *→ DB* (pindahkan short ke long sekarang), *Hapus*.
-- **Tambah memory**: entri manual masuk sebagai short memory. Knowledge memory tidak terikat project.
+- **Tambah memory / Buka**: tipe, project, modul (saran dari daftar modul), jenis, area (opsional), layer (centang),
+  keyword (dipisah koma, maks 16, dihitung), deskripsi. Knowledge memory tidak terikat project dan hanya boleh jenis
+  Pitfall/Pattern/Architecture. Entri baru masuk sebagai short memory.
 - **Konsolidasi sekarang**: memindahkan semua short memory yang sudah melewati masa simpan.
+
+Tab *Perlu review*:
+
+- **Memory tanpa label**: memory yang tidak bisa dilabeli otomatis (modul tidak jelas, atau gagal 3 kali) —
+  *Beri label* membuka form.
+- **Saran gabung modul**: modul yang kemungkinan sama tapi keyakinannya rendah — *Gabungkan* atau *Bukan duplikat*
+  (tidak diusulkan lagi). Pilih project untuk melihatnya.
+- **Kandidat memory duplikat**: pasangan memory dengan modul & jenis sama dan keyword sangat mirip, berdampingan
+  dengan tombol *Buka* dan *Hapus*. Tidak ada yang dihapus otomatis.
 
 Tab *Bisnis (wiki)* — lihat [Business memory](06-memory.md#business-memory-wiki-bisnis):
 

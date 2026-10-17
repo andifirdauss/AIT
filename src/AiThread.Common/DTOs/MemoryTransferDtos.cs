@@ -12,7 +12,10 @@ public record MemoryExportFile(
     IReadOnlyList<MemoryExportItem> Items)
 {
     public const string FormatName = "aithread-memory";
-    public const int CurrentVersion = 1;
+
+    // v2 adds the structured label; a v1 item (or a v2 item without Module/Kind) is imported unlabeled and relabeled
+    // by MemoryRelabelWorker.
+    public const int CurrentVersion = 2;
 }
 
 public record MemoryExportItem(
@@ -28,7 +31,13 @@ public record MemoryExportItem(
     DateTime CreatedAt,
     DateTime? PromotedAt = null,
     int HitCount = 0,
-    DateTime? LastAccessedAt = null);
+    DateTime? LastAccessedAt = null,
+    string? Module = null,
+    IReadOnlyList<MemoryLayer>? Layers = null,
+    MemoryKind? Kind = null,
+    string? Area = null,
+    IReadOnlyList<string>? Keywords = null,
+    string? LegacyLabel = null);
 
 public enum MemoryImportMode
 {

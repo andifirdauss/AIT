@@ -9,6 +9,7 @@ using AiThread.Data.Messaging;
 using AiThread.Service.Business;
 using AiThread.Service.Implementations;
 using AiThread.Service.Interfaces;
+using AiThread.Service.Memory;
 using AiThread.Service.Workspace;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,8 +31,8 @@ public class ProjectKeyMemoryTests
         var other = await AddProjectAsync(harness, "Other", "github.com/org/other");
         await SetKeyAsync(harness, cloneA, "github.com/org/eep");
 
-        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, cloneA, "transfer order, approval", "TO above 10M needs approval."));
-        await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Knowledge, null, "cache, master data", "Cache master data for 5 minutes."));
+        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, cloneA, "TransferOrder", MemoryKind.Rule, ["Approval", "Persetujuan"], "TO above 10M needs approval."));
+        await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Knowledge, null, "Caching", MemoryKind.Pattern, ["MasterData"], "Cache master data for 5 minutes."));
 
         Assert.Equal("github.com/org/eep", saved.ProjectKey);
         Assert.Contains(await memory.Service.GetIndexAsync(cloneB, "approval", 10), e => e.Id == saved.Id);
@@ -51,7 +52,7 @@ public class ProjectKeyMemoryTests
         await using var harness = await OrchestrationHarness.CreateAsync();
         using var shortDb = new TempWorkspace();
         using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
-        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "transfer order, approval", "TO above 10M needs approval."));
+        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Rule, ["Approval"], "TO above 10M needs approval."));
 
         // Nothing listens on port 1: every connection is refused, as with a stopped PostgreSQL server.
         harness.Service<LongMemoryStore>().Configure(new MemoryStoreConnection(MemoryStoreProvider.PostgreSql, "127.0.0.1", 1, "aithread", "app", "pw"));
@@ -238,6 +239,7 @@ public class ProjectKeyMemoryTests
                 shortStore,
                 harness.Service<LongMemoryStore>(),
                 harness.Service<BusinessMemoryStore>(),
+                harness.Service<ModuleRegistry>(),
                 harness.Service<IEventBus>(),
                 harness.Service<IActivityLogService>(),
                 Options.Create(new AiThreadOptions { ShortMemoryHours = 0 }),

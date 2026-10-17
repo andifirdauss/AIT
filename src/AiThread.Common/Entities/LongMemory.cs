@@ -19,9 +19,28 @@ public class LongMemory : BaseEntity
 
     public MemoryType Type { get; set; }
 
-    // Comma-separated keywords the planner scans without reading the description.
+    // Display label "Module · Layers · Kind | Keyword, ..." (MemoryLabels.Compose), kept so older AIT versions sharing
+    // the store can still read new memories. Rows not migrated yet (LabelVersion null) hold free keywords here.
     public string Label { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+
+    // The structured label (see MemoryLabels): first search layer Module/Layers/Kind, second layer Keywords (CSV).
+    // Area is set only in a repository that holds several apps.
+    public string? Module { get; set; }
+    public string? Layers { get; set; }
+    public MemoryKind? Kind { get; set; }
+    public string? Area { get; set; }
+    public string? Keywords { get; set; }
+
+    // MemoryLabels.CurrentVersion once labeled; null = written by an older version, waiting for MemoryRelabelWorker.
+    public int? LabelVersion { get; set; }
+
+    // The free label the memory had before it was relabeled.
+    public string? LegacyLabel { get; set; }
+
+    // Set when the memory could not be labeled automatically: it waits in Memory → Perlu review.
+    public string? ReviewReason { get; set; }
+    public int? RelabelAttempts { get; set; }
 
     public Guid? SourceThreadId { get; set; }
     public DateTime PromotedAt { get; set; } = DateTime.UtcNow;
