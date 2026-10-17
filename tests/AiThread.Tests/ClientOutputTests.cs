@@ -76,6 +76,12 @@ public class ClientOutputTests
         Assert.Equal("🔖 Label · 6 file → Thread·Logic, Memory·Data, Node·Logic, Skill·Logic, +1 lainnya · 14 memory relevan",
             PlannerAgent.LabelLine(codeMap, 14));
         Assert.Equal("🔖 Label · belum ada memory relevan", PlannerAgent.LabelLine(null, 0));
+
+        // A follow-up that names no file takes its labels from the session.
+        var threadId = Guid.Parse("df448875-0000-0000-0000-000000000000");
+        Assert.Equal("🔖 Label · dari sesi (thread df448875) · 1 file → Thread·Logic · 3 memory relevan",
+            PlannerAgent.LabelLine(codeMap.Take(1).ToList(), 3, new SessionLabelSource(threadId, "Perbaiki clsKlaimDFBL")));
+        Assert.Equal("🔖 Label · dari sesi · belum ada memory relevan", PlannerAgent.LabelLine([], 0, new SessionLabelSource(null, null)));
     }
 
     [Fact]
