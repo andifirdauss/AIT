@@ -1,4 +1,5 @@
 using AiThread.Common.Enums;
+using AiThread.Common.Memory;
 
 namespace AiThread.Common.DTOs;
 
@@ -24,7 +25,8 @@ public record MemoryItemDto(
     IReadOnlyList<string>? Keywords = null,
     bool Labeled = false,
     string? LegacyLabel = null,
-    string? ReviewReason = null);
+    string? ReviewReason = null,
+    IReadOnlyList<string>? ExtraModules = null);
 
 // What the planner scans to pick topics without reading descriptions. Labeled entries carry the structured label;
 // unlabeled ones (older memory waiting for relabeling) only Label.
@@ -39,9 +41,13 @@ public record MemoryIndexEntry(
     MemoryKind? Kind = null,
     string? Area = null,
     IReadOnlyList<string>? Keywords = null,
-    int HitCount = 0)
+    int HitCount = 0,
+    IReadOnlyList<string>? ExtraModules = null)
 {
     public bool Labeled => Module is not null && Kind is not null;
+
+    // Main module first, then the extra ones.
+    public IReadOnlyList<string> Modules => MemoryLabels.AllModules(Module, ExtraModules);
 }
 
 public record MemoryQuery(
@@ -57,8 +63,9 @@ public record MemoryQuery(
     bool? Labeled = null,
     bool? NeedsReview = null);
 
-// Every memory is written with its full label. Module is resolved against the project's module list (a new name
-// becomes a module); keywords are normalized to PascalCase, at most 16.
+// Every memory is written with its full label. Module (the main one) and ExtraModules (other modules the same fact
+// concerns, at most 3) are resolved against the project's module list (a new name becomes a module); keywords are
+// normalized to PascalCase, at most 16.
 public record SaveMemoryRequest(
     MemoryType Type,
     Guid? ProjectId,
@@ -67,7 +74,8 @@ public record SaveMemoryRequest(
     IReadOnlyList<string> Keywords,
     string Description,
     IReadOnlyList<MemoryLayer>? Layers = null,
-    string? Area = null);
+    string? Area = null,
+    IReadOnlyList<string>? ExtraModules = null);
 
 // The planner's two-layer search: Module (and optionally Layer/Kind) narrows the list, Keywords rank inside it.
 // Text is free text (a prompt or an old-style query) used to detect modules and keywords when they are not given.

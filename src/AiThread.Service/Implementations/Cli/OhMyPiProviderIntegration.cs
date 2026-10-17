@@ -7,15 +7,17 @@ using AiThread.Service.Models;
 
 namespace AiThread.Service.Implementations.Cli;
 
-// AiThread as a provider of its own in oh-my-pi: a "providers.aithread" entry in ~/.omp/agent/models.yml, so omp lists
-// "aithread/aithread" next to its built-in providers. Checked against omp 18.4.4: api anthropic-messages posts to <baseUrl>/v1/messages, apiKey is
+// AiThread as a provider of its own in oh-my-pi: a "providers.AIT" entry in ~/.omp/agent/models.yml, so omp lists
+// "AIT/AIThread" next to its built-in providers and shows the model name "AIThread" in its status line. Checked against
+// omp 18.11.3 (ids keep their case): api anthropic-messages posts to <baseUrl>/v1/messages, apiKey is
 // sent as Authorization: Bearer (an environment variable of that name wins over the literal). models.yml exists only
-// per user (or per --profile), so there is no project scope; the project comes from the cwd omp sends.
+// per user (or per --profile), so there is no project scope; the project comes from the cwd omp sends. The proxy
+// ignores the model id, so renaming it only changes what omp shows.
 public sealed partial class OhMyPiProviderIntegration(ISettingService settingService, string? modelsPath = null) : ICliIntegration
 {
     public const string Id = "oh-my-pi-provider";
-    public const string ProviderId = "aithread";
-    public const string ModelId = "aithread";
+    public const string ProviderId = "AIT";
+    public const string ModelId = "AIThread";
     private const string BackupSuffix = ".aithread-backup";
 
     private readonly string _modelsPath = modelsPath ?? Path.Combine(OmpAgentDirectory, "models.yml");
@@ -91,7 +93,7 @@ public sealed partial class OhMyPiProviderIntegration(ISettingService settingSer
             $"  apiKey: {YamlProviderBlock.Quote(settings.ProxyApiKey ?? "aithread-local")}",
             "  models:",
             $"    - id: {ModelId}",
-            "      name: AiThread",
+            $"      name: {ModelId}",
             "      contextWindow: 1000000",
             "      maxTokens: 32000",
             "      input: [text, image]"
@@ -102,7 +104,9 @@ public sealed partial class OhMyPiProviderIntegration(ISettingService settingSer
     {
         if (YamlProviderBlock.Managed(content) is not { } block) return (false, null);
         var current = block.Select(l => BaseUrlLine().Match(l)).FirstOrDefault(m => m.Success)?.Groups["url"].Value;
-        var enabled = current is not null && string.Equals(current.TrimEnd('/'), proxyBaseUrl.Trim().TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+        // A block written under the old "aithread" provider id counts as not enabled, so turning it on again renames it.
+        var enabled = current is not null && string.Equals(current.TrimEnd('/'), proxyBaseUrl.Trim().TrimEnd('/'), StringComparison.OrdinalIgnoreCase)
+                      && block.Any(l => l.Trim() == ProviderId + ":");
         return (enabled, current);
     }
 

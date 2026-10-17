@@ -25,8 +25,10 @@ public class LongMemory : BaseEntity
     public string Description { get; set; } = string.Empty;
 
     // The structured label (see MemoryLabels): first search layer Module/Layers/Kind, second layer Keywords (CSV).
-    // Area is set only in a repository that holds several apps.
+    // Area is set only in a repository that holds several apps. Module is the main module; ExtraModules (CSV) the other
+    // modules the same fact concerns, matched by the module filter and search like the main one.
     public string? Module { get; set; }
+    public string? ExtraModules { get; set; }
     public string? Layers { get; set; }
     public MemoryKind? Kind { get; set; }
     public string? Area { get; set; }
