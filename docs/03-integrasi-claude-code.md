@@ -234,23 +234,25 @@ per project), tanpa menyentuh provider lain:
 ```yaml
 # >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
 providers:
-  aithread:
+  AIT:
     baseUrl: "http://localhost:5225"
     api: anthropic-messages
     apiKey: "aithread-local"        # Proxy API key bila diisi di Setting
     models:
-      - id: aithread
-        name: AiThread
+      - id: AIThread
+        name: AIThread
         contextWindow: 1000000
         maxTokens: 32000
 # <<< AiThread <<<
 ```
 
-- Pilih model `aithread/aithread` lewat `/model` di omp (atau `omp --model aithread/aithread`). Provider Anthropic asli
-  tetap tersedia, jadi Anda bisa berpindah per sesi.
-- Bila `models.yml` sudah punya `providers:`, entri `aithread` disisipkan di bawahnya dengan indentasi yang sama.
+- Pilih model `AIT/AIThread` lewat `/model` di omp (atau `omp --model AIT/AIThread`); status bar omp menampilkan
+  `AIThread`. Provider Anthropic asli tetap tersedia, jadi Anda bisa berpindah per sesi.
+- Blok lama dari versi sebelumnya (provider `aithread/aithread`) tampil belum aktif di menu CLI; nyalakan switch
+  *Global* lagi untuk menggantinya dengan `AIT/AIThread`.
+- Bila `models.yml` sudah punya `providers:`, entri `AIT` disisipkan di bawahnya dengan indentasi yang sama.
   AIT menolak menulis bila `providers` berbentuk satu baris (`providers: { ... }`), bila sudah ada provider
-  `aithread` buatan Anda, atau bila masih ada `models.json` lama yang belum dimigrasi omp.
+  `AIT` buatan Anda, atau bila masih ada `models.json` lama yang belum dimigrasi omp.
 - Project tetap dikenali dari working directory yang dikirim omp di setiap request.
 - Diuji dengan omp 18.4.4: omp mengirim `POST <baseUrl>/v1/messages?beta=true` dengan `Authorization: Bearer <apiKey>`.
   Nilai `apiKey` yang sama dengan nama environment variable diganti isi variabel itu.

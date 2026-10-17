@@ -61,7 +61,8 @@ public sealed class MemoryService(
             label.Kind,
             label.Area,
             MemoryLabels.JoinCsv(label.Keywords),
-            MemoryLabels.CurrentVersion);
+            MemoryLabels.CurrentVersion,
+            ExtraModules: MemoryLabels.JoinCsv(label.ExtraModules));
 
         if (shortStore.IsConnected)
         {
@@ -119,8 +120,10 @@ public sealed class MemoryService(
             .Where(e => e.Labeled)
             .ToList();
 
+        // A memory of several modules counts for each of them.
         return entries
-            .GroupBy(e => (e.Module!, e.Type == MemoryType.Knowledge))
+            .SelectMany(e => e.Modules.Select(module => (Module: module, Entry: e)))
+            .GroupBy(x => (x.Module, x.Entry.Type == MemoryType.Knowledge), x => x.Entry)
             .Select(g => new MemoryModuleSummary(
                 g.Key.Item1,
                 g.Key.Item2,
@@ -163,13 +166,13 @@ public sealed class MemoryService(
             var rows = await WhereVisible(db.LongMemories.AsNoTracking(), scope, includeKnowledge: true)
                 .Select(m => new
                 {
-                    m.Id, m.Type, m.Label, m.CreatedAt, m.Module, m.Layers, m.Kind, m.Area, m.Keywords, m.HitCount, m.LabelVersion
+                    m.Id, m.Type, m.Label, m.CreatedAt, m.Module, m.ExtraModules, m.Layers, m.Kind, m.Area, m.Keywords, m.HitCount, m.LabelVersion
                 })
                 .ToListAsync(cancellationToken);
             return rows.Select(m => m.LabelVersion is null || m.Module is null || m.Kind is null
                 ? new MemoryIndexEntry(m.Id, MemoryLevel.Long, m.Type, m.Label, m.CreatedAt, HitCount: m.HitCount)
                 : new MemoryIndexEntry(m.Id, MemoryLevel.Long, m.Type, m.Label, m.CreatedAt, m.Module, MemoryLabels.ParseLayers(m.Layers), m.Kind,
-                    m.Area, MemoryLabels.SplitCsv(m.Keywords), m.HitCount)).ToList();
+                    m.Area, MemoryLabels.SplitCsv(m.Keywords), m.HitCount, MemoryLabels.SplitCsv(m.ExtraModules))).ToList();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -301,7 +304,7 @@ public sealed class MemoryService(
             var shorts = (await SafeShortAsync()).Where(r =>
                 (query.Type is null || r.Type == query.Type)
                 && (scope is null || scope.Owns(r.ProjectKey, r.ProjectId))
-                && (module is null || string.Equals(r.Module, module, StringComparison.OrdinalIgnoreCase))
+                && (module is null || MemoryLabels.HasModule(r.Module, r.ExtraModules, module))
                 && (query.Kind is null || r.Kind == query.Kind)
                 && (query.Layer is null || MemoryLabels.ParseLayers(r.Layers).Contains(query.Layer.Value))
                 && (query.Labeled is null || IsLabeled(r.LabelVersion, r.Module, r.Kind) == query.Labeled)
@@ -318,7 +321,8 @@ public sealed class MemoryService(
             var longQuery = db.LongMemories.AsNoTracking().AsQueryable();
             if (query.Type is { } type) longQuery = longQuery.Where(m => m.Type == type);
             if (scope is not null) longQuery = WhereVisible(longQuery, scope, includeKnowledge: false);
-            if (module is not null) longQuery = longQuery.Where(m => m.Module == module);
+            if (module is not null)
+                longQuery = longQuery.Where(m => m.Module == module || (m.ExtraModules != null && ("," + m.ExtraModules + ",").Contains("," + module + ",")));
             if (query.Kind is { } kind) longQuery = longQuery.Where(m => m.Kind == kind);
             if (query.Layer is { } layer)
             {
@@ -377,6 +381,7 @@ public sealed class MemoryService(
                 Label = label.Composed,
                 Description = request.Description.Trim(),
                 Module = label.Module,
+                ExtraModules = MemoryLabels.JoinCsv(label.ExtraModules),
                 Layers = MemoryLabels.LayersCsv(label.Layers),
                 Kind = label.Kind,
                 Area = label.Area,
@@ -532,6 +537,7 @@ public sealed class MemoryService(
             Label = record.Label,
             Description = record.Description,
             Module = record.Module,
+            ExtraModules = record.ExtraModules,
             Layers = record.Layers,
             Kind = record.Kind,
             Area = record.Area,
@@ -563,31 +569,38 @@ public sealed class MemoryService(
             throw new AppValidationException("Knowledge memory hanya boleh berjenis Pitfall, Pattern, atau Architecture.");
         var layers = (request.Layers ?? []).Where(Enum.IsDefined).Distinct().Order().ToList();
 
+        var extra = MemoryLabels.ExtraModules(request.ExtraModules, module);
+
         var key = request.Type == MemoryType.Knowledge ? MemoryLabels.KnowledgeKey : owner?.Key;
         if (key is not null)
         {
             try
             {
                 (module, _) = await registry.EnsureAsync(key, module, cancellationToken: cancellationToken);
+                var resolved = new List<string>(extra.Count);
+                foreach (var name in extra) resolved.Add((await registry.EnsureAsync(key, name, cancellationToken: cancellationToken)).Name);
+                // Two names may resolve to the same module (an alias of the main one, say).
+                extra = MemoryLabels.ExtraModules(resolved, module);
             }
             catch (Exception ex) when (ex is not OperationCanceledException and not AppValidationException)
             {
-                // The registry lives with long memory; while that store is down the name is kept as written.
+                // The registry lives with long memory; while that store is down the names are kept as written.
                 LongStoreFailed(ex, "Could not resolve the module of a memory");
             }
         }
 
-        var keywords = MemoryLabels.Keywords(request.Keywords, module);
+        var keywords = MemoryLabels.Keywords(request.Keywords, [module, .. extra]);
         if (keywords.Count == 0) throw new AppValidationException("Isi minimal satu keyword.");
         var area = MemoryLabels.Area(request.Area);
-        return new PreparedLabel(module, layers, request.Kind, area, keywords,
-            MemoryLabels.Compose(MemoryLabels.Display(area, module, layers, request.Kind), keywords));
+        return new PreparedLabel(module, extra, layers, request.Kind, area, keywords,
+            MemoryLabels.Compose(MemoryLabels.Display(area, module, layers, request.Kind, extra), keywords));
     }
 
     private static void ApplyLabel(LongMemory entity, PreparedLabel label)
     {
         entity.Label = label.Composed;
         entity.Module = label.Module;
+        entity.ExtraModules = MemoryLabels.JoinCsv(label.ExtraModules);
         entity.Layers = MemoryLabels.LayersCsv(label.Layers);
         entity.Kind = label.Kind;
         entity.Area = label.Area;
@@ -653,30 +666,33 @@ public sealed class MemoryService(
 
     private static MemoryIndexEntry ToIndexEntry(ShortMemoryRecord r) => IsLabeled(r.LabelVersion, r.Module, r.Kind)
         ? new MemoryIndexEntry(r.Id, MemoryLevel.Short, r.Type, r.Label, r.CreatedAt, r.Module, MemoryLabels.ParseLayers(r.Layers), r.Kind, r.Area,
-            MemoryLabels.SplitCsv(r.Keywords))
+            MemoryLabels.SplitCsv(r.Keywords), ExtraModules: MemoryLabels.SplitCsv(r.ExtraModules))
         : new MemoryIndexEntry(r.Id, MemoryLevel.Short, r.Type, r.Label, r.CreatedAt);
 
     private static MemoryItemDto ToDto(ShortMemoryRecord r, LocalProjects projects)
     {
         var (projectId, projectName) = Owner(projects, r.ProjectId, r.ProjectKey, r.ProjectName);
         var labeled = IsLabeled(r.LabelVersion, r.Module, r.Kind);
+        var extra = MemoryLabels.SplitCsv(r.ExtraModules);
         return new MemoryItemDto(r.Id, MemoryLevel.Short, r.Type, projectId, projectName,
-            labeled ? MemoryLabels.Display(r.Area, r.Module!, MemoryLabels.ParseLayers(r.Layers), r.Kind!.Value) : r.Label,
+            labeled ? MemoryLabels.Display(r.Area, r.Module!, MemoryLabels.ParseLayers(r.Layers), r.Kind!.Value, extra) : r.Label,
             r.Description, r.SourceThreadId, r.CreatedAt, null, 0, r.ProjectKey ?? projects.Find(r.ProjectId)?.Key,
-            r.Module, MemoryLabels.ParseLayers(r.Layers), r.Kind, r.Area, MemoryLabels.SplitCsv(r.Keywords), labeled, r.LegacyLabel, r.ReviewReason);
+            r.Module, MemoryLabels.ParseLayers(r.Layers), r.Kind, r.Area, MemoryLabels.SplitCsv(r.Keywords), labeled, r.LegacyLabel, r.ReviewReason, extra);
     }
 
     private static MemoryItemDto ToDto(LongMemory m, LocalProjects projects)
     {
         var (projectId, projectName) = Owner(projects, m.ProjectId, m.ProjectKey, m.ProjectName);
         var labeled = IsLabeled(m.LabelVersion, m.Module, m.Kind);
+        var extra = MemoryLabels.SplitCsv(m.ExtraModules);
         return new MemoryItemDto(m.Id, MemoryLevel.Long, m.Type, projectId, projectName,
-            labeled ? MemoryLabels.Display(m.Area, m.Module!, MemoryLabels.ParseLayers(m.Layers), m.Kind!.Value) : m.Label,
+            labeled ? MemoryLabels.Display(m.Area, m.Module!, MemoryLabels.ParseLayers(m.Layers), m.Kind!.Value, extra) : m.Label,
             m.Description, m.SourceThreadId, m.CreatedAt, m.PromotedAt, m.HitCount, m.ProjectKey ?? projects.Find(m.ProjectId)?.Key,
-            m.Module, MemoryLabels.ParseLayers(m.Layers), m.Kind, m.Area, MemoryLabels.SplitCsv(m.Keywords), labeled, m.LegacyLabel, m.ReviewReason);
+            m.Module, MemoryLabels.ParseLayers(m.Layers), m.Kind, m.Area, MemoryLabels.SplitCsv(m.Keywords), labeled, m.LegacyLabel, m.ReviewReason, extra);
     }
 
-    private sealed record PreparedLabel(string Module, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind, string? Area, IReadOnlyList<string> Keywords, string Composed);
+    private sealed record PreparedLabel(string Module, IReadOnlyList<string> ExtraModules, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind, string? Area,
+        IReadOnlyList<string> Keywords, string Composed);
 
     // Key is null for a project registered before keys existed and not seen since (the startup backfill fills it).
     private sealed record ProjectScope(Guid Id, string? Key, string Name)
