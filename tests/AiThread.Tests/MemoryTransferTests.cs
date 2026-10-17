@@ -7,6 +7,7 @@ using AiThread.Data.Memory;
 using AiThread.Data.Messaging;
 using AiThread.Service.Implementations;
 using AiThread.Service.Interfaces;
+using AiThread.Service.Memory;
 using AiThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -169,6 +170,7 @@ public class MemoryTransferTests
                 harness.Service<IDbContextFactory<AiThreadDbContext>>(),
                 shortStore,
                 harness.Service<LongMemoryStore>(),
+                harness.Service<ModuleRegistry>(),
                 harness.Service<IEventBus>(),
                 harness.Service<IActivityLogService>(),
                 NullLogger<MemoryTransferService>.Instance);

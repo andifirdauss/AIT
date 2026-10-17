@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AiThread.Data.Context;
 
-public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb
+public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb, IMemoryCatalogDb
 {
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<AiNode> Nodes => Set<AiNode>();
@@ -27,6 +27,9 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
     public DbSet<BusinessPage> BusinessPages => Set<BusinessPage>();
     public DbSet<BusinessPageRevision> BusinessPageRevisions => Set<BusinessPageRevision>();
     public DbSet<BusinessAsset> BusinessAssets => Set<BusinessAsset>();
+    public DbSet<ProjectModule> ProjectModules => Set<ProjectModule>();
+    public DbSet<CodeMapEntry> CodeMapEntries => Set<CodeMapEntry>();
+    public DbSet<ModuleMergeLog> ModuleMergeLogs => Set<ModuleMergeLog>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -147,6 +150,7 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             e.Property(x => x.ProjectName).HasMaxLength(200);
             e.Property(x => x.Label).HasMaxLength(300).IsRequired();
             e.Property(x => x.Description).IsRequired();
+            MemorySchema.ConfigureLabel(e);
             e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.ProjectId, x.Type });
             e.HasIndex(x => new { x.ProjectKey, x.Type });
@@ -221,6 +225,9 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
 
         // Same mapping as an external business memory store (BusinessMemoryDbContext).
         BusinessMemoryModel.Configure(modelBuilder);
+
+        // Same mapping as the catalog next to an external long memory store (MemoryCatalogDbContext).
+        MemoryCatalogModel.Configure(modelBuilder);
     }
 
     // Columns ShortMemoryStore_* / LongMemoryStore_* / BusinessMemoryStore_* of SystemSettings.

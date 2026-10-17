@@ -12,7 +12,7 @@ public static class AgentPrompts
 
         How to work
         1. Investigate before planning. Use list_directory, find_files, search_text, find_symbol, find_references and read_file to find every file that must change and read the code around each change. Prefer find_symbol to locate a declaration and find_references to list every use of a name you will put in the contract or change; search_text is for plain text, config keys and markup. Never plan an edit to a file you have not read. Follow existing patterns: if the same kind of feature already exists for another field or entity, mirror it layer by layer.
-        2. Check memory when it could help. The brief lists memory labels only; use read_memory for details and search_memory for other topics. Entries of type Business are pages of the project's business wiki (requirements, business rules, statuses, validations of one module): read the page of a module before changing its behaviour, and follow its rules unless the developer asks to change them. When the brief has a "Session so far" section, it is a summary of the earlier turns of this conversation written by a context keeper: rely on it for what was asked, decided and changed, call read_thread with a thread id from it when you need the exact plan or results of an earlier turn, and read the current file before planning an edit, since files may have changed since.
+        2. Check memory when it could help. The brief has a memory map (modules with their memory count per layer and kind) and label lines "Module · Layers · Kind — keywords", never the descriptions: use read_memory for details. search_memory narrows by module (optionally layer and kind) first, then ranks by keywords; give the module from the map whenever you know it. Unlabeled entries are older memories not relabeled yet. When you learn that a file belongs to another module than the code map says (or the developer tells you so), call set_module. Entries of type Business are pages of the project's business wiki (requirements, business rules, statuses, validations of one module): read the page of a module before changing its behaviour, and follow its rules unless the developer asks to change them. When the brief has a "Session so far" section, it is a summary of the earlier turns of this conversation written by a context keeper: rely on it for what was asked, decided and changed, call read_thread with a thread id from it when you need the exact plan or results of an earlier turn, and read the current file before planning an edit, since files may have changed since.
         3. Define the CONTRACT: every name shared by more than one task or file — element ids and names, CSS classes, JS functions and variables, routes and endpoints, request/response fields, DTO and entity properties, method signatures, parameter names, column names and SQL types, validation messages, resource keys. Choose names that follow the conventions you observed. Every task must use contract names verbatim.
         4. Split the work into tasks. One task edits, creates, deletes or moves exactly one file. Delete and move are done by AIT itself, without an executor: to rename or relocate a file use "move" with "to" (never recreate it with create plus delete), and when the moved file's content must change too (namespace, imports, class name), add an edit task on the new path that depends on the move. Delete only files the request makes obsolete. Every reference to a moved or deleted file elsewhere needs its own edit task. To move C# members (methods, properties, fields, events, nested types) from one .cs file to another — for example splitting a large class into partial class files — use "extract" with "file" (the source), "to" (a new .cs file, or one that already holds a partial part of the same class) and "members" (member names; all overloads of a name move together, and a field moves with every variable of its declaration). AIT moves the code verbatim without an executor: it makes the class partial, gives a new file the source's usings and namespace, and keeps doc comments, so the executors never have to copy or delete large blocks (they cannot do that reliably). Use one extract task per target file; extracts from the same source run in parallel and need no dependsOn. Helpers used only by the moved members go along in the same task; constructors and operators cannot be extracted. Keep tasks small and independent so they run in parallel — the contract is what lets them stay independent. Several tasks may target the same file only when they change clearly separate regions; otherwise merge them into one task. Use dependsOn only when a task truly needs the result of another task.
         5. Write each instruction so a junior developer could do it without asking anything: what to change, where (name the method, element or section to anchor on), the exact contract names, and what must stay unchanged (for example "edit the existing script, do not create a new file", "keep the current validation messages"). For large files give focus line ranges around the change.
@@ -111,19 +111,73 @@ public static class AgentPrompts
         - "problem": what is wrong. "fix": a precise instruction for an executor that sees only that file and the contract.
         """;
 
-    public const string MemoryExtractor = """
+    // The label every memory carries, shared by the extractor and the relabeler so both decide the same way.
+    public const string MemoryLabelRules = """
+        Every memory has a label of four parts:
+        - "module": the project module the fact is about. Pick it from "# Modules" (the name, not an alias); the code map of the files the fact is about gives the usual answer. Only when none fits, give a new name: a singular business term in PascalCase, English unless the project names it otherwise (for example "Invoice", "UserAccess"), and prefer the broader existing module ("Order" for order lines). For knowledge memory the module is the technology or domain (for example "EFCore", "Redis", "Auth"), from "# Knowledge modules" when one fits.
+        - "layers": the roles of the code the fact is about, one or more of UI, Entry, Logic, Data, Infra, Test. UI = views, pages, components, styles; Entry = controllers, routes, handlers, CLI commands, consumers; Logic = services, business logic, validators, stores, outbound clients; Data = repositories, DbContext, queries, migrations, entities, DTOs; Infra = startup, DI, configuration, build; Test = tests. Take them from the code map when it covers the files.
+        - "kind": answer these questions in order and take the first "yes":
+          1. Is it a mistake or trap to avoid (with its fix)? → Pitfall
+          2. Is it a business condition the system enforces (allowed, required, calculated, validated)? → Rule
+          3. Is it a sequence of steps across components or time? → Flow
+          4. Is it how developers must write code here (naming, placement, libraries, style)? → Convention
+          5. Is it how parts are organized or connected, or why they were designed so? → Architecture
+          6. Otherwise → Pattern
+          Knowledge memory can only be Pitfall, Pattern or Architecture.
+        - "keywords": up to 16 search terms a developer or planner would type, in PascalCase: entities, fields, statuses, exact identifiers (for example "UserValidator"), and both the English term and the developer's own term when they differ (for example "Description" and "Deskripsi"). Do not repeat the module, the layers or the kind.
+
+        Examples of labels:
+        - {"type":"project","module":"User","layers":["Logic"],"kind":"Rule","keywords":["Description","Deskripsi","UserValidator","MaxLength"]}
+        - {"type":"project","module":"Order","layers":["Entry","Logic","Data"],"kind":"Flow","keywords":["Checkout","Payment","OrderService","Email"]}
+        - {"type":"project","module":"Report","layers":["Data"],"kind":"Pitfall","keywords":["SaveChanges","Loop","Timeout","BulkInsert"]}
+        - {"type":"project","module":"Core","layers":["UI"],"kind":"Convention","keywords":["WinControls","Modal","BahasaIndonesia"]}
+        - {"type":"project","module":"Memory","layers":["Data","Infra"],"kind":"Architecture","keywords":["ExternalStore","SwitchableStore","Garnet"]}
+        - {"type":"knowledge","module":"Caching","layers":["Logic"],"kind":"Pattern","keywords":["MasterData","Refresh","TTL"]}
+        """;
+
+    public static readonly string MemoryExtractor = $$"""
         You maintain the memory of AIT. From the finished thread below, extract knowledge worth reusing in future requests.
 
         Two types:
-        - "project": facts about THIS project — business rules, validation rules, data flows, architecture, conventions, where things live. Include file paths and identifiers.
-        - "knowledge": generalizable technical patterns or solutions that would help in other projects too (for example "cache master data in Redis and refresh it every 5 minutes").
+        - "project": facts about THIS project — business rules, validation rules, data flows, architecture, conventions. Include file paths and identifiers in the description.
+        - "knowledge": generalizable technical patterns, pitfalls or solutions that would help in other projects too (for example "cache master data in Redis and refresh it every 5 minutes").
 
-        Each memory has:
-        - "label": 3-8 comma-separated keywords a planner would search for (entities, features, layers, techniques). Include both English terms and the developer's own terms when they differ (for example "user, pengguna, description, deskripsi").
-        - "description": a self-contained explanation of 2-6 sentences, in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors).
+        {{MemoryLabelRules}}
 
-        Skip trivia, one-off details and anything the existing labels already cover. Return at most 5 memories; return an empty list when nothing is worth remembering.
-        Respond with JSON only: {"memories":[{"type":"project","label":"...","description":"..."}]}
+        One memory states one fact of one kind; when a fact has two kinds, write two memories.
+        "description": a self-contained explanation of 2-6 sentences, in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors).
+
+        Skip trivia, one-off details and anything the existing memories of the module already cover ("# Existing memories" lists them per module). Return at most 5 memories; return an empty list when nothing is worth remembering.
+        Respond with JSON only: {"memories":[{"type":"project","module":"...","layers":["..."],"kind":"...","keywords":["..."],"description":"..."}]}
+        """;
+
+    // Old memories written with free keywords, relabeled once by MemoryRelabelWorker.
+    public static readonly string MemoryRelabeler = $$"""
+        You relabel memories of AIT that were written with free keywords. Each memory comes with its id, type, old label, description, and the module/layer the code map gives for the files the description names.
+
+        {{MemoryLabelRules}}
+
+        Keep what the old label says as keywords when it is still useful. When you cannot tell the module with reasonable confidence (the description is too vague, or several modules fit equally), answer "review" with a short reason in English instead of guessing.
+        Respond with JSON only: {"memories":[{"id":"...","module":"...","layers":["..."],"kind":"...","keywords":["..."]},{"id":"...","review":"reason"}]}
+        """;
+
+    public const string CodeMapper = """
+        You map the source files of a project to its modules for AIT. A module is a business feature or entity (User, Invoice, TransferOrder), the same for every layer of that feature: UserController, UserBL, UserRepository and Views/User/Index.cshtml all belong to "User".
+
+        You get "# Modules" (existing modules with aliases and descriptions) and "# Groups": files that share a name stem, each line "path [layer]" where [?] means the layer is unknown.
+        For every group:
+        - "module": an existing module (its name, not an alias) whenever one fits; prefer the broader one ("Order" for OrderLine). Only when none fits, a new module: a singular business term in PascalCase, English unless the project names it otherwise, with a one-line "description" and "aliases" (other names or translations, for example ["Pengguna"] for User).
+        - Shared plumbing without a feature of its own (startup, helpers, base classes, layouts, site-wide scripts and styles) goes to "Core".
+        - "layers": only for files marked [?], an object from path to one of UI, Entry, Logic, Data, Infra, Test (UI = views, pages, components; Entry = controllers, routes, handlers, commands; Logic = services, business logic, stores, clients; Data = repositories, queries, entities, DTOs; Infra = startup, configuration, build).
+        Respond with JSON only: {"groups":[{"id":"G1","module":"User","description":"(new module only)","aliases":["(new module only)"],"layers":{"src/x.js":"Logic"}}]}
+        """;
+
+    public const string ModuleDuplicates = """
+        You check the module list of a project for duplicates for AIT: two modules that are the same business feature under different names, such as a translation (Pengguna/User), a spelling, a plural, or a longer name for the same thing (UserManagement/User when they cover the same).
+        You get every module with its aliases, description, sample files and sample memory labels. "# Check" names the modules to compare against all others ("all" = every pair).
+        Return real duplicates only. Related but different features are not duplicates (User and UserRole; Order and OrderPayment when payment has rules of its own).
+        For each duplicate give "from" (the module to fold in), "into" (the module to keep: the clearer, more used name that follows the project's naming), "confidence" between 0 and 1, and a short "reason" in English.
+        Respond with JSON only: {"merges":[{"from":"Pengguna","into":"User","confidence":0.95,"reason":"..."}]}
         """;
 
     public const string BusinessRouter = """

@@ -54,7 +54,7 @@
         </div>
     </div>
     <div class="col-xl-8">
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header">Thread project ini</div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 table-clickable">
@@ -63,6 +63,114 @@
                 </table>
             </div>
         </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                <span class="me-auto">Modul</span>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCheckModules" title="Cari modul yang sama tapi terpisah (beda tulisan, terjemahan, nama lain)">Cek modul ganda</button>
+            </div>
+            <div class="card-body small text-secondary border-bottom">
+                Bagian pertama label memory dan modul wiki bisnis. Nama lain dan terjemahan (alias) diarahkan ke modul yang sama.
+                Modul ganda dengan keyakinan tinggi digabung otomatis; yang ragu menunggu di <a href="/Memory#review">Memory → Perlu review</a>.
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Modul</th><th>Alias</th><th>Memory</th><th>File</th><th></th></tr></thead>
+                    <tbody id="moduleRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                <span class="me-auto">Peta kode</span>
+                <input type="search" class="form-control form-control-sm w-auto" id="codeMapSearch" placeholder="Cari path…" aria-label="Cari path" />
+                <select class="form-select form-select-sm w-auto" id="codeMapModule" aria-label="Filter modul"><option value="">Semua modul</option></select>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCodeMapAdd">Atur file</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btnCodeMapScan" title="Petakan semua file yang belum punya modul">Scan</button>
+            </div>
+            <div class="card-body small text-secondary border-bottom">
+                Modul dan layer tiap file, diputuskan sekali lalu dipakai ulang. Koreksi manual tidak pernah ditimpa; planner juga bisa mengoreksi lewat prompt ("anggap UserBL modul Account").
+            </div>
+            <div class="table-responsive" style="max-height: 420px">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>File</th><th>Modul</th><th>Layer</th><th>Area</th><th>Sumber</th><th></th></tr></thead>
+                    <tbody id="codeMapRows"><tr><td colspan="6" class="text-secondary">Memuat…</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Riwayat gabung modul</div>
+            <div class="list-group list-group-flush small" id="mergeRows"><div class="list-group-item text-secondary">Memuat…</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="moduleModal" tabindex="-1" aria-labelledby="moduleModalTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="moduleForm" autocomplete="off">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="moduleModalTitle">Modul</h5>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="moduleName" />
+                <div class="mb-2">
+                    <label class="form-label small" for="moduleDescription">Deskripsi</label>
+                    <input type="text" class="form-control" id="moduleDescription" maxlength="500" placeholder="Satu baris: modul ini mencakup apa" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small" for="moduleAliases">Alias (dipisah koma)</label>
+                    <input type="text" class="form-control" id="moduleAliases" placeholder="Pengguna, Users" />
+                    <div class="form-text">Nama lain atau terjemahan. Memory, file, dan halaman wiki dengan nama ini masuk ke modul ini.</div>
+                </div>
+                <label class="form-label small" for="moduleMergeInto">Gabungkan ke modul lain</label>
+                <div class="input-group input-group-sm">
+                    <select class="form-select" id="moduleMergeInto"></select>
+                    <button type="button" class="btn btn-outline-danger" id="btnModuleMerge">Gabungkan</button>
+                </div>
+                <div class="form-text">Memory, peta kode, dan halaman wiki modul ini pindah ke modul tujuan. Bisa dibatalkan dari riwayat.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="codeMapModal" tabindex="-1" aria-labelledby="codeMapModalTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="codeMapForm" autocomplete="off">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="codeMapModalTitle">Atur modul file</h5>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label small" for="codeMapPath">File atau nama class</label>
+                    <input type="text" class="form-control mono" id="codeMapPath" placeholder="src/Bl/UserBL.cs atau UserBL" required />
+                </div>
+                <div class="row g-2">
+                    <div class="col-7">
+                        <label class="form-label small" for="codeMapModuleInput">Modul</label>
+                        <input type="text" class="form-control" id="codeMapModuleInput" list="codeMapModuleList" maxlength="100" required />
+                        <datalist id="codeMapModuleList"></datalist>
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label small" for="codeMapLayer">Layer</label>
+                        <select class="form-select" id="codeMapLayer">
+                            <option value="">(tetap)</option><option>UI</option><option>Entry</option><option>Logic</option><option>Data</option><option>Infra</option><option>Test</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
     </div>
 </div>
 

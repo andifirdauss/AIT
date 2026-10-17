@@ -6,7 +6,7 @@ namespace AiThread.API.Controllers;
 
 [ApiController]
 [Route("api/projects")]
-public class ProjectsController(IProjectService projectService) : ControllerBase
+public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectDto>>>> GetAll(CancellationToken cancellationToken) =>
@@ -47,6 +47,28 @@ public class ProjectsController(IProjectService projectService) : ControllerBase
         await projectService.SetKeyAsync(id, request.Key, cancellationToken) is { } project
             ? ApiResponse<ProjectDto>.Ok(project, $"Project key: {project.Key}.")
             : NotFound(ApiResponse<ProjectDto>.Fail("Project tidak ditemukan."));
+
+    // Module and layer of the project's files (the first layer of memory labels).
+    [HttpGet("{id:guid}/codemap")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<CodeMapEntryDto>>>> CodeMap(Guid id, [FromQuery] string? search, [FromQuery] string? module,
+        CancellationToken cancellationToken) =>
+        ApiResponse<IReadOnlyList<CodeMapEntryDto>>.Ok(await catalog.GetCodeMapAsync(id, search, module, cancellationToken));
+
+    // A manual entry; never overwritten by the rules or the model.
+    [HttpPut("{id:guid}/codemap")]
+    public async Task<ActionResult<ApiResponse<CodeMapEntryDto>>> SetCodeMap(Guid id, SetCodeMapRequest request, CancellationToken cancellationToken)
+    {
+        var entry = await catalog.SetCodeMapAsync(id, request, cancellationToken);
+        return ApiResponse<CodeMapEntryDto>.Ok(entry, $"{entry.Path} → {entry.Module} · {entry.Layer}.");
+    }
+
+    // Maps every source file that has no entry yet.
+    [HttpPost("{id:guid}/codemap/scan")]
+    public async Task<ActionResult<ApiResponse<CodeMapScanResultDto>>> ScanCodeMap(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await catalog.ScanCodeMapAsync(id, cancellationToken);
+        return ApiResponse<CodeMapScanResultDto>.Ok(result, $"{result.Mapped} dari {result.Files} file terpetakan ke {result.Modules} modul.");
+    }
 
     // Memory in a shared (external) store is kept for the other developers unless includeSharedMemory=true.
     [HttpDelete("{id:guid}")]

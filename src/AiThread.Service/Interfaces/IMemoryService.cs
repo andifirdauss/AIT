@@ -8,8 +8,15 @@ public interface IMemoryService
 {
     Task<MemoryItemDto> AddShortAsync(SaveMemoryRequest request, Guid? sourceThreadId = null, CancellationToken cancellationToken = default);
 
-    // Labels only (project + knowledge) — what the planner scans first. Ranked by keyword overlap when a query is given.
+    // Labels only (project + knowledge) — what the planner scans first: the two-layer search over free text.
     Task<IReadOnlyList<MemoryIndexEntry>> GetIndexAsync(Guid? projectId, string? query, int take, CancellationToken cancellationToken = default);
+
+    // Layer 1 narrows by module (given, or detected in the text and in the files it names), optionally layer and kind;
+    // layer 2 ranks by keywords. Unlabeled memory (older versions) and the business wiki get their own share.
+    Task<IReadOnlyList<MemoryIndexEntry>> SearchAsync(MemorySearch search, CancellationToken cancellationToken = default);
+
+    // The planner's memory map: labeled memories per module, layer and kind.
+    Task<IReadOnlyList<MemoryModuleSummary>> GetModuleSummaryAsync(Guid? projectId, CancellationToken cancellationToken = default);
 
     // Full descriptions for the ids the planner decided to read.
     Task<IReadOnlyList<MemoryItemDto>> GetManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
