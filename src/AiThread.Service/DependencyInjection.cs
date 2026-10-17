@@ -2,6 +2,7 @@ using AiThread.Common.Memory;
 using AiThread.Common.Options;
 using AiThread.Service.Background;
 using AiThread.Service.Business;
+using AiThread.Service.CodeCalls;
 using AiThread.Service.Implementations;
 using AiThread.Service.Implementations.Cli;
 using AiThread.Service.Interfaces;
@@ -56,7 +57,11 @@ public static class DependencyInjection
         services.AddSingleton<ModuleMerger>();
         services.AddSingleton<MemoryRelabeler>();
         services.AddSingleton<IMemoryCatalogService, MemoryCatalogService>();
-        services.AddSingleton<ICodeStructureService, CodeStructureService>();
+        services.AddSingleton<CodeStructureService>();
+        services.AddSingleton<ICodeStructureService>(sp => sp.GetRequiredService<CodeStructureService>());
+        services.AddSingleton<FunctionCallStore>();
+        services.AddSingleton<FunctionCallQueue>();
+        services.AddSingleton<FunctionCallScanner>();
         services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
         services.AddSingleton<IMemoryTransferService, MemoryTransferService>();
         services.AddSingleton<IThreadService, ThreadService>();
@@ -129,6 +134,7 @@ public static class DependencyInjection
         services.AddHostedService<TelegramPollingWorker>();
         services.AddHostedService<SkillImportWorker>();
         services.AddHostedService<BusinessMemoryWorker>();
+        services.AddHostedService<FunctionCallWorker>();
 
         // Registered last so it stops first: cancelled threads can still log through ActivityLogWriter.
         services.AddHostedService<ThreadLifecycleWorker>();

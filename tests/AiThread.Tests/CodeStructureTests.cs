@@ -1,7 +1,7 @@
-using AiThread.Service.Implementations;
+using AiThread.Common.Enums;
+using AiThread.Service.CodeCalls;
+using AiThread.Service.Interfaces;
 using AiThread.Service.Workspace.Structure;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AiThread.Tests;
 
@@ -209,28 +209,94 @@ public class CodeStructureTests
     [Fact]
     public async Task Refresh_after_a_thread_rescans_in_the_background()
     {
-        var root = Directory.CreateTempSubdirectory("ait-structure-").FullName;
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        harness.Project.Write("Logic/OrderBL.cs", "namespace Shop { public class OrderBL { public void Save() { } } }");
+        var service = harness.Service<ICodeStructureService>();
+        Assert.Equal(1, (await service.GetSummaryAsync(harness.ProjectId, rescan: false)).Types);
+
+        // Threads in two CLIs finish one after the other; the snapshot is still fresh, so only the refresh picks the
+        // files up. The second request replaces the first and scans both files.
+        harness.Project.Write("Logic/InvoiceBL.cs", "namespace Shop { public class InvoiceBL { public void Post() { } } }");
+        service.Refresh(harness.ProjectId);
+        harness.Project.Write("Logic/StockBL.cs", "namespace Shop { public class StockBL { public void Move() { } } }");
+        service.Refresh(harness.ProjectId);
+
+        var types = 0;
+        for (var i = 0; i < 50 && types != 3; i++)
+        {
+            await Task.Delay(100);
+            types = (await service.GetSummaryAsync(harness.ProjectId, rescan: false)).Types;
+        }
+        Assert.Equal(3, types);
+    }
+
+    [Fact]
+    public void Outline_end_lines_close_with_the_body_and_callbacks_are_not_functions()
+    {
+        var js = PatternOutline.Parse(OutlineLanguages.JavaScript, """
+            function p_InitForm() {
+                p_InitiateDetail();
+                p_initiateData();
+            }
+
+            function p_initiateData() {
+                var label = "{ not a brace }"; // nor this }
+                $.ajax({
+                    url: "/Transaction/KlaimPending/InitiateData",
+                    success: function (retDat) {
+                        p_DataToUI(retDat);
+                    },
+                    error: function (retDat) {
+                    }
+                });
+            }
+            """);
+        Assert.Equal([("p_InitForm", 1, 4), ("p_initiateData", 6, 16)], js.Functions.Select(f => (f.Name, f.Line, f.EndLine)));
+
+        var php = PatternOutline.Parse(OutlineLanguages.Php, """
+            <?php
+            abstract class base_grader
+            {
+                abstract protected function grade($x);
+
+                public function save($x)
+                {
+                    return $this->grade($x);
+                }
+            }
+            """);
+        var grader = Assert.Single(php.Types);
+        Assert.Equal((2, 10), (grader.Line, grader.EndLine));
+        Assert.Equal([("grade", 4, 4), ("save", 6, 9)], grader.Members.Select(m => (m.Name, m.Line, m.EndLine)));
+
+        var cs = CSharpOutline.Parse("class A\n{\n    void Run()\n    {\n        Go();\n    }\n}\n");
+        Assert.Equal((3, 6), (cs.Types[0].Members[0].Line, cs.Types[0].Members[0].EndLine));
+
+        Assert.Equal((3, 4), FunctionSpans.ChangedRange(["a", "b", "c", "d"], ["a", "b", "x", "y", "d"]));
+        Assert.Null(FunctionSpans.ChangedRange(["a"], ["a"]));
+    }
+
+    [Fact]
+    public void Calls_resolve_to_controller_actions_types_and_the_calling_file()
+    {
+        var root = Directory.CreateTempSubdirectory("ait-calls-").FullName;
         try
         {
-            Write(root, "Logic/OrderBL.cs", "namespace Shop { public class OrderBL { public void Save() { } } }");
-            var projects = new CliTestProjects(root);
-            var service = new CodeStructureService(projects, new TestLifetime(), NullLogger<CodeStructureService>.Instance);
-            Assert.Equal(1, (await service.GetSummaryAsync(projects.Project.Id, rescan: false)).Types);
+            Write(root, "Controllers/Transaksi/KlaimPendingController.cs", "public class KlaimPendingController { public object InitiateData() { return null; } public object Index() { return null; } }");
+            Write(root, "BussLogic/clsKlaimDFBL.GetByDocNo.cs", "public partial class clsKlaimDFBL { public static void GetByDocNo(string no) { } }");
+            Write(root, "Scripts/global.js", "var clsGlobal = {\n    showLoading: function () {\n    }\n};\n");
+            Write(root, "Scripts/a.js", "function init() {\n}\n");
+            Write(root, "Scripts/b.js", "function init() {\n}\n");
+            var index = CodeStructureScanner.Scan(root, [], null, CancellationToken.None).Symbols;
+            var caller = PatternOutline.Parse(OutlineLanguages.JavaScript, "function p_InitForm() {\n    p_load();\n}\nfunction p_load() {\n}\n");
 
-            // Threads in two CLIs finish one after the other; the snapshot is still fresh, so only the refresh picks the
-            // files up. The second request replaces the first and scans both files.
-            Write(root, "Logic/InvoiceBL.cs", "namespace Shop { public class InvoiceBL { public void Post() { } } }");
-            service.Refresh(projects.Project.Id);
-            Write(root, "Logic/StockBL.cs", "namespace Shop { public class StockBL { public void Move() { } } }");
-            service.Refresh(projects.Project.Id);
-
-            var types = 0;
-            for (var i = 0; i < 50 && types != 3; i++)
-            {
-                await Task.Delay(100);
-                types = (await service.GetSummaryAsync(projects.Project.Id, rescan: false)).Types;
-            }
-            Assert.Equal(3, types);
+            Assert.Equal("KlaimPendingController.InitiateData", CallResolver.Resolve(CodeCallKind.Http, "POST /Transaction/KlaimPending/InitiateData", "Scripts/x.js", caller, index)?.Symbol);
+            Assert.Equal("KlaimPendingController.Index", CallResolver.Resolve(CodeCallKind.Http, "/KlaimPending", "Scripts/x.js", caller, index)?.Symbol);
+            Assert.Equal("clsKlaimDFBL.GetByDocNo", CallResolver.Resolve(CodeCallKind.Method, "clsKlaimDFBL.GetByDocNo(txt)", "Controllers/x.cs", caller, index)?.Symbol);
+            Assert.Equal("Scripts/global.js", CallResolver.Resolve(CodeCallKind.Method, "clsGlobal.showLoading", "Scripts/x.js", caller, index)?.Path);
+            Assert.Equal(("Scripts/x.js", 4), CallResolver.Resolve(CodeCallKind.Function, "p_load", "Scripts/x.js", caller, index) is { } local ? (local.Path, local.Line) : default);
+            // Two files declare init(): not a guess.
+            Assert.Null(CallResolver.Resolve(CodeCallKind.Function, "init", "Other/x.js", caller, index));
         }
         finally
         {
@@ -238,12 +304,82 @@ public class CodeStructureTests
         }
     }
 
-    private sealed class TestLifetime : IHostApplicationLifetime
+    [Fact]
+    public async Task Tools_node_reads_the_calls_of_the_functions_in_the_lines_read_and_unwritten_calls_are_dropped()
     {
-        public CancellationToken ApplicationStarted => CancellationToken.None;
-        public CancellationToken ApplicationStopping => CancellationToken.None;
-        public CancellationToken ApplicationStopped => CancellationToken.None;
-        public void StopApplication() { }
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
+        harness.Project.Write("Controllers/KlaimPendingController.cs", "public class KlaimPendingController { public object InitiateData() { return null; } }");
+        harness.Project.Write("Scripts/klaim.js", """
+            function p_InitForm() {
+                p_InitiateDetail();
+                p_initiateData();
+            }
+
+            function p_initiateData() {
+                $.ajax({ type: "POST", url: "/Transaction/KlaimPending/InitiateData" });
+            }
+
+            function p_InitiateDetail() {
+            }
+            """);
+        harness.Router.On(ScriptedAgent.FunctionCalls, ScriptedRouter.Text("""
+            {"functions":[
+              {"id":"F1","calls":[
+                {"kind":"function","target":"p_InitiateDetail","line":2},
+                {"kind":"function","target":"p_initiateData","line":3},
+                {"kind":"function","target":"p_ShowLOV","line":3}]},
+              {"id":"F2","calls":[{"kind":"http","target":"POST /Transaction/KlaimPending/InitiateData","line":7}]}]}
+            """));
+
+        var scanner = harness.Service<FunctionCallScanner>();
+        await scanner.ScanFileAsync(harness.ProjectId, harness.Project.Root, "Scripts/klaim.js", [(1, 8)], CancellationToken.None);
+
+        var structure = harness.Service<ICodeStructureService>();
+        var file = await structure.GetFileAsync(harness.ProjectId, "Scripts/klaim.js");
+        var init = file.Functions.Single(f => f.Name == "p_InitForm");
+        Assert.Equal(2, init.Calls);
+        Assert.Null(file.Functions.Single(f => f.Name == "p_InitiateDetail").Calls); // outside the lines read
+
+        var calls = (await structure.GetCallsAsync(harness.ProjectId, init.Key!))!;
+        Assert.Equal(["p_InitiateDetail", "p_initiateData"], calls.Calls.Select(c => c.Target)); // p_ShowLOV is not written there
+        Assert.All(calls.Calls, c => Assert.Equal("Scripts/klaim.js", c.ResolvedPath));
+        Assert.False(calls.Changed);
+
+        var ajax = (await structure.GetCallsAsync(harness.ProjectId, file.Functions.Single(f => f.Name == "p_initiateData").Key!))!;
+        Assert.Equal("KlaimPendingController.InitiateData", Assert.Single(ajax.Calls).ResolvedSymbol);
+
+        // Unchanged functions are not sent again.
+        await scanner.ScanFileAsync(harness.ProjectId, harness.Project.Root, "Scripts/klaim.js", [(1, 8)], CancellationToken.None);
+        Assert.Single(harness.Router.CallsTo(ScriptedAgent.FunctionCalls));
+    }
+
+    [Fact]
+    public async Task A_finished_thread_has_only_the_functions_it_changed_read()
+    {
+        const string file = "Scripts/order.js";
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await harness.AddStandardNodesAsync();
+        await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
+        harness.Project.Write(file, "function p_load() {\n    p_fetch();\n}\n\nfunction p_save() {\n    p_post();\n}\n");
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new Service.Orchestration.ThreadPlan
+            {
+                Summary = "Notifikasi setelah simpan.",
+                Tasks = [ThreadOrchestratorTests.Step("T1", file, "Call p_notify() after p_post() in p_save.")]
+            }))
+            .OnExecutor(file, ScriptedRouter.Edit("    p_post();", "    p_post();\n    p_notify();", "p_notify dipanggil."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync("Panggil p_notify setelah simpan");
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+
+        await harness.Service<FunctionCallScanner>().ScanAsync(new FunctionScanRequest(harness.ProjectId, string.Empty, ThreadId: result.ThreadId), CancellationToken.None);
+
+        var sent = Assert.Single(router.CallsTo(ScriptedAgent.FunctionCalls)).LastUser;
+        Assert.Contains("## F1 p_save (lines 5-8)", sent);
+        Assert.DoesNotContain("p_load", sent);
     }
 
     private static void Write(string root, string relative, string content)

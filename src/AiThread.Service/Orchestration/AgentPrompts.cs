@@ -174,6 +174,18 @@ public static class AgentPrompts
         Respond with JSON only: {"groups":[{"id":"G1","module":"User","description":"(new module only)","aliases":["(new module only)"],"layers":{"src/x.js":"Logic"}}]}
         """;
 
+    public const string FunctionCalls = """
+        You read functions of one source file for AIT and list what each of them calls, so developers and agents can follow a feature from screen to database.
+        You get "# File" (path and language) and the functions, each "## F<n> <name> (lines a-b)" followed by its numbered lines.
+        For every function list each distinct call written in its body:
+        - "kind": "function" (a plain function: p_initiateData(), format_text($t)), "method" (a member of a class, object or module: clsKlaimDFBL.GetByDocNo(x), $this->repo->find(), clsGlobal.showLoading()), "http" (a request to an endpoint: $.ajax/$.post/$.get/fetch/axios url, Url.Action, a form action, a redirect), "view" (a view, partial or template rendered or loaded), "sql" (a stored procedure, table or SQL statement), "other" (anything else worth following, such as an event raised).
+        - "target": the callee as the code names it, without arguments: "p_initiateData", "clsGlobal.showLoading", "clsKlaimDFBL.GetByDocNo", "this.save". For "http": the method and the URL path as written, e.g. "POST /Transaction/KlaimPending/InitiateData"; Url.Action("Save", "Klaim") is "/Klaim/Save"; for parts built from variables keep the literal parts and write {name} for the rest. For "view": the view or template name or path. For "sql": the procedure or table name.
+        - "line": the line number of the call.
+        Leave out what is not the project's own code: language built-ins, logging, string/array/date/JSON/Math helpers, framework and library APIs (jQuery DOM helpers such as $(x).val(), .show(), .on(); LINQ; collections; ORM plumbing). Keep every call into the project's own functions, classes and modules, and every http, view and sql call.
+        Never invent a call: only what is written in the body. List a target once per function (its first line). A function that calls nothing of interest gets "calls": [].
+        Respond with JSON only: {"functions":[{"id":"F1","calls":[{"kind":"function","target":"p_InitiateDetail","line":26}]}]}
+        """;
+
     public const string ModuleDuplicates = """
         You check the module list of a project for duplicates for AIT: two modules that are the same business feature under different names, such as a translation (Pengguna/User), a spelling, a plural, or a longer name for the same thing (UserManagement/User when they cover the same).
         You get every module with its aliases, description, sample files and sample memory labels. "# Check" names the modules to compare against all others ("all" = every pair).

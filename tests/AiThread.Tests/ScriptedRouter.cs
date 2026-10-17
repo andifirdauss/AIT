@@ -21,6 +21,7 @@ public enum ScriptedAgent
     CodeMapper,
     MemoryRelabeler,
     ModuleDuplicates,
+    FunctionCalls,
     Other
 }
 
@@ -77,6 +78,7 @@ public sealed class ScriptedRouter : INineRouterService
                         ScriptedAgent.MemoryExtractor or ScriptedAgent.MemoryRelabeler => _ => Text("""{"memories": []}"""),
                         ScriptedAgent.CodeMapper => _ => Text("""{"groups": []}"""),
                         ScriptedAgent.ModuleDuplicates => _ => Text("""{"merges": []}"""),
+                        ScriptedAgent.FunctionCalls => _ => Text("""{"functions": []}"""),
                         _ => throw new InvalidOperationException($"Unscripted {call.Agent} call (model {call.Model}).")
                     };
         var result = reply(call);
@@ -159,6 +161,7 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.CodeMapper, StringComparison.Ordinal)) return ScriptedAgent.CodeMapper;
         if (system.StartsWith(AgentPrompts.MemoryRelabeler, StringComparison.Ordinal)) return ScriptedAgent.MemoryRelabeler;
         if (system.StartsWith(AgentPrompts.ModuleDuplicates, StringComparison.Ordinal)) return ScriptedAgent.ModuleDuplicates;
+        if (system.StartsWith(AgentPrompts.FunctionCalls, StringComparison.Ordinal)) return ScriptedAgent.FunctionCalls;
         return ScriptedAgent.Other;
     }
 }

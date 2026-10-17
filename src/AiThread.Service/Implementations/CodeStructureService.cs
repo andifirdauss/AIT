@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using AiThread.Common.DTOs;
+using AiThread.Common.Enums;
+using AiThread.Service.CodeCalls;
 using AiThread.Service.Interfaces;
 using AiThread.Service.Models;
 using AiThread.Service.Workspace;
@@ -9,9 +11,13 @@ using Microsoft.Extensions.Logging;
 
 namespace AiThread.Service.Implementations;
 
-// Keeps the latest snapshot of the few projects viewed recently in memory; one scan at a time per project.
-public sealed class CodeStructureService(IProjectService projectService, IHostApplicationLifetime lifetime, ILogger<CodeStructureService> logger)
-    : ICodeStructureService
+// Keeps the latest snapshot of the few projects viewed recently in memory; one scan at a time per project. The calls
+// of functions (read by the tools node, FunctionCallScanner) come from the database.
+public sealed class CodeStructureService(
+    IProjectService projectService,
+    FunctionCallStore calls,
+    IHostApplicationLifetime lifetime,
+    ILogger<CodeStructureService> logger) : ICodeStructureService
 {
     private static readonly TimeSpan FreshFor = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan RefreshDelay = TimeSpan.FromSeconds(1);
@@ -42,8 +48,12 @@ public sealed class CodeStructureService(IProjectService projectService, IHostAp
             snapshot.ScanMs,
             snapshot.Reparsed,
             snapshot.ScannedAt,
-            snapshot.Truncated);
+            snapshot.Truncated,
+            await calls.CountAsync(projectId, cancellationToken));
     }
+
+    // For the function call scanner: the project's current snapshot, walked first when there is none or it is stale.
+    public Task<StructureSnapshot> GetSnapshotAsync(Guid projectId, CancellationToken cancellationToken) => SnapshotAsync(projectId, false, cancellationToken);
 
     public async Task<StructureFolderDto> GetFolderAsync(Guid projectId, string? path, CancellationToken cancellationToken = default)
     {
@@ -86,9 +96,56 @@ public sealed class CodeStructureService(IProjectService projectService, IHostAp
         var snapshot = await SnapshotAsync(projectId, false, cancellationToken);
         var file = snapshot.Files.GetValueOrDefault(Normalize(path)) ?? throw new AppValidationException($"File '{path}' tidak ada di hasil scan.");
         var outline = file.Outline ?? FileOutline.Empty;
+        var types = outline.Types.Select(t => (Type: t, Members: t.Members.Select(m => WithKey(ToDto(m), m, file.Path, t.Name, t.Container)).ToList())).ToList();
+        var functions = outline.Functions.Select(f => WithKey(ToDto(f), f, file.Path, null, null)).ToList();
+        var counted = await WithCallsAsync(projectId, types.SelectMany(t => t.Members).Concat(functions).ToList(), cancellationToken);
         return new StructureFileDto(file.Path, file.Language, file.ThirdParty, file.Outline is not null,
-            outline.Types.Select(t => new StructureTypeDto(t.Name, t.Kind, t.Namespace, t.Container, t.Line, t.IsPartial, t.Members.Select(ToDto).ToList())).ToList(),
-            outline.Functions.Select(ToDto).ToList());
+            types.Select(t => new StructureTypeDto(t.Type.Name, t.Type.Kind, t.Type.Namespace, t.Type.Container, t.Type.Line, t.Type.IsPartial,
+                t.Members.Select(m => counted[m]).ToList())).ToList(),
+            functions.Select(f => counted[f]).ToList());
+    }
+
+    public async Task<StructureFunctionCallsDto?> GetCallsAsync(Guid projectId, string key, CancellationToken cancellationToken = default)
+    {
+        var scan = await calls.GetAsync(projectId, key, cancellationToken);
+        if (scan is null) return null;
+        return new StructureFunctionCallsDto(scan.Key, scan.Path, scan.Symbol, scan.StartLine, scan.EndLine, scan.Status.ToString(), scan.Error, scan.Model,
+            scan.UpdatedAt ?? scan.CreatedAt, await ChangedAsync(projectId, scan.Path, scan.Key, scan.BodyHash, cancellationToken),
+            scan.Calls.Select(c => new StructureCallDto(c.Kind.ToString(), c.Target, c.Line, c.ResolvedPath, c.ResolvedSymbol, c.ResolvedLine)).ToList());
+    }
+
+    // Whether the function reads differently now: gone, or another body. Unknown (the file cannot be read) counts as not.
+    private async Task<bool> ChangedAsync(Guid projectId, string path, string key, string hash, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var project = await projectService.GetContextAsync(projectId, cancellationToken);
+            var full = project is null ? null : Path.Combine(project.RootPath, path);
+            if (full is null || OutlineLanguages.Of(path) is not { } language || !File.Exists(full)) return full is not null;
+            var content = await File.ReadAllTextAsync(full, cancellationToken);
+            var lines = WorkspaceTools.SplitLines(content).Select(l => l.TrimEnd('\r')).ToArray();
+            var span = FunctionSpans.Of(OutlineLanguages.Outline(language, content)).FirstOrDefault(s => FunctionSpans.Key(path, s.Symbol, s.Signature) == key);
+            return span is null || FunctionSpans.Hash(string.Join('\n', lines.Skip(span.Line - 1).Take(span.EndLine - span.Line + 1))) != hash;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static StructureMemberDto WithKey(StructureMemberDto dto, OutlineMember member, string path, string? typeName, string? container) =>
+        FunctionSpans.IsScanned(member) ? dto with { Key = FunctionSpans.Key(path, FunctionSpans.SymbolOf(typeName, container, member.Name), member.Signature) } : dto;
+
+    // The same members with Calls filled in for the functions the tools node has read.
+    private async Task<Dictionary<StructureMemberDto, StructureMemberDto>> WithCallsAsync(Guid projectId, List<StructureMemberDto> members, CancellationToken cancellationToken)
+    {
+        var states = await calls.StatesAsync(projectId, members.Where(m => m.Key is not null).Select(m => m.Key!).ToList(), cancellationToken);
+        var result = new Dictionary<StructureMemberDto, StructureMemberDto>(ReferenceEqualityComparer.Instance);
+        foreach (var member in members)
+            result[member] = member.Key is { } key && states.TryGetValue(key, out var state) && state.Status == FunctionScanStatus.Done
+                ? member with { Calls = state.Calls }
+                : member;
+        return result;
     }
 
     public async Task<IReadOnlyList<StructureGroupDto>> GetGroupsAsync(Guid projectId, CancellationToken cancellationToken = default)
@@ -111,9 +168,11 @@ public sealed class CodeStructureService(IProjectService projectService, IHostAp
         var type = snapshot.Classes.Find(group, name, string.IsNullOrEmpty(container) ? null : container)
                    ?? throw new AppValidationException($"Class '{name}' tidak ada di hasil scan.");
         var severalFiles = type.Locations.Count > 1;
+        var members = type.Members.Select(m => WithKey(ToDto(m.Member) with { Path = severalFiles ? m.Path : null }, m.Member, m.Path, type.Name, type.Container)).ToList();
+        var counted = await WithCallsAsync(projectId, members, cancellationToken);
         return new StructureClassDto(type.Group, type.Name, type.Container, type.Kind, type.IsPartial,
             type.Locations.Select(l => new StructureLocationDto(l.Path, l.Line)).ToList(),
-            type.Members.Select(m => ToDto(m.Member) with { Path = severalFiles ? m.Path : null }).ToList());
+            members.Select(m => counted[m]).ToList());
     }
 
     // Types first, then members, then file names; within each, exact name, then prefix, then substring.
@@ -199,7 +258,7 @@ public sealed class CodeStructureService(IProjectService projectService, IHostAp
         : name.Contains(text, StringComparison.OrdinalIgnoreCase) ? 2
         : null;
 
-    private static StructureMemberDto ToDto(OutlineMember member) => new(member.Name, member.Kind, member.Line, member.Signature);
+    private static StructureMemberDto ToDto(OutlineMember member) => new(member.Name, member.Kind, member.Line, member.Signature, EndLine: member.EndLine);
 
     private static string Normalize(string? path) => (path ?? string.Empty).Replace('\\', '/').Trim().Trim('/');
 

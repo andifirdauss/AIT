@@ -30,6 +30,8 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
     public DbSet<ProjectModule> ProjectModules => Set<ProjectModule>();
     public DbSet<CodeMapEntry> CodeMapEntries => Set<CodeMapEntry>();
     public DbSet<ModuleMergeLog> ModuleMergeLogs => Set<ModuleMergeLog>();
+    public DbSet<CodeFunctionScan> CodeFunctionScans => Set<CodeFunctionScan>();
+    public DbSet<CodeFunctionCall> CodeFunctionCalls => Set<CodeFunctionCall>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -221,6 +223,33 @@ public class AiThreadDbContext(DbContextOptions<AiThreadDbContext> options) : Db
             // A second cascade path to Nodes is refused by SQL Server; NodeService removes these rows before deleting a tools node.
             e.HasOne(x => x.ToolsNode).WithMany().HasForeignKey(x => x.ToolsNodeId).OnDelete(DeleteBehavior.NoAction);
             e.HasIndex(x => x.ToolsNodeId);
+        });
+
+        modelBuilder.Entity<CodeFunctionScan>(e =>
+        {
+            e.ToTable("CodeFunctionScans");
+            e.Property(x => x.Key).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Path).HasMaxLength(CodeFunctionScan.MaxPathLength).IsRequired();
+            e.Property(x => x.Symbol).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Signature).HasMaxLength(400);
+            e.Property(x => x.BodyHash).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Error).HasMaxLength(1000);
+            e.Property(x => x.Model).HasMaxLength(200);
+            e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ProjectId, x.Key }).IsUnique();
+            e.HasIndex(x => new { x.ProjectId, x.Path });
+        });
+
+        modelBuilder.Entity<CodeFunctionCall>(e =>
+        {
+            e.ToTable("CodeFunctionCalls");
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Target).HasMaxLength(500).IsRequired();
+            e.Property(x => x.ResolvedPath).HasMaxLength(CodeFunctionScan.MaxPathLength);
+            e.Property(x => x.ResolvedSymbol).HasMaxLength(300);
+            e.HasOne(x => x.CodeFunctionScan).WithMany(s => s.Calls).HasForeignKey(x => x.CodeFunctionScanId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.CodeFunctionScanId);
         });
 
         // Same mapping as an external business memory store (BusinessMemoryDbContext).
