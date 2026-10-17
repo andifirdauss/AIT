@@ -13,6 +13,8 @@ public static class PlannerTools
     public const string FindSymbol = "find_symbol";
     public const string FindReferences = "find_references";
     public const string ReadFile = "read_file";
+    public const string CodeOutline = "code_outline";
+    public const string FunctionCalls = "function_calls";
     public const string SearchMemory = "search_memory";
     public const string ReadMemory = "read_memory";
     public const string ReadThread = "read_thread";
@@ -29,8 +31,12 @@ public static class PlannerTools
     public static readonly ImmutableArray<string> Delegable =
         [ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, RunBuild];
 
+    // The skeleton of the code (CodeSkeletonTools): small output, so the planner always keeps them, and a tools node
+    // that reads files gets them too, to read only the lines it needs.
+    public static readonly ImmutableArray<string> Skeleton = [CodeOutline, FunctionCalls];
+
     // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
-    public static readonly int NameColumn = Delegable.Append(Investigate).Append(AskUser).Max(n => n.Length) + 2;
+    public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Max(n => n.Length) + 2;
 
     // canBuild: build verification is enabled and the project has a build command AiThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
@@ -45,6 +51,7 @@ public static class PlannerTools
             if (delegated.Contains(name) || (name == RunBuild && !canBuild)) continue;
             tools.Add(Definition(name));
         }
+        foreach (var name in Skeleton) tools.Add(Definition(name));
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());
@@ -54,12 +61,20 @@ public static class PlannerTools
 
     public static JsonArray SubmitOnly() => [SubmitPlanDefinition()];
 
+    // The tools one tools node may run: those delegated to it, plus the skeleton tools when it reads files.
+    public static IReadOnlyList<string> ToolsNodeTools(IEnumerable<string> delegated)
+    {
+        var wanted = delegated.ToHashSet();
+        var names = Delegable.Where(wanted.Contains).ToList();
+        if (wanted.Contains(ReadFile)) names.AddRange(Skeleton);
+        return names;
+    }
+
     // The tools of one tools node, plus report_findings.
     public static JsonArray ForToolsNode(IEnumerable<string> tools)
     {
-        var wanted = tools.ToHashSet();
         var result = new JsonArray();
-        foreach (var name in Delegable.Where(wanted.Contains)) result.Add(Definition(name));
+        foreach (var name in ToolsNodeTools(tools)) result.Add(Definition(name));
         result.Add(ReportFindingsDefinition());
         return result;
     }
@@ -143,6 +158,29 @@ public static class PlannerTools
                 "endLine": { "type": "integer", "description": "Last line to read (inclusive)." }
               },
               "required": ["path"]
+            }
+            """)),
+        CodeOutline => ChatMessages.Function(CodeOutline,
+            "The skeleton of code without its bodies: types, members and functions with their line ranges and signatures (C#, PHP, JavaScript/TypeScript, Python, Java, Kotlin). Call it before read_file on a file you do not know yet, then read only the line ranges you need. A file gives every declaration with startLine-endLine; a folder (\".\" = the whole project) gives one line per file with its types and functions; name alone finds a class in the whole project (all files of a partial class). Members marked [calls: N] have recorded calls: see function_calls.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "A file or folder relative to the project root (a file may also be an absolute path outside the project, read-only)." },
+                "name": { "type": "string", "description": "Optional class or type name, e.g. \"UserService\" or \"OrderBL.Line\": without path it is looked up in the whole project; with a file path only that type is shown." }
+              }
+            }
+            """)),
+        FunctionCalls => ChatMessages.Function(FunctionCalls,
+            "What a function or method calls and what calls it, as recorded by AIT for code read or changed earlier: each call with its line and where it is declared (functions, methods, HTTP endpoints → controller actions, views, SQL). Use it to follow a feature from the screen to the database, or to see the impact of a change, without reading every file on the way. Calls not recorded yet are queued; callers cover recorded functions only (find_references lists every use).",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "File relative to the project root." },
+                "name": { "type": "string", "description": "Function or method name, or Type.Member, e.g. \"p_InitForm\" or \"UserService.Save\"." }
+              },
+              "required": ["path", "name"]
             }
             """)),
         SearchMemory => ChatMessages.Function(SearchMemory,

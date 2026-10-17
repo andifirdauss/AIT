@@ -3,6 +3,59 @@
   const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, stream, debounce } = window.AiThread;
   const projectId = window.projectId;
   const el = id => document.getElementById(id);
+  const pageSize = 10;
+
+  // Client-side pager: the lists are loaded whole, only a page of rows is rendered.
+  // The page survives SSE refreshes (clamped when the list shrinks); `reset` jumps back to page 1.
+  function pager(footerId, render) {
+    const footer = el(footerId);
+    footer.innerHTML = `<span class="text-secondary"></span>
+      <div class="btn-group btn-group-sm">
+        <button type="button" class="btn btn-outline-secondary" data-page="-1">‹ Sebelumnya</button>
+        <button type="button" class="btn btn-outline-secondary" data-page="1">Berikutnya ›</button>
+      </div>`;
+    const [prev, next] = footer.querySelectorAll('button');
+    let items = [];
+    let page = 1;
+
+    function draw() {
+      const pages = Math.max(1, Math.ceil(items.length / pageSize));
+      page = Math.min(Math.max(1, page), pages);
+      const start = (page - 1) * pageSize;
+      render(items.slice(start, start + pageSize));
+      footer.classList.toggle('d-none', items.length <= pageSize);
+      footer.firstElementChild.textContent = `${start + 1}–${Math.min(start + pageSize, items.length)} dari ${fmt.number(items.length)}`;
+      prev.disabled = page <= 1;
+      next.disabled = page >= pages;
+    }
+
+    footer.addEventListener('click', event => {
+      const target = event.target.closest('button[data-page]');
+      if (!target) return;
+      page += Number(target.dataset.page);
+      draw();
+    });
+
+    return {
+      set(list, reset = false) {
+        items = list;
+        if (reset) page = 1;
+        draw();
+      }
+    };
+  }
+
+  const sessionPager = pager('sessionPager', rows => {
+    el('sessionRows').innerHTML = rows.length
+      ? rows.map(s => `<tr><td class="mono" title="${escapeHtml(s.sessionId)}">${escapeHtml(s.sessionId.substring(0, 8))}</td><td>${s.threadCount}</td><td>${fmt.relative(s.lastSeenAt)}</td></tr>`).join('')
+      : '<tr><td colspan="3" class="text-secondary">Belum ada sesi Claude Code.</td></tr>';
+  });
+
+  const threadPager = pager('threadPager', rows => {
+    el('threadRows').innerHTML = rows.length
+      ? rows.map(threadRow).join('')
+      : '<tr><td colspan="8" class="empty-state">Belum ada thread.</td></tr>';
+  });
 
   async function loadDetail() {
     try {
@@ -21,9 +74,7 @@
         ? detail.modules.map(m => `<li class="list-group-item">${escapeHtml(m)}</li>`).join('')
         : '<li class="list-group-item text-secondary">Tidak ada file solution/build terbaca.</li>';
 
-      el('sessionRows').innerHTML = detail.sessions.length
-        ? detail.sessions.map(s => `<tr><td class="mono" title="${escapeHtml(s.sessionId)}">${escapeHtml(s.sessionId.substring(0, 8))}</td><td>${s.threadCount}</td><td>${fmt.relative(s.lastSeenAt)}</td></tr>`).join('')
-        : '<tr><td colspan="3" class="text-secondary">Belum ada sesi Claude Code.</td></tr>';
+      sessionPager.set(detail.sessions);
     } catch (error) {
       el('projectName').textContent = error.message;
     }
@@ -57,10 +108,7 @@
 
   async function loadThreads() {
     try {
-      const threads = await api.get(`/api/threads?take=50&projectId=${projectId}`);
-      el('threadRows').innerHTML = threads.length
-        ? threads.map(threadRow).join('')
-        : '<tr><td colspan="8" class="empty-state">Belum ada thread.</td></tr>';
+      threadPager.set(await api.get(`/api/threads?take=50&projectId=${projectId}`));
     } catch (error) {
       el('threadRows').innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
@@ -73,19 +121,50 @@
   const sources = { Heuristic: 'aturan', AI: 'AI', Manual: 'manual' };
   const mergeStatuses = { Applied: 'digabung', Undone: 'dibatalkan', Suggested: 'saran', Rejected: 'ditolak' };
   let modules = [];
+  let codeMapQuery = null;
+
+  const modulePager = pager('modulePager', rows => {
+    el('moduleRows').innerHTML = rows.length
+      ? rows.map(m => `<tr>
+          <td><span class="fw-semibold">${escapeHtml(m.name)}</span>${m.description ? `<div class="small text-secondary">${escapeHtml(m.description)}</div>` : ''}</td>
+          <td class="small">${m.aliases.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join('') || '<span class="text-secondary">–</span>'}</td>
+          <td><a href="/Memory?projectId=${projectId}" class="text-decoration-none">${fmt.number(m.memories)}</a></td>
+          <td><button type="button" class="btn btn-link btn-sm p-0" data-files="${escapeHtml(m.name)}">${fmt.number(m.files)}</button></td>
+          <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-module="${escapeHtml(m.name)}">Atur</button></td>
+        </tr>`).join('')
+      : '<tr><td colspan="5" class="text-secondary">Belum ada modul. Modul terbentuk dari peta kode, memory, dan wiki bisnis.</td></tr>';
+  });
+
+  const codeMapPager = pager('codeMapPager', rows => {
+    el('codeMapRows').innerHTML = rows.length
+      ? rows.map(e => `<tr>
+          <td class="mono small text-break">${escapeHtml(e.path)}</td>
+          <td>${escapeHtml(e.module)}</td>
+          <td><span class="badge text-bg-light border">${e.layer}</span></td>
+          <td class="small">${escapeHtml(e.area || '–')}</td>
+          <td class="small ${e.source === 'Manual' ? 'fw-semibold' : 'text-secondary'}">${sources[e.source] || e.source}</td>
+          <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-path="${escapeHtml(e.path)}" data-module="${escapeHtml(e.module)}" data-layer="${e.layer}">Ubah</button></td>
+        </tr>`).join('')
+      : '<tr><td colspan="6" class="text-secondary">Belum ada file terpetakan. Tekan Scan, atau biarkan terisi dari thread berikutnya.</td></tr>';
+  });
+
+  const mergePager = pager('mergePager', rows => {
+    el('mergeRows').innerHTML = rows.length
+      ? rows.map(g => `<div class="list-group-item d-flex flex-wrap align-items-center gap-2">
+          <div class="me-auto">
+            <span class="fw-semibold">${escapeHtml(g.from)}</span> → <span class="fw-semibold">${escapeHtml(g.into)}</span>
+            <span class="badge text-bg-light border ms-1">${mergeStatuses[g.status] || g.status}</span>
+            <div class="text-secondary">${fmt.relative(g.decidedAt || g.createdAt)}${g.decidedBy ? ` · ${escapeHtml(g.decidedBy)}` : ''}${g.status === 'Applied' ? ` · ${fmt.number(g.memories)} memory, ${fmt.number(g.files)} file, ${fmt.number(g.pages)} halaman` : ''}${g.reason ? ` · ${escapeHtml(g.reason)}` : ''}</div>
+          </div>
+          ${g.status === 'Applied' ? `<button type="button" class="btn btn-sm btn-outline-secondary" data-undo="${g.id}">Batalkan</button>` : ''}
+        </div>`).join('')
+      : '<div class="list-group-item text-secondary">Belum ada modul yang digabung.</div>';
+  });
 
   async function loadModules() {
     try {
       modules = await api.get(`/api/memory/modules?projectId=${projectId}`);
-      el('moduleRows').innerHTML = modules.length
-        ? modules.map(m => `<tr>
-            <td><span class="fw-semibold">${escapeHtml(m.name)}</span>${m.description ? `<div class="small text-secondary">${escapeHtml(m.description)}</div>` : ''}</td>
-            <td class="small">${m.aliases.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join('') || '<span class="text-secondary">–</span>'}</td>
-            <td><a href="/Memory?projectId=${projectId}" class="text-decoration-none">${fmt.number(m.memories)}</a></td>
-            <td><button type="button" class="btn btn-link btn-sm p-0" data-files="${escapeHtml(m.name)}">${fmt.number(m.files)}</button></td>
-            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-module="${escapeHtml(m.name)}">Atur</button></td>
-          </tr>`).join('')
-        : '<tr><td colspan="5" class="text-secondary">Belum ada modul. Modul terbentuk dari peta kode, memory, dan wiki bisnis.</td></tr>';
+      modulePager.set(modules);
       const current = el('codeMapModule').value;
       el('codeMapModule').innerHTML = '<option value="">Semua modul</option>' + modules.map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('');
       if (modules.some(m => m.name === current)) el('codeMapModule').value = current;
@@ -100,17 +179,11 @@
     if (el('codeMapSearch').value.trim()) params.set('search', el('codeMapSearch').value.trim());
     if (el('codeMapModule').value) params.set('module', el('codeMapModule').value);
     try {
-      const entries = await api.get(`/api/projects/${projectId}/codemap?${params}`);
-      el('codeMapRows').innerHTML = entries.length
-        ? entries.map(e => `<tr>
-            <td class="mono small text-break">${escapeHtml(e.path)}</td>
-            <td>${escapeHtml(e.module)}</td>
-            <td><span class="badge text-bg-light border">${e.layer}</span></td>
-            <td class="small">${escapeHtml(e.area || '–')}</td>
-            <td class="small ${e.source === 'Manual' ? 'fw-semibold' : 'text-secondary'}">${sources[e.source] || e.source}</td>
-            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-path="${escapeHtml(e.path)}" data-module="${escapeHtml(e.module)}" data-layer="${e.layer}">Ubah</button></td>
-          </tr>`).join('')
-        : '<tr><td colspan="6" class="text-secondary">Belum ada file terpetakan. Tekan Scan, atau biarkan terisi dari thread berikutnya.</td></tr>';
+      const query = params.toString();
+      const entries = await api.get(`/api/projects/${projectId}/codemap?${query}`);
+      // A new search or module filter starts at page 1; a refresh of the same query keeps the page.
+      codeMapPager.set(entries, query !== codeMapQuery);
+      codeMapQuery = query;
     } catch (error) {
       el('codeMapRows').innerHTML = `<tr><td colspan="6" class="text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
@@ -118,17 +191,7 @@
 
   async function loadMerges() {
     try {
-      const merges = await api.get(`/api/memory/merges?projectId=${projectId}`);
-      el('mergeRows').innerHTML = merges.length
-        ? merges.map(g => `<div class="list-group-item d-flex flex-wrap align-items-center gap-2">
-            <div class="me-auto">
-              <span class="fw-semibold">${escapeHtml(g.from)}</span> → <span class="fw-semibold">${escapeHtml(g.into)}</span>
-              <span class="badge text-bg-light border ms-1">${mergeStatuses[g.status] || g.status}</span>
-              <div class="text-secondary">${fmt.relative(g.decidedAt || g.createdAt)}${g.decidedBy ? ` · ${escapeHtml(g.decidedBy)}` : ''}${g.status === 'Applied' ? ` · ${fmt.number(g.memories)} memory, ${fmt.number(g.files)} file, ${fmt.number(g.pages)} halaman` : ''}${g.reason ? ` · ${escapeHtml(g.reason)}` : ''}</div>
-            </div>
-            ${g.status === 'Applied' ? `<button type="button" class="btn btn-sm btn-outline-secondary" data-undo="${g.id}">Batalkan</button>` : ''}
-          </div>`).join('')
-        : '<div class="list-group-item text-secondary">Belum ada modul yang digabung.</div>';
+      mergePager.set(await api.get(`/api/memory/merges?projectId=${projectId}`));
     } catch (error) {
       el('mergeRows').innerHTML = `<div class="list-group-item text-danger">${escapeHtml(error.message)}</div>`;
     }
