@@ -48,6 +48,11 @@ public sealed class MemoryCatalogService(
             var rows = await (knowledge ? db.LongMemories.Where(m => m.Type == MemoryType.Knowledge) : db.LongMemories.Where(m => m.ProjectKey == key))
                 .Where(m => m.Module != null).GroupBy(m => m.Module!).Select(g => new { g.Key, Count = g.Count() }).ToListAsync(cancellationToken);
             foreach (var row in rows) memories[row.Key] = row.Count;
+
+            // A memory of several modules counts for each of them.
+            var extra = await (knowledge ? db.LongMemories.Where(m => m.Type == MemoryType.Knowledge) : db.LongMemories.Where(m => m.ProjectKey == key))
+                .Where(m => m.Module != null && m.ExtraModules != null).Select(m => m.ExtraModules).ToListAsync(cancellationToken);
+            foreach (var name in extra.SelectMany(MemoryLabels.SplitCsv)) memories[name] = memories.GetValueOrDefault(name) + 1;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -57,7 +62,8 @@ public sealed class MemoryCatalogService(
         {
             if (record.Module is null) continue;
             if (knowledge ? record.Type != MemoryType.Knowledge : record.ProjectKey != key) continue;
-            memories[record.Module] = memories.GetValueOrDefault(record.Module) + 1;
+            foreach (var name in MemoryLabels.AllModules(record.Module, MemoryLabels.SplitCsv(record.ExtraModules)))
+                memories[name] = memories.GetValueOrDefault(name) + 1;
         }
 
         return modules.Select(m => new ProjectModuleDto(m.Id, m.Name, MemoryLabels.SplitCsv(m.Aliases), m.Description,
@@ -67,7 +73,15 @@ public sealed class MemoryCatalogService(
     public async Task<ProjectModuleDto?> UpdateModuleAsync(Guid? projectId, bool knowledge, string name, SaveModuleRequest request, CancellationToken cancellationToken = default)
     {
         var key = await KeyAsync(projectId, knowledge, cancellationToken);
-        var module = await registry.UpdateAsync(key, name, request.Description, request.Aliases, cancellationToken);
+        var aliases = request.Aliases;
+        if (!string.IsNullOrWhiteSpace(request.Name) && request.Name.Trim() != name)
+        {
+            var old = name;
+            name = await merger.RenameAsync(key, name, request.Name, await DeciderAsync(cancellationToken), cancellationToken);
+            // The aliases sent with the rename were read before it: the old name stays an alias (unless only the casing changed).
+            if (aliases is not null && MemoryLabels.Compact(old) != MemoryLabels.Compact(name)) aliases = [.. aliases, old];
+        }
+        var module = await registry.UpdateAsync(key, name, request.Description, aliases, cancellationToken);
         if (module is null) return null;
         return (await GetModulesAsync(projectId, knowledge, cancellationToken)).FirstOrDefault(m => m.Id == module.Id);
     }
@@ -149,7 +163,7 @@ public sealed class MemoryCatalogService(
         var duplicates = labeled
             .GroupBy(m => m.Type == MemoryType.Knowledge ? MemoryLabels.KnowledgeKey : m.ProjectKey ?? m.ProjectId?.ToString() ?? string.Empty)
             .SelectMany(g => MemoryRanker.FindDuplicates(g.Select(m =>
-                new MemoryIndexEntry(m.Id, m.Level, m.Type, m.Label, m.CreatedAt, m.Module, m.Layers, m.Kind, m.Area, m.Keywords)).ToList()))
+                new MemoryIndexEntry(m.Id, m.Level, m.Type, m.Label, m.CreatedAt, m.Module, m.Layers, m.Kind, m.Area, m.Keywords, ExtraModules: m.ExtraModules)).ToList()))
             .OrderByDescending(d => d.Similarity)
             .Take(50)
             .Select(d => new MemoryDuplicateDto(byId[d.First.Id], byId[d.Second.Id], Math.Round(d.Similarity, 2)))

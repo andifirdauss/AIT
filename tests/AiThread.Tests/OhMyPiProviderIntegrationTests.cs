@@ -99,8 +99,24 @@ public class OhMyPiProviderIntegrationTests : IDisposable
         Assert.Contains("baseUrl: \"http://localhost:5225\"", text);
         Assert.Contains("api: anthropic-messages", text);
         Assert.Contains("apiKey: \"ait-secret\"", text);
-        Assert.Contains("- id: aithread", text);
+        Assert.Contains("  AIT:\n", text.Replace("\r\n", "\n"));
+        Assert.Contains("- id: AIThread", text);
+        Assert.Contains("name: AIThread", text);
         Assert.Null(_integration.Info.ProjectFile);
+    }
+
+    [Fact]
+    public async Task Block_with_the_old_provider_id_is_not_enabled_until_applied_again()
+    {
+        _workspace.Write("agent/models.yml", string.Join("\n", YamlProviderBlock.Begin, "providers:", "  aithread:",
+            $"    baseUrl: \"{Proxy}\"", "    models:", "      - id: aithread", YamlProviderBlock.End) + "\n");
+
+        Assert.False((await _integration.GetStatusAsync(CliScope.Global, null, Proxy)).Enabled);
+
+        var status = await _integration.ApplyAsync(CliScope.Global, null, Proxy);
+
+        Assert.True(status.Enabled);
+        Assert.DoesNotContain("aithread:", await File.ReadAllTextAsync(_models));
     }
 
     [Fact]

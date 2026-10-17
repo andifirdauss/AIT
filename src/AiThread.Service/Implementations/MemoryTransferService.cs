@@ -53,7 +53,7 @@ public sealed partial class MemoryTransferService(
                     && Matches(search, r.Label, r.Description))
                 .Select(r => ToItem(projects, r.Id, MemoryLevel.Short, r.Type, r.ProjectId, r.ProjectKey, r.ProjectName,
                     r.Label, r.Description, r.SourceThreadId, r.CreatedAt, null, 0, null,
-                    Label(r.LabelVersion, r.Module, r.Layers, r.Kind, r.Area, r.Keywords), r.LegacyLabel)));
+                    Label(r.LabelVersion, r.Module, r.Layers, r.Kind, r.Area, r.Keywords, r.ExtraModules), r.LegacyLabel)));
         }
 
         if (filter.Level is null or MemoryLevel.Long)
@@ -71,7 +71,7 @@ public sealed partial class MemoryTransferService(
 
             items.AddRange((await query.ToListAsync(cancellationToken)).Select(m => ToItem(projects, m.Id, MemoryLevel.Long, m.Type,
                 m.ProjectId, m.ProjectKey, m.ProjectName, m.Label, m.Description, m.SourceThreadId, m.CreatedAt, m.PromotedAt,
-                m.HitCount, m.LastAccessedAt, Label(m.LabelVersion, m.Module, m.Layers, m.Kind, m.Area, m.Keywords), m.LegacyLabel)));
+                m.HitCount, m.LastAccessedAt, Label(m.LabelVersion, m.Module, m.Layers, m.Kind, m.Area, m.Keywords, m.ExtraModules), m.LegacyLabel)));
         }
 
         return new MemoryExportFile(MemoryExportFile.FormatName, MemoryExportFile.CurrentVersion, DateTime.UtcNow, AppVersion(),
@@ -207,6 +207,7 @@ public sealed partial class MemoryTransferService(
                 Label = item.Label,
                 Description = item.Description,
                 Module = label?.Module,
+                ExtraModules = MemoryLabels.JoinCsv(label?.ExtraModules),
                 Layers = MemoryLabels.LayersCsv(label?.Layers),
                 Kind = label?.Kind,
                 Area = label?.Area,
@@ -234,6 +235,7 @@ public sealed partial class MemoryTransferService(
                 Label = item.Label,
                 Description = item.Description,
                 Module = item.Labels?.Module,
+                ExtraModules = MemoryLabels.JoinCsv(item.Labels?.ExtraModules),
                 Layers = MemoryLabels.LayersCsv(item.Labels?.Layers),
                 Kind = item.Labels?.Kind,
                 Area = item.Labels?.Area,
@@ -262,6 +264,7 @@ public sealed partial class MemoryTransferService(
                 row.Label = item.Label;
                 row.Description = item.Description;
                 row.Module = item.Labels?.Module;
+                row.ExtraModules = MemoryLabels.JoinCsv(item.Labels?.ExtraModules);
                 row.Layers = MemoryLabels.LayersCsv(item.Labels?.Layers);
                 row.Kind = item.Labels?.Kind;
                 row.Area = item.Labels?.Area;
@@ -307,13 +310,12 @@ public sealed partial class MemoryTransferService(
         ImportedLabel? labels = null;
         if (MemoryLabels.Module(item.Module) is { } module && item.Kind is { } kind && Enum.IsDefined(kind) && MemoryLabels.KindAllowedFor(type, kind))
         {
-            var keywords = MemoryLabels.Keywords(item.Keywords, module);
+            var extra = MemoryLabels.ExtraModules(item.ExtraModules, module);
+            var keywords = MemoryLabels.Keywords(item.Keywords, [module, .. extra]);
             if (keywords.Count > 0)
-                labels = new ImportedLabel(module, (item.Layers ?? []).Where(Enum.IsDefined).Distinct().Order().ToList(), kind, MemoryLabels.Area(item.Area), keywords);
+                labels = new ImportedLabel(module, (item.Layers ?? []).Where(Enum.IsDefined).Distinct().Order().ToList(), kind, MemoryLabels.Area(item.Area), keywords, extra);
         }
-        var label = labels is null
-            ? (item.Label ?? string.Empty).Trim()
-            : MemoryLabels.Compose(MemoryLabels.Display(labels.Area, labels.Module, labels.Layers, labels.Kind), labels.Keywords);
+        var label = labels is null ? (item.Label ?? string.Empty).Trim() : labels.Composed;
 
         return new Prepared(item.Id, item.Level, type, local?.Id, key, name, label, item.Description.Trim(),
             item.SourceThreadId, Utc(item.CreatedAt), item.PromotedAt is { } promoted ? Utc(promoted) : null, Math.Max(0, item.HitCount),
@@ -329,9 +331,13 @@ public sealed partial class MemoryTransferService(
             foreach (var item in group)
             {
                 var (module, _) = await registry.EnsureAsync(key, item.Labels!.Module, cancellationToken: cancellationToken);
-                if (module == item.Labels.Module) continue;
-                item.Labels = item.Labels with { Module = module };
-                item.Label = MemoryLabels.Compose(MemoryLabels.Display(item.Labels.Area, module, item.Labels.Layers, item.Labels.Kind), item.Labels.Keywords);
+                var resolved = new List<string>();
+                foreach (var name in item.Labels.ExtraModules ?? [])
+                    resolved.Add((await registry.EnsureAsync(key, name, cancellationToken: cancellationToken)).Name);
+                var extra = MemoryLabels.ExtraModules(resolved, module);
+                if (module == item.Labels.Module && extra.SequenceEqual(item.Labels.ExtraModules ?? [])) continue;
+                item.Labels = item.Labels with { Module = module, ExtraModules = extra };
+                item.Label = item.Labels.Composed;
             }
         }
     }
@@ -339,11 +345,11 @@ public sealed partial class MemoryTransferService(
     private static ShortMemoryRecord ToRecord(Prepared item) =>
         new(item.Id, item.ProjectId, item.Type, item.Label, item.Description, item.SourceThreadId, item.CreatedAt, item.Key, item.Name,
             item.Labels?.Module, MemoryLabels.LayersCsv(item.Labels?.Layers), item.Labels?.Kind, item.Labels?.Area, MemoryLabels.JoinCsv(item.Labels?.Keywords),
-            item.Labels is null ? null : MemoryLabels.CurrentVersion, item.LegacyLabel);
+            item.Labels is null ? null : MemoryLabels.CurrentVersion, item.LegacyLabel, ExtraModules: MemoryLabels.JoinCsv(item.Labels?.ExtraModules));
 
-    private static ImportedLabel? Label(int? version, string? module, string? layers, MemoryKind? kind, string? area, string? keywords) =>
+    private static ImportedLabel? Label(int? version, string? module, string? layers, MemoryKind? kind, string? area, string? keywords, string? extraModules) =>
         version is not null && module is not null && kind is { } k
-            ? new ImportedLabel(module, MemoryLabels.ParseLayers(layers), k, area, MemoryLabels.SplitCsv(keywords))
+            ? new ImportedLabel(module, MemoryLabels.ParseLayers(layers), k, area, MemoryLabels.SplitCsv(keywords), MemoryLabels.SplitCsv(extraModules))
             : null;
 
     // Rows written before keys existed carry only the project id; the export names their project by the key it has
@@ -356,7 +362,8 @@ public sealed partial class MemoryTransferService(
         return new MemoryExportItem(id, level, type, type == MemoryType.Knowledge ? null : projectId,
             projectKey ?? local?.Key, projectName ?? local?.Name, label, description, sourceThreadId,
             createdAt, promotedAt, hitCount, lastAccessedAt,
-            labels?.Module, labels?.Layers, labels?.Kind, labels?.Area, labels?.Keywords, legacyLabel);
+            labels?.Module, labels?.Layers, labels?.Kind, labels?.Area, labels?.Keywords, legacyLabel,
+            labels?.ExtraModules is { Count: > 0 } extra ? extra : null);
     }
 
     private static string? ScopeOf(LocalProjects projects, MemoryType type, string? projectKey, Guid? projectId) =>
@@ -407,7 +414,11 @@ public sealed partial class MemoryTransferService(
         public ImportedLabel? Labels { get; set; } = Labels;
     }
 
-    private sealed record ImportedLabel(string Module, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind, string? Area, IReadOnlyList<string> Keywords);
+    private sealed record ImportedLabel(string Module, IReadOnlyList<MemoryLayer> Layers, MemoryKind Kind, string? Area, IReadOnlyList<string> Keywords,
+        IReadOnlyList<string>? ExtraModules = null)
+    {
+        public string Composed => MemoryLabels.Compose(MemoryLabels.Display(Area, Module, Layers, Kind, ExtraModules), Keywords);
+    }
 
     private sealed record LocalProject(Guid Id, string? Key, string Name)
     {

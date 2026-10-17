@@ -138,6 +138,7 @@
     const module = modules.find(m => m.name === name);
     if (!module) return;
     el('moduleName').value = module.name;
+    el('moduleNewName').value = module.name;
     el('moduleModalTitle').textContent = `Modul ${module.name}`;
     el('moduleDescription').value = module.description || '';
     el('moduleAliases').value = module.aliases.join(', ');
@@ -171,13 +172,15 @@
     event.preventDefault();
     const name = el('moduleName').value;
     try {
-      await api.put(`/api/memory/modules/${encodeURIComponent(name)}?projectId=${projectId}`, {
+      const module = await api.put(`/api/memory/modules/${encodeURIComponent(name)}?projectId=${projectId}`, {
+        name: el('moduleNewName').value.trim(),
         description: el('moduleDescription').value.trim(),
         aliases: el('moduleAliases').value.split(',').map(a => a.trim()).filter(Boolean)
       });
       moduleModal.hide();
-      toast('Modul diperbarui.');
+      toast(module.name !== name ? `Modul ${name} → ${module.name}.` : 'Modul diperbarui.');
       loadModules();
+      if (module.name !== name) loadCodeMap();
     } catch (error) {
       toast(error.message, 'error');
     }

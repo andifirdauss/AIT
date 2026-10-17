@@ -3,7 +3,7 @@ using AiThread.Common.Enums;
 
 namespace AiThread.Common.Memory;
 
-// The memory label: [Area ·] Module · Layer(s) · Kind (the first search layer) plus up to 16 keywords (the second).
+// The memory label: [Area ·] Module[+Modules] · Layer(s) · Kind (the first search layer) plus up to 16 keywords (the second).
 // Everything is PascalCase with acronyms in capitals (API, DTO, UI); identifiers taken from code keep their own
 // casing apart from the first letter, so "UserDto" stays "UserDto" while "user dto" becomes "UserDTO". Every write
 // path normalizes here, never trusting a model to do it.
@@ -15,6 +15,9 @@ public static partial class MemoryLabels
     public const int MaxKeywords = 16;
     public const int MaxKeywordLength = 60;
     public const int MaxModuleLength = 100;
+
+    // Modules besides the main one that a single memory may concern.
+    public const int MaxExtraModules = 3;
     public const int MaxAreaLength = 100;
 
     // Registry key of the modules of knowledge memory (technologies and domains, shared by every project).
@@ -57,7 +60,10 @@ public static partial class MemoryLabels
 
     public static bool IsAcronym(string word) => _acronyms.Contains(word);
 
-    public static string Pascal(string? text)
+    public static string Pascal(string? text) => Pascal(text, keepCapitals: false);
+
+    // keepCapitals: a word written in capitals stays so whatever its length (module codes such as "MKPP").
+    private static string Pascal(string? text, bool keepCapitals)
     {
         var trimmed = text?.Trim() ?? string.Empty;
         if (trimmed.Length == 0) return string.Empty;
@@ -67,7 +73,7 @@ public static partial class MemoryLabels
             .Where(w => w.Length > 0)
             .SelectMany(w => CamelHumps().Split(w))
             .Where(w => w.Length > 0)
-            .Select(Word);
+            .Select(w => keepCapitals && w.Length >= 2 && w.Any(char.IsLetter) && !w.Any(char.IsLower) ? w : Word(w));
         return string.Concat(parts);
     }
 
@@ -84,11 +90,37 @@ public static partial class MemoryLabels
         return hump;
     }
 
+    // Module names are often abbreviations, so they keep their capitals: "MKPP" stays, "Klaim DF" becomes "KlaimDF",
+    // "KlaimDF" stays. Only what is written in lower case gets the PascalCase capital ("klaimdf" → "Klaimdf").
     public static string? Module(string? text)
     {
-        var name = Clip(Pascal(text), MaxModuleLength);
+        var name = Clip(Pascal(text, keepCapitals: true), MaxModuleLength);
         return name.Length == 0 ? null : name;
     }
+
+    // The other modules of a memory: normalized, without the main module or a duplicate (same name written
+    // differently), at most MaxExtraModules.
+    public static IReadOnlyList<string> ExtraModules(IEnumerable<string?>? names, string? main)
+    {
+        var result = new List<string>();
+        foreach (var raw in names ?? [])
+        {
+            if (Module(raw) is not { } name) continue;
+            if ((main is not null && SameName(name, main)) || result.Any(r => SameName(r, name))) continue;
+            result.Add(name);
+            if (result.Count == MaxExtraModules) break;
+        }
+        return result;
+    }
+
+    // Main module first, then the extra ones.
+    public static IReadOnlyList<string> AllModules(string? main, IEnumerable<string>? extra) =>
+        main is null ? [] : [main, .. extra ?? []];
+
+    // Whether a memory (main module + extra modules CSV) concerns the module, ignoring case.
+    public static bool HasModule(string? main, string? extraCsv, string module) =>
+        string.Equals(main, module, StringComparison.OrdinalIgnoreCase)
+        || SplitCsv(extraCsv).Contains(module, StringComparer.OrdinalIgnoreCase);
 
     public static string? Area(string? text)
     {
@@ -173,13 +205,14 @@ public static partial class MemoryLabels
     // Knowledge memory is never project specific, so business rules, flows and conventions cannot be knowledge.
     public static bool KindAllowedFor(MemoryType type, MemoryKind kind) => type != MemoryType.Knowledge || KnowledgeKinds.Contains(kind);
 
-    // "User · Logic/Entry · Rule", with the area in front for a repository that holds several apps.
-    public static string Display(string? area, string module, IEnumerable<MemoryLayer>? layers, MemoryKind kind)
+    // "User · Logic/Entry · Rule", with the area in front for a repository that holds several apps; a memory of several
+    // modules reads "Order+Invoice · Logic · Flow".
+    public static string Display(string? area, string module, IEnumerable<MemoryLayer>? layers, MemoryKind kind, IEnumerable<string>? extraModules = null)
     {
         var layerText = string.Join("/", (layers ?? []).Distinct().Order());
         var parts = new List<string>(4);
         if (!string.IsNullOrWhiteSpace(area)) parts.Add(area);
-        parts.Add(module);
+        parts.Add(string.Join("+", AllModules(module, extraModules)));
         if (layerText.Length > 0) parts.Add(layerText);
         parts.Add(kind.ToString());
         return string.Join(" · ", parts);

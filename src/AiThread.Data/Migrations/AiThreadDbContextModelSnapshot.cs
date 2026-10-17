@@ -362,6 +362,10 @@ namespace AiThread.Data.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ExtraModules")
+                        .HasMaxLength(310)
+                        .HasColumnType("nvarchar(310)");
+
                     b.Property<int>("HitCount")
                         .HasColumnType("int");
 

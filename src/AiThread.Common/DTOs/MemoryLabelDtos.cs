@@ -10,7 +10,8 @@ public record ProjectModuleDto(
     int Memories,
     int Files);
 
-public record SaveModuleRequest(string? Description, IReadOnlyList<string>? Aliases);
+// Name: a new name (or only another casing) for the module; null keeps it.
+public record SaveModuleRequest(string? Description, IReadOnlyList<string>? Aliases, string? Name = null);
 
 public record MergeModulesRequest(Guid ProjectId, string From, string Into);
 
