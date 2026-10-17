@@ -18,6 +18,7 @@ Contoh untuk prompt *"Tambahkan kolom deskripsi di form user: field di UI, logic
 **AIT** · `SampleApp` · thread `5e469b54`
 ````text
 🧠 Planner · cc/claude-opus
+│  ├─ 🔖 Label · 1 file → User·UI · 3 memory relevan
 │  ├─ list_directory  .
 │  ├─ search_memory   "user description validation"
 │  ├─ read_memory     2 item
@@ -100,7 +101,7 @@ Output terdiri dari tiga bagian:
 
 | Fase / baris | Arti |
 |---|---|
-| `🧠 Planner` | Planner membaca kode. Tiap entri adalah satu panggilan tool (read-only); nama tool rata kiri agar argumennya sejajar. `run_build` tampil dua baris: perintahnya, lalu hasilnya di bawahnya. |
+| `🧠 Planner` | Planner membaca kode. Entri pertama `🔖 Label` adalah hasil pencarian label sebelum model dipanggil: file yang disebut prompt beserta modul·layer-nya (maks. 4 ditampilkan), lalu jumlah memory yang ditemukan pencarian dua lapis untuk brief planner (lihat [Planner](07-cara-kerja.md#3-planner)). Entri berikutnya masing-masing satu panggilan tool (read-only); nama tool rata kiri agar argumennya sejajar. `run_build` tampil dua baris: perintahnya, lalu hasilnya di bawahnya. Saat thread dilanjutkan setelah pertanyaan planner, baris label tidak muncul lagi. |
 | `📋 Rencana` | Ringkasan rencana, lalu satu entri per tugas: id, path relatif penuh, dependensi (`← T3` = menunggu T3), dan judul tugas di baris bawahnya. |
 | `🚀 Eksekusi` | Satu baris per tugas yang selesai, dalam kolom: status, id, durasi, executor, ringkasan. `✅` berhasil, `❌` gagal (dengan alasan), `⏩` dilewati karena tugas yang ditunggunya gagal, `🟡` node dialihkan ke cadangannya. Penutupnya menyebut waktu nyata dan, bila paralel memang menghemat waktu, berapa kali lebih cepat dari sekuensial. |
 | `🔍 Verifikasi` | AIT membuild project dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). `🔨` build gagal (error maks 5 baris), `🔎` temuan reviewer, `🔧 Perbaikan` = putaran tugas perbaikan `V1-1`, …, `🟡` peringatan. |
