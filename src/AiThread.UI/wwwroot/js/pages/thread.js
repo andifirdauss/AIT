@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, stream, debounce, md, diffHtml, winFrame } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, stream, debounce, md, diffHtml, winFrame, pager } = window.AiThread;
 
   const threadId = window.threadId;
   const el = id => document.getElementById(id);
@@ -9,6 +9,26 @@
   const expanded = new Set();
   let detail = null;
   let timelineTimer = null;
+
+  const contractPager = pager('contractPager', rows => {
+    el('contractRows').innerHTML = rows.length
+      ? rows.map(c => `<tr><td>${escapeHtml(c.name)}</td><td class="mono">${escapeHtml(c.value)}${c.note ? ` <span class="text-secondary">— ${escapeHtml(c.note)}</span>` : ''}</td></tr>`).join('')
+      : '<tr><td colspan="2" class="text-secondary">–</td></tr>';
+  });
+  const taskPager = pager('taskPager', rows => {
+    el('taskRows').innerHTML = rows.length
+      ? rows.map(t => `
+        <tr data-task="${t.id}" style="cursor:pointer">
+          <td class="mono">${escapeHtml(t.taskKey)}</td>
+          <td><div>${escapeHtml(t.title)}</div><div class="small text-secondary mono">${escapeHtml(t.action)} · ${escapeHtml(taskPath(t))}</div></td>
+          <td class="small">${t.nodeName ? `${escapeHtml(t.nodeName)}<div class="text-secondary mono">${escapeHtml(t.model || '')}</div>` : isFileOperation(t) ? '<span class="text-secondary">tanpa model</span>' : '–'}</td>
+          <td>${statusBadge(t.status)}${t.attempts > 1 ? `<div class="small text-secondary">${t.attempts}× percobaan</div>` : ''}</td>
+          <td class="text-nowrap">${fmt.ms(t.durationMs)}</td>
+          <td>${fmt.number(t.tokens)}</td>
+          <td class="text-end small text-secondary">${expanded.has(t.id) ? '▲' : '▼'}</td>
+        </tr>${expanded.has(t.id) ? taskDetailHtml(t) : ''}`).join('')
+      : `<tr><td colspan="7" class="empty-state">${isActiveStatus(detail?.summary.status) ? 'Menunggu rencana…' : 'Tidak ada tugas eksekusi.'}</td></tr>`;
+  });
 
   function renderHeader() {
     const s = detail.summary;
@@ -57,9 +77,7 @@
     el('planSummary').textContent = plan?.summary || detail.summary.planSummary ||
       (isActiveStatus(detail.summary.status) ? 'Planner sedang menganalisis…' : 'Tidak ada rencana.');
     const contract = plan?.contract || [];
-    el('contractRows').innerHTML = contract.length
-      ? contract.map(c => `<tr><td>${escapeHtml(c.name)}</td><td class="mono">${escapeHtml(c.value)}${c.note ? ` <span class="text-secondary">— ${escapeHtml(c.note)}</span>` : ''}</td></tr>`).join('')
-      : '<tr><td colspan="2" class="text-secondary">–</td></tr>';
+    contractPager.set(contract);
 
     if (plan?.answer && !(plan.tasks || []).length && !detail.finalResponse) {
       el('finalResponse').innerHTML = md(plan.answer);
@@ -199,18 +217,7 @@
     const done = list.filter(t => t.status === 'Succeeded').length;
     el('taskCounter').textContent = list.length ? `${done}/${list.length} berhasil` : '';
 
-    el('taskRows').innerHTML = list.length
-      ? list.map(t => `
-        <tr data-task="${t.id}" style="cursor:pointer">
-          <td class="mono">${escapeHtml(t.taskKey)}</td>
-          <td><div>${escapeHtml(t.title)}</div><div class="small text-secondary mono">${escapeHtml(t.action)} · ${escapeHtml(taskPath(t))}</div></td>
-          <td class="small">${t.nodeName ? `${escapeHtml(t.nodeName)}<div class="text-secondary mono">${escapeHtml(t.model || '')}</div>` : isFileOperation(t) ? '<span class="text-secondary">tanpa model</span>' : '–'}</td>
-          <td>${statusBadge(t.status)}${t.attempts > 1 ? `<div class="small text-secondary">${t.attempts}× percobaan</div>` : ''}</td>
-          <td class="text-nowrap">${fmt.ms(t.durationMs)}</td>
-          <td>${fmt.number(t.tokens)}</td>
-          <td class="text-end small text-secondary">${expanded.has(t.id) ? '▲' : '▼'}</td>
-        </tr>${expanded.has(t.id) ? taskDetailHtml(t) : ''}`).join('')
-      : `<tr><td colspan="7" class="empty-state">${isActiveStatus(detail?.summary.status) ? 'Menunggu rencana…' : 'Tidak ada tugas eksekusi.'}</td></tr>`;
+    taskPager.set(list);
 
     renderTimeline();
   }

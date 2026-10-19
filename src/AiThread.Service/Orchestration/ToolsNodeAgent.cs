@@ -72,7 +72,10 @@ public sealed class ToolsNodeAgent(NodeCaller caller, PlannerToolRunner runner, 
             if (Findings(result.ToolCalls) is { } findings) return Done(findings);
 
             messages.Add(ChatMessages.Assistant(string.IsNullOrWhiteSpace(result.Content) ? null : result.Content, result.ToolCalls));
-            var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, group, input, tools, memoriesRead, prefix, actor, recorder, progress, cancellationToken)));
+            // Token counts exist per model turn, not per tool: the turn's badge goes on its first tool line.
+            var badgeHolder = result.ToolCalls.FirstOrDefault(c => c.Name != PlannerTools.SubmitPlan && c.Name != PlannerTools.RunBuild);
+            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens);
+            var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, group, input, tools, memoriesRead, prefix, actor, recorder, progress, ReferenceEquals(call, badgeHolder) ? badge : null, cancellationToken)));
             for (var i = 0; i < result.ToolCalls.Count; i++) messages.Add(ChatMessages.Tool(result.ToolCalls[i].Id, outcomes[i].Output));
 
             ToolsNodeInvestigation Done(string text)
@@ -94,6 +97,7 @@ public sealed class ToolsNodeAgent(NodeCaller caller, PlannerToolRunner runner, 
         string actor,
         ThreadRecorder recorder,
         ClientProgress progress,
+        string? badge,
         CancellationToken cancellationToken)
     {
         var available = PlannerTools.ToolsNodeTools(group.Tools);
@@ -103,7 +107,7 @@ public sealed class ToolsNodeAgent(NodeCaller caller, PlannerToolRunner runner, 
         var args = PlannerToolRunner.ParseArguments(call.Arguments, out var error);
         if (args is null) return error!;
 
-        await PlannerToolRunner.AnnounceAsync(call.Name, args, actor, prefix, recorder, progress, cancellationToken);
+        await PlannerToolRunner.AnnounceAsync(call.Name, args, actor, prefix, recorder, progress, cancellationToken, badge);
         return await runner.RunAsync(call.Name, args, input, tools, memoriesRead, prefix, recorder, progress, cancellationToken);
     }
 

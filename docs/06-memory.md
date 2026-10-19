@@ -9,7 +9,7 @@ penjelasan.
 |---|---|
 | **Label** | `[Area ·] Modul · Layer · Jenis`, mis. `User · Logic · Rule`; memory yang membahas beberapa modul: `Order+Invoice · Logic · Flow`. Lapis pertama pencarian: planner menyaring berdasarkan modul (dan bila perlu layer/jenis). |
 | **Keyword** | Maks 16 kata, mis. `Description, Deskripsi, UserValidator`. Lapis kedua: di dalam hasil lapis pertama, mana yang memuat istilah yang dicari. |
-| **Deskripsi** | Penjelasan mandiri 2–6 kalimat. Untuk project memory berisi path file dan identifier. Hanya dibaca setelah lolos dua lapis. |
+| **Deskripsi** | Penjelasan mandiri berupa baris-baris berlabel sesuai jenis (lihat [Format deskripsi](#format-deskripsi)), maks ±700 karakter. Untuk project memory berisi path file dan identifier dalam backtick. Hanya dibaca setelah lolos dua lapis. |
 
 Semua bagian label dan keyword ditulis **PascalCase**, dinormalisasi oleh AIT (bukan dipercayakan ke model):
 `user dto` → `UserDTO`, `api client` → `APIClient`, `users` → `Users`. Singkatan ditulis kapital semua: daftar bawaan
@@ -21,6 +21,34 @@ pertamanya dibesarkan.
 `MKPP` tetap `MKPP` (singkatan penuh), `KlaimDF` / `Klaim DF` → `KlaimDF` (PascalCase + singkatan). Yang ditulis huruf
 kecil semua hanya diberi huruf besar di depan (`klaimdf` → `Klaimdf`), karena AIT tidak bisa menebak singkatannya. Nama
 yang kurang tepat diperbaiki lewat [ganti nama modul](#daftar-modul--gabung-modul).
+
+### Format deskripsi
+
+Deskripsi ditulis per baris. Tiap baris diawali label tetap sesuai jenis, dalam bahasa developer. Bagian yang kosong boleh dilewati.
+
+| Jenis | Urutan label |
+|---|---|
+| Pitfall | Masalah · Penyebab · Solusi · Lokasi |
+| Rule | Aturan · Ditegakkan di · Pengecualian |
+| Flow | Pemicu · Langkah (bernomor) · Hasil · Lokasi |
+| Convention | Konvensi · Contoh · Alasan |
+| Architecture | Komponen · Hubungan · Alasan |
+| Pattern | Masalah · Solusi · Kapan dipakai |
+
+- Identifier, path, key konfigurasi, nilai, dan pesan ditulis dalam backtick.
+- Sebut nama, bukan "ini" atau "bug tadi".
+- Tulis faktanya, bukan cerita thread.
+- Knowledge memory tanpa path atau identifier project.
+
+Contoh (Rule):
+
+```text
+Aturan: `TokenBadge` selalu lebar 24 kolom agar `[` dan `]` sejajar.
+Ditegakkan di: `src/AiThread.Service/Orchestration/ClientProgress.cs`, `WithBadge`.
+Pengecualian: badge tidak muat di sisa baris, pindah utuh ke baris baru rata kanan.
+```
+
+Memory lama tetap dengan format bebas. Format ini berlaku untuk memory yang diekstrak setelahnya.
 
 ### Modul
 

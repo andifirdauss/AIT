@@ -148,7 +148,15 @@ public static class AgentPrompts
         {{MemoryLabelRules}}
 
         One memory states one fact of one kind; when a fact has two kinds, write two memories.
-        "description": a self-contained explanation of 2-6 sentences, in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors).
+        "description": self-contained, in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors). Write it as short lines, one per part, each starting with the part's label translated into that language, in this order for the kind (leave out a part only when there is nothing to say):
+        - Pitfall: Problem (the symptom or trap) / Cause / Fix / Where
+        - Rule: Rule (the condition with its exact values, limits or formula) / Enforced in (files, methods) / Exceptions (and what happens when it is broken)
+        - Flow: Trigger / Steps (numbered, component by component) / Result / Where
+        - Convention: Convention / Example (a short real one from the code) / Why
+        - Architecture: Components (each with its responsibility) / Connection / Why (the design reason)
+        - Pattern: Problem / Solution / When to use (and its limits)
+        Indonesian labels: Masalah, Penyebab, Solusi, Lokasi; Aturan, Ditegakkan di, Pengecualian; Pemicu, Langkah, Hasil; Konvensi, Contoh, Alasan; Komponen, Hubungan; Kapan dipakai.
+        Write exact identifiers, file paths (relative to the project root), config keys, values and messages in backticks. Name things instead of saying "this", "it" or "the bug"; a reader sees the memory months later without the thread. State the fact, never the story of the thread (no "in this thread", "the developer asked"). Knowledge memory names no project files or project identifiers. Keep it under about 700 characters.
 
         Skip trivia, one-off details and anything the existing memories of the module already cover ("# Existing memories" lists them per module). Return at most 5 memories; return an empty list when nothing is worth remembering.
         Respond with JSON only: {"memories":[{"type":"project","module":"...","other_modules":[],"layers":["..."],"kind":"...","keywords":["..."],"description":"..."}]}

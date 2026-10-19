@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, debounce, stream, renderRouterPill, routerKeyState } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, debounce, stream, renderRouterPill, routerKeyState, pager } = window.AiThread;
 
   const levelOrder = { Debug: 0, Info: 1, Success: 2, Warning: 3, Error: 4 };
   const maxLogLines = 300;
@@ -76,15 +76,18 @@
     }
   }
 
+  const threadPager = pager('threadPager', rows => {
+    el('threadRows').innerHTML = rows.length
+      ? rows.map(threadRow).join('')
+      : '<tr><td colspan="8" class="empty-state">Belum ada thread. Arahkan Claude Code ke AIT (menu Setting) atau jalankan prompt di atas.</td></tr>';
+  });
+
   async function loadThreads() {
-    const tbody = el('threadRows');
     try {
-      const threads = await api.get('/api/threads?take=25');
-      tbody.innerHTML = threads.length
-        ? threads.map(threadRow).join('')
-        : '<tr><td colspan="8" class="empty-state">Belum ada thread. Arahkan Claude Code ke AIT (menu Setting) atau jalankan prompt di atas.</td></tr>';
+      threadPager.set(await api.get('/api/threads?take=25'));
     } catch (error) {
-      tbody.innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
+      threadPager.set([]);
+      el('threadRows').innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
   }
 
