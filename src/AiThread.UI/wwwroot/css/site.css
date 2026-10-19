@@ -451,6 +451,20 @@ body {
   border-bottom: 0;
 }
 
+.cli-section > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.cli-section[open] > summary {
+  border-bottom: 1px solid var(--bs-border-color);
+  margin-bottom: .5rem;
+}
+
+.cli-card .card-body > p.text-secondary {
+  font-size: .8rem;
+}
+
 .node-card-title {
   flex: 1 1 auto;
   min-width: 0;

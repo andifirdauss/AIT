@@ -5,6 +5,7 @@
 
   let clis = [];
   let projects = [];
+  const openSections = new Set();
   const CLAUDE = 'claude-code';
 
   const proxyUrl = () => el('proxyUrl').value.trim();
@@ -24,8 +25,8 @@
   }
 
   function cardShell(cli) {
-    return `<div class="col-xl-6">
-      <div class="card h-100" id="card-${cli.id}">
+    return `<div class="col-md-6 col-xl-4">
+      <div class="card h-100 cli-card" id="card-${cli.id}">
         <div class="card-header d-flex align-items-center gap-2">
           <span>${escapeHtml(cli.name)}</span>
           <span class="ms-auto small" id="summary-${cli.id}"></span>
@@ -57,6 +58,13 @@
     }
   }
 
+  function sectionHtml(id, title, body) {
+    return `<details class="cli-section border rounded mb-2" id="${id}"${openSections.has(id) ? ' open' : ''}>
+      <summary class="small fw-semibold px-2 py-1">${title}</summary>
+      <div class="px-2 pb-2">${body}</div>
+    </details>`;
+  }
+
   function switchHtml(cli, scope, projectId, checked, disabled) {
     const id = `sw-${cli.id}-${projectId || 'global'}`;
     return `<div class="form-check form-switch mb-0">
@@ -74,6 +82,7 @@
 
   function cardBody(cli, global, statuses) {
     const byProject = new Map(statuses.map(s => [s.projectId, s]));
+    const activeCount = statuses.filter(s => s.enabled).length;
     const rows = projects.length
       ? projects.map(p => {
           const s = byProject.get(p.id);
@@ -87,9 +96,9 @@
       : '<tr><td colspan="3" class="text-secondary small">Belum ada project terdaftar — daftarkan di menu Project.</td></tr>';
 
     return `
-      <p class="small text-secondary">${escapeHtml(cli.description)}</p>
+      <p class="small text-secondary mb-2">${escapeHtml(cli.description)}</p>
 
-      <div class="d-flex align-items-center gap-3 border rounded p-2 mb-3">
+      <div class="d-flex align-items-center gap-3 border rounded p-2 mb-2">
         ${switchHtml(cli, 'Global', null, global.enabled, false)}
         <div class="flex-grow-1">
           <div>Global <span class="text-secondary small">— semua sesi ${escapeHtml(cli.name)} di komputer ini</span></div>
@@ -99,10 +108,7 @@
       </div>
 
       ${cli.projectFile
-        ? `<div class="small fw-semibold mb-1">Per project</div>
-      <div class="table-responsive mb-2">
-        <table class="table table-sm align-middle mb-0"><tbody>${rows}</tbody></table>
-      </div>`
+        ? sectionHtml(`cli-projects-${cli.id}`, `Per project <span class="fw-normal text-secondary">· ${activeCount} aktif dari ${projects.length}</span>`, `<div class="table-responsive"><table class="table table-sm align-middle mb-0"><tbody>${rows}</tbody></table></div>`)
         : '<p class="small text-secondary mb-2">Hanya global — CLI ini tidak punya file konfigurasi per project.</p>'}
 
       ${winFrame({
@@ -113,8 +119,14 @@
         body: `<pre class="code-block">${escapeHtml(global.preview)}</pre>`
       })}
       ${cli.note ? `<p class="small text-secondary mb-0">${escapeHtml(cli.note)}</p>` : ''}
-      ${cli.id === CLAUDE ? hooksShell() : ''}`;
+      ${cli.id === CLAUDE ? sectionHtml('cli-hooks', 'Context Keeper untuk <span class="mono">/clear</span>', hooksShell()) : ''}`;
   }
+
+  el('cliCards').addEventListener('toggle', event => {
+    const d = event.target;
+    if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('cli-section')) return;
+    if (d.open) openSections.add(d.id); else openSections.delete(d.id);
+  }, true);
 
   el('cliCards').addEventListener('change', async event => {
     const input = event.target.closest('input[data-cli][data-scope]');
@@ -152,9 +164,7 @@
   function hooksShell() {
     const options = ['<option value="">Global — ~/.claude/settings.json</option>']
       .concat(projects.filter(p => p.exists).map(p => `<option value="${p.id}">${escapeHtml(p.name)} — .claude/settings.local.json</option>`));
-    return `<hr />
-      <h3 class="h6">Context Keeper untuk <span class="mono">/clear</span></h3>
-      <p class="small text-secondary">
+    return `<p class="small text-secondary">
         Hook HTTP resmi Claude Code (<span class="mono">SessionEnd</span> + <span class="mono">SessionStart</span>). Saat Anda menjalankan
         <span class="mono">/clear</span>, AIT meringkas sesi lama dan menyisipkannya ke sesi baru. Berlaku juga untuk sesi yang
         <em>tidak</em> diarahkan ke proxy.
