@@ -56,7 +56,7 @@ public class ToolsNodeTests
         Assert.Equal(220, thread.PlannerTokens);
         Assert.Contains(observer.Lines, l => l.Contains("investigate") && l.Contains("#1"));
         Assert.Contains(observer.Lines, l => l.Contains("#1 › read_file"));
-        Assert.Contains(observer.Lines, l => l.Contains("#1 ✅ 2 langkah"));
+        Assert.Contains(observer.Lines, l => l.Contains("#1 › complete") && l.Contains("2 langkah"));
     }
 
     [Fact]
