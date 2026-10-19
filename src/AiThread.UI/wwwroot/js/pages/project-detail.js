@@ -1,50 +1,8 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, stream, debounce } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, stream, debounce, pager } = window.AiThread;
   const projectId = window.projectId;
   const el = id => document.getElementById(id);
-  const pageSize = 10;
-
-  // Client-side pager: the lists are loaded whole, only a page of rows is rendered.
-  // The page survives SSE refreshes (clamped when the list shrinks); `reset` jumps back to page 1.
-  function pager(footerId, render) {
-    const footer = el(footerId);
-    footer.innerHTML = `<span class="text-secondary"></span>
-      <div class="btn-group btn-group-sm">
-        <button type="button" class="btn btn-outline-secondary" data-page="-1">‹ Sebelumnya</button>
-        <button type="button" class="btn btn-outline-secondary" data-page="1">Berikutnya ›</button>
-      </div>`;
-    const [prev, next] = footer.querySelectorAll('button');
-    let items = [];
-    let page = 1;
-
-    function draw() {
-      const pages = Math.max(1, Math.ceil(items.length / pageSize));
-      page = Math.min(Math.max(1, page), pages);
-      const start = (page - 1) * pageSize;
-      render(items.slice(start, start + pageSize));
-      footer.classList.toggle('d-none', items.length <= pageSize);
-      footer.firstElementChild.textContent = `${start + 1}–${Math.min(start + pageSize, items.length)} dari ${fmt.number(items.length)}`;
-      prev.disabled = page <= 1;
-      next.disabled = page >= pages;
-    }
-
-    footer.addEventListener('click', event => {
-      const target = event.target.closest('button[data-page]');
-      if (!target) return;
-      page += Number(target.dataset.page);
-      draw();
-    });
-
-    return {
-      set(list, reset = false) {
-        items = list;
-        if (reset) page = 1;
-        draw();
-      }
-    };
-  }
-
   const sessionPager = pager('sessionPager', rows => {
     el('sessionRows').innerHTML = rows.length
       ? rows.map(s => `<tr><td class="mono" title="${escapeHtml(s.sessionId)}">${escapeHtml(s.sessionId.substring(0, 8))}</td><td>${s.threadCount}</td><td>${fmt.relative(s.lastSeenAt)}</td></tr>`).join('')

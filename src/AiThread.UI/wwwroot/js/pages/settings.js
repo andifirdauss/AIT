@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill, routerKeyState } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill, routerKeyState, pager } = window.AiThread;
   const el = id => document.getElementById(id);
   let settings = null;
 
@@ -367,6 +367,11 @@
     Error: ['danger', 'Bermasalah']
   };
 
+  let telegramEmpty = '';
+  const telegramChatPager = pager('telegramChatPager', rows => {
+    el('telegramChatRows').innerHTML = rows.length ? rows.map(telegramChatRow).join('') : telegramEmpty;
+  });
+
   function renderTelegram(t, keepForm) {
     if (!keepForm) {
       el('telegramEnabled').checked = t.enabled;
@@ -386,9 +391,8 @@
     el('telegramState').innerHTML = `<span class="badge text-bg-${color}">${label}</span>${bot}${polled}${error}`;
 
     const start = t.botUsername ? `kirim <span class="mono">/start</span> ke @${escapeHtml(t.botUsername)}` : 'aktifkan bot lalu kirim <span class="mono">/start</span> ke bot Anda';
-    el('telegramChatRows').innerHTML = t.chats.length
-      ? t.chats.map(telegramChatRow).join('')
-      : `<tr><td colspan="5" class="text-secondary small">Belum ada chat — ${start} dari Telegram.</td></tr>`;
+    telegramEmpty = `<tr><td colspan="5" class="text-secondary small">Belum ada chat — ${start} dari Telegram.</td></tr>`;
+    telegramChatPager.set(t.chats);
   }
 
   function telegramChatRow(c) {
@@ -517,15 +521,20 @@
     </tr>`;
   }
 
+  const skillSourcePager = pager('skillSourcePager', rows => {
+    el('skillSourceRows').innerHTML = rows.length
+      ? rows.map(skillSourceRow).join('')
+      : '<tr><td colspan="5" class="text-secondary small">Belum ada sumber — tempel link repository skill di atas, mis. https://github.com/anthropics/skills.</td></tr>';
+  });
+
   async function loadSkillSources() {
     try {
       const sources = await api.get('/api/skills/sources');
-      el('skillSourceRows').innerHTML = sources.length
-        ? sources.map(skillSourceRow).join('')
-        : '<tr><td colspan="5" class="text-secondary small">Belum ada sumber — tempel link repository skill di atas, mis. https://github.com/anthropics/skills.</td></tr>';
+      skillSourcePager.set(sources);
       const busy = sources.filter(s => ['Queued', 'Fetching', 'Analyzing'].includes(s.status)).length;
       el('skillSourceSummary').textContent = `${sources.length} sumber${busy ? ` · ${busy} sedang diproses` : ''}`;
     } catch (error) {
+      skillSourcePager.set([]);
       el('skillSourceRows').innerHTML = `<tr><td colspan="5" class="text-danger small">${escapeHtml(error.message)}</td></tr>`;
     }
   }
@@ -544,15 +553,23 @@
     </tr>`;
   }
 
+  let skillQuery = '';
+  const skillPager = pager('skillPager', rows => {
+    el('skillRows').innerHTML = rows.length
+      ? rows.map(skillRow).join('')
+      : `<tr><td colspan="4" class="text-secondary small">${skillQuery ? 'Tidak ada skill yang cocok.' : 'Gudang masih kosong.'}</td></tr>`;
+  });
+
   async function loadSkills() {
     const query = el('skillSearch').value.trim();
     try {
       const skills = await api.get(`/api/skills${query ? `?query=${encodeURIComponent(query)}` : ''}`);
-      el('skillRows').innerHTML = skills.length
-        ? skills.map(skillRow).join('')
-        : `<tr><td colspan="4" class="text-secondary small">${query ? 'Tidak ada skill yang cocok.' : 'Gudang masih kosong.'}</td></tr>`;
+      const reset = query !== skillQuery;
+      skillQuery = query;
+      skillPager.set(skills, reset);
       el('skillCount').textContent = `${skills.length} skill`;
     } catch (error) {
+      skillPager.set([]);
       el('skillRows').innerHTML = `<tr><td colspan="4" class="text-danger small">${escapeHtml(error.message)}</td></tr>`;
     }
   }

@@ -3,7 +3,7 @@
   const { api, toast, escapeHtml, fmt, toDate, stream, debounce } = window.AiThread;
   const el = id => document.getElementById(id);
   const shortMemoryHours = 24;
-  const pageSize = 30;
+  const pageSize = 10;
   const maxKeywords = 16;
   const maxExtraModules = 3;
   const items = new Map();
