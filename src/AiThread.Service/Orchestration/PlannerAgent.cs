@@ -192,7 +192,10 @@ public sealed class PlannerAgent(
 
             messages.Add(ChatMessages.Assistant(string.IsNullOrWhiteSpace(result.Content) ? null : result.Content, result.ToolCalls));
 
-            var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, input, run, tools, recorder, progress, cancellationToken)));
+            // Token counts exist per model turn, not per tool: the turn's badge goes on its first tool line.
+            var badgeHolder = result.ToolCalls.FirstOrDefault(c => c.Name is not (PlannerTools.SubmitPlan or PlannerTools.RunBuild));
+            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens);
+            var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, input, run, tools, recorder, progress, ReferenceEquals(call, badgeHolder) ? badge : null, cancellationToken)));
 
             ThreadPlan? accepted = null;
             (ToolCall Call, PlannerQuestion Question)? ask = null;
@@ -265,6 +268,7 @@ public sealed class PlannerAgent(
         WorkspaceTools tools,
         ThreadRecorder recorder,
         ClientProgress progress,
+        string? badge,
         CancellationToken cancellationToken)
     {
         var args = PlannerToolRunner.ParseArguments(call.Arguments, out var error);
@@ -276,11 +280,11 @@ public sealed class PlannerAgent(
 
         // investigate numbers its own line; submit_plan has none.
         if (call.Name is not (PlannerTools.SubmitPlan or PlannerTools.Investigate))
-            await PlannerToolRunner.AnnounceAsync(call.Name, args, "Planner", string.Empty, recorder, progress, cancellationToken);
+            await PlannerToolRunner.AnnounceAsync(call.Name, args, "Planner", string.Empty, recorder, progress, cancellationToken, badge);
 
         return call.Name switch
         {
-            PlannerTools.Investigate => await InvestigateAsync(args, input, run, tools, recorder, progress, cancellationToken),
+            PlannerTools.Investigate => await InvestigateAsync(args, input, run, tools, recorder, progress, badge, cancellationToken),
             PlannerTools.AskUser => AskUser(args, input, run),
             PlannerTools.SubmitPlan => SubmitPlan(call.Arguments, input.Scope, recorder),
             _ => await runner.RunAsync(call.Name, args, input, tools, run.MemoriesRead, string.Empty, recorder, progress, cancellationToken)
@@ -295,6 +299,7 @@ public sealed class PlannerAgent(
         WorkspaceTools tools,
         ThreadRecorder recorder,
         ClientProgress progress,
+        string? badge,
         CancellationToken cancellationToken)
     {
         if (run.Groups.Count == 0) return new PlannerToolOutcome("Error: there are no sub agents.", null, true);
@@ -306,22 +311,23 @@ public sealed class PlannerAgent(
             return new PlannerToolOutcome($"Error: \"agent\" must be one of: {string.Join(", ", run.Groups.Select(g => g.Key))}.", null, true);
 
         var label = $"#{Interlocked.Increment(ref run.Investigations)}";
+        var nodePrefix = $"{label} › ";
         var detail = $"{label} {(run.Groups.Count > 1 ? $"[{group.Key}] " : string.Empty)}{PlannerToolRunner.Describe(PlannerTools.Investigate, args)}";
         recorder.PlannerActivity(PlannerTools.Investigate, detail);
         recorder.Log(ActivityLevel.Debug, $"Planner → investigate {label} ({group.Node.Name}): {question}");
-        await progress.StepAsync(ClientProgress.Pad(PlannerTools.Investigate, PlannerTools.NameColumn) + detail, cancellationToken, hang: PlannerTools.NameColumn);
+        await progress.StepAsync(PlannerToolRunner.Lead(string.Empty, PlannerTools.Investigate) + ClientProgress.BadgeSlot(badge) + detail, cancellationToken, hang: PlannerToolRunner.LeadColumn + ClientProgress.SlotWidth);
 
         try
         {
             var result = await toolsNodeAgent.InvestigateAsync(group, question, input, tools, run.MemoriesRead, label, recorder, progress, cancellationToken);
             Interlocked.Add(ref run.ToolsNodeTokens, result.Tokens);
-            await progress.StepAsync($"{label} ✅ {result.Steps} langkah · {result.Tokens} token · {result.Node.Model}", cancellationToken, hang: label.Length + 3);
+            await progress.StepAsync(nodePrefix + ClientProgress.Pad("complete", PlannerTools.NameColumn) + $"{result.Steps} langkah · {FinalReport.Tokens(result.Tokens)} token{(result.CachedTokens > 0 ? $" · c{FinalReport.Tokens(result.CachedTokens)}" : string.Empty)} · {result.Node.Model}", cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
             return new PlannerToolOutcome(result.Findings, null);
         }
         catch (NineRouterException ex) when (!cancellationToken.IsCancellationRequested)
         {
             recorder.Log(ActivityLevel.Warning, $"Tools node '{group.Node.Name}' gagal menjawab investigasi {label}: {ex.Message}");
-            await progress.StepAsync($"{label} ❌ tools node {group.Node.Model} gagal: {ex.Message}", cancellationToken, hang: label.Length + 3);
+            await progress.StepAsync(nodePrefix + ClientProgress.Pad("failed", PlannerTools.NameColumn) + $"tools node {group.Node.Model} gagal: {ex.Message}", cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
             return new PlannerToolOutcome($"Error: the sub agent is unavailable ({ex.Message}). Try again later or plan with what you already know.", null, true);
         }
     }

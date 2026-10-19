@@ -322,6 +322,46 @@
     };
   }
 
+  // Client-side pager: the list is kept whole, only one page of rows is rendered.
+  // The page survives refreshes (clamped when the list shrinks); `reset` jumps back to page 1.
+  function pager(footerId, render, pageSize = 10) {
+    const footer = document.getElementById(footerId);
+    footer.innerHTML = `<span class="text-secondary"></span>
+      <div class="btn-group btn-group-sm">
+        <button type="button" class="btn btn-outline-secondary" data-page="-1">‹ Sebelumnya</button>
+        <button type="button" class="btn btn-outline-secondary" data-page="1">Berikutnya ›</button>
+      </div>`;
+    const [prev, next] = footer.querySelectorAll('button');
+    let items = [];
+    let page = 1;
+
+    function draw() {
+      const pages = Math.max(1, Math.ceil(items.length / pageSize));
+      page = Math.min(Math.max(1, page), pages);
+      const start = (page - 1) * pageSize;
+      render(items.slice(start, start + pageSize));
+      footer.classList.toggle('d-none', items.length <= pageSize);
+      footer.firstElementChild.textContent = `${start + 1}–${Math.min(start + pageSize, items.length)} dari ${fmt.number(items.length)}`;
+      prev.disabled = page <= 1;
+      next.disabled = page >= pages;
+    }
+
+    footer.addEventListener('click', event => {
+      const target = event.target.closest('button[data-page]');
+      if (!target) return;
+      page += Number(target.dataset.page);
+      draw();
+    });
+
+    return {
+      set(list, reset = false) {
+        items = list || [];
+        if (reset) page = 1;
+        draw();
+      }
+    };
+  }
+
   // Deliberately small Markdown renderer for wrapper output: escape first, then add a few safe tags.
   function md(text) {
     if (!text) return '';
@@ -605,5 +645,5 @@
     setInterval(refreshRouterPill, 20000);
   });
 
-  window.AiThread = { api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState };
+  window.AiThread = { api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager };
 })();

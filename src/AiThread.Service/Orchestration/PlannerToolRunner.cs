@@ -42,13 +42,13 @@ public sealed class PlannerToolRunner(
     }
 
     // The progress line of a tool call; run_build writes its own lines (the command it resolved, then the result).
-    public static async Task AnnounceAsync(string tool, JsonObject args, string actor, string prefix, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
+    public static async Task AnnounceAsync(string tool, JsonObject args, string actor, string prefix, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken, string? badge = null)
     {
         var detail = Describe(tool, args);
         recorder.PlannerActivity(tool, prefix + detail);
         recorder.Log(ActivityLevel.Debug, $"{actor} → {tool} {detail}");
         if (tool != PlannerTools.RunBuild)
-            await progress.StepAsync(prefix + ClientProgress.Pad(tool, PlannerTools.NameColumn) + Describe(tool, args, compact: true), cancellationToken, hang: Hang(prefix));
+            await progress.StepAsync(Lead(prefix, tool) + ClientProgress.BadgeSlot(badge) + Describe(tool, args, compact: true), cancellationToken, hang: LeadColumn + ClientProgress.SlotWidth);
     }
 
     public async Task<PlannerToolOutcome> RunAsync(
@@ -198,6 +198,11 @@ public sealed class PlannerToolRunner(
 
     // Wrapped lines of a tool call line up with its arguments.
     public static int Hang(string prefix) => ClientProgress.DisplayWidth(prefix) + PlannerTools.NameColumn;
+
+    // Tool name plus its prefix ("#1 › ") padded to one column, so badges and arguments line up with or without a prefix.
+    public static int LeadColumn => ClientProgress.DisplayWidth("#9 › ") + PlannerTools.NameColumn;
+
+    public static string Lead(string prefix, string name) => ClientProgress.Pad(prefix + name, LeadColumn);
 
     // Labeled: "Module · Layers · Kind — keywords"; business wiki pages and unlabeled (older) memory keep their label.
     public static string FormatIndex(IEnumerable<MemoryIndexEntry> entries) =>

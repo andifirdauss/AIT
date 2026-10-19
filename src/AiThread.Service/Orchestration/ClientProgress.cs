@@ -19,7 +19,7 @@ namespace AiThread.Service.Orchestration;
 // failures (client gone) never break a thread.
 public sealed partial class ClientProgress(IThreadObserver observer, bool showProgress)
 {
-    public const int Width = 90;
+    public const int Width = 110;
 
     private const string Fence = "````";
     private const string Rail = "│  ";
@@ -101,6 +101,24 @@ public sealed partial class ClientProgress(IThreadObserver observer, bool showPr
 
     public static string PadLeft(string text, int columns) => new string(' ', Math.Max(0, columns - DisplayWidth(text))) + text;
 
+    // "[↑ 12.2k ↓  424  0%]": prompt and completion tokens of one model turn plus the cache hit share of the prompt
+    // (cached tokens are part of the prompt). Every slot is left-padded to fixed columns (↑ 6, ↓ 5, % 3) so every badge
+    // is BadgeWidth columns wide; the share is floored and capped at 99 to keep that width.
+    public static string TokenBadge(int prompt, int completion, int cached)
+    {
+        var pct = prompt > 0 ? Math.Min(99, (int)((long)cached * 100 / prompt)) : 0;
+        return "[↑" + PadLeft(FinalReport.Tokens(prompt), 6) + " ↓" + PadLeft(FinalReport.Tokens(completion), 5)
+            + " " + PadLeft(pct + "%", 3) + "]";
+    }
+
+    public static int BadgeWidth => DisplayWidth(TokenBadge(0, 0, 0));
+
+    // The column between a tool name and its arguments: ". " + the badge, or blanks of the same width so the arguments
+    // of every tool line start at the same column.
+    public static string BadgeSlot(string? badge) => ". " + (badge ?? new string(' ', BadgeWidth)) + "  ";
+
+    public static int SlotWidth => DisplayWidth(BadgeSlot(null));
+
     // Shortens a long path to its first folder and as many trailing segments as fit: "Web/…/mkppdf/script.js".
     public static string CompactPath(string path, int max)
     {
@@ -121,8 +139,9 @@ public sealed partial class ClientProgress(IThreadObserver observer, bool showPr
     }
 
     // Splits text into lines of at most Width columns: the first starts with firstPrefix, the others with nextPrefix.
-    // Spaces between words are kept (column padding); a wrapped line drops the spaces it would start with. Words longer
-    // than a line are cut. Backticks are removed: they would show literally inside the block.
+    // Spaces between words are kept (column padding); a wrapped line drops the spaces it would start with. A word moves
+    // to a new line only when it fits there; a word too long for a fresh line is cut in place instead of moved.
+    // Backticks are removed: they would show literally inside the block.
     public static string Wrap(string text, string firstPrefix, string nextPrefix)
     {
         var builder = new StringBuilder();
@@ -137,7 +156,7 @@ public sealed partial class ClientProgress(IThreadObserver observer, bool showPr
             {
                 var gap = token.Groups[1].Value;
                 var word = token.Groups[2].Value;
-                if (lineHasWord && lineWidth + gap.Length + DisplayWidth(word) > Width)
+                if (lineHasWord && lineWidth + gap.Length + DisplayWidth(word) > Width && DisplayWidth(nextPrefix) + DisplayWidth(word) <= Width)
                 {
                     builder.Append(line).Append('\n');
                     prefix = nextPrefix;

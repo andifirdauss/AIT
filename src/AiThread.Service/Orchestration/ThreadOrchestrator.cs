@@ -180,7 +180,7 @@ public sealed class ThreadOrchestrator(
             }
             planClock.Stop();
             planner = planning.Node;
-            await progress.StepAsync(planning.Pause is null ? $"selesai dalam {Seconds(planClock.ElapsedMilliseconds)}" : "menunggu jawaban developer",
+            await progress.StepAsync(planning.Pause is null ? $"selesai dalam {Seconds(planClock.ElapsedMilliseconds)} · {planning.Steps} giliran · {FinalReport.Tokens(planning.Tokens)} token" + (planning.CachedTokens > 0 ? $" · c{FinalReport.Tokens(planning.CachedTokens)}" : string.Empty) + (planning.ToolsNodeTokens > 0 ? $" · sub-agent {FinalReport.Tokens(planning.ToolsNodeTokens)}" : string.Empty) : "menunggu jawaban developer",
                 cancellationToken, last: true);
 
             if (planning.Pause is { } pause)

@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, bindRowLinks, stream, debounce } = window.AiThread;
+  const { api, toast, escapeHtml, fmt, bindRowLinks, stream, debounce, pager } = window.AiThread;
   const el = id => document.getElementById(id);
   const browsePathKey = 'aithread-browse-path';
 
@@ -32,15 +32,18 @@
     </tr>`;
   }
 
+  const projectPager = pager('projectPager', rows => {
+    el('projectRows').innerHTML = rows.length
+      ? rows.map(row).join('')
+      : '<tr><td colspan="7" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari folder project, atau buka Claude Code di folder project (berisi .git atau file build) melalui AIT.</td></tr>';
+  });
+
   async function load() {
-    const tbody = el('projectRows');
     try {
-      const projects = await api.get('/api/projects');
-      tbody.innerHTML = projects.length
-        ? projects.map(row).join('')
-        : '<tr><td colspan="7" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari folder project, atau buka Claude Code di folder project (berisi .git atau file build) melalui AIT.</td></tr>';
+      projectPager.set(await api.get('/api/projects'));
     } catch (error) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
+      projectPager.set([]);
+      el('projectRows').innerHTML = `<tr><td colspan="7" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
   }
 
