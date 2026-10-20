@@ -65,6 +65,8 @@ public static class DependencyInjection
         services.AddSingleton<IMemoryTransferService, MemoryTransferService>();
         services.AddSingleton<IThreadService, ThreadService>();
         services.AddSingleton<IDashboardService, DashboardService>();
+        services.AddSingleton<ISetupService, SetupService>();
+        services.AddSingleton<ISetupProfileService, SetupProfileService>();
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
         services.AddSingleton<ICliIntegration, ClaudeCodeIntegration>();
         services.AddSingleton<ICliIntegration>(sp => new OhMyPiProviderIntegration(sp.GetRequiredService<ISettingService>()));

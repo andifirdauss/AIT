@@ -25,6 +25,9 @@ public static class Cli
           logs              Tampilkan log terbaru (-f untuk terus mengikuti)
           open              Buka Web UI di browser
           autostart on|off  Jalankan tray otomatis saat login Windows
+          setup             Buka halaman Setup (semua langkah awal di satu halaman)
+          setup export <f>  Tulis profil setup tim ke file f (tanpa API key dan password)
+          setup import <f>  Terapkan profil setup tim dari file f; API key dan password ditanyakan di sini
           version           Tampilkan versi
           help              Bantuan ini
 
@@ -32,11 +35,12 @@ public static class Cli
           --port <n>        Port server (default 5225 atau yang terakhir disimpan dari menu)
           --open            serve/tray: buka Web UI di browser setelah siap
           -f                logs: terus ikuti log baru
+          --yes             setup import: terapkan tanpa konfirmasi
 
         Konfigurasi ada di appsettings.json di samping AiThread.exe; data dan log di %LOCALAPPDATA%\AiThread.
         """;
 
-    private static readonly string[] Commands = ["serve", "tray", "stop", "status", "logs", "open", "autostart", "version", "help", "menu"];
+    private static readonly string[] Commands = ["serve", "tray", "stop", "status", "logs", "open", "autostart", "setup", "version", "help", "menu"];
 
     public static string Version { get; } =
         (Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0.0").Split('+')[0];
@@ -68,6 +72,7 @@ public static class Cli
             case "logs": return await LogsAsync(options.Follow);
             case "open": OpenBrowser($"http://localhost:{port}"); return 0;
             case "autostart": return AutostartCommand(options.Rest);
+            case "setup": return await SetupCommand.RunAsync(port, options.Rest, options.Yes);
             case "version": Console.WriteLine($"AIT {Version}"); return 0;
             default: Console.WriteLine(Help); return 0;
         }
@@ -311,12 +316,12 @@ public static class Cli
     [DllImport("kernel32.dll")]
     private static extern bool FreeConsole();
 
-    private sealed record Options(int? Port, bool Open, bool Follow, IReadOnlyList<string> Rest, string? Error)
+    private sealed record Options(int? Port, bool Open, bool Follow, IReadOnlyList<string> Rest, string? Error, bool Yes = false)
     {
         public static Options Parse(string[] args)
         {
             int? port = null;
-            bool open = false, follow = false;
+            bool open = false, follow = false, yes = false;
             var rest = new List<string>();
 
             for (var i = 0; i < args.Length; i++)
@@ -330,11 +335,12 @@ public static class Cli
                         break;
                     case "--open": open = true; break;
                     case "-f" or "--follow": follow = true; break;
+                    case "-y" or "--yes": yes = true; break;
                     default: rest.Add(args[i]); break;
                 }
             }
 
-            return new Options(port, open, follow, rest, null);
+            return new Options(port, open, follow, rest, null, yes);
         }
     }
 }

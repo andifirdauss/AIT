@@ -2,6 +2,10 @@
 
 Konfigurasi runtime disimpan di database dan diubah dari UI — tidak perlu restart.
 
+Untuk setup pertama, menu **Setup** mengerjakan bagian yang wajib (koneksi 9router, node, CLI) di satu halaman — lihat
+[Panduan menu → Setup](05-menu.md#setup). Dalam tim, pengaturan yang sama dibagikan lewat
+[profil setup tim](#profil-setup-tim). Halaman ini menjelaskan semua field lengkapnya.
+
 ## Menu Setting
 
 ### Koneksi 9router
@@ -122,6 +126,9 @@ kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)) dan **Context Keeper** (lihat
 [Konteks sesi](07-cara-kerja.md#konteks-sesi-context-keeper)) opsional, begitu juga **Tools Node** (lihat
 [Tools node planner](#tools-node-planner)).
+
+Cara tercepat mengisi semua peran sekaligus: Setup → langkah *Pilih model untuk tiap peran* (cukup pilih model kuat dan
+model murah) — lihat [preset pipeline](05-menu.md#setup). Node `AIT …` yang dibuatnya bisa diubah di sini seperti node lain.
 
 ### Field node
 
@@ -292,5 +299,44 @@ Contoh susunan (id model hanya ilustrasi — pilih dari dropdown sesuai provider
 | Executor A | Executor | combo murah | 6 | 10 |
 | Executor B | Executor | model murah dari provider lain | 4 | 10 |
 | Wrapper | Wrapper | model murah | 4 | 1 |
+
+## Profil setup tim
+
+Satu file JSON (format `aithread-setup` v1) berisi pengaturan yang dipakai bersama satu tim, supaya setup developer baru
+tidak dimulai dari nol. Ketua tim mengatur AIT sekali lalu mengekspornya; developer lain mengimpornya dan hanya mengisi
+secret miliknya sendiri.
+
+| Bagian | Isi | Tidak ikut |
+|---|---|---|
+| Koneksi 9router | Base URL | API key |
+| Proxy & orkestrasi | semua field tab *Proxy & orkestrasi* dan *Build & verifikasi* | proxy API key |
+| Node | semua node: peran, model, temperature, token, paralel, prioritas, instruksi tambahan, aktif, node cadangan (nama), delegasi tool (nama tools node), skill (nama + link sumber) | — |
+| Penyimpanan memory | provider, host, port, database, username, opsi tambahan untuk short, long, dan business memory. File SQLite di lokasi default ditulis sebagai *default* | password |
+| Business memory | aktif, interval, model | nama developer |
+| Skill | model Skill Orchestrator, maks karakter, link semua sumber skill | — |
+
+Telegram (token dan chat) tidak pernah masuk profil.
+
+**Export.** Setup → *Export profil*, atau `AiThread.exe setup export tim.json` (instance harus berjalan).
+
+**Import.** Setup → *Import profil…*, atau `AiThread.exe setup import tim.json` (tambah `--yes` untuk tanpa konfirmasi):
+
+1. **Pratinjau.** Daftar perubahan per bagian dibandingkan dengan komputer ini; tidak ada yang diubah. Bagian bisa dicentang
+   atau dilewati.
+2. **Secret.** Isi API key 9router dan password database yang dibutuhkan. Field yang sudah tersimpan untuk server yang sama
+   boleh dikosongkan. Untuk server memory yang **berbeda**, password lama komputer ini tidak pernah dikirim ke sana: yang
+   dipakai hanya password yang Anda ketik (kosong = tanpa password).
+3. **Terapkan.** Urutannya: 9router → orkestrasi → penyimpanan memory → skill → node → business memory. Bagian yang gagal
+   (mis. database memory tidak bisa dihubungi) dilaporkan, bagian lain tetap diterapkan. Perbaiki lalu import lagi.
+
+| Aturan | Keterangan |
+|---|---|
+| Idempoten | Import ulang file yang sama hanya menerapkan yang berbeda; tanpa perbedaan, tidak ada yang berubah. |
+| Node | Dicocokkan lewat **nama + peran** (huruf besar/kecil diabaikan). Node baru dibuat dulu, lalu node cadangan dan delegasi tool disambungkan lewat nama. Untuk node di profil, isi file yang berlaku (termasuk daftar skill). |
+| Node lain | *Biarkan apa adanya* (default), atau *Nonaktifkan* agar pipeline persis sama dengan profil (node tidak dihapus). |
+| Tautan yang hilang | Node cadangan atau tools node yang tidak ada di profil maupun di komputer ini dikosongkan, dengan peringatan. |
+| Skill | Sumber skill baru ditambahkan lalu ditarik di latar belakang, jadi skill-nya belum ada saat import pertama. Import profil lagi setelah sumbernya *Siap* untuk memasang skill ke node. |
+| Memory | *Salin memory yang sudah ada ke penyimpanan baru* (default aktif) sama dengan opsi di Setting → Penyimpanan memory. |
+| Versi | File dari AIT yang lebih baru (versi format lebih tinggi) ditolak; perbarui AIT dulu. |
 
 Lanjut ke [Integrasi Claude Code](03-integrasi-claude-code.md).

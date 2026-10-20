@@ -159,8 +159,14 @@ AiThread.exe status           # PID, sejak kapan, lokasi log, status autostart
 AiThread.exe logs -f          # ikuti log terbaru
 AiThread.exe stop             # matikan dengan rapi
 AiThread.exe autostart on     # atau off
+AiThread.exe setup            # buka halaman Setup di browser
+AiThread.exe setup export tim.json   # profil setup tim, tanpa API key dan password
+AiThread.exe setup import tim.json   # pratinjau, tanya API key/password, lalu terapkan (--yes = tanpa konfirmasi)
 AiThread.exe serve --port 6000
 ```
+
+Perintah `setup` memakai instance yang sedang berjalan (jalankan `tray` dulu). Isi dan aturan profil ada di
+[Profil setup tim](02-konfigurasi.md#profil-setup-tim).
 
 Port default 5225 (atau yang terakhir disimpan dari menu); `--port` berlaku untuk satu perintah. Log ada di
 `%LOCALAPPDATA%\AiThread\logs` (folder yang sama dengan `scripts\aithread.ps1`). Dengan `--urls`/`--environment`
@@ -182,7 +188,8 @@ isi hanya kunci yang diganti); file ini menimpa `appsettings.json` di samping ex
 
 ## 7. Verifikasi
 
-Buka **Dashboard**. Empat kartu status teratas harus:
+Buka menu **Setup**: tiap langkah menampilkan statusnya dari kondisi AIT saat itu, dan langkah yang belum selesai bisa
+langsung dikerjakan di sana (lihat [Panduan menu → Setup](05-menu.md#setup)). Di **Dashboard**, empat kartu status teratas harus:
 
 | Kartu | Kondisi normal |
 |---|---|

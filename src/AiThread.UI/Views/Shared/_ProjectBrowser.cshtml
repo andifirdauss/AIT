@@ -1,0 +1,55 @@
+@* Project folder browser, shared by the Project and Setup pages. Behavior in wwwroot/js/project-browser.js
+   (AiThread.projectBrowser.open); include that script before the page script. *@
+<div class="modal fade" id="browseModal" tabindex="-1" aria-labelledby="browseModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="browseModalTitle">Telusuri folder project</h5>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-1 mb-2" id="quickLocations"></div>
+                <div class="input-group mb-3">
+                    <button class="btn btn-outline-secondary" type="button" id="btnUp" title="Folder induk">↑ Naik</button>
+                    <input type="text" class="form-control mono" id="browsePath" placeholder="Pilih drive/lokasi di atas atau ketik path folder, lalu Enter" />
+                    <button class="btn btn-outline-secondary" type="button" id="btnOpen">Buka</button>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-5">
+                        <div class="small text-secondary mb-1" id="folderTitle">Folder</div>
+                        <div class="list-group browse-list" id="folderList"></div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="small text-secondary mb-1">Project di folder ini</div>
+                        <div class="list-group mb-3" id="projectList"></div>
+
+                        <div class="border rounded p-2">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="small">Cari di semua sub-folder, kedalaman</span>
+                                <select class="form-select form-select-sm" id="scanDepth" style="width:auto">
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4" selected>4</option>
+                                    <option value="6">6</option>
+                                    <option value="8">8</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnScan">Scan</button>
+                                <button type="button" class="btn btn-sm btn-link d-none" id="btnSelectAllNew">Pilih semua yang belum terdaftar</button>
+                            </div>
+                            <div class="small text-secondary mt-1" id="scanInfo">Folder build, VCS, tersembunyi, dan junction dilewati.</div>
+                            <div class="list-group browse-list mt-2" id="scanResults"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span class="small text-secondary" id="selectionInfo">Belum ada project dipilih.</span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary" id="btnRegisterSelected" disabled>Daftarkan terpilih</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

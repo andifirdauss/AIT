@@ -35,7 +35,7 @@ File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder
 ### Global
 
 Semua sesi Claude Code di komputer ini melewati AIT. Di menu **CLI**, nyalakan switch *Global* pada kartu Claude
-Code (ada konfirmasi). File yang ditulis:
+Code (ada konfirmasi); switch yang sama ada di Setup → langkah *Arahkan CLI coding ke AIT*. File yang ditulis:
 `%USERPROFILE%\.claude\settings.json`.
 
 Hanya sesi yang dibuka di dalam sebuah project yang diorkestrasi, yaitu folder yang berisi `.git` atau file build

@@ -1,0 +1,261 @@
+@{
+    ViewData["Title"] = "Setup";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Setup</h1>
+        <p class="page-subtitle">Semua langkah awal di satu halaman. Status tiap langkah dibaca dari kondisi AIT saat ini, jadi halaman ini juga bisa dipakai untuk memeriksa ulang kapan saja.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTour">Panduan bergambar</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRecheck">Cek ulang</button>
+    </div>
+</div>
+
+<div class="setup-pane">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+                <div class="fw-semibold" id="setupSummary">Memeriksa…</div>
+                <div class="small text-secondary" id="setupChecked"></div>
+            </div>
+            <div class="progress setup-progress mt-2" role="progressbar" aria-label="Langkah wajib yang selesai" aria-valuemin="0" aria-valuemax="100" id="setupProgress">
+                <div class="progress-bar" id="setupBar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body d-flex flex-wrap align-items-center gap-3">
+            <div class="flex-grow-1" style="min-width: 260px">
+                <div class="fw-semibold">Profil setup tim</div>
+                <div class="small text-secondary">
+                    Ketua tim cukup mengatur sekali lalu <strong>Export profil</strong>. Developer lain <strong>Import profil</strong> file itu,
+                    lalu hanya mengisi API key 9router dan password database miliknya. Isi profil: alamat 9router, setting orkestrasi, node,
+                    penyimpanan memory, business memory, dan sumber skill. Secret dan nama developer tidak pernah ikut ke file.
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm" data-profile-import>Import profil…</button>
+                <a class="btn btn-outline-secondary btn-sm" href="/api/setup/profile" download>Export profil</a>
+            </div>
+            <input type="file" id="profileFile" accept=".json,application/json" hidden />
+        </div>
+    </div>
+
+    <div id="setupSteps">
+        <details class="card setup-step mb-2" id="step-system" data-step="system">
+            <summary class="card-header setup-step-head">
+                <span class="setup-step-num">1</span>
+                <span class="setup-step-text"><span class="setup-step-title">Database &amp; short memory</span><span class="setup-step-detail" data-detail></span></span>
+                <span class="setup-step-state" data-state></span>
+            </summary>
+            <div class="card-body">
+                <p class="small text-secondary mb-0">
+                    Database (SQL Server LocalDB bawaan) dan short memory (Garnet di dalam AIT) disiapkan otomatis saat AIT start, jadi biasanya
+                    tidak ada yang perlu dilakukan. Bila langkah ini merah, lihat <a href="/Docs/01-instalasi#3-database">Instalasi → Database</a>
+                    atau <a href="/Docs/08-troubleshooting">Troubleshooting</a>, lalu restart AIT.
+                </p>
+            </div>
+        </details>
+
+        <details class="card setup-step mb-2" id="step-router" data-step="router">
+            <summary class="card-header setup-step-head">
+                <span class="setup-step-num">2</span>
+                <span class="setup-step-text"><span class="setup-step-title">Hubungkan 9router</span><span class="setup-step-detail" data-detail></span></span>
+                <span class="setup-step-state" data-state></span>
+            </summary>
+            <div class="card-body">
+                <ol class="small setup-howto">
+                    <li>
+                        9router harus berjalan. AIT biasanya menyalakannya sendiri; bila masih offline:
+                        <button type="button" class="btn btn-outline-primary btn-sm ms-1" id="btnStartRouter">Jalankan 9router</button>
+                    </li>
+                    <li>
+                        Di <a id="routerDashboard" href="http://localhost:20128" target="_blank" rel="noopener">dashboard 9router ↗</a>, hubungkan
+                        minimal satu provider (menu <em>Providers</em>). Idealnya satu yang kuat dan satu yang murah/gratis.
+                    </li>
+                    <li>Bila <em>Require API key</em> aktif di 9router, salin API key (menu <em>API Keys</em>) dan tempel di bawah.</li>
+                </ol>
+                <form id="routerForm" class="row g-2 align-items-start" novalidate>
+                    <div class="col-md-5">
+                        <label class="form-label small" for="setupRouterUrl">Base URL 9router</label>
+                        <input type="url" class="form-control mono" id="setupRouterUrl" placeholder="http://localhost:20128" required />
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label small" for="setupRouterKey">API key</label>
+                        <input type="password" class="form-control mono" id="setupRouterKey" autocomplete="off" spellcheck="false" />
+                        <div class="form-text" id="setupRouterKeyHint"></div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small d-none d-md-block">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100" id="btnSaveRouter">Test &amp; simpan</button>
+                    </div>
+                </form>
+                <div class="small mt-2" id="routerResult"></div>
+            </div>
+        </details>
+
+        <details class="card setup-step mb-2" id="step-nodes" data-step="nodes">
+            <summary class="card-header setup-step-head">
+                <span class="setup-step-num">3</span>
+                <span class="setup-step-text"><span class="setup-step-title">Pilih model untuk tiap peran</span><span class="setup-step-detail" data-detail></span></span>
+                <span class="setup-step-state" data-state></span>
+            </summary>
+            <div class="card-body">
+                <p class="small text-secondary">
+                    Cukup pilih dua model. AIT membuat node untuk setiap peran, lalu menguji tiap node dengan satu panggilan kecil.
+                    Menjalankan ini lagi memperbarui node yang sama; node lain yang Anda buat sendiri di menu Node tidak diubah.
+                </p>
+                <div class="small text-warning mb-2 d-none" id="presetNoModels"></div>
+                <form id="presetForm" class="row g-3" novalidate>
+                    <div class="col-md-6">
+                        <label class="form-label small" for="presetStrong">Model kuat · Planner (dan Reviewer)</label>
+                        <select class="form-select mono" id="presetStrong" required></select>
+                        <div class="form-text">Model terpintar yang mendukung <em>tool calling</em>: menjelajah kode, menyusun rencana, membagi tugas.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small" for="presetCheap">Model murah · Executor, Wrapper, Tools Node, Context Keeper</label>
+                        <select class="form-select mono" id="presetCheap"></select>
+                        <div class="form-text">Murah &amp; cepat: mengerjakan tugas per file secara paralel dan merangkum hasil.</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="presetTools" checked />
+                            <label class="form-check-label small" for="presetTools"><strong>Tools Node</strong> (model murah): menjalankan <span class="mono">read_file</span>, <span class="mono">search_text</span>, dan <span class="mono">find_references</span> untuk planner, sehingga konteks planner tetap kecil dan hemat token.</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="presetContext" checked />
+                            <label class="form-check-label small" for="presetContext"><strong>Context Keeper</strong> (model murah): meringkas percakapan CLI setelah tiap thread, jadi planner mulai dari ringkasan, bukan seluruh chat.</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="presetReviewer" />
+                            <label class="form-check-label small" for="presetReviewer"><strong>Reviewer</strong> (model kuat): memeriksa hasil executor terhadap rencana sebelum dilaporkan. Lebih teliti, lebih banyak token.</label>
+                        </div>
+                    </div>
+                    <div class="col-12 d-flex flex-wrap align-items-center gap-3">
+                        <button type="submit" class="btn btn-primary" id="btnPreset">Buat node &amp; uji</button>
+                        <a class="small" href="/Node">Atur detail per node di menu Node →</a>
+                    </div>
+                </form>
+                <div class="mt-3" id="presetResult"></div>
+            </div>
+        </details>
+
+        <details class="card setup-step mb-2" id="step-project" data-step="project">
+            <summary class="card-header setup-step-head">
+                <span class="setup-step-num">4</span>
+                <span class="setup-step-text"><span class="setup-step-title">Daftarkan project</span><span class="setup-step-detail" data-detail></span></span>
+                <span class="setup-step-state" data-state></span>
+            </summary>
+            <div class="card-body">
+                <div class="small mb-2" id="setupProjects"></div>
+                <div class="input-group">
+                    <input type="text" class="form-control mono" id="setupProjectPath" placeholder="D:\Source\MyApp (folder project)" />
+                    <button class="btn btn-outline-secondary" type="button" id="btnSetupBrowse">Telusuri…</button>
+                    <button class="btn btn-primary" type="button" id="btnSetupRegister">Daftarkan</button>
+                </div>
+                <div class="form-text">Folder berisi <span class="mono">.git</span> atau file build (<span class="mono">.sln</span>, <span class="mono">package.json</span>, <span class="mono">pom.xml</span>, …). Kelola semua project di <a href="/Project">menu Project</a>.</div>
+            </div>
+        </details>
+
+        <details class="card setup-step mb-2" id="step-cli" data-step="cli">
+            <summary class="card-header setup-step-head">
+                <span class="setup-step-num">5</span>
+                <span class="setup-step-text"><span class="setup-step-title">Arahkan CLI coding ke AIT</span><span class="setup-step-detail" data-detail></span></span>
+                <span class="setup-step-state" data-state></span>
+            </summary>
+            <div class="card-body">
+                <p class="small text-secondary">
+                    Nyalakan CLI yang Anda pakai. <strong>Global</strong> = semua sesi CLI itu di komputer ini lewat AIT. Untuk menyalakan per project saja,
+                    pakai <a href="/Cli">menu CLI</a>. AIT hanya menulis entri miliknya; mematikan switch melepasnya lagi. Buka sesi CLI baru setelahnya.
+                </p>
+                <div class="list-group" id="setupClis"><div class="list-group-item small text-secondary">Memuat…</div></div>
+            </div>
+        </details>
+
+        <details class="card setup-step mb-2" id="step-memory" data-step="memory">
+            <summary class="card-header setup-step-head">
+                <span class="setup-step-num">6</span>
+                <span class="setup-step-text"><span class="setup-step-title">Memory bersama tim</span><span class="setup-step-detail" data-detail></span></span>
+                <span class="setup-step-state" data-state></span>
+            </summary>
+            <div class="card-body">
+                <p class="small text-secondary">
+                    Bekerja sendiri? Lewati langkah ini: memory disimpan di komputer ini. Dalam tim, arahkan <strong>Long</strong> dan
+                    <strong>Business memory</strong> semua developer ke database yang sama agar AIT belajar dari pekerjaan seluruh tim.
+                    Cara termudah: import profil dari ketua tim.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-profile-import>Import profil tim…</button>
+                    <a class="btn btn-outline-secondary btn-sm" href="/Setting#memory">Atur di Setting → Penyimpanan memory</a>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <div class="card border-success-subtle bg-success-subtle mt-3 d-none" id="setupDone">
+        <div class="card-body">
+            <div class="fw-semibold text-success-emphasis">Setup selesai 🎉</div>
+            <p class="small mb-2">
+                Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel, build &amp; review)
+                tampil langsung di CLI; detail dan diff per file ada di Dashboard.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-success" href="/">Buka Dashboard</a>
+                <a class="btn btn-sm btn-outline-secondary" href="/Docs/04-penggunaan">Cara memakai</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="profileModalTitle">Import profil setup</h5>
+            </div>
+            <div class="modal-body">
+                <div class="small text-secondary mb-3" id="profileInfo"></div>
+                <div class="mb-3">
+                    <div class="form-label small">Bagian yang diterapkan</div>
+                    <div class="d-flex flex-wrap gap-3" id="profileSections"></div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6" id="profileNodeModeBox">
+                        <label class="form-label small" for="profileNodeMode">Node di komputer ini yang tidak ada di profil</label>
+                        <select class="form-select form-select-sm" id="profileNodeMode">
+                            <option value="Merge">Biarkan apa adanya</option>
+                            <option value="Replace">Nonaktifkan (tidak dihapus)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end" id="profileCopyBox">
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" id="profileCopy" checked />
+                            <label class="form-check-label small" for="profileCopy">Salin memory yang sudah ada ke penyimpanan baru</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3 d-none" id="profileSecretsBox">
+                    <div class="form-label small mb-0">Secret di komputer ini</div>
+                    <div class="small text-secondary mb-2">Tidak ada di file profil. Isi yang dibutuhkan; kosongkan yang sudah tersimpan atau tidak dipakai server-nya.</div>
+                    <div class="row g-2" id="profileSecrets"></div>
+                </div>
+                <div id="profilePreview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="btnProfileClose">Batal</button>
+                <button type="button" class="btn btn-primary" id="btnProfileApply" disabled>Terapkan profil</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<partial name="_ProjectBrowser" />
+
+@section Scripts {
+    <script src="~/js/project-browser.js" asp-append-version="true"></script>
+    <script src="~/js/pages/setup.js" asp-append-version="true"></script>
+}

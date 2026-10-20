@@ -171,6 +171,7 @@ public class OhMyPiProviderIntegrationTests : IDisposable
             Task.FromResult(new RuntimeSettings("http://router.test", null, proxyKey, null, true, true, 24, 1, 8, 60));
         public Task<SystemSettingDto> GetAsync(string proxyBaseUrl, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<SystemSettingDto> UpdateAsync(UpdateSystemSettingRequest request, string proxyBaseUrl, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RuntimeSettings> UpdateRouterAsync(string baseUrl, string? apiKey, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TelegramSettingsDto> GetTelegramAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<TelegramSettingsDto> UpdateTelegramAsync(UpdateTelegramSettingsRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<RuntimeSettings> UpdateSkillsAsync(UpdateSkillSettingsRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
