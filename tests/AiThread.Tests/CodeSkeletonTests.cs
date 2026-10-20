@@ -91,7 +91,7 @@ public class CodeSkeletonTests
               {"id":"F1","calls":[{"kind":"function","target":"p_InitiateDetail","line":2},{"kind":"function","target":"p_initiateData","line":3}]},
               {"id":"F2","calls":[{"kind":"http","target":"POST /Transaction/KlaimPending/InitiateData","line":7}]}]}
             """));
-        await harness.Service<FunctionCallScanner>().ScanFileAsync(harness.ProjectId, harness.Project.Root, "Scripts/klaim.js", [(1, 8)], CancellationToken.None);
+        await harness.Service<IFunctionCallScanner>().ScanFileAsync(harness.ProjectId, harness.Project.Root, "Scripts/klaim.js", [(1, 8)], CancellationToken.None);
         var (project, scope) = await ContextAsync(harness);
         var tools = Tools(harness);
 
@@ -106,7 +106,7 @@ public class CodeSkeletonTests
         Assert.Contains("[calls: 2]", await tools.OutlineAsync(project, scope, "Scripts/klaim.js", null, default));
 
         // The controller action was queued for the tools node.
-        Assert.True(harness.Service<FunctionCallQueue>().Reader.TryRead(out var queued));
+        Assert.True(harness.Service<IFunctionCallQueue>().Reader.TryRead(out var queued));
         Assert.Equal("Controllers/KlaimPendingController.cs", queued!.Path);
         Assert.StartsWith("No function or method 'Missing'", await tools.CallsAsync(project, scope, "Scripts/klaim.js", "Missing", default));
     }
@@ -139,7 +139,7 @@ public class CodeSkeletonTests
         Assert.Contains("  6-8 function p_initiateData()", brief);
     }
 
-    private static CodeSkeletonTools Tools(OrchestrationHarness harness) => harness.Service<CodeSkeletonTools>();
+    private static ICodeSkeletonTools Tools(OrchestrationHarness harness) => harness.Service<ICodeSkeletonTools>();
 
     private static async Task<(ProjectContext Project, WorkspaceScope Scope)> ContextAsync(OrchestrationHarness harness)
     {

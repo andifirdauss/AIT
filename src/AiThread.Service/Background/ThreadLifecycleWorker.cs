@@ -15,8 +15,8 @@ namespace AiThread.Service.Background;
 // graceful stop, running threads are cancelled and given time to record that before the process exits.
 public sealed class ThreadLifecycleWorker(
     IDbContextFactory<AiThreadDbContext> dbFactory,
-    ThreadRegistry registry,
-    PendingQuestionStore questions,
+    IThreadRegistry registry,
+    IPendingQuestionStore questions,
     IEventBus eventBus,
     IActivityLogService activityLog,
     ILogger<ThreadLifecycleWorker> logger) : IHostedService

@@ -73,7 +73,7 @@ public sealed class OrchestrationHarness : IAsyncDisposable
 
     public IThreadOrchestrator Orchestrator => _services.GetRequiredService<IThreadOrchestrator>();
 
-    public ThreadRollback Rollback => _services.GetRequiredService<ThreadRollback>();
+    public IThreadRollback Rollback => _services.GetRequiredService<IThreadRollback>();
 
     public INodeService Nodes => _services.GetRequiredService<INodeService>();
 

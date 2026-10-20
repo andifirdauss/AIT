@@ -170,7 +170,7 @@ public class MemoryTransferTests
                 harness.Service<IDbContextFactory<AiThreadDbContext>>(),
                 shortStore,
                 harness.Service<LongMemoryStore>(),
-                harness.Service<ModuleRegistry>(),
+                harness.Service<IModuleRegistry>(),
                 harness.Service<IEventBus>(),
                 harness.Service<IActivityLogService>(),
                 NullLogger<MemoryTransferService>.Instance);
