@@ -17,8 +17,8 @@ Semua endpoint berada di host AIT (default `http://localhost:5225`). Enum dikiri
 
 Balasan orkestrasi dan pesan error memakai format klien yang memanggil. Auth (hanya diperiksa bila *Proxy API key*
 diisi): `Authorization: Bearer <key>`, `x-api-key: <key>`, `x-goog-api-key: <key>`, atau `?key=<key>` (Gemini).
-Header opsional: `X-AiThread-Project` (folder root project; `X-AiThread-Solution` dengan path `.sln`/`.slnx` dari versi
-lama masih diterima), `X-AiThread-Cwd` (working directory), `X-AiThread-Session` (id sesi).
+Header opsional: `X-AIThread-Project` (folder root project; `X-AIThread-Solution` dengan path `.sln`/`.slnx` dari versi
+lama masih diterima), `X-AIThread-Cwd` (working directory), `X-AIThread-Session` (id sesi).
 
 Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar: `message_start`,
 `content_block_start`, `ping` (tiap 10 detik selama bekerja), `content_block_delta` (`text_delta`),
@@ -196,7 +196,7 @@ Dipakai `scripts/aithread.ps1` untuk instance background.
 | Method | Path | Body / query |
 |---|---|---|
 | `GET` | `/api/system` | — (`processId`, `startedAt`, `environment`, `contentRoot`) |
-| `POST` | `/api/system/shutdown` | — ; wajib header `X-AiThread-Shutdown` dan hanya dari localhost, selain itu `403`. Mematikan AIT dengan rapi: thread berjalan dibatalkan dan dicatat dulu. |
+| `POST` | `/api/system/shutdown` | — ; wajib header `X-AIThread-Shutdown` dan hanya dari localhost, selain itu `403`. Mematikan AIT dengan rapi: thread berjalan dibatalkan dan dicatat dulu. |
 
 ### Telegram
 

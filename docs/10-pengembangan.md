@@ -6,25 +6,25 @@ Konvensi kode dan penggunaan MCP ada di `CLAUDE.md` di root repo.
 
 | Project | Isi |
 |---|---|
-| `src/AiThread.Common` | Entity, enum, DTO, `AiThreadOptions`. |
-| `src/AiThread.Data` | `AiThreadDbContext` (SQL Server via `IDbContextFactory`), migrasi EF, `RedisShortMemoryStore`, `EmbeddedRedisServer` (Garnet di dalam proses), `Memory/` (store memory yang bisa diganti dari menu Setting: `SwitchableShortMemoryStore`, `LongMemoryStore`, `SqlShortMemoryStore`, `MemoryStoreConnection` untuk SQL Server/PostgreSQL/MySQL/Oracle/SQLite/Redis), `InProcessEventBus`. |
-| `src/AiThread.Service` | Service utama (`NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`, dll.), `Orchestration/`, `Workspace/`, `Proxy/`, `Background/`. |
-| `src/AiThread.API` | Controller REST `/api/*`, controller proxy `AnthropicProxyController` / `OpenAiProxyController` / `GeminiProxyController` (`/v1/*`, `/v1beta/*`), `StreamController` (SSE), infrastruktur. |
-| `src/AiThread.UI` | Host ASP.NET Core MVC. View hanya kerangka; data dimuat oleh `wwwroot/js/pages/*.js` lewat `/api` + SSE. |
-| `tests/AiThread.Tests` | Unit test xUnit, plus test end-to-end orkestrasi (`ThreadOrchestratorTests`): `OrchestrationHarness` memakai service layer asli di atas SQLite sementara dan folder project sementara, hanya model yang dipalsukan oleh `ScriptedRouter` (balasan per agen, executor per file). |
+| `src/AIThread.Common` | Entity, enum, DTO, `AIThreadOptions`. |
+| `src/AIThread.Data` | `AIThreadDbContext` (SQL Server via `IDbContextFactory`), migrasi EF, `RedisShortMemoryStore`, `EmbeddedRedisServer` (Garnet di dalam proses), `Memory/` (store memory yang bisa diganti dari menu Setting: `SwitchableShortMemoryStore`, `LongMemoryStore`, `SqlShortMemoryStore`, `MemoryStoreConnection` untuk SQL Server/PostgreSQL/MySQL/Oracle/SQLite/Redis), `InProcessEventBus`. |
+| `src/AIThread.Service` | Service utama (`NineRouterService`, `NodeService`, `ProjectService`, `MemoryService`, `SettingService`, dll.), `Orchestration/`, `Workspace/`, `Proxy/`, `Background/`. |
+| `src/AIThread.API` | Controller REST `/api/*`, controller proxy `AnthropicProxyController` / `OpenAiProxyController` / `GeminiProxyController` (`/v1/*`, `/v1beta/*`), `StreamController` (SSE), infrastruktur. |
+| `src/AIThread.UI` | Host ASP.NET Core MVC. View hanya kerangka; data dimuat oleh `wwwroot/js/pages/*.js` lewat `/api` + SSE. |
+| `tests/AIThread.Tests` | Unit test xUnit, plus test end-to-end orkestrasi (`ThreadOrchestratorTests`): `OrchestrationHarness` memakai service layer asli di atas SQLite sementara dan folder project sementara, hanya model yang dipalsukan oleh `ScriptedRouter` (balasan per agen, executor per file). |
 
 Alur dependensi: `UI → API → Service → Data → Common`.
 
 ## Konvensi service
 
-Setiap class di `AiThread.Service` yang di-register di DI (`DependencyInjection.AddServiceLayer`) memakai pola
+Setiap class di `AIThread.Service` yang di-register di DI (`DependencyInjection.AddServiceLayer`) memakai pola
 **Interface + Service + partial class per method**:
 
-- **Interface** `I<Nama>` di `Interfaces/` (namespace `AiThread.Service.Interfaces`) memuat semua member publik
+- **Interface** `I<Nama>` di `Interfaces/` (namespace `AIThread.Service.Interfaces`) memuat semua member publik
   instance. Registrasi: `services.AddSingleton<I<Nama>, <Nama>>()`. Konsumen (parameter constructor, field,
   `GetRequiredService<>`, test lewat `harness.Service<I<Nama>>()`) selalu memakai interface, bukan class konkret.
 - **Service** `partial` di folder bernama class itu, di bawah folder asalnya. Namespace tetap mengikuti folder asal,
-  mis. `Orchestration/PlannerAgent/` tetap `AiThread.Service.Orchestration`.
+  mis. `Orchestration/PlannerAgent/` tetap `AIThread.Service.Orchestration`.
   - `<Nama>.cs`: deklarasi utama, yaitu primary constructor, base list, field, konstanta, property, nested type, dan
     type pendukung (record/DTO) yang memang milik class itu.
   - `<Nama>.<Method>.cs`: satu file per method, publik maupun private. Overload digabung dalam satu file, termasuk
@@ -46,33 +46,33 @@ Implementations/ThreadService/
 ## Perintah
 
 ```powershell
-dotnet build AiThread.slnx
-dotnet test tests/AiThread.Tests
-dotnet run --project src/AiThread.UI --launch-profile http
+dotnet build AIThread.slnx
+dotnet test tests/AIThread.Tests
+dotnet run --project src/AIThread.UI --launch-profile http
 ```
 
 Migrasi EF (tool lokal di `dotnet-tools.json`):
 
 ```powershell
 dotnet tool restore
-dotnet tool run dotnet-ef migrations add <NamaMigrasi> --context AiThreadDbContext --project src/AiThread.Data --startup-project src/AiThread.Data
-dotnet tool run dotnet-ef migrations has-pending-model-changes --context AiThreadDbContext --project src/AiThread.Data --startup-project src/AiThread.Data
+dotnet tool run dotnet-ef migrations add <NamaMigrasi> --context AIThreadDbContext --project src/AIThread.Data --startup-project src/AIThread.Data
+dotnet tool run dotnet-ef migrations has-pending-model-changes --context AIThreadDbContext --project src/AIThread.Data --startup-project src/AIThread.Data
 ```
 
-`--context` wajib karena `AiThread.Data` juga berisi `ShortMemoryDbContext` dan `LongMemoryDbContext` (store memory
+`--context` wajib karena `AIThread.Data` juga berisi `ShortMemoryDbContext` dan `LongMemoryDbContext` (store memory
 eksternal). Keduanya tidak punya migrasi: tabelnya dibuat oleh `MemorySchema` saat pertama dipakai, jadi perubahan pada
 `LongMemory` harus tetap kompatibel dengan tabel yang sudah ada di database eksternal.
 
 Instance background (`scripts/aithread.ps1`, lihat [Instalasi](01-instalasi.md#5-menjalankan-di-background))
-memakai hasil publish di `%LOCALAPPDATA%\AiThread\app`, jadi build/debug dari repo tetap bisa jalan — asalkan
+memakai hasil publish di `%LOCALAPPDATA%\AIThread\app`, jadi build/debug dari repo tetap bisa jalan — asalkan
 memakai port lain (`--urls`) atau instance background dihentikan dulu. `Background/ThreadLifecycleWorker` menjaga
 status thread saat proses berhenti: shutdown rapi membatalkan thread yang berjalan, dan saat start thread yang
 tertinggal dari proses yang mati mendadak ditandai *Cancelled*.
 
-`AiThread.exe` standalone: `scripts/publish-exe.ps1` memakai profil `src/AiThread.UI/Properties/PublishProfiles/standalone.pubxml`
-(win-x64, self-contained, single-file; `AssemblyName` jadi `AiThread` hanya di profil itu, build biasa tetap
-`AiThread.UI`) dan membangun ke `dist/.build`, jadi tidak bentrok dengan `bin/` yang sedang dikunci. Menu, tray
-(Win32 murni, tanpa WinForms agar RAM kecil), autostart, dan perintah CLI ada di `src/AiThread.UI/Hosting/`;
+`AIThread.exe` standalone: `scripts/publish-exe.ps1` memakai profil `src/AIThread.UI/Properties/PublishProfiles/standalone.pubxml`
+(win-x64, self-contained, single-file; `AssemblyName` jadi `AIThread` hanya di profil itu, build biasa tetap
+`AIThread.UI`) dan membangun ke `dist/.build`, jadi tidak bentrok dengan `bin/` yang sedang dikunci. Menu, tray
+(Win32 murni, tanpa WinForms agar RAM kecil), autostart, dan perintah CLI ada di `src/AIThread.UI/Hosting/`;
 `Program.cs` hanya memanggil `Cli.RunAsync`. Tanpa argumen dan tanpa terminal/`--urls`/env `ASPNETCORE_*`, host berjalan
 seperti biasa (`dotnet run`, Visual Studio, script background tidak berubah). Menguji menu membutuhkan konsol asli:
 jalankan exe dengan `menu --port <port uji>` agar tidak menyentuh instance port 5225.
@@ -117,7 +117,7 @@ connection string LocalDB default.
 
 Menu **Docs** (`/Docs`, `/Docs/{nama-file-tanpa-.md}`) merender `docs/*.md` dengan Markdig lewat `DocsService`.
 
-- Lokasi folder: `AiThread:DocsPath` bila diisi; selain itu `docs/` repo (dua tingkat di atas `src/AiThread.UI`, dipakai
+- Lokasi folder: `AIThread:DocsPath` bila diisi; selain itu `docs/` repo (dua tingkat di atas `src/AIThread.UI`, dipakai
   saat development sehingga perubahan langsung terlihat), lalu salinan `docs/` di folder output/publish.
 - `README.md` adalah halaman indeks; urutan navigasi mengikuti nama file, jadi pertahankan awalan angka (`11-...md`).
 - Judul diambil dari heading `# ` pertama. Tautan `nama-file.md#anchor` otomatis menjadi `/Docs/nama-file#anchor`;
@@ -142,7 +142,7 @@ menjelaskan cara memperbaikinya (pesan dikirim balik ke planner). Tambahkan test
 terkait harus diubah bersamaan.
 
 **Event SSE baru** — tambahkan konstanta di `AppEventTypes`, publikasikan lewat `IEventBus.Publish`, lalu tangani
-di `AiThread.stream(...)` pada halaman terkait.
+di `AIThread.stream(...)` pada halaman terkait.
 
 **Menambah perintah bot Telegram**
 1. Tambahkan ke `TelegramMessages.Commands` (menu `/` di Telegram diperbarui saat bot mulai polling).
@@ -159,7 +159,7 @@ Setting → Base URL ke server tiruan tersebut, lalu kirim request berformat Cla
 gunakan *Jalankan prompt* di Dashboard. Gunakan database terpisah (ubah `ConnectionStrings:Default`) agar data uji
 tidak bercampur.
 
-Bot Telegram diuji dengan cara yang sama: arahkan `AiThread:Telegram:ApiBaseUrl` ke server tiruan Bot API yang
+Bot Telegram diuji dengan cara yang sama: arahkan `AIThread:Telegram:ApiBaseUrl` ke server tiruan Bot API yang
 menjawab `getMe`, `deleteWebhook`, `setMyCommands`, `getUpdates` (long poll dengan `offset`), `sendMessage`,
 `editMessageText`, dan `answerCallbackQuery`, lalu sisipkan update pesan/tombol ke antrean `getUpdates`-nya.
 Kecilkan `PollTimeoutSeconds` (mis. `2`) agar uji cepat. Server tiruan sebaiknya memvalidasi HTML seperti Telegram

@@ -14,7 +14,7 @@ penjelasan.
 Semua bagian label dan keyword ditulis **PascalCase**, dinormalisasi oleh AIT (bukan dipercayakan ke model):
 `user dto` → `UserDTO`, `api client` → `APIClient`, `users` → `Users`. Singkatan ditulis kapital semua: daftar bawaan
 (API, DTO, UI, SQL, DB, ID, URL, JSON, …) ditambah kata 2–3 huruf yang memang ditulis kapital (`TO`, `PO`, `SKU`); daftar bisa
-ditambah lewat `AiThread:MemoryAcronyms`. Identifier dari kode tetap seperti aslinya (`UserDto`, `UserBL`), hanya huruf
+ditambah lewat `AIThread:MemoryAcronyms`. Identifier dari kode tetap seperti aslinya (`UserDto`, `UserBL`), hanya huruf
 pertamanya dibesarkan.
 
 **Nama modul** sering berupa singkatan, jadi bagian yang ditulis kapital selalu dipertahankan, berapa pun panjangnya:
@@ -44,7 +44,7 @@ Contoh (Rule):
 
 ```text
 Aturan: `TokenBadge` selalu lebar 24 kolom agar `[` dan `]` sejajar.
-Ditegakkan di: `src/AiThread.Service/Orchestration/ClientProgress.cs`, `WithBadge`.
+Ditegakkan di: `src/AIThread.Service/Orchestration/ClientProgress.cs`, `WithBadge`.
 Pengecualian: badge tidak muat di sisa baris, pindah utuh ke baris baru rata kanan.
 ```
 
@@ -122,7 +122,7 @@ thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
 - Memory dipindah oleh worker, bukan oleh kedaluwarsa (TTL) — jadi tidak ada yang hilang walau aplikasi mati saat
   sebuah memory berumur 24 jam. Id tetap sama sehingga pemindahan aman diulang.
 - Short memory bertahan saat AIT di-restart atau crash: Garnet mencatat setiap penulisan ke disk
-  (`%LOCALAPPDATA%\AiThread\garnet\<port>`) sebelum dikonfirmasi.
+  (`%LOCALAPPDATA%\AIThread\garnet\<port>`) sebelum dikonfirmasi.
 - **Short memory tidak tersedia** (mis. Garnet gagal start, atau server short memory eksternal mati): memory baru
   langsung disimpan sebagai long memory (tercatat di log sebagai peringatan). Store database eksternal dicek ulang
   tiap 15 detik dan otomatis dipakai lagi begitu kembali hidup.
@@ -173,7 +173,7 @@ berlaku tanpa restart.
 | PostgreSQL | ✓ | ✓ | ✓ | host, port (5432), database, username, password |
 | MySQL | ✓ | ✓ | ✓ | host, port (3306), database, username, password |
 | Oracle | ✓ | ✓ | ✓ | host, port (1521), database = service name (mis. `FREEPDB1`), username, password |
-| SQLite | ✓ | ✓ | ✓ | database = path file (kosong = `%LOCALAPPDATA%\AiThread\memory.db`) |
+| SQLite | ✓ | ✓ | ✓ | database = path file (kosong = `%LOCALAPPDATA%\AIThread\memory.db`) |
 
 - **Opsi tambahan** ditambahkan ke connection string dan menimpa field di atas, mis. `SSL Mode=Require` (PostgreSQL),
   `Encrypt=True` (SQL Server), atau `ssl=true` (Redis, dipisah koma). Keyword yang tidak dikenal ditolak saat disimpan.
@@ -293,7 +293,7 @@ dipakai modul lain (termasuk aliasnya atau bentuk jamaknya) ditolak — pakai *G
 Memory dari versi sebelum label berstruktur (dan dari AIT versi lama developer lain di store bersama) dimigrasi
 otomatis oleh worker saat AIT start lalu tiap `MemoryRelabelIntervalMinutes` (default 10 menit):
 
-1. **Backup** semua short & long memory ke `%LOCALAPPDATA%\AiThread\backup\memory-before-labels-v1-<waktu>.json`
+1. **Backup** semua short & long memory ke `%LOCALAPPDATA%\AIThread\backup\memory-before-labels-v1-<waktu>.json`
    (plus modul & label halaman wiki), sekali per versi label. Bila backup gagal, migrasi tidak jalan.
 2. **Wiki bisnis**: modul halaman diselaraskan dengan daftar modul (mengisi daftar awal) dan label halaman dinormalisasi
    PascalCase. Isi halaman tidak diubah, tidak membuat revisi.
@@ -427,12 +427,12 @@ Tips menulis memory manual:
 
 | Kunci `appsettings.json` | Default |
 |---|---|
-| `AiThread:ShortMemoryHours` | 24 |
-| `AiThread:MemoryConsolidationIntervalMinutes` | 10 |
-| `AiThread:MemoryRelabelIntervalMinutes` | 10 (interval migrasi label & cek modul ganda) |
-| `AiThread:MemoryAcronyms` | `[]` (singkatan tambahan yang ditulis kapital di label, mis. `["SKU", "GL"]`) |
+| `AIThread:ShortMemoryHours` | 24 |
+| `AIThread:MemoryConsolidationIntervalMinutes` | 10 |
+| `AIThread:MemoryRelabelIntervalMinutes` | 10 (interval migrasi label & cek modul ganda) |
+| `AIThread:MemoryAcronyms` | `[]` (singkatan tambahan yang ditulis kapital di label, mis. `["SKU", "GL"]`) |
 | `ConnectionStrings:Redis` | `localhost:6379` (port Garnet; lihat [Instalasi](01-instalasi.md#1-short-memory-garnet)) |
-| `AiThread:EmbeddedRedis:Enabled` | `true` |
+| `AIThread:EmbeddedRedis:Enabled` | `true` |
 
 Dua kunci terakhir hanya dipakai saat short memory memakai provider *Bawaan*.
 
