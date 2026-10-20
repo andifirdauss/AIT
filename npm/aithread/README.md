@@ -8,6 +8,17 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.1
+
+- **Sidebar ditata ulang**: menu dikelompokkan menjadi *Ruang kerja* (Dashboard, Project, Memory), *Konfigurasi*
+  (Setup, Node, CLI, Setting), dan *Bantuan* (Docs, Panduan memulai), dengan ikon garis yang seragam.
+- **Menu CLI lebih mudah dibaca**: setiap kartu memakai logo dan warna tool-nya (Claude Code, oh-my-pi, Codex, Gemini
+  CLI, opencode, Qwen Code).
+- **Log konsol lebih ringkas**: satu baris per entri, warning tanpa stack trace, dan warning yang sama dalam 5 menit
+  hanya dicetak sekali. Error tetap dengan stack trace lengkap.
+- Kartu *Jalankan prompt* di Dashboard disembunyikan; thread tanpa Claude Code tetap bisa dijalankan lewat
+  `POST /api/threads`.
+
 ## Yang baru di 1.7.0
 
 - **Struktur kode project**: menu Project → detail kini punya jendela *Struktur kode* yang menampilkan isi project

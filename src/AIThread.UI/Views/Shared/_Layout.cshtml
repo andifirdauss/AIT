@@ -73,8 +73,8 @@
             <div id="updateBar" class="alert alert-info win-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
                 <win-controls for="alert" />
                 <div>
-                    <strong>🚀 AIT versi @appVersion</strong> — Baru di menu Project → detail: jendela <strong>Struktur kode</strong> menampilkan folder, class, dan method project tanpa compile (C#, PHP, JS/TS, Python, Java), dan klik deklarasi untuk menyalin <span class="mono">path:baris</span> ke prompt. <strong>Panggilan function</strong> dicatat otomatis oleh Tools Node dari kode yang dibaca planner atau diubah thread, misalnya function JS → endpoint → action controller. <strong>Planner kini melihat kerangka kode dulu</strong> (tool <span class="mono">code_outline</span> &amp; <span class="mono">function_calls</span>, plus outline file yang disebut di prompt), jadi ia hanya membaca baris yang perlu dan tidak salah memilih file. Tabel di halaman detail kini dipaginasi 10 baris.
-                    <a href="~/Docs/05-menu#project" class="alert-link ms-2">Detail →</a>
+                    <strong>🚀 AIT versi @appVersion</strong> — <strong>Sidebar ditata ulang</strong>: menu dikelompokkan menjadi Ruang kerja (Dashboard, Project, Memory), Konfigurasi (Setup, Node, CLI, Setting), dan Bantuan (Docs, Panduan memulai), dengan ikon yang seragam. <strong>Kartu di menu CLI</strong> kini memakai logo dan warna masing-masing tool (Claude Code, oh-my-pi, Codex, Gemini CLI, opencode, Qwen Code) agar mudah dibedakan. Kartu <em>Jalankan prompt</em> di Dashboard disembunyikan. <strong>Log konsol lebih ringkas</strong>: satu baris per entri, warning tanpa stack trace, dan warning yang berulang dalam 5 menit hanya dicetak sekali.
+                    <a href="~/Docs/05-menu" class="alert-link ms-2">Detail →</a>
                 </div>
             </div>
             @if (!string.Equals(controller, "Setup", StringComparison.OrdinalIgnoreCase))
