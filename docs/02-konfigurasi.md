@@ -116,8 +116,8 @@ Tab `/Setting#skills` berisi Skill Orchestrator dan gudang skill offline. Cara k
 | Gudang skill | — | Daftar skill dengan pencarian (nama, deskripsi, tag, sumber), jumlah node pemakai, dan tombol **Lihat** untuk isi serta file pendukungnya. |
 
 **Simpan Skill** hanya menyimpan model dan batas karakter. Sumber diproses satu per satu di latar belakang, dan status
-berubah langsung tanpa refresh. Folder gudang: `%LOCALAPPDATA%\AiThread\skills`, bisa diubah lewat
-`AiThread:SkillsDirectory` di `appsettings.json`.
+berubah langsung tanpa refresh. Folder gudang: `%LOCALAPPDATA%\AIThread\skills`, bisa diubah lewat
+`AIThread:SkillsDirectory` di `appsettings.json`.
 
 ## Menu Node
 
@@ -317,9 +317,9 @@ secret miliknya sendiri.
 
 Telegram (token dan chat) tidak pernah masuk profil.
 
-**Export.** Setup → *Export profil*, atau `AiThread.exe setup export tim.json` (instance harus berjalan).
+**Export.** Setup → *Export profil*, atau `AIThread.exe setup export tim.json` (instance harus berjalan).
 
-**Import.** Setup → *Import profil…*, atau `AiThread.exe setup import tim.json` (tambah `--yes` untuk tanpa konfirmasi):
+**Import.** Setup → *Import profil…*, atau `AIThread.exe setup import tim.json` (tambah `--yes` untuk tanpa konfirmasi):
 
 1. **Pratinjau.** Daftar perubahan per bagian dibandingkan dengan komputer ini; tidak ada yang diubah. Bagian bisa dicentang
    atau dilewati.

@@ -94,7 +94,7 @@ Output terdiri dari tiga bagian:
 1. **Baris anchor** `**AIT** · project · thread …`: nama project yang terdeteksi dan id thread (cari di Dashboard). Baris
    ini hanya muncul untuk sesi di dalam sebuah project (folder dengan `.git` atau file build), dan selalu tampil
    walaupun progres disembunyikan — AIT memakainya untuk mengenali thread sebelumnya di percakapan. Balasan lama yang
-   masih bertuliskan `**AiThread**` tetap dikenali.
+   masih bertuliskan `**AIThread**` tetap dikenali.
 2. **Progres** dalam blok teks (font monospace), berbentuk *vertical stepper*: tiap fase diawali emoji, entri fase
    memakai `├─`, dan fase ditutup baris `└─` berisi hasilnya. Baris panjang dipotong di 90 kolom.
 3. **Jawaban akhir** setelah `---`.
