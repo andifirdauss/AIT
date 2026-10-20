@@ -8,9 +8,7 @@ public sealed partial class SettingService
 {
     public async Task<SystemSettingDto> UpdateAsync(UpdateSystemSettingRequest request, string proxyBaseUrl, CancellationToken cancellationToken = default)
     {
-        var baseUrl = NormalizeRouterUrl(request.NineRouterBaseUrl);
-        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            throw new AppValidationException("URL 9router tidak valid. Contoh: http://localhost:20128");
+        var baseUrl = ValidateRouterUrl(request.NineRouterBaseUrl);
 
         EnsureRange(request.PlannerMaxSteps, 3, 100, "Planner max steps");
         EnsureRange(request.ExecutorMaxRetries, 0, 5, "Executor max retries");

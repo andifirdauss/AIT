@@ -511,13 +511,12 @@
     }
   }
 
-  // First run: a step-by-step tour (install → 9router → Setting → Node → Project → CLI → use). It opens by itself once
-  // per browser and only while no node exists yet, so an instance that is already set up is not treated as new. The
-  // sidebar button reopens it at the step last seen. Resolves when the tour is closed or not shown, so the developer
-  // name dialog never stacks on top of it.
+  // The illustrated tour (install → 9router → Setting → Node → Project → CLI → use), opened from the sidebar button or
+  // the Setup page at the step last seen. A fresh instance goes to the Setup page instead (initSetupStatus), which does
+  // the steps in place.
   function initOnboarding() {
     const modalElement = document.getElementById('onboardingModal');
-    if (!modalElement) return Promise.resolve();
+    if (!modalElement) return;
 
     const doneKey = 'aithread.onboarding.done';
     const stepKey = 'aithread.onboarding.step';
@@ -576,22 +575,72 @@
       modal.show();
     });
     render(0);
+  }
 
-    return new Promise(async resolve => {
-      if (read(doneKey)) return resolve();
-      let nodes;
+  // Setup progress: a badge on the sidebar link and a notice above the page while a required step is still open. A
+  // dismissed notice stays away until another step becomes open.
+  const setupNoticeKey = 'aithread.setupNotice.dismissed';
+
+  function renderSetupStatus(status) {
+    const open = status.steps.filter(s => s.required && !s.done);
+    const badge = document.getElementById('setupBadge');
+    if (badge) {
+      badge.textContent = `${status.requiredDone}/${status.requiredCount}`;
+      badge.title = open.length ? `Belum: ${open.map(s => s.title).join(', ')}` : '';
+      badge.classList.toggle('d-none', status.isComplete);
+    }
+
+    const notice = document.getElementById('setupNotice');
+    if (!notice) return;
+    const openIds = open.map(s => s.id).join(',');
+    let dismissed = null;
+    try {
+      dismissed = localStorage.getItem(setupNoticeKey);
+    } catch {
+      // Storage unavailable — the notice shows while setup is incomplete.
+    }
+    if (status.isComplete || dismissed === openIds) {
+      notice.classList.add('d-none');
+      return;
+    }
+    notice.querySelector('[data-setup-count]').textContent = `${status.requiredDone} dari ${status.requiredCount} langkah wajib selesai`;
+    notice.querySelector('[data-setup-open]').textContent = open.map(s => s.title.toLowerCase()).join(', ');
+    notice.dataset.open = openIds;
+    notice.classList.remove('d-none');
+  }
+
+  // Resolves true when the page is leaving for the Setup page: a fresh instance (no pipeline yet) opening the
+  // dashboard is sent there once per browser, the way the tour used to open by itself.
+  async function initSetupStatus() {
+    const notice = document.getElementById('setupNotice');
+    notice?.addEventListener('closed.bs.alert', () => {
       try {
-        nodes = await api.get('/api/nodes');
+        localStorage.setItem(setupNoticeKey, notice.dataset.open || '');
       } catch {
-        return resolve(); // Server or database not ready; decide on a later page load.
+        // Not remembered; the notice comes back on the next page.
       }
-      if (nodes.length) {
-        write(doneKey, '1');
-        return resolve();
-      }
-      modalElement.addEventListener('hidden.bs.modal', () => resolve(), { once: true });
-      modal.show();
     });
+
+    let status;
+    try {
+      status = await api.get('/api/setup/status');
+    } catch {
+      return false; // Server not ready; the next page load tries again.
+    }
+    renderSetupStatus(status);
+
+    let opened = null;
+    try {
+      opened = localStorage.getItem('aithread.setup.opened');
+    } catch {
+      opened = '1'; // Without storage the redirect could repeat on every visit.
+    }
+    const fresh = status.steps.some(s => s.id === 'nodes' && !s.done);
+    if (fresh && !opened && ['/', '/home', '/home/index'].includes(location.pathname.toLowerCase())) {
+      location.replace('/Setup');
+      return true;
+    }
+    return false;
   }
 
   // First run: the developer name comes from git (user.name). Only without it is the name asked, once, and kept in the
@@ -640,10 +689,11 @@
     initThemeToggle();
     initUpdateBar();
     initNpmUpdate();
-    initOnboarding().then(initDeveloperName);
+    initOnboarding();
+    initSetupStatus().then(leaving => { if (!leaving) initDeveloperName(); });
     refreshRouterPill();
     setInterval(refreshRouterPill, 20000);
   });
 
-  window.AiThread = { api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager };
+  window.AiThread = { api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager, renderSetupStatus };
 })();

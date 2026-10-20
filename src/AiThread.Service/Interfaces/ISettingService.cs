@@ -11,6 +11,9 @@ public interface ISettingService
 
     Task<SystemSettingDto> UpdateAsync(UpdateSystemSettingRequest request, string proxyBaseUrl, CancellationToken cancellationToken = default);
 
+    // Only touches the 9router connection; an empty key keeps the stored one.
+    Task<RuntimeSettings> UpdateRouterAsync(string baseUrl, string? apiKey, CancellationToken cancellationToken = default);
+
     Task<TelegramSettingsDto> GetTelegramAsync(CancellationToken cancellationToken = default);
 
     // Only touches the Telegram fields; the token must already be verified by the caller.

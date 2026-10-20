@@ -36,6 +36,7 @@
             </a>
             <nav class="app-nav">
                 <a class="app-nav-link @Active("Home") @Active("Thread")" asp-controller="Home" asp-action="Index"><span class="app-nav-icon">◧</span>Dashboard</a>
+                <a class="app-nav-link @Active("Setup")" asp-controller="Setup" asp-action="Index"><span class="app-nav-icon">✓</span>Setup<span class="app-nav-badge d-none" id="setupBadge"></span></a>
                 <a class="app-nav-link @Active("Project")" asp-controller="Project" asp-action="Index"><span class="app-nav-icon">▤</span>Project</a>
                 <a class="app-nav-link @Active("Memory")" asp-controller="Memory" asp-action="Index"><span class="app-nav-icon">◈</span>Memory</a>
                 <a class="app-nav-link @Active("Node")" asp-controller="Node" asp-action="Index"><span class="app-nav-icon">⬡</span>Node</a>
@@ -59,6 +60,17 @@
                     <a href="~/Docs/05-menu#project" class="alert-link ms-2">Detail →</a>
                 </div>
             </div>
+            @if (!string.Equals(controller, "Setup", StringComparison.OrdinalIgnoreCase))
+            {
+                @* Shown by site.js (initSetupStatus) while a required setup step is still open. *@
+                <div id="setupNotice" class="alert alert-warning win-dismissible fade show mb-4 d-none" role="alert">
+                    <win-controls for="alert" />
+                    <div>
+                        <strong>Setup AIT belum selesai</strong> — <span data-setup-count></span>. Belum: <span data-setup-open></span>.
+                        <a asp-controller="Setup" asp-action="Index" class="alert-link ms-1">Lanjutkan setup →</a>
+                    </div>
+                </div>
+            }
             @RenderBody()
         </main>
     </div>
