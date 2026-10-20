@@ -14,7 +14,8 @@ namespace AIThread.Service.Implementations;
 //   POST /v1/messages            -> Anthropic Messages API (Claude Code passthrough)
 //   POST /v1/responses           -> OpenAI Responses API (Codex passthrough)
 //   POST /v1beta/models/{m}:generateContent | :streamGenerateContent -> Gemini native (Gemini CLI passthrough)
-// and, for the quota footer, the dashboard API (no API key; 401 while 9router's "require login" is on):
+// and, for the quota footer, the dashboard API (no API key; 401 while 9router's "require login" is on, its default,
+// unless the request carries the CLI token a 9router on this machine accepts, see RouterCliToken):
 //   GET  /api/combos, /api/providers/client, /api/usage/{connectionId}
 public sealed partial class NineRouterService(
     IHttpClientFactory httpClientFactory,
