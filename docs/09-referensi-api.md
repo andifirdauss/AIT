@@ -62,6 +62,16 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
 | `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
 
+### Setup
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/setup/status?refresh=true` | langkah setup dari kondisi saat ini: `steps[]` (`id` = `system`/`router`/`nodes`/`project`/`cli`/`memory`, `title`, `required`, `done`, `detail`), `requiredCount`, `requiredDone`, `isComplete`. `refresh` = cek 9router sekarang (tanpa itu memakai hasil monitor terakhir) |
+| `POST` | `/api/setup/router` | `{ "baseUrl": "...", "apiKey"?: "..." }` → `status` (bentuk `/api/router/status`), `saved`, `message`. Diuji dulu; disimpan hanya bila 9router online dan key diterima. `apiKey` kosong = pakai key tersimpan |
+| `POST` | `/api/setup/preset` | `{ "strongModel": "...", "cheapModel"?: "...", "toolsNode": true, "reviewer": false, "contextKeeper": true }` → `nodes[]` (`node`, `created`). Membuat/memperbarui node `AIT …` (lihat [Setup](05-menu.md#setup)); `cheapModel` kosong = model kuat |
+| `GET` | `/api/setup/profile` | file profil setup tim `aithread-setup` v1 (unduhan JSON, enum berupa nama, field kosong tidak ditulis) |
+| `POST` | `/api/setup/profile/import` | `{ "profile": { … }, "sections"?: ["Router", "Orchestration", "Nodes", "Memory", "Business", "Skills"], "nodeMode": "Merge"\|"Replace", "secrets"?: { "nineRouterApiKey", "shortPassword", "longPassword", "businessPassword" }, "copyExistingMemory": true, "dryRun": true }` → `dryRun`, `sections` (yang ada di file), `changes[]` (`section`, `text`), `secrets[]` (`id`, `label`, `stored`), `warnings[]`, `errors[]`. `sections` kosong = semua; `dryRun` default `true` |
+
 ### CLI
 
 Backend menu **CLI**. `{id}` = `claude-code`, `oh-my-pi-provider`, `codex`, `gemini-cli`, `opencode`, atau `qwen-code`;
