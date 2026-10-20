@@ -8,6 +8,13 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.2
+
+- **Sisa kuota kembali tampil** di footer jawaban saat *Require login* 9router aktif (bawaan 9router). Untuk 9router di
+  komputer yang sama, AIT kini membaca API dashboard dengan token CLI lokal (`x-9r-cli-token`), cara yang juga dipakai
+  CLI 9router sendiri, jadi setting 9router tidak perlu diubah. Token tidak pernah dikirim ke 9router di komputer
+  lain; untuk itu matikan *Require login* di sana.
+
 ## Yang baru di 1.7.1
 
 - **Sidebar ditata ulang**: menu dikelompokkan menjadi *Ruang kerja* (Dashboard, Project, Memory), *Konfigurasi*
