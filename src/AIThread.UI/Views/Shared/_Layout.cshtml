@@ -34,22 +34,39 @@
                 <span class="app-update-dot"></span>
                 <span class="app-update-text">Update tersedia</span>
             </a>
+            @* Icons are one stroke SVG sprite so they share size and weight in every font (the old Unicode glyphs did not). *@
+            <svg class="d-none" aria-hidden="true">
+                <symbol id="nav-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></symbol>
+                <symbol id="nav-project" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+                <symbol id="nav-memory" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="2.5" /><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6" /><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6" /></symbol>
+                <symbol id="nav-setup" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="m8.5 12 2.5 2.5 4.5-5" /></symbol>
+                <symbol id="nav-node" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5" /><circle cx="5" cy="19" r="2.5" /><circle cx="19" cy="19" r="2.5" /><path d="M12 7.5v4m0 0L6.8 17m5.2-5.5 5.2 5.5" /></symbol>
+                <symbol id="nav-cli" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m7 9 3 3-3 3m6 0h4" /></symbol>
+                <symbol id="nav-setting" viewBox="0 0 24 24"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></symbol>
+                <symbol id="nav-docs" viewBox="0 0 24 24"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5h-5A1.5 1.5 0 0 1 3 16z" /><path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5h5a1.5 1.5 0 0 0 1.5-1.5z" /></symbol>
+                <symbol id="nav-guide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.4M12 17h.01" /></symbol>
+            </svg>
             <nav class="app-nav">
-                <a class="app-nav-link @Active("Home") @Active("Thread")" asp-controller="Home" asp-action="Index"><span class="app-nav-icon">◧</span>Dashboard</a>
-                <a class="app-nav-link @Active("Setup")" asp-controller="Setup" asp-action="Index"><span class="app-nav-icon">✓</span>Setup<span class="app-nav-badge d-none" id="setupBadge"></span></a>
-                <a class="app-nav-link @Active("Project")" asp-controller="Project" asp-action="Index"><span class="app-nav-icon">▤</span>Project</a>
-                <a class="app-nav-link @Active("Memory")" asp-controller="Memory" asp-action="Index"><span class="app-nav-icon">◈</span>Memory</a>
-                <a class="app-nav-link @Active("Node")" asp-controller="Node" asp-action="Index"><span class="app-nav-icon">⬡</span>Node</a>
-                <a class="app-nav-link @Active("Cli")" asp-controller="Cli" asp-action="Index"><span class="app-nav-icon">⌘</span>CLI</a>
-                <a class="app-nav-link @Active("Setting")" asp-controller="Setting" asp-action="Index"><span class="app-nav-icon">⚙</span>Setting</a>
-                <a class="app-nav-link @Active("Docs")" asp-controller="Docs" asp-action="Index"><span class="app-nav-icon">☷</span>Docs</a>
+                <div class="app-nav-section">Ruang kerja</div>
+                <a class="app-nav-link @Active("Home") @Active("Thread")" asp-controller="Home" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-dashboard" /></svg>Dashboard</a>
+                <a class="app-nav-link @Active("Project")" asp-controller="Project" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-project" /></svg>Project</a>
+                <a class="app-nav-link @Active("Memory")" asp-controller="Memory" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-memory" /></svg>Memory</a>
+
+                <div class="app-nav-section">Konfigurasi</div>
+                <a class="app-nav-link @Active("Setup")" asp-controller="Setup" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-setup" /></svg>Setup<span class="app-nav-badge d-none" id="setupBadge"></span></a>
+                <a class="app-nav-link @Active("Node")" asp-controller="Node" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-node" /></svg>Node</a>
+                <a class="app-nav-link @Active("Cli")" asp-controller="Cli" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-cli" /></svg>CLI</a>
+                <a class="app-nav-link @Active("Setting")" asp-controller="Setting" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-setting" /></svg>Setting</a>
+
+                <div class="app-nav-section">Bantuan</div>
+                <a class="app-nav-link @Active("Docs")" asp-controller="Docs" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-docs" /></svg>Docs</a>
+                <button type="button" class="app-nav-link" id="onboardingOpen"><svg class="app-nav-icon"><use href="#nav-guide" /></svg>Panduan memulai</button>
             </nav>
             <div class="app-sidebar-footer">
                 <div id="routerPill" class="router-pill" title="Status koneksi 9router">
                     <span class="status-dot"></span><span class="router-pill-text">9router…</span>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-onboarding w-100 mt-2" id="onboardingOpen">Panduan memulai</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" id="themeToggle">Ganti tema</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-sidebar w-100 mt-2" id="themeToggle">Ganti tema</button>
             </div>
         </aside>
         <main class="app-main" role="main">

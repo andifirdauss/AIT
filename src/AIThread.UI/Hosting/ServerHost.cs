@@ -32,10 +32,11 @@ public sealed class ServerHost : IAsyncDisposable
 
         if (port is not null) builder.WebHost.UseUrls($"http://localhost:{port}");
 
-        // Menu and tray modes write the console log to a file while the process may still own a real console, so the
-        // logger would put ANSI color codes in the file.
-        if (LogFile.CurrentPath is not null)
-            builder.Logging.AddSimpleConsole(options => options.ColorBehavior = LoggerColorBehavior.Disabled);
+        // Short, readable console log (warnings without stack traces, repeats folded). Menu and tray modes write the
+        // console log to a file while the process may still own a real console, so color stays off there.
+        builder.Logging.AddConsole(options => options.FormatterName = ReadableConsoleFormatter.FormatterName);
+        builder.Logging.AddConsoleFormatter<ReadableConsoleFormatter, ReadableConsoleFormatterOptions>(options =>
+            options.UseColors = LogFile.CurrentPath is null && !Console.IsOutputRedirected);
 
         // Claude Code resends the whole conversation on every turn; allow large request bodies.
         builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 100 * 1024 * 1024);
