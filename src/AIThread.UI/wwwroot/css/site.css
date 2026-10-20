@@ -495,6 +495,59 @@ body {
   font-size: .8rem;
 }
 
+/* Each CLI card is tinted with its tool's logo color (data-cli-brand = the integration id) so the cards no longer blend
+   together: a soft corner gradient plus a solid top edge. Unknown ids keep the plain card. */
+.cli-card[data-cli-brand] {
+  --cli-brand-fade: linear-gradient(135deg, rgb(var(--cli-rgb) / 0.18) 0%, rgb(var(--cli-rgb) / 0.05) 45%, transparent 75%);
+  border-top: 3px solid rgb(var(--cli-rgb));
+  background-image: var(--cli-brand-fade);
+}
+
+.cli-card[data-cli-brand] .card-header {
+  background: transparent;
+}
+
+.cli-card[data-cli-brand="claude-code"] { --cli-rgb: 217 119 87; }
+.cli-card[data-cli-brand="oh-my-pi-provider"] { --cli-rgb: 249 115 22; }
+.cli-card[data-cli-brand="codex"] { --cli-rgb: 122 157 255; }
+.cli-card[data-cli-brand="opencode"] { --cli-rgb: 160 166 176; }
+.cli-card[data-cli-brand="qwen-code"] { --cli-rgb: 97 92 237; }
+
+/* Logo tile left of the CLI name (logos in pages/cli.js). */
+.cli-logo {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 7px;
+  background: rgb(var(--cli-rgb, 127 127 127) / 0.16);
+  color: var(--bs-emphasis-color);
+}
+
+.cli-logo svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* Fallback for an integration without a logo: its first letter. */
+.cli-logo-text {
+  color: rgb(var(--cli-rgb, 127 127 127));
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Gemini's mark is itself a blue → purple → rose gradient. */
+.cli-card[data-cli-brand="gemini-cli"] {
+  --cli-rgb: 71 150 227;
+  border-top: 0;
+  background-image:
+    linear-gradient(90deg, #4796e3, #9177c7, #ca6673) top / 100% 3px no-repeat,
+    linear-gradient(135deg, rgb(71 150 227 / 0.18) 0%, rgb(145 119 199 / 0.08) 40%, transparent 75%);
+  padding-top: 3px;
+}
+
 .node-card-title {
   flex: 1 1 auto;
   min-width: 0;
