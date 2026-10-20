@@ -1026,3 +1026,88 @@ body.win-modal-docked .modal-backdrop { opacity: 0 !important; pointer-events: n
 .st-note { padding: 0.2rem 0.75rem 0.2rem 2rem; font-size: 0.8rem; }
 .st-badge.t-call { background: var(--bs-info-bg-subtle); color: var(--bs-info-text-emphasis); }
 .st-calls { color: var(--bs-info-text-emphasis); }
+
+/* Setup page (Views/Setup/Index.cshtml, pages/setup.js): one collapsible card per step, numbered, green when done. */
+.setup-pane {
+  max-width: 1040px;
+}
+
+.setup-progress {
+  height: 6px;
+}
+
+.setup-step > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.setup-step > summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-step:not([open]) > summary {
+  border-bottom: 0;
+}
+
+.setup-step-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: normal;
+}
+
+.setup-step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--bs-secondary-bg);
+  font-weight: 600;
+}
+
+.setup-step.done .setup-step-num {
+  background: var(--app-ok);
+  color: #fff;
+}
+
+.setup-step-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.setup-step-title {
+  font-weight: 600;
+}
+
+.setup-step-detail {
+  color: var(--bs-secondary-color);
+  font-size: 0.85rem;
+}
+
+.setup-step-state {
+  flex: none;
+}
+
+.setup-howto {
+  padding-left: 1.2rem;
+}
+
+.setup-howto li {
+  margin-bottom: 0.4rem;
+}
+
+/* "3/5" on the sidebar Setup link while a required step is open; the sidebar is dark in both color modes. */
+.app-nav-badge {
+  margin-left: auto;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: rgba(240, 173, 60, 0.2);
+  color: #f6c26b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+}

@@ -15,11 +15,15 @@ bar (simbolnya muncul saat kursor di atasnya):
 Double-click title bar = layar penuh; Esc keluar dari layar penuh. Status lipat panel log diingat browser. Banner dan
 notifikasi hanya punya tombol merah.
 
-**Panduan memulai.** Saat AIT pertama kali dibuka (belum ada Node sama sekali), muncul popup bergambar berisi 9 langkah:
-mengenal AIT, memasang AIT, menyiapkan 9router, Setting, Node, Project, CLI, mulai bekerja, dan selesai. Geser, klik
-titik, atau pakai tombol panah ← → untuk berpindah langkah; tiap langkah punya tombol menuju menu terkait. Popup hanya
-muncul otomatis sekali per browser. Tombol *Panduan memulai* di kiri bawah sidebar membukanya lagi di langkah terakhir
-yang dilihat.
+**Setup belum selesai.** Selama masih ada langkah wajib [Setup](#setup) yang belum selesai, link *Setup* di sidebar
+menampilkan angka (mis. `2/4`) dan di atas tiap halaman muncul banner *Setup AIT belum selesai* berisi langkah yang
+tersisa. Tombol merah banner menyembunyikannya sampai ada langkah lain yang belum selesai. Saat AIT pertama kali dibuka
+(belum ada pipeline node), Dashboard langsung membuka halaman Setup, sekali per browser.
+
+**Panduan memulai.** Popup bergambar berisi 9 langkah: mengenal AIT, memasang AIT, menyiapkan 9router, koneksi 9router,
+model per peran, Project, CLI, mulai bekerja, dan selesai. Geser, klik titik, atau pakai tombol panah ← → untuk berpindah
+langkah; tombol *Kerjakan di Setup* membuka langkah yang sama di halaman Setup. Buka lewat tombol *Panduan memulai* di
+kiri bawah sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Panduan bergambar* di halaman Setup.
 
 ## Dashboard
 
@@ -42,6 +46,43 @@ status, tugas berhasil/total, durasi, speedup, token. Klik baris untuk detail.
 
 **Log langsung**: log terbaru di atas. Filter level (*Info+* default, *Semua (debug)*, *Warning+*, *Error*) dan
 tombol *Jeda*. Log debug berisi panggilan tool planner dan request passthrough.
+
+## Setup
+
+Semua langkah awal di satu halaman (`/Setup`), jadi tidak perlu berpindah antara Setting, Node, Project, dan CLI. Status
+tiap langkah dihitung dari kondisi AIT saat itu (bukan disimpan), sehingga halaman ini juga dipakai untuk memeriksa ulang:
+*Cek ulang* memeriksa semuanya, dan halaman memeriksa lagi sendiri saat Anda kembali dari tab lain (mis. dashboard 9router).
+Langkah wajib pertama yang belum selesai terbuka otomatis; begitu selesai, langkah itu dilipat dan langkah berikutnya dibuka.
+
+| # | Langkah | Wajib | Selesai bila | Yang bisa dikerjakan di tempat |
+|---|---|---|---|---|
+| 1 | Database & short memory | Ya | database utama dan short memory terhubung | — (disiapkan otomatis saat start; tautan ke Instalasi/Troubleshooting) |
+| 2 | Hubungkan 9router | Ya | 9router online, API key diterima (atau tidak diwajibkan), dan minimal satu model tersedia | *Jalankan 9router*, tautan ke dashboard 9router, Base URL + API key → **Test & simpan** (hanya disimpan bila koneksi dan key-nya benar) |
+| 3 | Pilih model untuk tiap peran | Ya | pipeline siap (Planner, Executor, Wrapper aktif) | pilih **model kuat** dan **model murah** → **Buat node & uji** |
+| 4 | Daftarkan project | Tidak | minimal satu project terdaftar | path manual, *Telusuri…* (penelusur yang sama dengan menu Project) |
+| 5 | Arahkan CLI coding ke AIT | Ya | minimal satu CLI diarahkan ke AIT, global atau per project | switch **global** tiap CLI; per project lewat menu CLI |
+| 6 | Memory bersama tim | Tidak | Long atau Business memory memakai database eksternal | *Import profil tim*, tautan ke Setting → Penyimpanan memory |
+
+**Model (preset pipeline).** Dua pilihan model menggantikan pengisian node satu per satu. Pilihan awal ditebak dari nama model
+(mis. `opus`/`fable` sebagai model kuat, `haiku`/`flash` dari provider yang sama sebagai model murah) dan bisa diganti.
+
+| Node | Model | Default | Keterangan |
+|---|---|---|---|
+| `AIT Planner` | kuat | selalu | temperature 0.2, 16.384 token, 2 paralel |
+| `AIT Executor` | murah | selalu | 0.1, 8.192 token, 6 paralel |
+| `AIT Wrapper` | murah | selalu | 0.3, 4.096 token, 4 paralel |
+| `AIT Tools Node` | murah | dicentang | planner mendelegasikan `read_file`, `search_text`, `find_references` ke node ini |
+| `AIT Context Keeper` | murah | dicentang | meringkas percakapan CLI |
+| `AIT Reviewer` | kuat | tidak dicentang | memeriksa hasil executor |
+
+Semua node preset berprioritas 10, jadi dipakai lebih dulu daripada node buatan sendiri (default 100). Menjalankan preset lagi
+memperbarui node `AIT …` yang sama (model, aktif); peran yang tidak dicentang menonaktifkan node preset-nya (tidak dihapus),
+dan Tools Node yang dinonaktifkan melepas delegasi tool planner ke node itu. Node lain di menu Node tidak diubah. Setelah
+disimpan, tiap node aktif diuji dengan satu panggilan kecil (*pong*) dan hasilnya tampil per baris.
+
+**Profil setup tim.** Kartu di atas langkah-langkah: *Export profil* mengunduh file `ait-setup-<waktu>.json`; *Import profil…*
+memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang dibutuhkan, lalu *Terapkan profil*. Lihat
+[Profil setup tim](02-konfigurasi.md#profil-setup-tim).
 
 ## Detail thread
 

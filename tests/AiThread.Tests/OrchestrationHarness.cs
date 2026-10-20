@@ -25,7 +25,7 @@ public sealed class OrchestrationHarness : IAsyncDisposable
     private readonly TestLifetime _lifetime = new();
     private readonly ServiceProvider _services;
 
-    private OrchestrationHarness(Action<SystemSetting>? configureSettings)
+    private OrchestrationHarness(Action<SystemSetting>? configureSettings, Action<IServiceCollection>? configureServices)
     {
         Project = new TempWorkspace();
         _dataDir = Path.Combine(Path.GetTempPath(), "aithread-tests", "data-" + Guid.NewGuid().ToString("N"));
@@ -50,6 +50,7 @@ public sealed class OrchestrationHarness : IAsyncDisposable
         // Registered after the service layer, so these win.
         services.AddSingleton<INineRouterService>(Router);
         services.AddSingleton<IMemoryService>(Memory);
+        configureServices?.Invoke(services);
         _services = services.BuildServiceProvider();
     }
 
@@ -64,9 +65,11 @@ public sealed class OrchestrationHarness : IAsyncDisposable
     private Action<SystemSetting>? ConfigureSettings { get; }
 
     // Build is off by default so tests never spawn a compiler; reviewer-driven verification still runs.
-    public static async Task<OrchestrationHarness> CreateAsync(Action<SystemSetting>? configureSettings = null)
+    // configureServices runs last, so a test can replace any service (e.g. a store the harness does not provide).
+    public static async Task<OrchestrationHarness> CreateAsync(Action<SystemSetting>? configureSettings = null,
+        Action<IServiceCollection>? configureServices = null)
     {
-        var harness = new OrchestrationHarness(configureSettings);
+        var harness = new OrchestrationHarness(configureSettings, configureServices);
         await harness.SeedAsync();
         return harness;
     }

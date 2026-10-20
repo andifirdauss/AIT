@@ -1,5 +1,6 @@
-@* First-run tour (site.js initOnboarding): one slide per setup step, each with an inline SVG that follows the color
-   mode through the Bootstrap/--app-* variables. Reopened from the sidebar button "Panduan memulai". *@
+@* Illustrated tour (site.js initOnboarding): one slide per setup step, each with an inline SVG that follows the color
+   mode through the Bootstrap/--app-* variables. Opened from the sidebar button "Panduan memulai" or the Setup page; the
+   steps themselves are done on the Setup page, which the slide buttons link to. *@
 <div class="modal fade" id="onboardingModal" tabindex="-1" aria-labelledby="onboardingHeading" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content onboarding">
@@ -68,7 +69,10 @@
                                 <strong>dikerjakan paralel</strong> oleh banyak model murah, lalu <strong>dirangkum</strong> kembali ke CLI Anda —
                                 lebih cepat dan lebih hemat token.
                             </p>
-                            <p class="small text-secondary mb-0">Panduan ini ±2 menit: pasang → hubungkan → pakai. Geser, klik titik di bawah, atau pakai tombol panah ← →.</p>
+                            <p class="small text-secondary mb-0">
+                                Panduan ini ±2 menit: pasang → hubungkan → pakai. Geser, klik titik di bawah, atau pakai tombol panah ← →.
+                                Langkah-langkahnya bisa langsung dikerjakan di satu halaman: menu <a asp-controller="Setup" asp-action="Index">Setup</a>.
+                            </p>
                         </div>
 
                         @* 2. Install *@
@@ -187,10 +191,11 @@ aithread tray        # jalan di background, ikon di tray</pre>
                             </figure>
                             <h4 class="onboarding-title">3. Hubungkan AIT ke 9router</h4>
                             <p>
-                                Menu <strong>Setting</strong> → tab <em>Koneksi 9router</em>: isi URL (default <span class="mono">http://localhost:20128</span>)
-                                dan API key, klik <strong>Test koneksi</strong>, lalu <strong>Simpan</strong>. Pill status di kiri bawah sidebar berubah hijau.
+                                Menu <strong>Setup</strong> → langkah <em>Hubungkan 9router</em>: isi URL (default <span class="mono">http://localhost:20128</span>)
+                                dan API key, lalu <strong>Test &amp; simpan</strong> (sekali klik). Pill status di kiri bawah sidebar berubah hijau.
+                                Pengaturan yang sama ada di Setting → <em>Koneksi 9router</em>.
                             </p>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setting" asp-action="Index" asp-fragment="router">Buka Setting →</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-router">Kerjakan di Setup →</a>
                         </div>
 
                         @* 5. Nodes *@
@@ -236,11 +241,14 @@ aithread tray        # jalan di background, ikon di tray</pre>
                             </figure>
                             <h4 class="onboarding-title">4. Pilih model untuk tiap peran</h4>
                             <p>
-                                Menu <strong>Node</strong>: tambahkan <strong>1 Planner</strong> (model terkuat yang mendukung tool calling),
-                                <strong>minimal 1 Executor</strong> (murah &amp; cepat — tambah beberapa untuk menyebar beban), dan <strong>1 Wrapper</strong>
-                                (murah). Reviewer opsional. Tombol <em>Test</em> di tiap kartu memastikan modelnya menjawab.
+                                Paling cepat: menu <strong>Setup</strong> → pilih <strong>model kuat</strong> (planner, mendukung tool calling) dan
+                                <strong>model murah</strong> (executor, wrapper, dll.). AIT membuat node tiap peran dan langsung mengujinya.
+                                Detail per node (Reviewer, executor tambahan, node cadangan, skill) diatur di menu <strong>Node</strong>.
                             </p>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Node" asp-action="Index">Buka Node →</a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-nodes">Kerjakan di Setup →</a>
+                                <a class="btn btn-sm btn-outline-secondary" asp-controller="Node" asp-action="Index">Buka Node</a>
+                            </div>
                         </div>
 
                         @* 6. Projects *@
@@ -295,7 +303,7 @@ aithread tray        # jalan di background, ikon di tray</pre>
                                 <strong>Project</strong> → <strong>Telusuri…</strong> (atau <em>Daftarkan manual</em>). Sesi di luar project tetap jalan,
                                 hanya tidak diorkestrasi.
                             </p>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Project" asp-action="Index">Buka Project →</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-project">Kerjakan di Setup →</a>
                         </div>
 
                         @* 7. CLI *@
@@ -347,11 +355,14 @@ aithread tray        # jalan di background, ikon di tray</pre>
                             </figure>
                             <h4 class="onboarding-title">6. Arahkan CLI Anda ke AIT</h4>
                             <p>
-                                Menu <strong>CLI</strong>: nyalakan switch CLI yang Anda pakai — <strong>Claude Code</strong> (per project atau global),
-                                Codex CLI, Gemini CLI, opencode, Qwen Code, atau oh-my-pi. AIT hanya menulis entri miliknya dan bisa dilepas kapan saja
-                                dengan mematikan switch.
+                                Nyalakan switch CLI yang Anda pakai — <strong>Claude Code</strong>, Codex CLI, Gemini CLI, opencode, Qwen Code, atau
+                                oh-my-pi — secara global di menu <strong>Setup</strong>, atau per project di menu <strong>CLI</strong>. AIT hanya menulis
+                                entri miliknya dan bisa dilepas kapan saja dengan mematikan switch.
                             </p>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Cli" asp-action="Index">Buka CLI →</a>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-cli">Kerjakan di Setup →</a>
+                                <a class="btn btn-sm btn-outline-secondary" asp-controller="Cli" asp-action="Index">Buka CLI</a>
+                            </div>
                         </div>
 
                         @* 8. Use *@

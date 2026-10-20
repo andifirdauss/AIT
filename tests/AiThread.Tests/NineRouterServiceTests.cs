@@ -202,6 +202,9 @@ public class NineRouterServiceTests
         public Task<SystemSettingDto> UpdateAsync(UpdateSystemSettingRequest request, string proxyBaseUrl, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<RuntimeSettings> UpdateRouterAsync(string baseUrl, string? apiKey, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<TelegramSettingsDto> GetTelegramAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
