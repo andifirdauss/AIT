@@ -126,6 +126,39 @@ public class NineRouterServiceTests
     }
 
     [Fact]
+    public async Task Prompt_cache_key_is_sent_and_dropped_for_a_model_whose_provider_rejects_it()
+    {
+        var bodies = new List<string>();
+        var handler = new StubHandler(request =>
+        {
+            var body = request.Content!.ReadAsStringAsync().Result;
+            bodies.Add(body);
+            return body.Contains("prompt_cache_key") && body.Contains("strict/model")
+                ? Json(HttpStatusCode.BadRequest, "{\"error\":{\"message\":\"Unrecognized request argument supplied: prompt_cache_key\"}}")
+                : Json(HttpStatusCode.OK, "{\"choices\":[{\"message\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}");
+        });
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), NullLogger<NineRouterService>.Instance);
+        ChatCompletionRequest Request(string model) => new()
+        {
+            Model = model,
+            Messages = [ChatMessages.User("hi")],
+            PromptCacheKey = "ait:abc:planner"
+        };
+
+        Assert.Equal("ok", (await router.ChatAsync(Request("cc/claude-opus-5-5"))).Content);
+        Assert.Contains("\"prompt_cache_key\":\"ait:abc:planner\"", bodies[0]);
+
+        Assert.Equal("ok", (await router.ChatAsync(Request("strict/model"))).Content);
+        Assert.Equal(3, bodies.Count);
+        Assert.DoesNotContain("prompt_cache_key", bodies[2]);
+
+        // Remembered: the next call to that model goes without the key at once.
+        await router.ChatAsync(Request("strict/model"));
+        Assert.Equal(4, bodies.Count);
+        Assert.DoesNotContain("prompt_cache_key", bodies[3]);
+    }
+
+    [Fact]
     public void Long_retry_after_is_not_waited_on_so_the_caller_can_fail_over()
     {
         var ex = new NineRouterException("limited", 429, retryAfter: TimeSpan.FromMinutes(5));

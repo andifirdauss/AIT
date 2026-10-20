@@ -10,6 +10,13 @@ public sealed class ChatCompletionRequest
     public JsonArray? Tools { get; init; }
     public double? Temperature { get; init; }
     public int? MaxTokens { get; init; }
+
+    // Sent as prompt_cache_key: OpenAI routes requests with the same key and prefix to the same cache, and 9router
+    // uses it as the session id. Requests sharing a prompt prefix share a key (see CacheKey).
+    public string? PromptCacheKey { get; init; }
+
+    // "ait:{thread}:{role}", well below the providers' 64-character limit.
+    public static string CacheKey(Guid threadId, string role) => $"ait:{threadId:N}:{role}";
 }
 
 public sealed record ToolCall(string Id, string Name, string Arguments);
