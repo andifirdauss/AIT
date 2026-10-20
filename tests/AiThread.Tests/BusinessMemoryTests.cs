@@ -66,7 +66,7 @@ public class BusinessMemoryTests
     public async Task Saving_over_a_newer_version_is_refused_and_every_save_is_a_revision()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
-        var pages = harness.Service<BusinessPageStore>();
+        var pages = harness.Service<IBusinessPageStore>();
 
         var page = await pages.SaveAsync(Draft(null, "v1", null), CancellationToken.None);
         var second = await pages.SaveAsync(Draft(page.Id, "v2", expectedVersion: 1), CancellationToken.None);
@@ -84,7 +84,7 @@ public class BusinessMemoryTests
     public async Task Same_image_is_stored_once_per_project()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
-        var pages = harness.Service<BusinessPageStore>();
+        var pages = harness.Service<IBusinessPageStore>();
 
         var first = await pages.AddAssetAsync(Key, null, Png, "a", null, "dev", CancellationToken.None);
         var again = await pages.AddAssetAsync(Key, null, Png, "b", null, "dev", CancellationToken.None);
@@ -112,7 +112,7 @@ public class BusinessMemoryTests
             ["changeNote"] = "Tambah aturan approval"
         })));
 
-        var result = await harness.Service<BusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
+        var result = await harness.Service<IBusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
 
         Assert.Equal((1, 1, 0, 1), (result.Threads, result.PagesCreated, result.PagesUpdated, result.Images));
         var writerCall = Assert.Single(harness.Router.CallsTo(ScriptedAgent.BusinessWriter));
@@ -129,7 +129,7 @@ public class BusinessMemoryTests
         Assert.NotNull((await db.Threads.SingleAsync(t => t.Id == threadId)).BusinessDigestedAt);
         Assert.Empty(await db.ThreadAttachments.ToListAsync());
 
-        var again = await harness.Service<BusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
+        var again = await harness.Service<IBusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
         Assert.Equal(0, again.Threads);
     }
 
@@ -139,13 +139,13 @@ public class BusinessMemoryTests
         await using var harness = await OrchestrationHarness.CreateAsync();
         await harness.AddNodeAsync(NodeRole.Planner, "planner-model");
         await SetProjectKeyAsync(harness);
-        var locked = await harness.Service<BusinessPageStore>().SaveAsync(Draft(null, "curated", null) with { AutoUpdate = false }, CancellationToken.None);
+        var locked = await harness.Service<IBusinessPageStore>().SaveAsync(Draft(null, "curated", null) with { AutoUpdate = false }, CancellationToken.None);
         var threadId = await AddFinishedThreadAsync(harness, "Ubah label tombol TO", withImage: false);
 
         harness.Router.On(ScriptedAgent.BusinessRouter, ScriptedRouter.Text(
             $$"""{"pages":[{"id":"{{locked.Id}}","module":"TO","title":"Transfer Order","threads":["T1"]}]}"""));
 
-        var result = await harness.Service<BusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
+        var result = await harness.Service<IBusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
 
         Assert.Equal((1, 0, 0), (result.Threads, result.PagesCreated, result.PagesUpdated));
         Assert.Empty(harness.Router.CallsTo(ScriptedAgent.BusinessWriter));
@@ -166,7 +166,7 @@ public class BusinessMemoryTests
             """{"pages":[{"id":null,"module":"TO","title":"Transfer Order","threads":["T1"]}]}"""));
         harness.Router.On(ScriptedAgent.BusinessWriter, ScriptedRouter.Text("sorry, no JSON"));
 
-        var result = await harness.Service<BusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
+        var result = await harness.Service<IBusinessDigestRunner>().RunProjectAsync(harness.ProjectId, CancellationToken.None);
 
         Assert.Equal(0, result.Threads);
         Assert.Single(result.Warnings);
@@ -180,7 +180,7 @@ public class BusinessMemoryTests
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
         await SetProjectKeyAsync(harness);
-        var page = await harness.Service<BusinessPageStore>().SaveAsync(
+        var page = await harness.Service<IBusinessPageStore>().SaveAsync(
             Draft(null, "# TO\n![Form TO](asset:3f2a1b9c-0000-4000-8000-000000000001)", null), CancellationToken.None);
         var business = harness.Service<IBusinessMemoryService>();
 

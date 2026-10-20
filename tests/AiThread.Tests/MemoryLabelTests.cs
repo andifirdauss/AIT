@@ -224,7 +224,7 @@ public class MemoryLabelTests
     public async Task Registry_resolves_names_aliases_plurals_and_merged_modules()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
-        var registry = harness.Service<ModuleRegistry>();
+        var registry = harness.Service<IModuleRegistry>();
 
         var (user, created) = await registry.EnsureAsync("k", "user", "Pengguna aplikasi", ["pengguna"]);
         Assert.Equal(("User", true), (user, created));
@@ -240,7 +240,7 @@ public class MemoryLabelTests
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
         await SetKeyAsync(harness, "k");
-        var registry = harness.Service<ModuleRegistry>();
+        var registry = harness.Service<IModuleRegistry>();
         await registry.EnsureAsync("k", "User");
         await registry.EnsureAsync("k", "Pengguna");
         var memoryId = await AddLabeledLongAsync(harness, "k", "Pengguna", MemoryKind.Rule, ["Deskripsi"]);
@@ -249,17 +249,17 @@ public class MemoryLabelTests
             catalog.CodeMapEntries.Add(new CodeMapEntry { ProjectKey = "k", Path = "src/PenggunaBL.cs", Module = "Pengguna", Layer = MemoryLayer.Logic, Source = CodeMapSource.AI });
             await catalog.SaveChangesAsync();
         }
-        await harness.Service<AiThread.Service.Business.BusinessPageStore>().SaveAsync(new AiThread.Service.Business.BusinessPageDraft(
+        await harness.Service<IBusinessPageStore>().SaveAsync(new AiThread.Service.Business.BusinessPageDraft(
             null, "k", "Demo", "Pengguna", "Pendaftaran", null, "daftar", "# Pendaftaran\nIsi halaman.", true, null, BusinessEditKind.Manual, "dev", null, []), default);
 
-        var merger = harness.Service<ModuleMerger>();
+        var merger = harness.Service<IModuleMerger>();
         var log = await merger.MergeAsync("k", "Pengguna", "User", "translation", 0.95, "dev", default);
 
         var row = await LongAsync(harness, memoryId);
         Assert.Equal("User", row.Module);
         Assert.StartsWith("User · Rule", row.Label);
         Assert.Equal("User", await registry.ResolveAsync("k", "Pengguna"));
-        Assert.Equal("User", (await harness.Service<CodeMapper>().ListAsync("k", null, null, 10, default)).Single().Module);
+        Assert.Equal("User", (await harness.Service<ICodeMapper>().ListAsync("k", null, null, 10, default)).Single().Module);
         await using (var business = await harness.Service<BusinessMemoryStore>().CreateAsync())
             Assert.Equal("User", (await business.BusinessPages.AsNoTracking().SingleAsync()).Module);
         Assert.Equal(1, ModuleMerger.ToDto(log).Memories);
@@ -268,7 +268,7 @@ public class MemoryLabelTests
 
         Assert.Equal("Pengguna", (await LongAsync(harness, memoryId)).Module);
         Assert.Equal("Pengguna", await registry.ResolveAsync("k", "Pengguna"));
-        Assert.Equal("Pengguna", (await harness.Service<CodeMapper>().ListAsync("k", null, null, 10, default)).Single().Module);
+        Assert.Equal("Pengguna", (await harness.Service<ICodeMapper>().ListAsync("k", null, null, 10, default)).Single().Module);
         await using (var business = await harness.Service<BusinessMemoryStore>().CreateAsync())
             Assert.Equal("Pengguna", (await business.BusinessPages.AsNoTracking().SingleAsync()).Module);
     }
@@ -278,7 +278,7 @@ public class MemoryLabelTests
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
         await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
-        var registry = harness.Service<ModuleRegistry>();
+        var registry = harness.Service<IModuleRegistry>();
         foreach (var name in new[] { "User", "Invoice", "Pengguna", "Tagihan" }) await registry.EnsureAsync("k", name);
         await AddLabeledLongAsync(harness, "k", "User", MemoryKind.Rule, ["Email"]);
         // "Users" cannot be created through the registry (it resolves to User), as if another version wrote it.
@@ -294,18 +294,18 @@ public class MemoryLabelTests
             ]}
             """));
 
-        var found = await harness.Service<ModuleMerger>().CheckAsync("k", null, default);
+        var found = await harness.Service<IModuleMerger>().CheckAsync("k", null, default);
 
         Assert.Equal(3, found);
         var active = (await registry.ListAsync("k")).Select(m => m.Name).ToList();
         Assert.Equal(["Invoice", "Tagihan", "User"], active);
-        var suggestion = Assert.Single(await harness.Service<ModuleMerger>().ListAsync("k", ModuleMergeStatus.Suggested, 10, default));
+        var suggestion = Assert.Single(await harness.Service<IModuleMerger>().ListAsync("k", ModuleMergeStatus.Suggested, 10, default));
         Assert.Equal(("Tagihan", "Invoice"), (suggestion.From, suggestion.Into));
 
         // A rejected suggestion is not suggested again.
-        await harness.Service<ModuleMerger>().RejectAsync(suggestion.Id, "dev", default);
+        await harness.Service<IModuleMerger>().RejectAsync(suggestion.Id, "dev", default);
         harness.Router.On(ScriptedAgent.ModuleDuplicates, ScriptedRouter.Text("""{"merges": [{"from": "Tagihan", "into": "Invoice", "confidence": 0.6}]}"""));
-        Assert.Equal(0, await harness.Service<ModuleMerger>().CheckAsync("k", null, default));
+        Assert.Equal(0, await harness.Service<IModuleMerger>().CheckAsync("k", null, default));
     }
 
     [Fact]
@@ -342,7 +342,7 @@ public class MemoryLabelTests
         await SetKeyAsync(harness, "k");
         using var shortDb = new TempWorkspace();
         var memory = CreateMemoryService(harness, shortDb);
-        await harness.Service<ModuleRegistry>().EnsureAsync("k", "Invoice", aliases: ["Tagihan"]);
+        await harness.Service<IModuleRegistry>().EnsureAsync("k", "Invoice", aliases: ["Tagihan"]);
 
         var flow = await memory.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "order", MemoryKind.Flow,
             ["Posting", "Invoice"], "Order yang diposting membuat tagihan.", [MemoryLayer.Logic], ExtraModules: ["tagihan", "Orders"]));
@@ -368,7 +368,7 @@ public class MemoryLabelTests
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
         await SetKeyAsync(harness, "k");
-        var registry = harness.Service<ModuleRegistry>();
+        var registry = harness.Service<IModuleRegistry>();
         await registry.EnsureAsync("k", "klaimdf");
         await registry.EnsureAsync("k", "Order");
         var main = await AddLabeledLongAsync(harness, "k", "Klaimdf", MemoryKind.Rule, ["BtnSave"]);
@@ -378,15 +378,15 @@ public class MemoryLabelTests
             catalog.CodeMapEntries.Add(new CodeMapEntry { ProjectKey = "k", Path = "Scripts/klaimdfscript.js", Module = "Klaimdf", Layer = MemoryLayer.UI, Source = CodeMapSource.AI });
             await catalog.SaveChangesAsync();
         }
-        await harness.Service<AiThread.Service.Business.BusinessPageStore>().SaveAsync(new AiThread.Service.Business.BusinessPageDraft(
+        await harness.Service<IBusinessPageStore>().SaveAsync(new AiThread.Service.Business.BusinessPageDraft(
             null, "k", "Demo", "Klaimdf", "Klaim DF", null, "klaim", "# Klaim DF\nIsi halaman.", true, null, BusinessEditKind.Manual, "dev", null, []), default);
-        var merger = harness.Service<ModuleMerger>();
+        var merger = harness.Service<IModuleMerger>();
 
         // Only the casing.
         Assert.Equal("KlaimDF", await merger.RenameAsync("k", "Klaimdf", "KlaimDF", "dev", default));
         Assert.Equal(("KlaimDF", "KlaimDF · Rule | BtnSave"), ((await LongAsync(harness, main)).Module, (await LongAsync(harness, main)).Label));
         Assert.Equal("KlaimDF", (await LongAsync(harness, extra)).ExtraModules);
-        Assert.Equal("KlaimDF", (await harness.Service<CodeMapper>().ListAsync("k", null, null, 10, default)).Single().Module);
+        Assert.Equal("KlaimDF", (await harness.Service<ICodeMapper>().ListAsync("k", null, null, 10, default)).Single().Module);
         await using (var business = await harness.Service<BusinessMemoryStore>().CreateAsync())
             Assert.Equal("KlaimDF", (await business.BusinessPages.AsNoTracking().SingleAsync()).Module);
         Assert.Null((await registry.ListAsync("k")).Single(m => m.Name == "KlaimDF").Aliases);
@@ -425,7 +425,7 @@ public class MemoryLabelTests
             {"groups": [{"id": "G1", "module": "UserAccount", "description": "Akun pengguna", "aliases": ["Pengguna"]}]}
             """));
         var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
-        var mapper = harness.Service<CodeMapper>();
+        var mapper = harness.Service<ICodeMapper>();
 
         var hits = await mapper.MapAsync(project, ["src/Web/Controllers/UserController.cs", "src/Bl/UserBL.cs"], default);
 
@@ -453,7 +453,7 @@ public class MemoryLabelTests
         harness.Project.Write("src/Bl/InvoiceBL.cs", "class InvoiceBL {}");
         harness.Router.On(ScriptedAgent.CodeMapper, call => ScriptedRouter.Text("""{"groups": [{"id": "G1", "module": "Sales"}]}"""));
         var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
-        var mapper = harness.Service<CodeMapper>();
+        var mapper = harness.Service<ICodeMapper>();
 
         // A scan cut off after the first file: only the rest goes to the model.
         await mapper.MapAsync(project, ["src/Bl/OrderBL.cs"], default);
@@ -485,7 +485,7 @@ public class MemoryLabelTests
         harness.Project.Write("src/Web/Controllers/OrderController.cs", "class OrderController {}");
         harness.Project.Write("src/Bl/InvoiceBL.cs", "class InvoiceBL {}");
         var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
-        var mapper = harness.Service<CodeMapper>();
+        var mapper = harness.Service<ICodeMapper>();
 
         var (files, mapped) = await mapper.MapReferencedAsync(project,
             ["Validasi email ada di UserBL.", "Lihat Controllers/OrderController.cs untuk status.", "Tanpa referensi file."], default);
@@ -504,7 +504,7 @@ public class MemoryLabelTests
         var paths = Enumerable.Range(1, 90).Select(i => $"src/Bl/Feature{(char)('A' + i / 26)}{(char)('a' + i % 26)}BL.cs").ToList();
         foreach (var path in paths) harness.Project.Write(path, "class X {}");
         var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
-        var mapper = harness.Service<CodeMapper>();
+        var mapper = harness.Service<ICodeMapper>();
         var progress = new List<int>();
 
         await mapper.ScanAsync(project, 3_000, default, (done, _) => { lock (progress) progress.Add(done); });
@@ -535,7 +535,7 @@ public class MemoryLabelTests
                 """);
         });
 
-        await harness.Service<MemoryRelabeler>().RunAsync(false, default);
+        await harness.Service<IMemoryRelabeler>().RunAsync(false, default);
 
         var labeled = await LongAsync(harness, clear);
         Assert.Equal((MemoryLabels.CurrentVersion, "User", MemoryKind.Rule, "Logic"), (labeled.LabelVersion, labeled.Module, labeled.Kind, labeled.Layers));
@@ -545,7 +545,7 @@ public class MemoryLabelTests
         Assert.Equal("too vague", (await LongAsync(harness, vague)).ReviewReason);
         Assert.Single(Directory.GetFiles(backup.Root, "memory-before-labels-v1-*.json"));
 
-        var status = await harness.Service<MemoryRelabeler>().GetStatusAsync(default);
+        var status = await harness.Service<IMemoryRelabeler>().GetStatusAsync(default);
         Assert.Equal((0, 1, 1), (status.Pending, status.Labeled, status.NeedsReview));
     }
 
@@ -560,7 +560,7 @@ public class MemoryLabelTests
         var id = await AddLegacyLongAsync(harness, "k", "user");
 
         // The default scripted answer labels nothing.
-        for (var i = 0; i < MemoryRelabeler.MaxAttempts; i++) await harness.Service<MemoryRelabeler>().RunAsync(false, default);
+        for (var i = 0; i < MemoryRelabeler.MaxAttempts; i++) await harness.Service<IMemoryRelabeler>().RunAsync(false, default);
 
         var row = await LongAsync(harness, id);
         Assert.Null(row.LabelVersion);
@@ -581,7 +581,7 @@ public class MemoryLabelTests
             shortStore,
             harness.Service<LongMemoryStore>(),
             harness.Service<BusinessMemoryStore>(),
-            harness.Service<ModuleRegistry>(),
+            harness.Service<IModuleRegistry>(),
             harness.Service<IEventBus>(),
             harness.Service<IActivityLogService>(),
             Options.Create(new AiThreadOptions()),

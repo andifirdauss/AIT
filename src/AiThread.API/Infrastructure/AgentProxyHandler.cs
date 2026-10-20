@@ -27,7 +27,7 @@ public sealed class AgentProxyHandler(
     IProjectService projectService,
     IThreadOrchestrator orchestrator,
     IActivityLogService activityLog,
-    ContextKeeper contextKeeper,
+    IContextKeeper contextKeeper,
     ILogger<AgentProxyHandler> logger)
 {
     private static readonly string[] AnthropicForwardedHeaders = ["anthropic-version", "anthropic-beta"];

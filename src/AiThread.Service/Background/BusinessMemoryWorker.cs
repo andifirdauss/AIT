@@ -1,5 +1,4 @@
 using AiThread.Common.Options;
-using AiThread.Service.Business;
 using AiThread.Service.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,8 +9,8 @@ namespace AiThread.Service.Background;
 // Summarizes the finished threads into the business wiki every BusinessMemoryIntervalHours (Setting → Business memory).
 // Checks the setting every few minutes, so a changed interval or switch applies without a restart.
 public sealed class BusinessMemoryWorker(
-    BusinessDigestRunner runner,
-    BusinessDigestCollector collector,
+    IBusinessDigestRunner runner,
+    IBusinessDigestCollector collector,
     ISettingService settingService,
     IOptions<AiThreadOptions> options,
     ILogger<BusinessMemoryWorker> logger) : BackgroundService

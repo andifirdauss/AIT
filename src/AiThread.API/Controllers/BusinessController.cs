@@ -9,7 +9,7 @@ namespace AiThread.API.Controllers;
 // Business memory: the business wiki of each project (Memory menu → tab Bisnis) and its settings.
 [ApiController]
 [Route("api/business")]
-public class BusinessController(IBusinessMemoryService business, BusinessDigestRunner runner) : ControllerBase
+public class BusinessController(IBusinessMemoryService business, IBusinessDigestRunner runner) : ControllerBase
 {
     // Base64 of the largest accepted image, with room for a data: URL prefix.
     private const int MaxUploadChars = (BusinessImages.MaxBytes + 2) / 3 * 4 + 100;
