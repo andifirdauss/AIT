@@ -104,6 +104,7 @@ connection string LocalDB default.
 | `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; progres untuk Claude Code sebagai *vertical stepper* di blok ```` ````text ```` (wrap 90 kolom). |
 | `Orchestration/FinalReport.cs` | Bagian jawaban akhir yang ditulis AIT dari hasil: baris status + *Perlu perhatian*, tabel *File berubah* (dari diff), footer (durasi, token, memory, wiki, *Sisa kuota*, link thread). |
 | `Implementations/RouterQuotas.cs` | Bagian murni kuota provider: model node/combo → provider 9router (peta alias `cc`→`claude`, `ag`→`antigravity`, …), parsing `/api/combos`, `/api/providers/client`, `/api/usage/{id}`, dan pemilihan batas yang ditampilkan. HTTP-nya di `NineRouterService.GetQuotasAsync` (cache 60 detik, timeout 10 detik). |
+| `Implementations/RouterCliToken.cs` | Token CLI 9router (`x-9r-cli-token` = 16 hex pertama sha256(`machine-id` + `9r-cli-auth` + `auth/cli-secret`) dari folder data 9router), dikirim `GetDashboardJsonAsync` hanya ke 9router di localhost agar kuota terbaca walau *Require login* aktif. |
 | `Workspace/*` | Sandbox path, tool baca repo, parser & applier SEARCH/REPLACE, I/O teks (BOM/line ending), diff, pencari project. |
 | `API/Infrastructure/AgentProxyHandler.cs` | Logika proxy bersama semua format: auth, klasifikasi, orkestrasi, passthrough ke 9router. |
 | `API/Infrastructure/AnthropicSseWriter.cs`, `ClientStreamWriters.cs` | Menulis balasan orkestrasi (stream, non-stream, error) dalam format Anthropic, OpenAI chat, OpenAI Responses, atau Gemini. |

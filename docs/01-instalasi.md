@@ -57,8 +57,11 @@ saat start AIT menyalakan 9router sendiri bila belum berjalan.
 
 AIT memakai endpoint 9router berikut: `GET /api/health`, `GET /v1/models`, `POST /v1/chat/completions`,
 `POST /v1/messages`, `POST /v1/messages/count_tokens`. Untuk *Sisa kuota* di footer jawaban AIT juga membaca API
-dashboard 9router (`GET /api/combos`, `/api/providers/client`, `/api/usage/{id}`); API ini hanya terbuka bila
-*Require login* di Settings 9router dimatikan (bawaan 9router: aktif). Tanpa itu footer tampil tanpa kuota.
+dashboard 9router (`GET /api/combos`, `/api/providers/client`, `/api/usage/{id}`). *Require login* di Settings
+9router (bawaan: aktif) menutup API ini. Untuk 9router di komputer yang sama, AIT tetap bisa membacanya dengan token
+CLI lokal, cara yang juga dipakai CLI 9router sendiri (header `x-9r-cli-token` dari `%APPDATA%\9router\machine-id` +
+`auth\cli-secret`). Token ini tidak dikirim ke 9router di komputer lain, jadi matikan *Require login* di sana; tanpa
+itu footer tampil tanpa kuota.
 
 ## 3. Database
 
