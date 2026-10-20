@@ -162,7 +162,8 @@ public sealed class PlannerAgent(
                     Messages = messages,
                     Tools = forcedStep ? PlannerTools.SubmitOnly() : allTools,
                     Temperature = candidate.Temperature ?? 0.2,
-                    MaxTokens = candidate.MaxTokens
+                    MaxTokens = candidate.MaxTokens,
+                    PromptCacheKey = ChatCompletionRequest.CacheKey(recorder.Thread.Id, "planner")
                 };
             }, cancellationToken, onSwitch: s => s.ReportAsync("Planner", recorder, progress, cancellationToken));
             node = run.Node = reply.Node;
@@ -405,14 +406,12 @@ public sealed class PlannerAgent(
         var builder = new StringBuilder();
 
         // Ordered from the most stable part to the most specific one: providers that cache prompt prefixes reuse the
-        // project section across the threads of a project, and the request itself comes last, after the material it
-        // refers to. Each part keeps its head and tail when clipped.
+        // project section and the structure across the threads of a project, and the request itself comes last, after
+        // the material it refers to. Each part keeps its head and tail when clipped.
         builder.Append("# Project\n");
         builder.Append($"Name: {project.Name}\n");
         builder.Append($"Root: {project.RootPath}\n");
         if (project.Stacks.Count > 0) builder.Append($"Stack: {string.Join(", ", project.Stacks)}\n");
-        if (FocusPath(input.Scope, request.WorkingDirectory) is { } focus)
-            builder.Append($"Session opened in: {focus} (relative to the root; the request most likely concerns this part)\n");
         if (project.Modules.Count > 0)
         {
             builder.Append("Manifests found (solution, build and package files):\n");
@@ -425,6 +424,10 @@ public sealed class PlannerAgent(
 
         builder.Append("## Structure (depth 2)\n");
         builder.Append(tools.ListDirectory(".", 2, 200)).Append("\n\n");
+
+        // Differs per session, so it comes after the structure: before it, it would end the shared prefix there.
+        if (FocusPath(input.Scope, request.WorkingDirectory) is { } focus)
+            builder.Append($"Session opened in: {focus} (relative to the root; the request most likely concerns this part)\n\n");
 
         // Claude Code sends injected context (CLAUDE.md, reminders, attached files) in the same turn as the request.
         var attached = AttachedContext(request.PromptContext, request.Prompt);
