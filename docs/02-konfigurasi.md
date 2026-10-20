@@ -252,7 +252,10 @@ daripada input baru:
 - OpenAI, DeepSeek, Gemini, dan sejenisnya: caching prefix otomatis di sisi provider.
 
 AIT menjaga awal percakapan tetap sama agar cache terus cocok: daftar tool planner tidak berubah selama satu
-thread, dan brief disusun dari bagian paling stabil (project, struktur) ke permintaan di akhir. Detail thread
+thread, brief disusun dari bagian paling stabil (project, struktur) ke permintaan di akhir, dan pesan executor
+diawali kontrak + ringkasan rencana yang sama untuk semua tugas. Tiap request juga membawa `prompt_cache_key`
+`ait:<thread>:planner|tools|executor` agar provider (OpenAI/Codex) mengarahkan request yang awalnya sama ke cache yang
+sama; model yang provider-nya menolak field itu otomatis dipanggil tanpa kunci (sekali tercatat di log). Detail thread
 menampilkan porsinya, mis. *Token planner 120.000 (85% cache)*. Persentase 0 berarti provider tidak melaporkan cache
 atau tidak memakainya.
 

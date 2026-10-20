@@ -57,7 +57,9 @@ public sealed class ToolsNodeAgent(NodeCaller caller, PlannerToolRunner runner, 
                     Messages = messages,
                     Tools = forced ? PlannerTools.ReportOnly() : toolList,
                     Temperature = candidate.Temperature ?? 0.1,
-                    MaxTokens = candidate.MaxTokens
+                    MaxTokens = candidate.MaxTokens,
+                    // Shared by the thread's investigations: they start with the same system prompt, tools and project section.
+                    PromptCacheKey = ChatCompletionRequest.CacheKey(recorder.Thread.Id, "tools")
                 };
             }, cancellationToken, onSwitch: s => s.ReportAsync($"Tools node {label}", recorder, progress, cancellationToken));
             node = reply.Node;

@@ -41,6 +41,8 @@ public sealed partial class NineRouterService(
 
     private readonly SemaphoreSlim _modelLock = new(1, 1);
     private readonly ConcurrentDictionary<string, UsageCache> _usageCache = new();
+    // Models whose provider rejected prompt_cache_key (strict OpenAI-compatible APIs); they are called without it.
+    private readonly ConcurrentDictionary<string, bool> _cacheKeyRejected = new(StringComparer.OrdinalIgnoreCase);
     private ModelCache? _modelCache;
     private KeyCheck? _keyCheck;
     private bool _dashboardLoginLogged;
@@ -358,6 +360,8 @@ public sealed partial class NineRouterService(
             body["tools"] = tools.DeepClone();
             body["tool_choice"] = "auto";
         }
+        var sendsCacheKey = request.PromptCacheKey is { Length: > 0 } && !_cacheKeyRejected.ContainsKey(request.Model);
+        if (sendsCacheKey) body["prompt_cache_key"] = request.PromptCacheKey;
 
         using var message = new HttpRequestMessage(HttpMethod.Post, Combine(settings.NineRouterBaseUrl, "/v1/chat/completions"))
         {
@@ -378,6 +382,12 @@ public sealed partial class NineRouterService(
                 var errorBody = await response.Content.ReadAsStringAsync(timeout.Token);
                 var routerRejected = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
                 var error = ExtractError(errorBody);
+                if (sendsCacheKey && error.Contains("prompt_cache_key", StringComparison.OrdinalIgnoreCase))
+                {
+                    _cacheKeyRejected[request.Model] = true;
+                    logger.LogInformation("Provider model {Model} menolak prompt_cache_key; model ini dipanggil tanpa kunci cache.", request.Model);
+                    return await SendChatAsync(settings, request, onDelta, cancellationToken);
+                }
                 if (!routerRejected && IsProviderLoginError(error))
                 {
                     throw new NineRouterException(ProviderLoginMessage(request.Model, error, settings.NineRouterBaseUrl), (int)response.StatusCode)

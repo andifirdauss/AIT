@@ -75,9 +75,10 @@ Bila pengecekan gagal (mis. database mati), prompt juga diteruskan tanpa orkestr
 Planner menerima **brief**, disusun dari bagian paling stabil ke yang paling spesifik (agar prompt cache provider
 bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah semua bahan yang dirujuknya):
 
-1. info project: nama, root, stack, folder tempat sesi dibuka (bila di bawah root), daftar file solution/build yang
-   ditemukan, dan perintah build yang bisa dijalankan AIT (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
-2. struktur folder 2 tingkat (maks 200 entri);
+1. info project: nama, root, stack, daftar file solution/build yang ditemukan, dan perintah build yang bisa dijalankan
+   AIT (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
+2. struktur folder 2 tingkat (maks 200 entri), lalu folder tempat sesi dibuka (bila di bawah root). Folder sesi
+   sengaja di bawah struktur: ia berbeda per sesi, sehingga bila di atas, struktur tidak ikut ter-cache antar sesi;
 3. konteks yang disisipkan Claude Code (isi `CLAUDE.md`, reminder, file yang dilampirkan), maks 30.000 karakter;
 4. **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AIT sebelumnya (lihat
    [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
@@ -280,9 +281,11 @@ AIT mengerjakan `extract` dengan parser C# (Roslyn), dalam hitungan milidetik:
 ### Yang dilihat executor
 
 1. Prompt peran executor (+ instruksi tambahan node, + isi skill node; lihat [Skill pada node](#skill-pada-node)).
-2. Judul, aksi, dan path file target; instruksi; kontrak; ringkasan rencana (sebagai konteks saja).
-3. Potongan referensi dari `context` (maks 250 baris per potongan, total maks 40.000 karakter).
-4. Isi file target:
+2. Bagian rencana yang sama untuk semua tugas: kontrak dan ringkasan rencana (sebagai konteks saja). Bagian ini
+   sengaja paling depan agar executor-executor satu rencana berbagi awal prompt yang sama di prompt cache provider.
+3. Judul, aksi, dan path file target; instruksi.
+4. Potongan referensi dari `context` (maks 250 baris per potongan, total maks 40.000 karakter).
+5. Isi file target:
    - file ≤ `ExecutorFullFileMaxLines` (400) baris → utuh;
    - file lebih besar → potongan di sekitar `focus` ±40 baris dengan penanda `... (lines X-Y not shown) ...`;
      tanpa `focus` → 400 baris pertama;

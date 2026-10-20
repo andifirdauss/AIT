@@ -139,7 +139,8 @@ public sealed class ExecutionEngine(ExecutorAgent executor, NodeConcurrencyLimit
                         e.NodeName = change.To.Name;
                         e.Model = change.To.Model;
                     });
-                }), cancellationToken);
+                },
+                ChatCompletionRequest.CacheKey(recorder.Thread.Id, "executor")), cancellationToken);
 
             stopwatch.Stop();
             recorder.TaskOutput(entity, string.Empty, flush: true);

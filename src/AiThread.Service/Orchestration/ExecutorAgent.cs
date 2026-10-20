@@ -20,7 +20,9 @@ public sealed record ExecutorJob(
     // Records the file before and after each write, so the thread can be undone. Null = not undoable.
     FileJournal? Journal = null,
     // The executor's fallback node took over; later attempts stay on it.
-    Func<NodeSwitch, Task>? OnSwitch = null);
+    Func<NodeSwitch, Task>? OnSwitch = null,
+    // prompt_cache_key shared by the executors of one thread, whose task messages start with the same plan section.
+    string? CacheKey = null);
 
 public sealed record ExecutorOutcome(bool Success, string? Summary, string? Diff, string? Error, int Tokens, int Attempts);
 
@@ -67,7 +69,8 @@ public sealed class ExecutorAgent(NodeCaller caller, FileLockProvider fileLocks,
                         Model = candidate.Model,
                         Messages = messages,
                         Temperature = candidate.Temperature ?? 0.1,
-                        MaxTokens = candidate.MaxTokens
+                        MaxTokens = candidate.MaxTokens,
+                        PromptCacheKey = job.CacheKey
                     };
                 }, cancellationToken, job.OnOutput, job.OnSwitch, slotHeld: current.Id == job.Node.Id);
                 node = reply.Node;
@@ -134,12 +137,10 @@ public sealed class ExecutorAgent(NodeCaller caller, FileLockProvider fileLocks,
     {
         var task = job.Task;
         var builder = new StringBuilder();
-        builder.Append($"# Task {task.Id}: {task.Title}\n");
-        builder.Append($"Action: {(task.IsCreate ? "create a new file" : "edit an existing file")}\n");
-        builder.Append($"Target file: {task.File}\n\n");
 
-        builder.Append("## Instruction\n").Append(task.Instruction.Trim()).Append("\n\n");
-
+        // The plan section is the same for every task of the plan, so it comes first: the executors of one plan share
+        // that prefix in the provider's prompt cache. Everything about this task follows it.
+        builder.Append("# Plan (shared by every task)\n");
         builder.Append("## Contract (shared names — use exactly as written)\n");
         if (job.Plan.Contract.Count == 0) builder.Append("(none)\n");
         foreach (var item in job.Plan.Contract)
@@ -152,6 +153,12 @@ public sealed class ExecutorAgent(NodeCaller caller, FileLockProvider fileLocks,
 
         if (!string.IsNullOrWhiteSpace(job.Plan.Summary))
             builder.Append("## Overall goal (context only — other tasks handle the other files)\n").Append(job.Plan.Summary.Trim()).Append("\n\n");
+
+        builder.Append($"# Task {task.Id}: {task.Title}\n");
+        builder.Append($"Action: {(task.IsCreate ? "create a new file" : "edit an existing file")}\n");
+        builder.Append($"Target file: {task.File}\n\n");
+
+        builder.Append("## Instruction\n").Append(task.Instruction.Trim()).Append("\n\n");
 
         var references = await BuildReferencesAsync(job, cancellationToken);
         if (references.Length > 0) builder.Append("## Reference excerpts (read-only, from other files)\n").Append(references).Append('\n');
