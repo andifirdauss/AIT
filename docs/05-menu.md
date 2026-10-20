@@ -1,7 +1,9 @@
 # 5. Panduan menu
 
-Semua halaman memperbarui diri secara live lewat Server-Sent Events — tidak perlu refresh. Pill di kiri bawah
-sidebar menunjukkan status 9router; tombol *Ganti tema* beralih antara mode gelap dan terang.
+Semua halaman memperbarui diri secara live lewat Server-Sent Events — tidak perlu refresh. Menu sidebar dikelompokkan
+menjadi *Ruang kerja* (Dashboard, Project, Memory — dipakai sehari-hari), *Konfigurasi* (Setup, Node, CLI, Setting) dan
+*Bantuan* (Docs, Panduan memulai). Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
+antara mode gelap dan terang.
 
 **Tombol jendela.** Semua jendela, dialog, panel log, dan blok kode memakai tiga tombol gaya macOS di kiri title
 bar (simbolnya muncul saat kursor di atasnya):
@@ -22,8 +24,8 @@ tersisa. Tombol merah banner menyembunyikannya sampai ada langkah lain yang belu
 
 **Panduan memulai.** Popup bergambar berisi 9 langkah: mengenal AIT, memasang AIT, menyiapkan 9router, koneksi 9router,
 model per peran, Project, CLI, mulai bekerja, dan selesai. Geser, klik titik, atau pakai tombol panah ← → untuk berpindah
-langkah; tombol *Kerjakan di Setup* membuka langkah yang sama di halaman Setup. Buka lewat tombol *Panduan memulai* di
-kiri bawah sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Panduan bergambar* di halaman Setup.
+langkah; tombol *Kerjakan di Setup* membuka langkah yang sama di halaman Setup. Buka lewat menu *Panduan memulai* di
+grup *Bantuan* sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Panduan bergambar* di halaman Setup.
 
 ## Dashboard
 
@@ -38,8 +40,6 @@ kiri bawah sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Pandua
 
 **Statistik**: thread hari ini (dan total), thread yang sedang berjalan, success rate 100 thread terakhir,
 rata-rata speedup paralel, token hari ini (planner + executor + wrapper), jumlah project dan memory.
-
-**Jalankan prompt**: menjalankan thread untuk project terdaftar tanpa Claude Code.
 
 **Thread terbaru**: 25 thread terakhir — waktu & sumber (*Claude Code*, *Dashboard*, *Telegram*), project, prompt,
 status, tugas berhasil/total, durasi, speedup, token. Klik baris untuk detail.

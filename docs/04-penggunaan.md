@@ -223,11 +223,11 @@ Batasan:
 - Folder yang menjadi kosong setelah file buatan thread dihapus ikut dihapus.
 - Thread yang berjalan sebelum fitur ini ada tidak punya catatan, jadi tidak bisa dibatalkan.
 
-## Menjalankan prompt dari Dashboard
+## Menjalankan prompt tanpa Claude Code
 
-Kartu **Jalankan prompt** di Dashboard menjalankan thread tanpa Claude Code: pilih project terdaftar, tulis
-prompt, klik *Jalankan thread*. Anda langsung diarahkan ke halaman detail thread untuk memantau. Cocok untuk
-menguji konfigurasi node.
+Kartu *Jalankan prompt* di Dashboard sedang disembunyikan. Untuk menguji konfigurasi node tanpa Claude Code, kirim
+`POST /api/threads` dengan body `{ "projectId": <id project>, "prompt": "…" }`; balasannya id thread yang bisa
+dipantau di `/Thread/Detail/<id>`.
 
 ## Menjalankan prompt dari Telegram
 

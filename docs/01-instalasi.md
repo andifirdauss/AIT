@@ -113,7 +113,7 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 | Hal | Keterangan |
 |---|---|
 | Lokasi aplikasi | `%LOCALAPPDATA%\AIThread\app` (hasil `dotnet publish -c Release`). Build memakai folder sendiri (`%LOCALAPPDATA%\AIThread\build`), jadi tidak bentrok dengan `bin/` yang sedang dikunci Visual Studio. Bila publish gagal, versi lama tetap dipakai. |
-| Log | `%LOCALAPPDATA%\AIThread\logs\aithread-<waktu>.log` (dan `.err.log`); 10 run terakhir disimpan. Log aktivitas thread tetap ada di Dashboard. |
+| Log | `%LOCALAPPDATA%\AIThread\logs\aithread-<waktu>.log` (dan `.err.log`); 10 run terakhir disimpan. Log aktivitas thread tetap ada di Dashboard. Satu baris per entri (`jam level kategori: pesan`); warning hanya menampilkan pesan error (`→ Tipe: pesan`) tanpa stack trace, dan warning yang sama persis dalam 5 menit dicetak sekali lalu diberi catatan *Nx serupa disembunyikan*. Error tetap dengan stack trace lengkap. |
 | Konfigurasi | `appsettings.json` ikut ter-publish: ubah `src/AIThread.UI/appsettings.json` lalu `restart`. Environment `Production`. Setting dari UI (database) tetap sama dengan saat development. |
 | Port lain | `-Port 6000` — pakai `-Port` yang sama untuk semua perintah, lalu terapkan ulang integrasi Claude Code. |
 | Autostart | Task Scheduler `AIThread`, 30 detik setelah login, berjalan sebagai akun Anda sendiri (tanpa admin). Karena itu LocalDB dan API key 9router yang terenkripsi tetap berlaku. Memakai hasil publish terakhir tanpa build ulang. |

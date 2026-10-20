@@ -63,13 +63,32 @@ body {
   gap: 2px;
 }
 
+/* Group heading above a block of sidebar links (Ruang kerja / Konfigurasi / Bantuan). */
+.app-nav-section {
+  margin: 0.9rem 0.75rem 0.3rem;
+  color: rgba(174, 182, 196, 0.55);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-nav-section:first-child {
+  margin-top: 0.25rem;
+}
+
 .app-nav-link {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  width: 100%;
   padding: 0.5rem 0.75rem;
+  border: 0;
   border-radius: 8px;
+  background: none;
   color: var(--app-sidebar-fg);
+  font: inherit;
+  text-align: left;
   text-decoration: none;
 }
 
@@ -85,8 +104,19 @@ body {
 
 .app-nav-icon {
   width: 1.1rem;
-  text-align: center;
+  height: 1.1rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   opacity: 0.8;
+}
+
+.app-nav-link.active .app-nav-icon {
+  color: var(--app-accent);
+  opacity: 1;
 }
 
 .app-update {
@@ -626,6 +656,8 @@ body {
   .app-shell { flex-direction: column; }
   .app-sidebar { position: static; width: 100%; height: auto; }
   .app-nav { flex-direction: row; flex-wrap: wrap; }
+  .app-nav-section { display: none; }
+  .app-nav-link { width: auto; }
   .app-main { padding: 1rem; }
 }
 
@@ -682,7 +714,7 @@ body {
   background: var(--app-accent);
 }
 
-.app-sidebar-footer .btn-onboarding {
+.app-sidebar-footer .btn-sidebar {
   color: var(--app-sidebar-fg);
   border-color: rgba(255, 255, 255, 0.15);
 }
