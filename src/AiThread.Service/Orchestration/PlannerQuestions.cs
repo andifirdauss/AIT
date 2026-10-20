@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json.Nodes;
 using AiThread.Common.DTOs;
@@ -73,53 +72,6 @@ public sealed record PendingQuestion(
     PlannerQuestion Question,
     PlannerConversation Conversation,
     DateTime ExpiresAt);
-
-// Threads paused on a planner question, by session: the next prompt of that session is the answer. Kept in memory
-// only — after a restart the question is gone and the next prompt starts a new thread (ThreadLifecycleWorker closes
-// the paused thread).
-public sealed class PendingQuestionStore(TimeProvider timeProvider)
-{
-    public static readonly TimeSpan Lifetime = TimeSpan.FromHours(2);
-
-    private readonly ConcurrentDictionary<string, PendingQuestion> _bySession = new(StringComparer.Ordinal);
-
-    public PendingQuestion Add(Guid threadId, Guid projectId, string sessionId, PlannerQuestion question, PlannerConversation conversation)
-    {
-        var pending = new PendingQuestion(threadId, projectId, sessionId, question, conversation, timeProvider.GetUtcNow().UtcDateTime + Lifetime);
-        _bySession[sessionId] = pending;
-        return pending;
-    }
-
-    // The question this prompt answers. A question of another project, or an expired one, is dropped and returned as
-    // stale so the caller can close its thread.
-    public PendingQuestion? TryTake(string? sessionId, Guid projectId, out PendingQuestion? stale)
-    {
-        stale = null;
-        if (string.IsNullOrEmpty(sessionId) || !_bySession.TryRemove(sessionId, out var pending)) return null;
-        if (pending.ProjectId == projectId && pending.ExpiresAt > timeProvider.GetUtcNow().UtcDateTime) return pending;
-
-        stale = pending;
-        return null;
-    }
-
-    public bool Remove(Guid threadId)
-    {
-        foreach (var (session, pending) in _bySession)
-            if (pending.ThreadId == threadId && _bySession.TryRemove(new KeyValuePair<string, PendingQuestion>(session, pending)))
-                return true;
-        return false;
-    }
-
-    public IReadOnlyList<PendingQuestion> TakeExpired()
-    {
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        var expired = new List<PendingQuestion>();
-        foreach (var (session, pending) in _bySession)
-            if (pending.ExpiresAt <= now && _bySession.TryRemove(new KeyValuePair<string, PendingQuestion>(session, pending)))
-                expired.Add(pending);
-        return expired;
-    }
-}
 
 // Closes threads whose planner question will not be answered any more (expired, cancelled, replaced, or lost in a
 // restart). Only threads still waiting are touched, so a thread that resumed in the meantime is left alone.

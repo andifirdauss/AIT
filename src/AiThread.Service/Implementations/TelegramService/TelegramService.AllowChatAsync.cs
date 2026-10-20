@@ -1,0 +1,29 @@
+using AiThread.Common.DTOs;
+using AiThread.Service.Interfaces;
+using AiThread.Service.Telegram;
+using Microsoft.EntityFrameworkCore;
+
+namespace AiThread.Service.Implementations;
+
+public sealed partial class TelegramService
+{
+    public async Task<TelegramChatDto?> AllowChatAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var chat = await db.TelegramChats.Include(c => c.ActiveProject).FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+        if (chat is null) return null;
+
+        if (!chat.IsAllowed)
+        {
+            chat.IsAllowed = true;
+            chat.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+
+            eventBus.Publish(AppEvent.Create(AppEventTypes.TelegramChanged, new { chat.Id, action = "allowed" }));
+            activityLog.Success("telegram", $"Chat Telegram {chat.DisplayName} (ID {chat.ChatId}) diizinkan mengirim prompt.");
+            await NotifyAsync(chat, TelegramMessages.Allowed(chat.ActiveProject?.Name), cancellationToken);
+        }
+
+        return ToDto(chat);
+    }
+}

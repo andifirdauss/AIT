@@ -14,9 +14,9 @@ namespace AiThread.Service.Background;
 // Telegram settings change.
 public sealed class TelegramPollingWorker(
     ISettingService settingService,
-    TelegramApi api,
-    TelegramBot bot,
-    TelegramBotRuntime runtime,
+    ITelegramApi api,
+    ITelegramBot bot,
+    ITelegramBotRuntime runtime,
     IActivityLogService activityLog,
     IOptions<AiThreadOptions> options,
     ILogger<TelegramPollingWorker> logger) : BackgroundService
