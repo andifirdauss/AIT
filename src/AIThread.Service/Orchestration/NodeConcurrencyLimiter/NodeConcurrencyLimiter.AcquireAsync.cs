@@ -1,0 +1,13 @@
+using AIThread.Common.Entities;
+
+namespace AIThread.Service.Orchestration;
+
+public sealed partial class NodeConcurrencyLimiter
+{
+    public async Task<IDisposable> AcquireAsync(AiNode node, CancellationToken cancellationToken)
+    {
+        var gate = GateFor(node);
+        await gate.Semaphore.WaitAsync(cancellationToken);
+        return new Lease(gate.Semaphore);
+    }
+}

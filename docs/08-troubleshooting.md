@@ -11,9 +11,9 @@ dashboard terbuka di URL yang sama dengan Setting → Base URL, lalu *Test konek
 
 **AIT tidak menyalakan 9router saat start**
 Lihat log kategori *9router* di Dashboard. Penyebab umum: Base URL bukan alamat lokal; *Node.js tidak ditemukan*
-(pasang Node.js 18+); *9router belum terpasang* (klik **Jalankan 9router**, atau set `AiThread:NineRouter:AutoInstall`);
+(pasang Node.js 18+); *9router belum terpasang* (klik **Jalankan 9router**, atau set `AIThread:NineRouter:AutoInstall`);
 *Port … sudah dipakai* oleh program lain (ganti port 9router dan Base URL, atau hentikan program itu); atau 9router
-berhenti saat dinyalakan, yang detailnya ada di `%LOCALAPPDATA%\AiThread\logs\9router.log`.
+berhenti saat dinyalakan, yang detailnya ada di `%LOCALAPPDATA%\AIThread\logs\9router.log`.
 
 **"9router HTTP 401 untuk model '…': Missing API key" padahal Setting terlihat terhubung**
 Belum ada API key **tersimpan**. *Test koneksi* hanya menguji key yang diketik di form tanpa menyimpannya, dan
@@ -102,11 +102,11 @@ kurung menunjukkan penyebabnya:
 - *folder ini berisi project a, b, …*: working directory hanya berisi beberapa project, tidak ada yang dipilih karena
   ambigu. Buka sesi di salah satunya;
 - *folder ini terlalu luas*: working directory adalah drive, folder Home, atau folder sistem;
-- *working directory tidak diketahui*: klien tidak mengirimnya; set header `X-AiThread-Cwd`.
+- *working directory tidak diketahui*: klien tidak mengirimnya; set header `X-AIThread-Cwd`.
 
 Solusi: jalankan Claude Code di folder project, tambahkan `.git` (`git init`) atau file build ke folder itu, atau
 daftarkan foldernya lewat *Daftarkan manual* di menu Project (folder tanpa marker pun bisa). Bisa juga menerapkan
-integrasi *per project* (mengirim header `X-AiThread-Project`). Sesi yang diabaikan dicek ulang setelah sekitar 5 detik.
+integrasi *per project* (mengirim header `X-AIThread-Project`). Sesi yang diabaikan dicek ulang setelah sekitar 5 detik.
 
 **Registrasi manual: "Folder … tidak ditemukan" atau "Folder ini terlalu luas untuk jadi project"**
 Path salah, atau folder yang dituju adalah drive/Home/folder sistem. Isi path folder project-nya, atau gunakan
@@ -124,7 +124,7 @@ Root dipilih dari root repository (`.git`) terdekat, lalu file penghimpun paling
 [Cek sesi](07-cara-kerja.md#2-cek-sesi-project-atau-bukan)); project yang sudah terdaftar dan memuat folder itu
 diutamakan. Bila root yang Anda mau berbeda (mis. satu modul di monorepo sebagai project sendiri), daftarkan folder
 itu lewat *Daftarkan manual*: folder dengan marker sendiri didaftarkan apa adanya, dan sesi di dalamnya memakainya.
-Integrasi per project (header `X-AiThread-Project`) juga mengunci foldernya.
+Integrasi per project (header `X-AIThread-Project`) juga mengunci foldernya.
 
 **Badge *folder hilang* di menu Project**
 Folder project sudah dipindah/dihapus. Daftarkan path baru; hapus entri lama bila tidak diperlukan
@@ -163,8 +163,8 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 ## Redis & database
 
 **Kartu Redis *Tidak terhubung***
-Short memory memakai Garnet di dalam AIT. Cari baris `Embedded Garnet` di log AiThread: bila Garnet gagal
-start, penyebabnya tercatat di situ. Bila `AiThread:EmbeddedRedis:Enabled` = `false`, pastikan Redis eksternal di
+Short memory memakai Garnet di dalam AIT. Cari baris `Embedded Garnet` di log AIThread: bila Garnet gagal
+start, penyebabnya tercatat di situ. Bila `AIThread:EmbeddedRedis:Enabled` = `false`, pastikan Redis eksternal di
 `ConnectionStrings:Redis` hidup. Selama short memory tidak tersedia, memory baru langsung masuk long memory; tidak
 ada data hilang.
 

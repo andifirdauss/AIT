@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Thin launcher: finds the platform package that carries AiThread.exe and runs it with the same arguments and console.
+// Thin launcher: finds the platform package that carries AIThread.exe and runs it with the same arguments and console.
 "use strict";
 
 const { spawn } = require("node:child_process");
@@ -16,7 +16,7 @@ if (!packageName) {
 
 let exe;
 try {
-  exe = path.join(path.dirname(require.resolve(`${packageName}/package.json`)), "bin", "AiThread.exe");
+  exe = path.join(path.dirname(require.resolve(`${packageName}/package.json`)), "bin", "AIThread.exe");
 } catch {
   console.error(`aithread: paket ${packageName} tidak ditemukan. Pasang ulang tanpa --no-optional / --omit=optional:`);
   console.error("  npm i -g aithread");

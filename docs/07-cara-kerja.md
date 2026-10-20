@@ -32,8 +32,8 @@ Jika *Proxy API key* diisi, request tanpa key yang cocok (`Authorization: Bearer
 
 Sebelum planner dipanggil, AIT memeriksa **sesi** asal prompt:
 
-1. Id sesi diambil dari header `X-AiThread-Session` / `x-claude-code-session-id` / `x-session-id`, atau dari
-   `metadata.user_id`; working directory dari header `X-AiThread-Cwd`, atau dari baris `Primary working directory:` /
+1. Id sesi diambil dari header `X-AIThread-Session` / `x-claude-code-session-id` / `x-session-id`, atau dari
+   `metadata.user_id`; working directory dari header `X-AIThread-Cwd`, atau dari baris `Primary working directory:` /
    `Working directory:` / `Current working directory:` / `cwd:` (atau tag `<cwd>`) di system prompt.
 2. **Project = folder root** yang berisi `.git` atau file build, tanpa memandang bahasanya: `.sln`/`.slnx`/`.csproj`,
    `pom.xml`, `build.gradle(.kts)`, `package.json`, `pyproject.toml`/`requirements.txt`, `go.mod`, `Cargo.toml`,
@@ -46,8 +46,8 @@ Sebelum planner dipanggil, AIT memeriksa **sesi** asal prompt:
       `package.json` berisi `workspaces`, `pnpm-workspace.yaml`, `go.work`, dst.);
    4. lainnya: manifest terdekat.
 
-   Header `X-AiThread-Project` (folder root) menjadi titik awal pencarian menggantikan working directory (bila tidak
-   menghasilkan project, working directory dipakai); header lama `X-AiThread-Solution` (path `.sln`, foldernya yang
+   Header `X-AIThread-Project` (folder root) menjadi titik awal pencarian menggantikan working directory (bila tidak
+   menghasilkan project, working directory dipakai); header lama `X-AIThread-Solution` (path `.sln`, foldernya yang
    dipakai) tetap diterima. Drive, folder Home, dan folder sistem tidak pernah menjadi project, walau ada `package.json` atau
    `.git` nyasar di sana.
 3. **Project ditemukan** → didaftarkan otomatis bila belum ada (prompt pertama sesi), lalu prompt diorkestrasi.
@@ -468,7 +468,7 @@ nyambung tanpa mengirim seluruh percakapan, AIT menyimpan **ringkasan sesi** per
 
 1. Baris pertama setiap balasan orkestrasi adalah penanda ``**AIT** · `NamaProject` · thread `3f2a1b9c` `` (selalu
    dikirim, juga saat progres dimatikan). Penanda ini ikut tersimpan di chat Claude Code. Penanda lama
-   ``**AiThread** · …`` dari balasan sebelum rename tetap dikenali.
+   ``**AIThread** · …`` dari balasan sebelum rename tetap dikenali.
 2. Setelah thread selesai, Context Keeper menulis ringkasan sesi (tujuan, keputusan & batasan, log kerja per thread,
    fakta penting berupa penunjuk file, hal yang belum selesai) dan menyimpannya pada thread itu.
 3. Di prompt berikutnya, proxy mencari penanda di history yang dikirim Claude Code, mengambil ringkasan dari thread
@@ -506,7 +506,7 @@ lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offlin
    - Repository tanpa `SKILL.md`: model menunjuk file Markdown mana yang merupakan skill (mis. `agents/*.md`, aturan Cursor).
    - Halaman web: skill yang tertulis di halaman disimpan sebagai `SKILL.md`, dan hingga 5 repository yang ditautkan
      ditarik sebagai sumber turunan.
-3. **Gudang** ada di `%LOCALAPPDATA%\AiThread\skills\<id sumber>` (ubah lewat `AiThread:SkillsDirectory`). Isi `SKILL.md`
+3. **Gudang** ada di `%LOCALAPPDATA%\AIThread\skills\<id sumber>` (ubah lewat `AIThread:SkillsDirectory`). Isi `SKILL.md`
    juga disimpan di database. *Sync* menarik ulang sumber; skill yang sama (folder + file) tetap terpasang di node,
    sedangkan skill yang hilang dari sumber dilepas dari node.
 4. **Memilih skill untuk node** (modal Node → *Cari skill*). Kebutuhan yang Anda tulis dicocokkan oleh Skill

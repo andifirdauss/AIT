@@ -3,8 +3,8 @@
     Membuat paket npm (aithread + aithread-win-x64) di dist\npm.
 
 .DESCRIPTION
-    Memanggil publish-exe.ps1 ke npm\platforms\win-x64\bin, menyamakan versi paket dengan <Version> di AiThread.UI.csproj,
-    lalu menjalankan `npm pack`. Paket utama (aithread) hanya berisi launcher; AiThread.exe ada di aithread-win-x64
+    Memanggil publish-exe.ps1 ke npm\platforms\win-x64\bin, menyamakan versi paket dengan <Version> di AIThread.UI.csproj,
+    lalu menjalankan `npm pack`. Paket utama (aithread) hanya berisi launcher; AIThread.exe ada di aithread-win-x64
     yang ikut terpasang lewat optionalDependencies.
 
 .EXAMPLE
@@ -20,7 +20,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$Csproj = Join-Path $RepoRoot 'src\AiThread.UI\AiThread.UI.csproj'
+$Csproj = Join-Path $RepoRoot 'src\AIThread.UI\AIThread.UI.csproj'
 $Main = Join-Path $RepoRoot 'npm\aithread'
 $Platform = Join-Path $RepoRoot 'npm\platforms\win-x64'
 $Out = Join-Path $RepoRoot 'dist\npm'

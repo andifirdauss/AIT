@@ -17,10 +17,10 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 ## Mulai cepat
 
 1. Jalankan 9router — [Instalasi](01-instalasi.md). Redis/Docker tidak diperlukan.
-2. Jalankan AiThread: `dotnet run --project src/AiThread.UI --launch-profile http` lalu buka http://localhost:5225.
+2. Jalankan AIThread: `dotnet run --project src/AIThread.UI --launch-profile http` lalu buka http://localhost:5225.
    Agar tetap hidup walau browser/terminal ditutup, jalankan di background: `.\scripts\aithread.ps1 start` —
-   [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background). Tanpa .NET SDK: `AiThread.exe` standalone
-   dengan menu dan ikon tray — [AiThread.exe standalone](01-instalasi.md#6-aithreadexe-standalone-tanpa-net).
+   [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background). Tanpa .NET SDK: `AIThread.exe` standalone
+   dengan menu dan ikon tray — [AIThread.exe standalone](01-instalasi.md#6-aithreadexe-standalone-tanpa-net).
 3. Menu **Setup** (terbuka sendiri saat AIT pertama kali dipakai) mengerjakan semua langkah awal di satu halaman —
    [Panduan menu → Setup](05-menu.md#setup):
    - **9router**: isi URL & API key → *Test & simpan*.

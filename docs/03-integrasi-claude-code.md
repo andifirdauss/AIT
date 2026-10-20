@@ -8,7 +8,7 @@ opsional) variabel:
 | `ANTHROPIC_BASE_URL` | `http://localhost:5225` | Semua request Claude Code dikirim ke AIT, bukan ke Anthropic. |
 | `ANTHROPIC_AUTH_TOKEN` | Proxy API key, atau `aithread-local` bila kosong | Dikirim sebagai `Authorization: Bearer`. Kredensial Anthropic Anda tidak ikut terkirim ke proxy. |
 | `API_TIMEOUT_MS` | `1800000` (30 menit) | Satu thread bisa memakan beberapa menit; default Claude Code (10 menit) bisa terlalu pendek. |
-| `ANTHROPIC_CUSTOM_HEADERS` | `X-AiThread-Project: <folder root project>` | Hanya untuk cakupan per project. Mengikat sesi ke project yang tepat. |
+| `ANTHROPIC_CUSTOM_HEADERS` | `X-AIThread-Project: <folder root project>` | Hanya untuk cakupan per project. Mengikat sesi ke project yang tepat. |
 
 ## Cara A — dari UI (disarankan)
 
@@ -66,15 +66,15 @@ Tambahkan ke `.claude/settings.local.json` di folder tempat Anda menjalankan `cl
     "ANTHROPIC_BASE_URL": "http://localhost:5225",
     "ANTHROPIC_AUTH_TOKEN": "aithread-local",
     "API_TIMEOUT_MS": "1800000",
-    "ANTHROPIC_CUSTOM_HEADERS": "X-AiThread-Project: D:\\Source\\MyApp"
+    "ANTHROPIC_CUSTOM_HEADERS": "X-AIThread-Project: D:\\Source\\MyApp"
   }
 }
 ```
 
 - Ganti `aithread-local` dengan Proxy API key bila Anda mengisinya di Setting.
 - `ANTHROPIC_CUSTOM_HEADERS` opsional. Tanpa header ini, AIT menentukan project dari working directory sesi
-  (folder itu atau folder induknya). Alternatif lain: `X-AiThread-Cwd: <folder>` untuk menetapkan working directory.
-  Header lama `X-AiThread-Solution` (path `.sln`) tetap diterima; foldernya dipakai sebagai petunjuk project.
+  (folder itu atau folder induknya). Alternatif lain: `X-AIThread-Cwd: <folder>` untuk menetapkan working directory.
+  Header lama `X-AIThread-Solution` (path `.sln`) tetap diterima; foldernya dipakai sebagai petunjuk project.
 
 ## Verifikasi
 
@@ -94,8 +94,8 @@ Jika jawaban datang tanpa baris `**AIT**`, lihat [Troubleshooting](08-troublesho
 ## Mengembalikan
 
 - UI: menu **CLI** → matikan switch yang sama (atau switch **AIT** di tabel Project). Kunci AIT
-  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `API_TIMEOUT_MS`, dan header `X-AiThread-Project`, atau
-  `X-AiThread-Solution` dari versi lama) dihapus;
+  (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `API_TIMEOUT_MS`, dan header `X-AIThread-Project`, atau
+  `X-AIThread-Solution` dari versi lama) dihapus;
   isi lain dibiarkan.
 - Manual: hapus kunci-kunci tersebut, atau pulihkan dari file `*.aithread-backup`.
 
@@ -105,7 +105,7 @@ Buka sesi Claude Code baru setelahnya.
 
 Sesi Claude Code yang panjang mahal karena **setiap request membaca ulang seluruh konteks**. `/clear` membuat konteks
 kecil lagi, tetapi alurnya hilang. Hook ini menjembatani keduanya, dan berlaku untuk **semua** sesi di cakupannya —
-termasuk sesi yang tidak diarahkan ke proxy AiThread:
+termasuk sesi yang tidak diarahkan ke proxy AIThread:
 
 1. Anda menjalankan `/clear`. Hook `SessionEnd` (reason `clear`) mengirim lokasi transcript sesi lama ke AIT,
    yang langsung membalas lalu bekerja di latar.
@@ -183,7 +183,7 @@ ditambahkan di akhir file (Codex hanya memakai `wire_api = "responses"`; `stream
 karena thread orkestrasi bisa diam beberapa menit):
 
 ```toml
-# >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
+# >>> AIThread (dikelola otomatis, lepas lewat menu CLI) >>>
 [model_providers.aithread]
 name = "AIT"
 base_url = "http://localhost:5225/v1"
@@ -193,7 +193,7 @@ stream_idle_timeout_ms = 1800000
 
 [profiles.aithread]
 model_provider = "aithread"
-# <<< AiThread <<<
+# <<< AIThread <<<
 ```
 
 AIT menolak menulis bila sudah ada `[model_providers.aithread]` / `[profiles.aithread]` buatan Anda, atau bila
@@ -202,10 +202,10 @@ AIT menolak menulis bila sudah ada `[model_providers.aithread]` / `[profiles.ait
 **Gemini CLI** — AIT menulis dua variabel di `.gemini/.env` (HTTP diizinkan karena `localhost`):
 
 ```dotenv
-# >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
+# >>> AIThread (dikelola otomatis, lepas lewat menu CLI) >>>
 GOOGLE_GEMINI_BASE_URL="http://localhost:5225"
 GEMINI_API_KEY="aithread-local"
-# <<< AiThread <<<
+# <<< AIThread <<<
 ```
 
 - Base URL hanya berlaku dengan autentikasi *Gemini API Key*; login Google tidak lewat AIT.
@@ -232,7 +232,7 @@ AIT*. AIT menambah satu provider di `~/.omp/agent/models.yml` (hanya global; omp
 per project), tanpa menyentuh provider lain:
 
 ```yaml
-# >>> AiThread (dikelola otomatis, lepas lewat menu CLI) >>>
+# >>> AIThread (dikelola otomatis, lepas lewat menu CLI) >>>
 providers:
   AIT:
     baseUrl: "http://localhost:5225"
@@ -243,7 +243,7 @@ providers:
         name: AIThread
         contextWindow: 1000000
         maxTokens: 32000
-# <<< AiThread <<<
+# <<< AIThread <<<
 ```
 
 - Pilih model `AIT/AIThread` lewat `/model` di omp (atau `omp --model AIT/AIThread`); status bar omp menampilkan
@@ -259,11 +259,11 @@ providers:
 
 ### Sesi dan batasan
 
-**Membantu AIT mengenali sesi.** Working directory dicari dari header `X-AiThread-Cwd`, lalu dari teks request:
+**Membantu AIT mengenali sesi.** Working directory dicari dari header `X-AIThread-Cwd`, lalu dari teks request:
 `Primary working directory:` (Claude Code), `<cwd>…</cwd>` (Codex), `I'm currently working in the directory:`
 (Gemini CLI), atau `Current working directory:` / `Working directory:` / `Current directory:` / `cwd:`. Bila klien Anda
-tidak mengirim salah satunya, set header `X-AiThread-Cwd` (atau `X-AiThread-Project`). Id sesi dibaca dari header
-`X-AiThread-Session`, `x-claude-code-session-id`, `session_id` (Codex) atau `x-session-id`, dari `prompt_cache_key`
+tidak mengirim salah satunya, set header `X-AIThread-Cwd` (atau `X-AIThread-Project`). Id sesi dibaca dari header
+`X-AIThread-Session`, `x-claude-code-session-id`, `session_id` (Codex) atau `x-session-id`, dari `prompt_cache_key`
 (OpenAI), atau dari `metadata.user_id`; tanpa id sesi, keputusan project diingat per working directory.
 
 **Batasan**

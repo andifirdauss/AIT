@@ -6,7 +6,7 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 (opsional) memeriksa hasilnya sampai lolos, lalu **wrapper** merangkum hasilnya untuk Anda. Semua model diakses lewat
 [9router](https://github.com/decolua/9router).
 
-Paket ini berisi `AiThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
+Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
 ## Yang baru di 1.7.0
 
@@ -101,18 +101,18 @@ Opsi: `--port <n>` (default 5225 atau port terakhir yang disimpan dari menu), da
 
 ## Konfigurasi
 
-Edit `%LOCALAPPDATA%\AiThread\appsettings.json`. File ini dibuat sendiri dan cukup berisi kunci yang ingin diubah.
+Edit `%LOCALAPPDATA%\AIThread\appsettings.json`. File ini dibuat sendiri dan cukup berisi kunci yang ingin diubah.
 Isinya menimpa `appsettings.json` bawaan paket dan tidak hilang saat `npm update`. Contoh:
 
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Server=localhost;Database=AiThread;Trusted_Connection=True;TrustServerCertificate=True"
+    "Default": "Server=localhost;Database=AIThread;Trusted_Connection=True;TrustServerCertificate=True"
   }
 }
 ```
 
-Data dan log ada di `%LOCALAPPDATA%\AiThread`. Dokumentasi lengkap (instalasi, konfigurasi, integrasi CLI, memory,
+Data dan log ada di `%LOCALAPPDATA%\AIThread`. Dokumentasi lengkap (instalasi, konfigurasi, integrasi CLI, memory,
 cara kerja, troubleshooting, referensi API) bisa dibaca di menu **Docs** di Web UI.
 
 ## Catatan keamanan

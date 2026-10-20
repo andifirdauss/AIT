@@ -129,7 +129,7 @@ langsung ketika chat baru masuk.
 
 ## Konfigurasi `appsettings.json`
 
-Bagian `AiThread:Telegram` (token dan aktif/nonaktif diatur dari menu Setting, bukan di sini):
+Bagian `AIThread:Telegram` (token dan aktif/nonaktif diatur dari menu Setting, bukan di sini):
 
 | Kunci | Default | Fungsi |
 |---|---|---|

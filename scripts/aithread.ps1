@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    Menjalankan AiThread di background: tetap hidup walau browser, terminal, atau Visual Studio ditutup.
+    Menjalankan AIThread di background: tetap hidup walau browser, terminal, atau Visual Studio ditutup.
 
 .DESCRIPTION
     Perintah:
-      start          Publish (Release) ke %LOCALAPPDATA%\AiThread\app lalu jalankan tanpa jendela.
+      start          Publish (Release) ke %LOCALAPPDATA%\AIThread\app lalu jalankan tanpa jendela.
       stop           Matikan dengan rapi; thread yang sedang berjalan dibatalkan dan dicatat.
       restart        stop, publish ulang, lalu start. Pakai setelah kode berubah.
       status         Instance yang berjalan, lokasi log, dan status autostart.
@@ -43,14 +43,14 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$ProjectFile = Join-Path $RepoRoot 'src\AiThread.UI\AiThread.UI.csproj'
-$HomeDir = Join-Path $env:LOCALAPPDATA 'AiThread'
+$ProjectFile = Join-Path $RepoRoot 'src\AIThread.UI\AIThread.UI.csproj'
+$HomeDir = Join-Path $env:LOCALAPPDATA 'AIThread'
 $AppDir = Join-Path $HomeDir 'app'
 $BuildDir = Join-Path $HomeDir 'build'
 $LogDir = Join-Path $HomeDir 'logs'
 $PidFile = Join-Path $HomeDir 'aithread.pid'
-$ExePath = Join-Path $AppDir 'AiThread.UI.exe'
-$TaskName = 'AiThread'
+$ExePath = Join-Path $AppDir 'AIThread.UI.exe'
+$TaskName = 'AIThread'
 $BaseUrl = "http://localhost:$Port"
 $KeepLogRuns = 10
 $StartTimeoutSeconds = 120
@@ -59,7 +59,7 @@ $StopTimeoutMs = 45000
 function Write-Ok([string]$Message) { Write-Host $Message -ForegroundColor Green }
 function Write-Note([string]$Message) { Write-Host $Message -ForegroundColor Yellow }
 
-# The AiThread answering on the port (background, Visual Studio, or dotnet run), or $null.
+# The AIThread answering on the port (background, Visual Studio, or dotnet run), or $null.
 function Get-RunningInstance {
     try {
         $response = Invoke-RestMethod -Uri "$BaseUrl/api/system" -TimeoutSec 3 -UseBasicParsing
@@ -78,7 +78,7 @@ function Get-BackgroundProcess {
     if (-not (Test-Path $PidFile)) { return $null }
     try {
         $process = Get-Process -Id ([int](Get-Content $PidFile -Raw).Trim()) -ErrorAction SilentlyContinue
-        if ($process -and $process.ProcessName -eq 'AiThread.UI') { return $process }
+        if ($process -and $process.ProcessName -eq 'AIThread.UI') { return $process }
     }
     catch { }
     return $null
@@ -163,7 +163,7 @@ function Start-App {
 
     # Inherited by the child process.
     $env:ASPNETCORE_ENVIRONMENT = 'Production'
-    $env:AiThread__DocsPath = Join-Path $AppDir 'docs'
+    $env:AIThread__DocsPath = Join-Path $AppDir 'docs'
 
     $process = Start-Process -FilePath $ExePath -ArgumentList '--urls', $BaseUrl -WorkingDirectory $AppDir `
         -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError $errorLog -PassThru
@@ -206,20 +206,20 @@ function Stop-App {
     $graceful = $false
     if ($instance) {
         try {
-            Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/system/shutdown" -Headers @{ 'X-AiThread-Shutdown' = '1' } -TimeoutSec 10 -UseBasicParsing | Out-Null
+            Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/system/shutdown" -Headers @{ 'X-AIThread-Shutdown' = '1' } -TimeoutSec 10 -UseBasicParsing | Out-Null
             $graceful = $true
         }
         catch { Write-Note "Permintaan shutdown gagal: $($_.Exception.Message)" }
     }
 
     if (-not $graceful -or -not $process.WaitForExit($StopTimeoutMs)) {
-        Write-Note 'AiThread tidak berhenti dengan rapi; proses dihentikan paksa.'
+        Write-Note 'AIThread tidak berhenti dengan rapi; proses dihentikan paksa.'
         Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         $null = $process.WaitForExit(10000)
     }
 
     Remove-Item $PidFile -ErrorAction SilentlyContinue
-    Write-Ok 'AiThread berhenti.'
+    Write-Ok 'AIThread berhenti.'
 }
 
 function Show-Status {
@@ -271,7 +271,7 @@ function Enable-Autostart {
     $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
-        -Description 'Menjalankan AiThread di background saat login (scripts\aithread.ps1).' -Force | Out-Null
+        -Description 'Menjalankan AIThread di background saat login (scripts\aithread.ps1).' -Force | Out-Null
 
     Write-Ok "Autostart aktif: AIT dijalankan 30 detik setelah $user login (port $Port)."
     Write-Host 'Autostart memakai hasil publish terakhir; setelah kode berubah jalankan: .\scripts\aithread.ps1 restart'

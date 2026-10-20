@@ -1,0 +1,110 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    var appVersion = AIThread.UI.Hosting.Cli.Version;
+    string Active(string name) =>string.Equals(controller, name, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="id" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] · AIT</title>
+    <script>
+        // Apply the stored color mode before first paint to avoid a flash.
+        (() => {
+            try {
+                const theme = localStorage.getItem('aithread-theme');
+                if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-bs-theme', theme);
+            } catch { }
+        })();
+    </script>
+    <script type="importmap"></script>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/AIThread.UI.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="app-sidebar">
+            <a class="app-brand" asp-controller="Home" asp-action="Index">
+                <span class="app-brand-mark">⧉</span>
+                <span>AIT</span>
+            </a>
+            <a id="npmUpdate" class="app-update d-none" href="https://www.npmjs.com/package/aithread" target="_blank" rel="noopener" data-version="@appVersion">
+                <span class="app-update-dot"></span>
+                <span class="app-update-text">Update tersedia</span>
+            </a>
+            <nav class="app-nav">
+                <a class="app-nav-link @Active("Home") @Active("Thread")" asp-controller="Home" asp-action="Index"><span class="app-nav-icon">◧</span>Dashboard</a>
+                <a class="app-nav-link @Active("Setup")" asp-controller="Setup" asp-action="Index"><span class="app-nav-icon">✓</span>Setup<span class="app-nav-badge d-none" id="setupBadge"></span></a>
+                <a class="app-nav-link @Active("Project")" asp-controller="Project" asp-action="Index"><span class="app-nav-icon">▤</span>Project</a>
+                <a class="app-nav-link @Active("Memory")" asp-controller="Memory" asp-action="Index"><span class="app-nav-icon">◈</span>Memory</a>
+                <a class="app-nav-link @Active("Node")" asp-controller="Node" asp-action="Index"><span class="app-nav-icon">⬡</span>Node</a>
+                <a class="app-nav-link @Active("Cli")" asp-controller="Cli" asp-action="Index"><span class="app-nav-icon">⌘</span>CLI</a>
+                <a class="app-nav-link @Active("Setting")" asp-controller="Setting" asp-action="Index"><span class="app-nav-icon">⚙</span>Setting</a>
+                <a class="app-nav-link @Active("Docs")" asp-controller="Docs" asp-action="Index"><span class="app-nav-icon">☷</span>Docs</a>
+            </nav>
+            <div class="app-sidebar-footer">
+                <div id="routerPill" class="router-pill" title="Status koneksi 9router">
+                    <span class="status-dot"></span><span class="router-pill-text">9router…</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-onboarding w-100 mt-2" id="onboardingOpen">Panduan memulai</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" id="themeToggle">Ganti tema</button>
+            </div>
+        </aside>
+        <main class="app-main" role="main">
+            <div id="updateBar" class="alert alert-info win-dismissible fade show mb-4 d-none" role="alert" data-version="@appVersion">
+                <win-controls for="alert" />
+                <div>
+                    <strong>🚀 AIT versi @appVersion</strong> — Baru di menu Project → detail: jendela <strong>Struktur kode</strong> menampilkan folder, class, dan method project tanpa compile (C#, PHP, JS/TS, Python, Java), dan klik deklarasi untuk menyalin <span class="mono">path:baris</span> ke prompt. <strong>Panggilan function</strong> dicatat otomatis oleh Tools Node dari kode yang dibaca planner atau diubah thread, misalnya function JS → endpoint → action controller. <strong>Planner kini melihat kerangka kode dulu</strong> (tool <span class="mono">code_outline</span> &amp; <span class="mono">function_calls</span>, plus outline file yang disebut di prompt), jadi ia hanya membaca baris yang perlu dan tidak salah memilih file. Tabel di halaman detail kini dipaginasi 10 baris.
+                    <a href="~/Docs/05-menu#project" class="alert-link ms-2">Detail →</a>
+                </div>
+            </div>
+            @if (!string.Equals(controller, "Setup", StringComparison.OrdinalIgnoreCase))
+            {
+                @* Shown by site.js (initSetupStatus) while a required setup step is still open. *@
+                <div id="setupNotice" class="alert alert-warning win-dismissible fade show mb-4 d-none" role="alert">
+                    <win-controls for="alert" />
+                    <div>
+                        <strong>Setup AIT belum selesai</strong> — <span data-setup-count></span>. Belum: <span data-setup-open></span>.
+                        <a asp-controller="Setup" asp-action="Index" class="alert-link ms-1">Lanjutkan setup →</a>
+                    </div>
+                </div>
+            }
+            @RenderBody()
+        </main>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <partial name="_Onboarding" />
+
+    @* Asked once, the first time AIThread is opened, when no developer name is saved and git has no user.name (site.js). *@
+    <div class="modal fade" id="developerNameModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="developerNameTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content" id="developerNameForm" autocomplete="off" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="developerNameTitle">Siapa nama Anda?</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-secondary">
+                        Nama ini dicatat pada halaman wiki bisnis dan riwayat revisinya, supaya tim tahu siapa yang menulis atau mengubahnya
+                        bila memory dibagi antar developer. <span class="mono">git config user.name</span> tidak ditemukan di komputer ini, jadi
+                        AIT menanyakannya sekali. Bisa diubah nanti di Setting → Penyimpanan memory.
+                    </p>
+                    <label class="form-label small" for="developerNameInput">Nama developer</label>
+                    <input type="text" class="form-control" id="developerNameInput" maxlength="200" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="developerNameSave">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

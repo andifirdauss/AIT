@@ -64,13 +64,13 @@ Redis dari Microsoft) yang berjalan di dalam proses AIT — lihat
 ## Menjalankan
 
 ```powershell
-dotnet run --project src/AiThread.UI --launch-profile http   # http://localhost:5225
+dotnet run --project src/AIThread.UI --launch-profile http   # http://localhost:5225
 ```
 
 Migrasi database diterapkan otomatis saat start.
 
 Agar AIT tetap hidup walau browser, terminal, atau Visual Studio ditutup, jalankan di background
-(publish Release ke `%LOCALAPPDATA%\AiThread\app`, tanpa jendela):
+(publish Release ke `%LOCALAPPDATA%\AIThread\app`, tanpa jendela):
 
 ```powershell
 .\scripts\aithread.ps1 start          # juga: stop · restart · status · logs -Follow · autostart-on · autostart-off
@@ -78,8 +78,8 @@ Agar AIT tetap hidup walau browser, terminal, atau Visual Studio ditutup, jalank
 
 Detail: [docs/01-instalasi.md](docs/01-instalasi.md#5-menjalankan-di-background).
 
-Tanpa .NET SDK: `.\scripts\publish-exe.ps1 -Zip` membuat `dist\AiThread\AiThread.exe` standalone. Dijalankan
-tanpa argumen, exe menampilkan menu (Web UI, Sembunyikan ke Tray, log, restart, port, autostart); `AiThread.exe help`
+Tanpa .NET SDK: `.\scripts\publish-exe.ps1 -Zip` membuat `dist\AIThread\AIThread.exe` standalone. Dijalankan
+tanpa argumen, exe menampilkan menu (Web UI, Sembunyikan ke Tray, log, restart, port, autostart); `AIThread.exe help`
 menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithreadexe-standalone-tanpa-net).
 
 1. **Setting** → isi URL 9router (mis. `http://localhost:20128`) dan API key dari dashboard 9router → *Test koneksi* → *Simpan*.
@@ -97,7 +97,7 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
        "ANTHROPIC_BASE_URL": "http://localhost:5225",
        "ANTHROPIC_AUTH_TOKEN": "<proxy key atau aithread-local>",
        "API_TIMEOUT_MS": "1800000",
-       "ANTHROPIC_CUSTOM_HEADERS": "X-AiThread-Project: D:\\Source\\MyApp"
+       "ANTHROPIC_CUSTOM_HEADERS": "X-AIThread-Project: D:\\Source\\MyApp"
      }
    }
    ```
@@ -146,8 +146,8 @@ proxy biasa.
 
 Pengecekan dilakukan per sesi Claude Code (keputusan diingat 30 menit). Project = folder root yang berisi `.git`
 atau file build (`.sln`, `pom.xml`, `package.json`, `go.mod`, …), dicari dari working directory sesi (header
-`X-AiThread-Cwd` atau baris `Primary working directory:`) naik ke folder induknya hingga 6 tingkat, tidak pernah ke
-sub-folder; header `X-AiThread-Project` bisa menunjuk folder rootnya langsung. Ditemukan → project didaftarkan otomatis
+`X-AIThread-Cwd` atau baris `Primary working directory:`) naik ke folder induknya hingga 6 tingkat, tidak pernah ke
+sub-folder; header `X-AIThread-Project` bisa menunjuk folder rootnya langsung. Ditemukan → project didaftarkan otomatis
 pada prompt pertama. Tidak ada marker (mis. folder kosong) atau folder induk berisi beberapa project → sesi
 diabaikan: tanpa orkestrasi, tanpa memory.
 
@@ -178,8 +178,8 @@ diabaikan: tanpa orkestrasi, tanpa memory.
   Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `telegram.changed`, `skill.changed`, `business.changed`, `ping`.
 - REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/business`, `/api/threads`, `/api/dashboard`, `/api/telegram`, `/api/skills`.
 
-Konfigurasi infrastruktur ada di `src/AiThread.UI/appsettings.json` (connection string, `AiThread:ShortMemoryHours`,
-interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executor, `AiThread:EmbeddedRedis`).
+Konfigurasi infrastruktur ada di `src/AIThread.UI/appsettings.json` (connection string, `AIThread:ShortMemoryHours`,
+interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executor, `AIThread:EmbeddedRedis`).
 
 ## Catatan penting
 
@@ -194,8 +194,8 @@ interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executo
 ## Pengembangan
 
 ```powershell
-dotnet build AiThread.slnx
-dotnet test tests/AiThread.Tests
+dotnet build AIThread.slnx
+dotnet test tests/AIThread.Tests
 dotnet tool restore
-dotnet tool run dotnet-ef migrations add <Nama> --context AiThreadDbContext --project src/AiThread.Data --startup-project src/AiThread.Data
+dotnet tool run dotnet-ef migrations add <Nama> --context AIThreadDbContext --project src/AIThread.Data --startup-project src/AIThread.Data
 ```

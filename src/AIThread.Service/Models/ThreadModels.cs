@@ -1,0 +1,48 @@
+using AIThread.Common.Enums;
+
+namespace AIThread.Service.Models;
+
+// An image attached to the active user turn (Claude Code/Codex/Gemini CLI vision input). Data is raw base64,
+// without a "data:" prefix.
+public sealed record ImageAttachment(string MediaType, string Data);
+
+public sealed record ThreadRequest(
+    ThreadSource Source,
+    // Clean request text (system reminders stripped) — stored, shown in the UI and given to the wrapper.
+    string Prompt,
+    // Full text of the latest user turn including injected context such as CLAUDE.md; given to the planner.
+    string? PromptContext,
+    string? ConversationContext,
+    string? WorkingDirectory,
+    // Resolved before the thread starts; prompts outside a project (no .git or build manifest) never become threads.
+    Guid ProjectId,
+    string? SessionId,
+    // Claude Code only: what the context keeper knows about the earlier turns of this chat.
+    SessionContext? Session = null,
+    // Images attached to the active user turn, given to the planner alongside the brief.
+    IReadOnlyList<ImageAttachment>? Images = null,
+    // Base URL of this AIT instance as the client reaches it; the final answer links to the thread page there.
+    string? DashboardUrl = null);
+
+// ThreadIds are the AIThread threads found in the chat, oldest first. Pack is the context keeper's summary written
+// after PackThreadId, the latest of them that has one; turns after it reach the planner as ConversationContext.
+public sealed record SessionContext(Guid? PackThreadId, string? Pack, IReadOnlyList<Guid> ThreadIds);
+
+public sealed record ThreadResult(Guid ThreadId, ThreadStatus Status, string FinalText, int TotalTokens);
+
+// Receives what the client (Claude Code) should see while a thread runs.
+public interface IThreadObserver
+{
+    Task OnProgressAsync(string line, CancellationToken cancellationToken);
+
+    Task OnFinalDeltaAsync(string delta, CancellationToken cancellationToken);
+}
+
+public sealed class NullThreadObserver : IThreadObserver
+{
+    public static readonly NullThreadObserver Instance = new();
+
+    public Task OnProgressAsync(string line, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task OnFinalDeltaAsync(string delta, CancellationToken cancellationToken) => Task.CompletedTask;
+}
