@@ -77,7 +77,7 @@ public class ProjectKeyMemoryTests
         using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
         await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
         var other = await AddProjectAsync(harness, "Other", "github.com/org/other");
-        var page = await harness.Service<BusinessPageStore>().SaveAsync(new BusinessPageDraft(
+        var page = await harness.Service<IBusinessPageStore>().SaveAsync(new BusinessPageDraft(
             null, "github.com/org/eep", "EEP", "TO", "Transfer Order", null, "to, transfer order, approval",
             "# TO\n![Form TO](asset:3f2a1b9c-0000-4000-8000-000000000001)", true, null, BusinessEditKind.Ai, "dev", null, []), CancellationToken.None);
 
@@ -111,7 +111,7 @@ public class ProjectKeyMemoryTests
 
         List<Project> projects;
         await using (var db = await harness.CreateDbAsync()) projects = await db.Projects.AsNoTracking().ToListAsync();
-        Assert.Equal(1, await harness.Service<ProjectMemoryKeys>().BackfillAsync(projects, CancellationToken.None));
+        Assert.Equal(1, await harness.Service<IProjectMemoryKeys>().BackfillAsync(projects, CancellationToken.None));
 
         Assert.Contains(await memory.Service.GetIndexAsync(cloneB, "legacy", 10), e => e.Id == legacyId);
     }
@@ -239,7 +239,7 @@ public class ProjectKeyMemoryTests
                 shortStore,
                 harness.Service<LongMemoryStore>(),
                 harness.Service<BusinessMemoryStore>(),
-                harness.Service<ModuleRegistry>(),
+                harness.Service<IModuleRegistry>(),
                 harness.Service<IEventBus>(),
                 harness.Service<IActivityLogService>(),
                 Options.Create(new AiThreadOptions { ShortMemoryHours = 0 }),

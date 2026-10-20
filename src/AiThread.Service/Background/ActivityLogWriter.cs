@@ -1,7 +1,7 @@
 using AiThread.Common.Entities;
 using AiThread.Common.Options;
 using AiThread.Data.Context;
-using AiThread.Service.Implementations;
+using AiThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,7 +11,7 @@ namespace AiThread.Service.Background;
 
 // Persists dashboard log lines in batches and prunes old ones once a day.
 public sealed class ActivityLogWriter(
-    ActivityLogQueue queue,
+    IActivityLogQueue queue,
     IDbContextFactory<AiThreadDbContext> dbFactory,
     IOptions<AiThreadOptions> options,
     ILogger<ActivityLogWriter> logger) : BackgroundService

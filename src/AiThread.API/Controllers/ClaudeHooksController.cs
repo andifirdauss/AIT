@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AiThread.Service.Interfaces;
 using AiThread.Service.Orchestration;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +9,7 @@ namespace AiThread.API.Controllers;
 // the hook input as JSON; an empty 200 means "nothing to add", and every failure stays non-blocking on its side.
 [ApiController]
 [Route("api/hooks/claude")]
-public class ClaudeHooksController(SessionHandoff handoff) : ControllerBase
+public class ClaudeHooksController(ISessionHandoff handoff) : ControllerBase
 {
     [HttpPost("session-end")]
     public async Task<IActionResult> SessionEnd([FromBody] JsonObject input, CancellationToken cancellationToken)

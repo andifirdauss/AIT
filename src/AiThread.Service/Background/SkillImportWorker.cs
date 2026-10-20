@@ -1,5 +1,6 @@
 using AiThread.Common.Enums;
 using AiThread.Data.Context;
+using AiThread.Service.Interfaces;
 using AiThread.Service.Skills;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -9,9 +10,9 @@ namespace AiThread.Service.Background;
 
 // Pulls queued skill sources one at a time. Sources still queued or half-pulled when AiThread stopped are pulled again.
 public sealed class SkillImportWorker(
-    SkillImportQueue queue,
-    SkillImporter importer,
-    SkillPaths paths,
+    ISkillImportQueue queue,
+    ISkillImporter importer,
+    ISkillPaths paths,
     IDbContextFactory<AiThreadDbContext> dbFactory,
     ILogger<SkillImportWorker> logger) : BackgroundService
 {

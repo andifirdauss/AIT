@@ -1,0 +1,52 @@
+using AiThread.Common.DTOs;
+using AiThread.Common.Enums;
+using AiThread.Service.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace AiThread.Service.Implementations;
+
+public sealed partial class MemoryTransferService
+{
+    public async Task<MemoryExportFile> ExportAsync(MemoryQuery filter, CancellationToken cancellationToken = default)
+    {
+        var projects = await LocalProjectsAsync(cancellationToken);
+        var scope = filter.ProjectId is { } projectId ? projects.Find(projectId) ?? new LocalProject(projectId, null, string.Empty) : null;
+        var search = filter.Search?.Trim();
+        var items = new List<MemoryExportItem>();
+
+        if (filter.Level is null or MemoryLevel.Short)
+        {
+            if (!shortStore.IsConnected)
+                throw new AppValidationException("Penyimpanan short memory tidak terhubung — pilih level Long untuk mengekspor long memory saja.");
+
+            items.AddRange((await shortStore.GetAllAsync())
+                .Where(r => (filter.Type is null || r.Type == filter.Type)
+                    && (scope is null || scope.Owns(r.ProjectKey, r.ProjectId))
+                    && Matches(search, r.Label, r.Description))
+                .Select(r => ToItem(projects, r.Id, MemoryLevel.Short, r.Type, r.ProjectId, r.ProjectKey, r.ProjectName,
+                    r.Label, r.Description, r.SourceThreadId, r.CreatedAt, null, 0, null,
+                    Label(r.LabelVersion, r.Module, r.Layers, r.Kind, r.Area, r.Keywords, r.ExtraModules), r.LegacyLabel)));
+        }
+
+        if (filter.Level is null or MemoryLevel.Long)
+        {
+            await using var db = await longStore.CreateAsync(cancellationToken);
+            var query = db.LongMemories.AsNoTracking();
+            if (filter.Type is { } type) query = query.Where(m => m.Type == type);
+            if (scope is not null)
+            {
+                var key = scope.Key;
+                var id = scope.Id;
+                query = query.Where(m => (key != null && m.ProjectKey == key) || (m.ProjectKey == null && m.ProjectId == id));
+            }
+            if (!string.IsNullOrEmpty(search)) query = query.Where(m => m.Label.Contains(search) || m.Description.Contains(search));
+
+            items.AddRange((await query.ToListAsync(cancellationToken)).Select(m => ToItem(projects, m.Id, MemoryLevel.Long, m.Type,
+                m.ProjectId, m.ProjectKey, m.ProjectName, m.Label, m.Description, m.SourceThreadId, m.CreatedAt, m.PromotedAt,
+                m.HitCount, m.LastAccessedAt, Label(m.LabelVersion, m.Module, m.Layers, m.Kind, m.Area, m.Keywords, m.ExtraModules), m.LegacyLabel)));
+        }
+
+        return new MemoryExportFile(MemoryExportFile.FormatName, MemoryExportFile.CurrentVersion, DateTime.UtcNow, AppVersion(),
+            items.OrderBy(i => i.CreatedAt).ToList());
+    }
+}

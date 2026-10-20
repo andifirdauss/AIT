@@ -1,4 +1,5 @@
 using AiThread.Service.CodeCalls;
+using AiThread.Service.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -7,7 +8,7 @@ namespace AiThread.Service.Background;
 // Reads the calls of functions in the background (FunctionCallQueue → FunctionCallScanner), one file at a time. The
 // reads of one file waiting together are merged into one pass (each function is read once); a failure only costs
 // that file.
-public sealed class FunctionCallWorker(FunctionCallQueue queue, FunctionCallScanner scanner, ILogger<FunctionCallWorker> logger) : BackgroundService
+public sealed class FunctionCallWorker(IFunctionCallQueue queue, IFunctionCallScanner scanner, ILogger<FunctionCallWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

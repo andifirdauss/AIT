@@ -9,7 +9,7 @@ namespace AiThread.API.Controllers;
 
 [ApiController]
 [Route("api/threads")]
-public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, ThreadRollback rollback) : ControllerBase
+public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, IThreadRollback rollback) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ThreadSummaryDto>>>> GetRecent([FromQuery] int take = 30, [FromQuery] Guid? projectId = null, CancellationToken cancellationToken = default) =>

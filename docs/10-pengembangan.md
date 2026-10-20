@@ -15,6 +15,34 @@ Konvensi kode dan penggunaan MCP ada di `CLAUDE.md` di root repo.
 
 Alur dependensi: `UI → API → Service → Data → Common`.
 
+## Konvensi service
+
+Setiap class di `AiThread.Service` yang di-register di DI (`DependencyInjection.AddServiceLayer`) memakai pola
+**Interface + Service + partial class per method**:
+
+- **Interface** `I<Nama>` di `Interfaces/` (namespace `AiThread.Service.Interfaces`) memuat semua member publik
+  instance. Registrasi: `services.AddSingleton<I<Nama>, <Nama>>()`. Konsumen (parameter constructor, field,
+  `GetRequiredService<>`, test lewat `harness.Service<I<Nama>>()`) selalu memakai interface, bukan class konkret.
+- **Service** `partial` di folder bernama class itu, di bawah folder asalnya. Namespace tetap mengikuti folder asal,
+  mis. `Orchestration/PlannerAgent/` tetap `AiThread.Service.Orchestration`.
+  - `<Nama>.cs`: deklarasi utama, yaitu primary constructor, base list, field, konstanta, property, nested type, dan
+    type pendukung (record/DTO) yang memang milik class itu.
+  - `<Nama>.<Method>.cs`: satu file per method, publik maupun private. Overload digabung dalam satu file, termasuk
+    `[GeneratedRegex]`. Header cukup `public sealed partial class <Nama>` tanpa base list.
+- Method baru berarti file baru `<Nama>.<Method>.cs`. Member publik baru juga ditambahkan ke `I<Nama>`.
+- Tidak memakai pola ini: static helper (mis. `FinalReport`, `CSharpOutline`), model/record, dan hosted worker di
+  `Background/`.
+
+```text
+Interfaces/IThreadService.cs
+Implementations/ThreadService/
+  ThreadService.cs                 primary constructor, field, SummaryProjection
+  ThreadService.GetRecentAsync.cs
+  ThreadService.GetDetailAsync.cs
+  ThreadService.Cancel.cs
+  ThreadService.ToTaskDto.cs
+```
+
 ## Perintah
 
 ```powershell
@@ -58,19 +86,19 @@ connection string LocalDB default.
 |---|---|
 | `Proxy/ProtocolAdapter.cs` | Mengubah request Anthropic / OpenAI chat / OpenAI Responses / Gemini ke bentuk kanonik (gaya Anthropic) dan menentukan path 9router per format. |
 | `Proxy/ClaudeRequestInspector.cs` | Memilah request kanonik: kandidat orkestrasi vs passthrough; ambil working directory, sesi, prompt, riwayat. |
-| `Implementations/ProjectService.cs` | `ResolveSessionAsync`: gerbang per sesi (project atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. Identitas project = `RootPath`. |
+| `Implementations/ProjectService/` | `ResolveSessionAsync`: gerbang per sesi (project atau diabaikan, cache 30 menit, auto-register); penelusur folder, scan, registrasi. Identitas project = `RootPath`. |
 | `Workspace/ProjectLocator.cs` | Tabel marker (`.git`, manifest per ekosistem), penentuan root dari working directory (repo terdekat → penghimpun paling luar → manifest terdekat), folder yang diblokir (drive/Home/sistem), scan rekursif, daftar manifest & stack, daftar folder build per stack. |
-| `Orchestration/ThreadOrchestrator.cs` | Alur utama thread: project → planner → eksekusi → wrapper → memory, status & error. |
-| `Orchestration/PlannerAgent.cs`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema), brief (urutan stabil → spesifik untuk prompt cache), jeda & lanjut pada `ask_user`, tool `investigate` untuk tool yang didelegasikan. |
-| `Orchestration/PlannerToolRunner.cs` | Eksekusi tool baca & `run_build` (dipakai planner dan tools node), teks progres per tool (`Describe`). |
-| `Orchestration/ToolsNodeAgent.cs` | Tools node: loop tool sendiri untuk satu pertanyaan `investigate`, diakhiri `report_findings`; delegasi disimpan di `PlannerToolDelegation` (`NodeService` memvalidasi). |
-| `Orchestration/PlannerQuestions.cs` | Pertanyaan planner: format teks bernomor, jawaban → hasil tool, `PendingQuestionStore` (per sesi, di memori, 2 jam), penutupan thread yang tidak dijawab. |
+| `Orchestration/ThreadOrchestrator/` | Alur utama thread: project → planner → eksekusi → wrapper → memory, status & error. |
+| `Orchestration/PlannerAgent/`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema), brief (urutan stabil → spesifik untuk prompt cache), jeda & lanjut pada `ask_user`, tool `investigate` untuk tool yang didelegasikan. |
+| `Orchestration/PlannerToolRunner/` | Eksekusi tool baca & `run_build` (dipakai planner dan tools node), teks progres per tool (`Describe`). |
+| `Orchestration/ToolsNodeAgent/` | Tools node: loop tool sendiri untuk satu pertanyaan `investigate`, diakhiri `report_findings`; delegasi disimpan di `PlannerToolDelegation` (`NodeService` memvalidasi). |
+| `Orchestration/PlannerQuestions.cs`, `PendingQuestionStore/` | Pertanyaan planner: format teks bernomor, jawaban → hasil tool, `PendingQuestionStore` (per sesi, di memori, 2 jam), penutupan thread yang tidak dijawab. |
 | `Orchestration/ThreadPlan.cs`, `PlanValidator.cs` | Model rencana dan aturan validasinya. |
-| `Orchestration/ExecutionEngine.cs` | Penjadwalan DAG paralel, pemilihan executor, skip dependensi gagal. |
-| `Orchestration/ExecutorAgent.cs` | Menyusun input executor, retry, menerapkan edit di bawah lock. |
-| `Orchestration/WrapperAgent.cs`, `MemoryExtractor.cs` | Ringkasan akhir dan ekstraksi memory. |
-| `Orchestration/ContextKeeper.cs`, `ContextPackBuilder.cs`, `ThreadAnchor.cs` | Konteks sesi Claude Code: penanda thread di balasan, pencarian ringkasan dari history, pembaruan ringkasan setelah thread, tool `read_thread`. |
-| `Orchestration/SessionHandoff.cs`, `TranscriptDigest.cs`, `Implementations/ClaudeHookConfig.cs`, `API/Controllers/ClaudeHooksController.cs` | Context Keeper untuk `/clear`: hook `SessionEnd`/`SessionStart`, ringkasan transcript, penulisan blok `hooks` di settings Claude Code. |
+| `Orchestration/ExecutionEngine/` | Penjadwalan DAG paralel, pemilihan executor, skip dependensi gagal. |
+| `Orchestration/ExecutorAgent/` | Menyusun input executor, retry, menerapkan edit di bawah lock. |
+| `Orchestration/WrapperAgent/`, `MemoryExtractor/` | Ringkasan akhir dan ekstraksi memory. |
+| `Orchestration/ContextKeeper/`, `ContextPackBuilder.cs`, `ThreadAnchor.cs` | Konteks sesi Claude Code: penanda thread di balasan, pencarian ringkasan dari history, pembaruan ringkasan setelah thread, tool `read_thread`. |
+| `Orchestration/SessionHandoff/`, `TranscriptDigest.cs`, `Implementations/ClaudeHookConfig.cs`, `API/Controllers/ClaudeHooksController.cs` | Context Keeper untuk `/clear`: hook `SessionEnd`/`SessionStart`, ringkasan transcript, penulisan blok `hooks` di settings Claude Code. |
 | `Orchestration/AgentPrompts.cs` | **Semua prompt peran** (planner, executor, wrapper, memory, context keeper). |
 | `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; progres untuk Claude Code sebagai *vertical stepper* di blok ```` ````text ```` (wrap 90 kolom). |
 | `Orchestration/FinalReport.cs` | Bagian jawaban akhir yang ditulis AIT dari hasil: baris status + *Perlu perhatian*, tabel *File berubah* (dari diff), footer (durasi, token, memory, wiki, *Sisa kuota*, link thread). |
@@ -78,10 +106,10 @@ connection string LocalDB default.
 | `Workspace/*` | Sandbox path, tool baca repo, parser & applier SEARCH/REPLACE, I/O teks (BOM/line ending), diff, pencari project. |
 | `API/Infrastructure/AgentProxyHandler.cs` | Logika proxy bersama semua format: auth, klasifikasi, orkestrasi, passthrough ke 9router. |
 | `API/Infrastructure/AnthropicSseWriter.cs`, `ClientStreamWriters.cs` | Menulis balasan orkestrasi (stream, non-stream, error) dalam format Anthropic, OpenAI chat, OpenAI Responses, atau Gemini. |
-| `Background/TelegramPollingWorker.cs`, `Telegram/TelegramBotRuntime.cs` | Long polling `getUpdates` bot Telegram, mulai ulang saat setting Telegram disimpan, backoff saat offline, status untuk kartu Setting. |
-| `Telegram/TelegramApi.cs` | Klien Bot API minimal: JSON dengan `Content-Length`, token dibaca dari runtime setting tiap panggilan, kirim ulang sebagai teks biasa bila HTML ditolak. HttpClient-nya tanpa logger karena token ada di URL. |
-| `Telegram/TelegramBot.cs` | Izin chat, perintah (`/projects`, `/status`, `/cancel`, `/diff`, `/new`), memulai thread (`ThreadSource.Telegram`, sesi `telegram:<chat>`, riwayat percakapan untuk planner). |
-| `Telegram/TelegramThreadReporter.cs` | Pesan status live per thread (event bus sebagai pemicu, database sebagai sumber data) dan pesan hasil akhir. |
+| `Background/TelegramPollingWorker.cs`, `Telegram/TelegramBotRuntime/` | Long polling `getUpdates` bot Telegram, mulai ulang saat setting Telegram disimpan, backoff saat offline, status untuk kartu Setting. |
+| `Telegram/TelegramApi/` | Klien Bot API minimal: JSON dengan `Content-Length`, token dibaca dari runtime setting tiap panggilan, kirim ulang sebagai teks biasa bila HTML ditolak. HttpClient-nya tanpa logger karena token ada di URL. |
+| `Telegram/TelegramBot/` | Izin chat, perintah (`/projects`, `/status`, `/cancel`, `/diff`, `/new`), memulai thread (`ThreadSource.Telegram`, sesi `telegram:<chat>`, riwayat percakapan untuk planner). |
+| `Telegram/TelegramThreadReporter/` | Pesan status live per thread (event bus sebagai pemicu, database sebagai sumber data) dan pesan hasil akhir. |
 | `Telegram/TelegramFormatter.cs`, `TelegramMessages.cs` | Markdown wrapper → HTML Telegram (tanpa `<code>` di dalam `<b>`/`<i>`, dipecah per 4096 karakter) dan semua teks bot. |
 
 ## Dokumentasi di aplikasi

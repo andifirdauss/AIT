@@ -1,4 +1,5 @@
 using AiThread.Common.DTOs;
+using AiThread.Service.Workspace.Structure;
 
 namespace AiThread.Service.Interfaces;
 
@@ -23,6 +24,9 @@ public interface ICodeStructureService
 
     // What one function calls (key from a member of /structure/file or /structure/class); null when it was never read.
     Task<StructureFunctionCallsDto?> GetCallsAsync(Guid projectId, string key, CancellationToken cancellationToken = default);
+
+    // For the function call scanner: the project's current snapshot, walked first when there is none or it is stale.
+    Task<StructureSnapshot> GetSnapshotAsync(Guid projectId, CancellationToken cancellationToken);
 
     // After a thread or a rollback changed files: walks the project again in the background, so the tree is current
     // when it is opened. Never blocks or fails the caller; requests made while one is waiting share it.

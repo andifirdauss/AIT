@@ -1,5 +1,5 @@
 using AiThread.Common.Options;
-using AiThread.Service.Memory;
+using AiThread.Service.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -10,8 +10,8 @@ namespace AiThread.Service.Background;
 // developers' older AIT sharing a store) gets the structured label. A newly created module wakes it early (after a
 // short pause, so a burst of new modules is checked once) for the duplicate module check only.
 public sealed class MemoryRelabelWorker(
-    MemoryRelabeler relabeler,
-    ModuleRegistry registry,
+    IMemoryRelabeler relabeler,
+    IModuleRegistry registry,
     IOptions<AiThreadOptions> options,
     ILogger<MemoryRelabelWorker> logger) : BackgroundService
 {

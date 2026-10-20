@@ -332,7 +332,7 @@ public class CodeStructureTests
               {"id":"F2","calls":[{"kind":"http","target":"POST /Transaction/KlaimPending/InitiateData","line":7}]}]}
             """));
 
-        var scanner = harness.Service<FunctionCallScanner>();
+        var scanner = harness.Service<IFunctionCallScanner>();
         await scanner.ScanFileAsync(harness.ProjectId, harness.Project.Root, "Scripts/klaim.js", [(1, 8)], CancellationToken.None);
 
         var structure = harness.Service<ICodeStructureService>();
@@ -375,7 +375,7 @@ public class CodeStructureTests
         var (result, _) = await harness.RunAsync("Panggil p_notify setelah simpan");
         Assert.Equal(ThreadStatus.Completed, result.Status);
 
-        await harness.Service<FunctionCallScanner>().ScanAsync(new FunctionScanRequest(harness.ProjectId, string.Empty, ThreadId: result.ThreadId), CancellationToken.None);
+        await harness.Service<IFunctionCallScanner>().ScanAsync(new FunctionScanRequest(harness.ProjectId, string.Empty, ThreadId: result.ThreadId), CancellationToken.None);
 
         var sent = Assert.Single(router.CallsTo(ScriptedAgent.FunctionCalls)).LastUser;
         Assert.Contains("## F1 p_save (lines 5-8)", sent);
