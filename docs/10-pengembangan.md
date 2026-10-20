@@ -156,7 +156,7 @@ Pipeline bisa diuji dengan server tiruan 9router yang mengimplementasikan `GET /
 `POST /v1/chat/completions` (stream SSE OpenAI, termasuk `tool_calls`), dengan jawaban berbeda berdasarkan isi system
 prompt (`You are the PLANNER`, `You are an EXECUTOR`, `You are the WRAPPER`, `maintain the memory`). Arahkan
 Setting → Base URL ke server tiruan tersebut, lalu kirim request berformat Claude Code ke `/v1/messages` atau
-gunakan *Jalankan prompt* di Dashboard. Gunakan database terpisah (ubah `ConnectionStrings:Default`) agar data uji
+`POST /api/threads` (`{ "projectId", "prompt" }`). Gunakan database terpisah (ubah `ConnectionStrings:Default`) agar data uji
 tidak bercampur.
 
 Bot Telegram diuji dengan cara yang sama: arahkan `AIThread:Telegram:ApiBaseUrl` ke server tiruan Bot API yang
