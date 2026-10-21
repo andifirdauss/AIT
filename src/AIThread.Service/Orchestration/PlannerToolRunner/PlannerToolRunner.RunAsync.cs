@@ -85,6 +85,21 @@ public sealed partial class PlannerToolRunner
                 case PlannerTools.ReadThread:
                     return new PlannerToolOutcome(await contextKeeper.ReadThreadAsync(input.Project.ProjectId, Str(args, "id") ?? string.Empty, cancellationToken), null);
 
+                case PlannerTools.GitStatus:
+                    return new PlannerToolOutcome(await new GitTools(tools.Scope).StatusAsync(Str(args, "path"), cancellationToken), null);
+
+                case PlannerTools.GitDiff:
+                    return new PlannerToolOutcome(await new GitTools(tools.Scope).DiffAsync(Str(args, "path"), Str(args, "base"), Bool(args, "staged"), Bool(args, "stat"), cancellationToken), null);
+
+                case PlannerTools.GitLog:
+                    return new PlannerToolOutcome(await new GitTools(tools.Scope).LogAsync(Str(args, "path"), Str(args, "revision"), Int(args, "limit"), Str(args, "query"), Str(args, "change"), Bool(args, "files"), cancellationToken), null);
+
+                case PlannerTools.GitShow:
+                    return new PlannerToolOutcome(await new GitTools(tools.Scope).ShowAsync(Str(args, "commit") ?? string.Empty, Str(args, "path"), Bool(args, "stat"), cancellationToken), null);
+
+                case PlannerTools.GitBlame:
+                    return new PlannerToolOutcome(await new GitTools(tools.Scope).BlameAsync(Str(args, "path") ?? string.Empty, Int(args, "startLine"), Int(args, "endLine"), cancellationToken), null);
+
                 case PlannerTools.RunBuild:
                     return await RunBuildAsync(input, Str(args, "target"), prefix, recorder, progress, cancellationToken);
 

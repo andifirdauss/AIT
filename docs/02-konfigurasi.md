@@ -214,6 +214,8 @@ ikut terbayar lagi di langkah 4, 5, … sampai `submit_plan`. Tools node meminda
 | `read_file`, `search_text`, `find_references` | Delegasikan — output terbesar, paling boros di planner. |
 | `list_directory`, `find_files`, `read_thread`, `read_memory` | Opsional; delegasikan bila sering panjang di project Anda. |
 | `find_symbol`, `search_memory` | Biarkan di planner — hasilnya pendek, panggilan `investigate` justru lebih mahal. |
+| `git_diff`, `git_show` | Delegasikan bila Anda sering meminta review perubahan — diff bisa panjang. |
+| `git_status`, `git_log`, `git_blame` | Biarkan di planner — hasilnya pendek. |
 | `run_build` | Biarkan di planner kecuali Anda ingin daftar error dirangkum tools node. |
 
 `ask_user` dan `submit_plan` tidak bisa didelegasikan. `code_outline` dan `function_calls` juga tidak: hasilnya

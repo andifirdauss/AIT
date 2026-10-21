@@ -29,6 +29,20 @@ public sealed partial class PlannerToolRunner
             PlannerTools.SetModule => $"`{Path("path")}` → {Str(args, "module")}" + (Str(args, "layer") is { } setLayer ? $" · {setLayer}" : string.Empty),
             PlannerTools.ReadMemory => $"{(args["ids"] as JsonArray)?.Count ?? 0} item",
             PlannerTools.ReadThread => $"`{Str(args, "id")}`",
+            PlannerTools.GitStatus => Path("path") is { } statusOf ? $"`{statusOf}`" : string.Empty,
+            PlannerTools.GitDiff => string.Join(" ", new[]
+            {
+                Str(args, "base") is { } diffBase ? $"`{diffBase}`" : null, Bool(args, "staged") ? "staged" : null,
+                Path("path") is { } diffOf ? $"`{diffOf}`" : null, Bool(args, "stat") ? "stat" : null
+            }.Where(s => s is not null)),
+            PlannerTools.GitLog => string.Join(" ", new[]
+            {
+                Str(args, "revision") is { } revision ? $"`{revision}`" : null, Path("path") is { } logOf ? $"`{logOf}`" : null,
+                Str(args, "query") is not null ? $"\"{Query("query")}\"" : null, Str(args, "change") is not null ? $"-S \"{Query("change")}\"" : null,
+                Int(args, "limit") is { } limit ? $"max {limit}" : null
+            }.Where(s => s is not null)),
+            PlannerTools.GitShow => $"`{Str(args, "commit")}`" + (Path("path") is { } shownIn ? $" `{shownIn}`" : string.Empty) + (Bool(args, "stat") ? " stat" : string.Empty),
+            PlannerTools.GitBlame => $"`{Path("path")}`" + (Int(args, "startLine") is { } from ? $" ({from}-{Int(args, "endLine")?.ToString() ?? "…"})" : string.Empty),
             PlannerTools.RunBuild => Path("target") is { } target ? $"`{target}`" : string.Empty,
             PlannerTools.Investigate => Quote(Str(args, "question")),
             PlannerTools.AskUser => Quote(Str(args, "question")),

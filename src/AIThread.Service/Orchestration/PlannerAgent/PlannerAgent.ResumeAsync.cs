@@ -18,7 +18,7 @@ public sealed partial class PlannerAgent
 
         // The planner that asked, when it is still active; otherwise the preferred one takes the conversation over.
         var node = input.Nodes.FirstOrDefault(n => n.Id == conversation.NodeId) ?? input.Nodes[0];
-        var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, cancellationToken);
+        var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, conversation.CanGit, cancellationToken);
         var messages = conversation.Messages;
         messages[0] = await SystemMessageAsync(node, groups, input.AutoTesting, cancellationToken);
         messages.Add(ChatMessages.Tool(conversation.AskCallId, toolResult));
@@ -33,6 +33,7 @@ public sealed partial class PlannerAgent
             ToolsNodeTokens = conversation.ToolsNodeTokens,
             QuestionsAsked = conversation.QuestionsAsked,
             CanBuild = conversation.CanBuild,
+            CanGit = conversation.CanGit,
             MaxSteps = Math.Max(input.Settings.PlannerMaxSteps, conversation.Step + StepsAfterAnswer),
             Groups = groups
         };

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text.Json.Nodes;
 using AIThread.Service.Models;
+using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Orchestration;
 
@@ -18,6 +19,11 @@ public static class PlannerTools
     public const string SearchMemory = "search_memory";
     public const string ReadMemory = "read_memory";
     public const string ReadThread = "read_thread";
+    public const string GitStatus = "git_status";
+    public const string GitDiff = "git_diff";
+    public const string GitLog = "git_log";
+    public const string GitShow = "git_show";
+    public const string GitBlame = "git_blame";
     public const string RunBuild = "run_build";
     public const string Investigate = "investigate";
     public const string AskUser = "ask_user";
@@ -29,7 +35,10 @@ public static class PlannerTools
 
     // Tools a planner can hand to a tools node (PlannerToolDelegation), in the order they are offered.
     public static readonly ImmutableArray<string> Delegable =
-        [ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, RunBuild];
+        [ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, GitStatus, GitDiff, GitLog, GitShow, GitBlame, RunBuild];
+
+    // Read-only git (GitTools), offered only when the project lives in a git repository.
+    public static readonly ImmutableArray<string> Git = [GitStatus, GitDiff, GitLog, GitShow, GitBlame];
 
     // The skeleton of the code (CodeSkeletonTools): small output, so the planner always keeps them, and a tools node
     // that reads files gets them too, to read only the lines it needs.
@@ -42,14 +51,15 @@ public static class PlannerTools
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
     // groups: tools delegated to tools nodes; the planner loses them and gets investigate instead.
     // canTest: Auto Testing is on, so submit_plan asks for the test section.
+    // canGit: the project lives in a git repository (GitTools.IsRepository).
     // The list stays the same for the whole planner run so the provider's prompt cache keeps matching.
-    public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false)
+    public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false)
     {
         var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
         foreach (var name in Delegable)
         {
-            if (delegated.Contains(name) || (name == RunBuild && !canBuild)) continue;
+            if (delegated.Contains(name) || !Offered(name, canBuild, canGit)) continue;
             tools.Add(Definition(name));
         }
         foreach (var name in Skeleton) tools.Add(Definition(name));
@@ -61,6 +71,10 @@ public static class PlannerTools
     }
 
     public static JsonArray SubmitOnly(bool canTest = false) => [SubmitPlanDefinition(canTest)];
+
+    // Whether a delegable tool can run for this project, for the planner and for its tools nodes alike.
+    public static bool Offered(string name, bool canBuild, bool canGit) =>
+        name == RunBuild ? canBuild : canGit || !Git.Contains(name);
 
     // The tools one tools node may run: those delegated to it, plus the skeleton tools when it reads files.
     public static IReadOnlyList<string> ToolsNodeTools(IEnumerable<string> delegated)
@@ -218,6 +232,70 @@ public static class PlannerTools
                 "id": { "type": "string", "description": "Thread id, e.g. \"3f2a1b9c\"." }
               },
               "required": ["id"]
+            }
+            """)),
+        GitStatus => ChatMessages.Function(GitStatus,
+            "Show the uncommitted changes of the git repository: the current branch (ahead/behind its upstream) and every staged, modified and untracked file. Use it when the developer refers to their current, recent or uncommitted changes, then git_diff to see them.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "Optional file or folder to limit it to, relative to the project root (an absolute path outside the project checks that repository)." }
+              }
+            }
+            """)),
+        GitDiff => ChatMessages.Function(GitDiff,
+            "Show changes as a unified diff. By default everything not committed yet (staged and not staged) against HEAD; staged: only what is staged; base: compare with another commit or branch instead, or a range such as \"main...HEAD\" (what the current branch changed since it left main). Use stat first when you do not know how large the change is. Untracked files are not in a diff: git_status lists them.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "Optional file or folder to limit the diff to, relative to the project root." },
+                "base": { "type": "string", "description": "Optional commit, branch, tag or range to compare with, e.g. \"main\", \"HEAD~3\", \"a1b2c3d\", \"main...HEAD\". Default: HEAD." },
+                "staged": { "type": "boolean", "description": "Only the staged changes (the index) instead of the working tree." },
+                "stat": { "type": "boolean", "description": "Only the changed files with their added/removed line counts." }
+              }
+            }
+            """)),
+        GitLog => ChatMessages.Function(GitLog,
+            "List commits, newest first: short hash, date, author and subject. Narrow it with path (the history of a file or folder, renames followed), revision, query (words in the message) or change (commits that added or removed a text such as a function name, to find when it appeared or disappeared).",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "Optional file or folder, relative to the project root." },
+                "revision": { "type": "string", "description": "Optional branch, tag, commit or range, e.g. \"main\", \"main..HEAD\" (commits on the current branch that main does not have). Default: the current branch." },
+                "limit": { "type": "integer", "description": "How many commits (1-100). Default 20." },
+                "query": { "type": "string", "description": "Only commits whose message contains this text (case-insensitive)." },
+                "change": { "type": "string", "description": "Only commits that added or removed this exact text in the code." },
+                "files": { "type": "boolean", "description": "Also list the files each commit changed (A added, M modified, D deleted, R renamed)." }
+              }
+            }
+            """)),
+        GitShow => ChatMessages.Function(GitShow,
+            "Show one commit: author, date, full message, the changed files and the diff.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "commit": { "type": "string", "description": "Commit hash, branch or tag, e.g. \"a1b2c3d\" or \"HEAD~1\"." },
+                "path": { "type": "string", "description": "Optional file or folder to limit the diff to, relative to the project root." },
+                "stat": { "type": "boolean", "description": "Only the message and the changed files, without the diff." }
+              },
+              "required": ["commit"]
+            }
+            """)),
+        GitBlame => ChatMessages.Function(GitBlame,
+            $"Show, for each line of a file, the commit, author and date that last changed it (lines not committed yet show 00000000 Not Committed Yet). Max {GitTools.MaxBlameLines} lines per call: give the range around the code in question, then git_show the commit to see why it changed.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "File path relative to the project root." },
+                "startLine": { "type": "integer", "description": "First line (1-based)." },
+                "endLine": { "type": "integer", "description": "Last line (inclusive)." }
+              },
+              "required": ["path"]
             }
             """)),
         RunBuild => RunBuildDefinition(),

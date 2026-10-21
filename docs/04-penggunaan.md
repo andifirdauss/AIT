@@ -144,10 +144,14 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 - **Satu fitur per prompt.** Perubahan besar lebih akurat bila dipecah menjadi beberapa prompt berurutan.
 - **Pertanyaan boleh langsung ditanyakan** ("di mana validasi user?"). Planner membaca kode lalu menjawab tanpa
   membuat tugas — tidak ada executor yang berjalan.
+- **Perubahan yang belum di-commit bisa langsung dirujuk** ("review perubahan saya", "lanjutkan yang tadi saya
+  kerjakan", "apa yang berubah sejak commit kemarin?"). Di repository git, planner membaca `git status`, `git diff`, dan
+  riwayat commit sendiri lewat [tool git](07-cara-kerja.md#3-planner), jadi diff tidak perlu ditempel.
 
 ## Yang tidak dilakukan AIT
 
-- Tidak menjalankan unit test, migrasi, git, instalasi paket, atau perintah shell lain. Satu-satunya perintah adalah
+- Tidak menjalankan unit test, migrasi, git yang mengubah repository (commit, checkout, merge, push), instalasi paket,
+  atau perintah shell lain. Satu-satunya perintah selain git read-only (status, diff, log, show, blame) adalah
   **build** project (bila *Build & verifikasi otomatis* menyala): Anda bisa meminta "build lalu perbaiki errornya",
   dan setelah tiap perubahan AIT membuild ulang sendiri. Langkah lain disebutkan di ringkasan.
 - Tidak menjalankan aplikasi Anda. Dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester), AIT hanya
