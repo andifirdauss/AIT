@@ -25,6 +25,9 @@ public sealed class ThreadRecorder(
 
     public ThreadRun Thread => thread;
 
+    // Filled by the planner's tool calls; a resumed thread continues the log of the run before its question.
+    public InvestigationLog Investigation { get; } = InvestigationLog.FromJson(thread.InvestigationJson) ?? new();
+
     public async Task UpdateThreadAsync(Action<ThreadRun> mutate)
     {
         await _threadLock.WaitAsync();

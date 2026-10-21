@@ -30,6 +30,7 @@ public sealed partial class ThreadOrchestrator
             t.PlannerTokens = planning.Tokens;
             t.PlannerCachedTokens = planning.CachedTokens;
             t.ToolsNodeTokens = planning.ToolsNodeTokens;
+            t.InvestigationJson = recorder.Investigation.ToJson();
             t.PlanningMs = (t.PlanningMs ?? 0) + planClock.ElapsedMilliseconds;
             t.FinalResponse = text;
             t.TotalMs = (t.TotalMs ?? 0) + total.ElapsedMilliseconds;

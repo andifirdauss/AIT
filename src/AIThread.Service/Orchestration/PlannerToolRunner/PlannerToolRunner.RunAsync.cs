@@ -27,16 +27,16 @@ public sealed partial class PlannerToolRunner
                     return new PlannerToolOutcome(tools.ListDirectory(Str(args, "path") ?? ".", Int(args, "depth") ?? 2), null);
 
                 case PlannerTools.FindFiles:
-                    return new PlannerToolOutcome(tools.FindFiles(Str(args, "pattern") ?? string.Empty, Str(args, "path")), null);
+                    return Looked(tool, args, recorder, tools.FindFiles(Str(args, "pattern") ?? string.Empty, Str(args, "path")));
 
                 case PlannerTools.SearchText:
-                    return new PlannerToolOutcome(tools.SearchText(Str(args, "query") ?? string.Empty, Str(args, "glob"), Bool(args, "regex"), path: Str(args, "path")), null);
+                    return Looked(tool, args, recorder, tools.SearchText(Str(args, "query") ?? string.Empty, Str(args, "glob"), Bool(args, "regex"), path: Str(args, "path")));
 
                 case PlannerTools.FindSymbol:
-                    return new PlannerToolOutcome(new SymbolSearch(tools.Scope).FindSymbol(Str(args, "name") ?? string.Empty, Str(args, "kind"), Str(args, "path")), null);
+                    return Looked(tool, args, recorder, new SymbolSearch(tools.Scope).FindSymbol(Str(args, "name") ?? string.Empty, Str(args, "kind"), Str(args, "path")));
 
                 case PlannerTools.FindReferences:
-                    return new PlannerToolOutcome(new SymbolSearch(tools.Scope).FindReferences(Str(args, "name") ?? string.Empty, Str(args, "path")), null);
+                    return Looked(tool, args, recorder, new SymbolSearch(tools.Scope).FindReferences(Str(args, "name") ?? string.Empty, Str(args, "path")));
 
                 case PlannerTools.ReadFile:
                 {
@@ -47,16 +47,19 @@ public sealed partial class PlannerToolRunner
                     if (!content.StartsWith("Error:", StringComparison.Ordinal) && tools.Scope.TryResolve(path, out var full, out _))
                     {
                         var start = Math.Max(1, from ?? 1);
-                        functionCalls.Read(input.Project.ProjectId, input.Project.RootPath, tools.Scope.ToRelative(full), start, to ?? start + WorkspaceTools.MaxReadLines - 1);
+                        var relative = tools.Scope.ToRelative(full);
+                        functionCalls.Read(input.Project.ProjectId, input.Project.RootPath, relative, start, to ?? start + WorkspaceTools.MaxReadLines - 1);
+                        recorder.Investigation.Read(relative, start, to);
                     }
                     return new PlannerToolOutcome(content, null);
                 }
 
+                // Outlines are long and the next brief outlines the files again: only the lookup is kept.
                 case PlannerTools.CodeOutline:
-                    return new PlannerToolOutcome(await skeleton.OutlineAsync(input.Project, tools.Scope, Str(args, "path"), Str(args, "name"), cancellationToken), null);
+                    return Looked(tool, args, recorder, await skeleton.OutlineAsync(input.Project, tools.Scope, Str(args, "path"), Str(args, "name"), cancellationToken), keepResult: false);
 
                 case PlannerTools.FunctionCalls:
-                    return new PlannerToolOutcome(await skeleton.CallsAsync(input.Project, tools.Scope, Str(args, "path"), Str(args, "name"), cancellationToken), null);
+                    return Looked(tool, args, recorder, await skeleton.CallsAsync(input.Project, tools.Scope, Str(args, "path"), Str(args, "name"), cancellationToken));
 
                 case PlannerTools.SearchMemory:
                     var entries = await memoryService.SearchAsync(new MemorySearch(

@@ -26,5 +26,8 @@ public sealed partial class ContextKeeper(
     // summary of summaries cannot drift for long.
     private const int RebuildEvery = 8;
     private const int MaxRebuildTurns = 15;
+
+    // A turn's investigation as read_thread shows it; the pack input clips it further.
+    private const int MaxInvestigationChars = 8_000;
     private static readonly TimeSpan LookBack = TimeSpan.FromDays(60);
 }

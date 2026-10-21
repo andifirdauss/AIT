@@ -1159,6 +1159,9 @@ namespace AIThread.Data.Migrations
                     b.Property<string>("FinalResponse")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("InvestigationJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PlanJson")
                         .HasColumnType("nvarchar(max)");
 

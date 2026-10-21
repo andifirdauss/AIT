@@ -43,7 +43,10 @@ public sealed partial class ThreadOrchestrator(
     // Files of the session a follow-up's labels are taken from, at most.
     private const int MaxSessionLabelFiles = 30;
 
-    private sealed record SessionThread(Guid Id, string Prompt, IReadOnlyList<string> Files);
+    // What the planner of the session's last thread went through, as far as it goes into the next brief.
+    private const int MaxPreviousInvestigationChars = 8_000;
+
+    private sealed record SessionThread(Guid Id, string Prompt, IReadOnlyList<string> Files, InvestigationLog? Investigation);
 
     // Resume and Reply are set when the thread continues after a planner question; Request then carries the
     // original request plus the clarification.
