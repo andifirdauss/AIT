@@ -8,6 +8,18 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.3
+
+- **Auto Testing dengan node Tester**: setelah build dan review lolos, node Tester mencoba perubahan di aplikasi yang
+  sedang berjalan (request HTTP dan browser, hanya ke localhost). Hasil per skenario dan output API tampil di akhir
+  jawaban dan di detail thread, dengan tombol *Ulangi testing*. Bila butuh login, balas `login <user> <password>` di
+  chat; password tidak disimpan ke disk dan tidak dilihat model.
+- **Planner bisa membaca riwayat git**: `git_status`, `git_diff`, `git_log`, `git_show`, dan `git_blame` (hanya baca),
+  jadi permintaan seperti "review perubahan saya" tidak perlu menempel diff.
+- **Planner mengingat analisa sebelumnya**: file dan baris yang dibaca, hasil pencarian, dan temuan sub agent disimpan
+  per thread. Pertanyaan lanjutan di chat yang sama dijawab dari analisa itu tanpa mencari ulang dari awal.
+- Logo baru.
+
 ## Yang baru di 1.7.2
 
 - **Sisa kuota kembali tampil** di footer jawaban saat *Require login* 9router aktif (bawaan 9router). Untuk 9router di

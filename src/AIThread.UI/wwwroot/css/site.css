@@ -986,6 +986,25 @@ body.win-modal-docked .modal-backdrop { opacity: 0 !important; pointer-events: n
 
 .win-dismissible > .win-controls { margin-top: 0.3rem; }
 
+/* What's new bar: the newest version's note, the other versions of the same day behind the toggle. */
+.update-notes { flex: 1 1 auto; min-width: 0; }
+
+.update-more > .update-note {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--bs-info-border-subtle);
+}
+
+.update-toggle {
+  padding: 0;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  text-decoration: none;
+  vertical-align: baseline;
+}
+
+.update-toggle:hover { text-decoration: underline; }
+
 /* Toasts: a macOS-style notification on a neutral surface. The type is an accent stripe and a tinted icon, never the
    background, so the red close button keeps its contrast; it sits centered at the start like a title bar. */
 .app-toast {
