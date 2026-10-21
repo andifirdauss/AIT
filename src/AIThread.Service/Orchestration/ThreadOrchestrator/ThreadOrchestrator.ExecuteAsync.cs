@@ -50,9 +50,9 @@ public sealed partial class ThreadOrchestrator
             var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
             // A question needs a way back: a session to answer in, and not a dashboard run nobody is watching.
             var canAsk = settings.PlannerCanAsk && request.Source != ThreadSource.Dashboard && !string.IsNullOrEmpty(request.SessionId);
-            var (codeMap, labelsFromSession, promptFiles) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
+            var (codeMap, labelsFromSession, promptFiles, previousTurn) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
             var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles,
-                AutoTesting: tester is not null);
+                AutoTesting: tester is not null, PreviousTurn: previousTurn);
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
@@ -83,6 +83,7 @@ public sealed partial class ThreadOrchestrator
                 t.PlannerTokens = planning.Tokens;
                 t.PlannerCachedTokens = planning.CachedTokens;
                 t.ToolsNodeTokens = planning.ToolsNodeTokens;
+                t.InvestigationJson = recorder.Investigation.ToJson();
                 t.PlanningMs = (t.PlanningMs ?? 0) + planClock.ElapsedMilliseconds;
             });
 

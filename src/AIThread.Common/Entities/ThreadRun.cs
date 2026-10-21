@@ -66,6 +66,10 @@ public class ThreadRun : BaseEntity
     // run of the same chat starts from it instead of the full history.
     public string? ContextPack { get; set; }
 
+    // InvestigationLog as JSON: the files, lookups and sub agent findings the planner went through. A follow-up in the
+    // same chat starts from it instead of searching again.
+    public string? InvestigationJson { get; set; }
+
     // Times the unfinished tasks of this thread were run again from its stored plan.
     public int RetryCount { get; set; }
 
