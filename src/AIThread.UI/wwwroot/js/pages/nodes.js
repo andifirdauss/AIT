@@ -24,6 +24,11 @@
     ['search_memory', 'cari label memory'],
     ['read_memory', 'baca isi memory / wiki'],
     ['read_thread', 'baca thread sebelumnya'],
+    ['git_status', 'file yang belum di-commit (hanya repo git)'],
+    ['git_diff', 'diff perubahan — hasil bisa panjang'],
+    ['git_log', 'riwayat commit'],
+    ['git_show', 'isi satu commit — hasil bisa panjang'],
+    ['git_blame', 'commit terakhir per baris'],
     ['run_build', 'build proyek & daftar error']
   ];
   const nodes = new Map();
@@ -339,7 +344,7 @@
         </div>`;
     }).join('');
     el('nodeDelegationHint').textContent = toolsNodes.length
-      ? 'Saran hemat: read_file, search_text dan find_references (output terbesar) ke tools node; find_symbol dan list_directory murah dibiarkan di planner.'
+      ? 'Saran hemat: read_file, search_text, find_references, git_diff dan git_show (output terbesar) ke tools node; find_symbol, list_directory dan git_status murah dibiarkan di planner.'
       : 'Belum ada node Tools Node. Tambahkan node ber-role Tools Node (model murah) dulu, lalu pilih di sini.';
   }
 

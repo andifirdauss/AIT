@@ -92,6 +92,7 @@ connection string LocalDB default.
 | `Orchestration/ThreadOrchestrator/` | Alur utama thread: project → planner → eksekusi → verifikasi → testing → wrapper → memory, status & error; *Ulangi testing* (`RetestInBackgroundAsync`). |
 | `Orchestration/PlannerAgent/`, `PlannerTools.cs` | Planner (loop tool 9router), failover antar node planner, definisi tool (JSON schema), brief (urutan stabil → spesifik untuk prompt cache), jeda & lanjut pada `ask_user`, tool `investigate` untuk tool yang didelegasikan. |
 | `Orchestration/PlannerToolRunner/` | Eksekusi tool baca & `run_build` (dipakai planner dan tools node), teks progres per tool (`Describe`). |
+| `Workspace/GitTools.cs` | Tool git read-only planner (`git_status`/`git_diff`/`git_log`/`git_show`/`git_blame`): proses `git` dengan argumen tetap, revisi divalidasi, path setelah `--`, tanpa lock opsional/pager/diff eksternal, output dibatasi. `IsRepository` menentukan apakah tool git ditawarkan (`PlannerTools.Offered`). |
 | `Orchestration/ToolsNodeAgent/` | Tools node: loop tool sendiri untuk satu pertanyaan `investigate`, diakhiri `report_findings`; delegasi disimpan di `PlannerToolDelegation` (`NodeService` memvalidasi). |
 | `Orchestration/PlannerQuestions.cs`, `PendingQuestionStore/` | Pertanyaan planner: format teks bernomor, jawaban → hasil tool, `PendingQuestionStore` (per sesi, di memori, 2 jam), penutupan thread yang tidak dijawab. |
 | `Orchestration/ThreadPlan.cs`, `PlanValidator.cs` | Model rencana dan aturan validasinya. |

@@ -117,13 +117,30 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `search_memory(query)` | maks 25 label |
 | `read_memory(ids)` | deskripsi lengkap |
 | `read_thread(id)` | catatan lengkap thread sebelumnya di project ini (permintaan, rencana, tugas, balasan) |
+| `git_status(path?)` | branch saat ini (ahead/behind upstream) dan setiap file staged, modified, dan untracked; maks 300 entri |
+| `git_diff(path?, base?, staged?, stat?)` | unified diff. Default: semua yang belum di-commit (staged + belum) terhadap `HEAD`; `staged` = hanya index; `base` = commit/branch/tag atau range (mis. `main...HEAD`: perubahan branch ini sejak berpisah dari `main`); `stat` = daftar file + jumlah baris saja. File untracked tidak ada di diff (lihat `git_status`) |
+| `git_log(path?, revision?, limit?, query?, change?, files?)` | commit terbaru dulu: hash, tanggal, author, subjek; default 20, maks 100. `path` = riwayat file/folder (rename diikuti), `query` = teks di pesan commit, `change` = commit yang menambah/menghapus teks itu di kode (`git log -S`), `files` = daftar file per commit |
+| `git_show(commit, path?, stat?)` | satu commit: author, tanggal, pesan lengkap, daftar file, dan diff; `stat` = tanpa diff |
+| `git_blame(path, startLine?, endLine?)` | commit, author, dan tanggal terakhir per baris (baris yang belum di-commit: `Not Committed Yet`); maks 200 baris per panggilan, file ≤ 2 MB |
 | `run_build(target?)` | build project, hasilnya status + setiap error `file(baris,kolom): kode: pesan` (maks 40). `target` = solution/project/manifest lain di dalam root. Dipakai bila Anda minta build atau memperbaiki error build |
 | `investigate(question, agent?)` | hanya ada bila node planner [mendelegasikan tool ke tools node](02-konfigurasi.md#tools-node-planner); tools node menjalankan tool yang didelegasikan (yang hilang dari daftar ini) dalam loop sendiri, maks 12 langkah, lalu mengembalikan temuan ringkas maks 12.000 karakter. Di progres: `investigate  #1 "…"`, lalu baris `#1 › read_file …` per tool tools node, dan `#1 › complete  n langkah · token · model` (sejajar dengan kolom tool; bila gagal `#1 › failed  …`). Di progres CLI, path panjang diringkas menjadi `folder-awal/…/folder/file` (maks 48 karakter) dan query pencarian dipotong di 60 karakter agar satu tool tetap satu baris; log aktivitas menyimpan versi lengkap |
 | `ask_user(question, options?)` | menghentikan thread dengan satu pertanyaan ke developer (lihat [Pertanyaan dari planner](#pertanyaan-dari-planner)); hanya ditawarkan bila *Planner boleh bertanya* menyala dan prompt berasal dari sesi yang bisa menjawab |
 | `submit_plan(plan)` | mengakhiri planning |
 
 Folder `.git .vs .idea .nuget bin obj node_modules packages TestResults artifacts` dan `wwwroot/lib/` disembunyikan
-dari semua tool. Beberapa tool dalam satu putaran dijalankan paralel. Daftar tool tidak berubah selama satu thread
+dari semua tool. Isi `.git` tidak pernah dibaca langsung; tool `git_*` menjalankan `git` itu sendiri.
+
+**Tool git** hanya ditawarkan bila project berada di dalam repository git (ada `.git` di root atau folder induknya),
+dan membutuhkan `git` di `PATH`. Kelimanya hanya membaca: argumennya tetap (tanpa shell), nama commit/branch yang
+diawali `-` atau berisi spasi ditolak, path selalu ditaruh setelah `--`, dan git dijalankan tanpa lock opsional
+(`GIT_OPTIONAL_LOCKS=0`, jadi `git_status` tidak menulis ulang index), pager, warna, diff eksternal, textconv, atau
+cek signature, dengan batas waktu 30 detik. Planner memakainya bila permintaan menyinggung perubahan yang belum
+di-commit, commit, atau branch ("review perubahan saya", "lanjutkan yang tadi"). Bila project ada di sub-folder
+repository, hasilnya dibatasi ke folder project dan path-nya relatif terhadap root project. Commit, checkout, merge,
+dan push tetap urusan Anda. Output git maks 24.000 karakter; bila terpotong, planner diberi saran mempersempit
+(`path`, `stat`).
+
+Beberapa tool dalam satu putaran dijalankan paralel. Daftar tool tidak berubah selama satu thread
 (mengubahnya membatalkan prompt cache). Di langkah terakhir planner diminta memanggil `submit_plan`; hanya bila ia
 mengabaikannya, satu langkah tambahan dijalankan dengan `submit_plan` sebagai satu-satunya tool.
 
