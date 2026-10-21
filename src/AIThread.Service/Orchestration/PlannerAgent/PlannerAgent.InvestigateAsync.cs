@@ -37,6 +37,7 @@ public sealed partial class PlannerAgent
         {
             var result = await toolsNodeAgent.InvestigateAsync(group, question, input, tools, run.MemoriesRead, label, recorder, progress, cancellationToken);
             Interlocked.Add(ref run.ToolsNodeTokens, result.Tokens);
+            recorder.Investigation.Finding(question, result.Findings);
             await progress.StepAsync(nodePrefix + ClientProgress.Pad("complete", PlannerTools.NameColumn) + $"{result.Steps} langkah · {FinalReport.Tokens(result.Tokens)} token{(result.CachedTokens > 0 ? $" · c{FinalReport.Tokens(result.CachedTokens)}" : string.Empty)} · {result.Node.Model}", cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
             return new PlannerToolOutcome(result.Findings, null);
         }

@@ -86,6 +86,20 @@ public class ContextPackBuilderTests
     }
 
     [Fact]
+    public void A_question_turn_carries_what_its_planner_read()
+    {
+        var turn = Turn(SecondId, "button A itu type apa?") with
+        {
+            Tasks = [],
+            Investigation = "Files read (line ranges):\n- `Views/User/Index.cshtml` (30-60)"
+        };
+
+        var described = ContextPackBuilder.Describe(turn, 1_000, 1_000);
+
+        Assert.Contains("Reply: Distribution rows are saved now.\nInvestigation:\nFiles read (line ranges):\n- `Views/User/Index.cshtml` (30-60)\n", described);
+    }
+
+    [Fact]
     public void Oversized_pack_keeps_its_head_and_its_latest_part()
     {
         var pack = "## Goal\nKeep me" + new string('x', ContextPackBuilder.MaxPackChars) + "latest turn";
