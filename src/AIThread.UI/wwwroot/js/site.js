@@ -460,7 +460,8 @@
     });
   }
 
-  // The "what's new" bar stays hidden once dismissed, until the app version changes.
+  // The "what's new" bar stays hidden once dismissed, until the app version changes. It shows the newest version's
+  // note; the toggle opens the notes of the other versions released the same day.
   function initUpdateBar() {
     const bar = document.getElementById('updateBar');
     if (!bar) return;
@@ -475,6 +476,16 @@
       // Storage unavailable — show the bar every time.
     }
     bar.classList.remove('d-none');
+    const more = bar.querySelector('.update-more');
+    const toggle = bar.querySelector('.update-toggle');
+    if (more && toggle) {
+      toggle.addEventListener('click', () => {
+        const open = more.hidden;
+        more.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.textContent = open ? toggle.dataset.less : toggle.dataset.more;
+      });
+    }
     bar.addEventListener('closed.bs.alert', () => {
       try {
         localStorage.setItem(key, version);
