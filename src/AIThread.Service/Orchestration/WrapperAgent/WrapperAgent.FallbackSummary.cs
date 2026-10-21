@@ -6,7 +6,7 @@ namespace AIThread.Service.Orchestration;
 public sealed partial class WrapperAgent
 {
     // Used when no wrapper is configured or the wrapper call fails, so the developer still gets the facts.
-    public static string FallbackSummary(ThreadPlan plan, ExecutionSummary execution, VerificationReport? verification = null)
+    public static string FallbackSummary(ThreadPlan plan, ExecutionSummary execution, VerificationReport? verification = null, TestingReport? testing = null)
     {
         var builder = new StringBuilder();
         builder.Append($"**Ringkasan:** {plan.Summary}\n\n");
@@ -35,6 +35,13 @@ public sealed partial class WrapperAgent
             builder.Append('\n');
             foreach (var error in last.Build?.Errors.Take(10) ?? []) builder.Append($"- `{error}`\n");
             foreach (var issue in last.Review?.Issues ?? []) builder.Append($"- `{issue.File}` — {issue.Problem}\n");
+        }
+
+        if (testing is not null)
+        {
+            builder.Append($"\n**Testing:** {FinalReport.TestingLabel(testing)}");
+            if (testing.Summary is not null) builder.Append($" — {testing.Summary}");
+            builder.Append('\n');
         }
         return builder.ToString();
     }

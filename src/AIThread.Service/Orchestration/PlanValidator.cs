@@ -1,3 +1,4 @@
+using AIThread.Service.Testing;
 using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Orchestration;
@@ -6,8 +7,10 @@ namespace AIThread.Service.Orchestration;
 public static class PlanValidator
 {
     public const int MaxTasks = 40;
+    public const int MaxTestScenarios = 6;
 
-    public static IReadOnlyList<string> Validate(ThreadPlan plan, WorkspaceScope scope)
+    // requireTest: Auto Testing is on, so a plan that changes files must say how to test it.
+    public static IReadOnlyList<string> Validate(ThreadPlan plan, WorkspaceScope scope, bool requireTest = false)
     {
         var errors = new List<string>();
         plan.Summary = plan.Summary?.Trim() ?? string.Empty;
@@ -15,10 +18,13 @@ public static class PlanValidator
 
         if (plan.Tasks.Count == 0)
         {
+            // Nothing changes, so there is nothing to test.
+            plan.Test = null;
             if (string.IsNullOrWhiteSpace(plan.Answer) && string.IsNullOrWhiteSpace(plan.Summary))
                 errors.Add("The plan has no tasks and no answer. Add tasks, or put the full answer in \"answer\".");
             return errors;
         }
+        ValidateTest(plan, requireTest, errors);
 
         if (plan.Tasks.Count > MaxTasks)
             errors.Add($"The plan has {plan.Tasks.Count} tasks; the maximum is {MaxTasks}. Merge related changes.");
@@ -174,6 +180,60 @@ public static class PlanValidator
     }
 
     private static bool IsCSharp(string path) => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
+
+    private static void ValidateTest(ThreadPlan plan, bool requireTest, List<string> errors)
+    {
+        if (!requireTest)
+        {
+            plan.Test = null;
+            return;
+        }
+        if (plan.Test is not { } test)
+        {
+            errors.Add("\"test\" is required: say how the tester can check the change on the running app (level \"ui\" or \"api\" with baseUrl and scenarios), or level \"none\" with the reason in \"notes\".");
+            return;
+        }
+
+        test.Level = test.Level?.Trim().ToLowerInvariant() ?? string.Empty;
+        test.BaseUrl = string.IsNullOrWhiteSpace(test.BaseUrl) ? null : test.BaseUrl.Trim().TrimEnd('/');
+        test.Notes = string.IsNullOrWhiteSpace(test.Notes) ? null : test.Notes.Trim();
+        test.Scenarios = (test.Scenarios ?? []).Where(s => s is not null).ToList();
+        foreach (var scenario in test.Scenarios)
+        {
+            scenario.Title = scenario.Title?.Trim() ?? string.Empty;
+            scenario.Target = string.IsNullOrWhiteSpace(scenario.Target) ? null : scenario.Target.Trim();
+            scenario.Steps = (scenario.Steps ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList();
+            scenario.Expect = scenario.Expect?.Trim() ?? string.Empty;
+        }
+
+        if (test.Level is not (TestPlan.Ui or TestPlan.Api or TestPlan.None))
+        {
+            errors.Add($"test: level must be \"ui\", \"api\" or \"none\", not \"{test.Level}\".");
+            return;
+        }
+        if (!test.IsRunnable)
+        {
+            test.Scenarios = [];
+            if (test.Notes is null) errors.Add("test: level \"none\" needs \"notes\" saying why the change cannot be tested from outside.");
+            return;
+        }
+
+        if (test.BaseUrl is null)
+            errors.Add($"test: level \"{test.Level}\" needs \"baseUrl\", the root URL the app runs at on this machine (see launchSettings.json, appsettings Kestrel/urls, package.json scripts, the dev server config or .env).");
+        else if (!TestUrls.IsLocal(test.BaseUrl))
+            errors.Add($"test: baseUrl must be an absolute http(s) URL on this machine (localhost, 127.0.0.1 or [::1]), not '{test.BaseUrl}'. The tester never calls other hosts.");
+
+        if (test.Scenarios.Count == 0)
+            errors.Add("test: add at least one scenario (title, steps, expect).");
+        else if (test.Scenarios.Count > MaxTestScenarios)
+            errors.Add($"test: {test.Scenarios.Count} scenarios; the maximum is {MaxTestScenarios}. Keep the main path and the most important edge cases.");
+        for (var i = 0; i < test.Scenarios.Count; i++)
+        {
+            var scenario = test.Scenarios[i];
+            if (scenario.Title.Length == 0) scenario.Title = $"Scenario {i + 1}";
+            if (scenario.Expect.Length == 0) errors.Add($"test: scenario \"{scenario.Title}\" needs \"expect\", what the tester must see when it works.");
+        }
+    }
 
     // Kahn's algorithm: a cycle leaves nodes that never reach in-degree zero.
     private static bool HasCycle(List<PlanTask> tasks)

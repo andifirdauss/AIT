@@ -18,5 +18,8 @@ public enum ThreadStatus
     AwaitingInput = 8,
 
     // The file changes of the thread were undone (rollback); it cannot be retried any more.
-    RolledBack = 9
+    RolledBack = 9,
+
+    // The tester node uses the running app to check the change (Auto Testing); between Verifying and Wrapping.
+    Testing = 10
 }

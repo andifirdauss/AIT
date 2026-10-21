@@ -12,6 +12,9 @@ public sealed class ThreadPlan
     public List<ContractItem> Contract { get; set; } = [];
     public List<PlanTask> Tasks { get; set; } = [];
 
+    // Only while the planner node has Auto Testing on: how the tester node can check the change on the running app.
+    public TestPlan? Test { get; set; }
+
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         AllowTrailingCommas = true,
@@ -113,6 +116,39 @@ public sealed class PlanTask
     // The file as shown to people and models: "a.cs → b.cs" for a move or an extract.
     [JsonIgnore]
     public string Target => (IsMove || IsExtract) && !string.IsNullOrWhiteSpace(To) ? $"{File} → {To}" : File;
+}
+
+// The planner's picture of how the finished change shows from outside: in pages (ui: the tester drives a visible
+// browser and may call endpoints too), only through HTTP endpoints (api), or not at all (none, with the reason in Notes).
+public sealed class TestPlan
+{
+    public const string Ui = "ui";
+    public const string Api = "api";
+    public const string None = "none";
+
+    public string Level { get; set; } = None;
+
+    // Root of the app running on this machine, e.g. "http://localhost:5000". Loopback only (TestUrls).
+    public string? BaseUrl { get; set; }
+
+    // What the tester must know first (menu path, login, data that must exist), or why nothing can be tested.
+    public string? Notes { get; set; }
+
+    public List<TestScenario> Scenarios { get; set; } = [];
+
+    [JsonIgnore]
+    public bool IsRunnable => Level is Ui or Api;
+}
+
+public sealed class TestScenario
+{
+    public string Title { get; set; } = string.Empty;
+
+    // Page path or endpoint the scenario starts at: "/User", "POST /api/users".
+    public string? Target { get; set; }
+
+    public List<string> Steps { get; set; } = [];
+    public string Expect { get; set; } = string.Empty;
 }
 
 public sealed class LineRange

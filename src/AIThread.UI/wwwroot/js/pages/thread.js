@@ -48,6 +48,8 @@
     const finished = ['Completed', 'Failed', 'Cancelled'].includes(s.status);
     el('btnRetry').classList.toggle('d-none', !finished || !hasUnfinishedPlannedTasks());
     el('btnRollback').classList.toggle('d-none', !finished || !detail.tasks.some(t => t.status === 'Succeeded'));
+    el('btnRetest').classList.toggle('d-none', s.status !== 'Completed' || !planTest()?.level?.match(/^(ui|api)$/)
+      || !detail.tasks.some(t => t.status === 'Succeeded'));
     if (s.status === 'RolledBack' && detail.rolledBackAt) {
       el('threadMeta').insertAdjacentHTML('beforeend', ` · <span class="text-warning">perubahan file dibatalkan ${fmt.dateTime(detail.rolledBackAt)}</span>`);
     }
@@ -58,6 +60,15 @@
       return detail.planJson ? JSON.parse(detail.planJson).tasks || [] : [];
     } catch {
       return [];
+    }
+  }
+
+  // The planner's test section (Auto Testing); null when the plan has none.
+  function planTest() {
+    try {
+      return detail.planJson ? JSON.parse(detail.planJson).test || null : null;
+    } catch {
+      return null;
     }
   }
 
@@ -97,6 +108,7 @@
     const rows = [
       ['Planner', detail.plannerModel ? `<span class="mono">${escapeHtml(detail.plannerModel)}</span>` : '–'],
       ['Reviewer', detail.reviewerModel ? `<span class="mono">${escapeHtml(detail.reviewerModel)}</span>` : '–'],
+      ['Tester', detail.testerModel ? `<span class="mono">${escapeHtml(detail.testerModel)}</span>` : '–'],
       ['Wrapper', detail.wrapperModel ? `<span class="mono">${escapeHtml(detail.wrapperModel)}</span>` : '–'],
       ['Langkah planner', fmt.number(detail.plannerSteps)],
       ['Planning', fmt.ms(detail.planningMs)],
@@ -104,6 +116,7 @@
       ['Eksekusi (jika sekuensial)', fmt.ms(s.executionSumMs)],
       ['Speedup paralel', fmt.speedup(s.executionSumMs, s.executionWallMs)],
       ['Verifikasi', fmt.ms(detail.verificationMs)],
+      ['Testing', fmt.ms(detail.testingMs)],
       ['Wrapping', fmt.ms(detail.wrappingMs)],
       ['Total', fmt.ms(s.totalMs)],
       ['Percobaan ulang', detail.retryCount ? `${fmt.number(detail.retryCount)}×` : '–'],
@@ -111,6 +124,7 @@
       ['Token tools node', detail.toolsNodeTokens ? fmt.number(detail.toolsNodeTokens) : '–'],
       ['Token executor', fmt.number(detail.executorTokens)],
       ['Token reviewer', fmt.number(detail.reviewerTokens)],
+      ['Token tester', detail.testerTokens ? fmt.number(detail.testerTokens) : '–'],
       ['Token wrapper', fmt.number(detail.wrapperTokens)]
     ];
     el('metrics').innerHTML = rows.map(([k, v]) => `<dt class="col-6 fw-normal text-secondary">${k}</dt><dd class="col-6 text-end mb-1">${v}</dd>`).join('');
@@ -183,6 +197,87 @@
       report.reviewerModel ? `Reviewer: <span class="mono">${escapeHtml(report.reviewerModel)}</span>` : 'Tanpa reviewer'
     ].join(' · ');
     el('verificationBody').innerHTML = `<div class="small text-secondary">${head}</div>${(report.rounds || []).map(roundHtml).join('')}`;
+  }
+
+  const testingOutcomes = {
+    passed: ['success', 'Lolos'],
+    failed: ['danger', 'Gagal'],
+    blocked: ['warning', 'Tidak bisa dicek'],
+    skipped: ['secondary', 'Dilewati']
+  };
+  const scenarioIcons = { passed: '✅', failed: '❌', blocked: '🚫' };
+
+  function pathOf(url) {
+    try {
+      const u = new URL(url);
+      return u.pathname + u.search;
+    } catch {
+      return url;
+    }
+  }
+
+  // One HTTP request of the tester: what was sent and what came back, as the developer would read it in a client.
+  function requestHtml(r) {
+    const head = r.error
+      ? `<div class="small text-danger mb-1">Tanpa respons: ${escapeHtml(r.error)}</div>`
+      : `<div class="small text-secondary mb-1">${escapeHtml(r.url)}${r.contentType ? ` · ${escapeHtml(r.contentType)}` : ''}${r.location ? ` · Location <span class="mono">${escapeHtml(r.location)}</span>` : ''}</div>`;
+    const sent = r.requestBody ? `<div class="small text-secondary">Body request</div><pre class="code-block small">${escapeHtml(r.requestBody)}</pre>` : '';
+    const received = r.responseBody ? `<div class="small text-secondary">Body respons</div><pre class="code-block small">${escapeHtml(r.responseBody)}</pre>` : '';
+    return `<div class="p-2">${head}${sent}${received}</div>`;
+  }
+
+  function testingReport() {
+    try {
+      return detail?.testingJson ? JSON.parse(detail.testingJson) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function renderTesting() {
+    const report = testingReport();
+
+    const testing = detail.summary.status === 'Testing';
+    el('testingCard').classList.toggle('d-none', !report && !testing);
+    if (!report || testing) {
+      el('testingOutcome').innerHTML = testing ? statusBadge('Testing') : '';
+      el('testingBody').innerHTML = testing ? '<div class="text-secondary small">Tester sedang mencoba perubahan di aplikasi yang berjalan… (browser tester tampil di layar komputer AIT)</div>' : '';
+      return;
+    }
+
+    const [color, label] = testingOutcomes[report.outcome] || ['secondary', report.outcome];
+    el('testingOutcome').innerHTML = `<span class="badge text-bg-${color}">${label}</span>`;
+    const head = [
+      report.level === 'ui' ? 'UI' : report.level === 'api' ? 'API' : 'Tidak bisa dites dari luar',
+      report.baseUrl ? `<span class="mono">${escapeHtml(report.baseUrl)}</span>` : null,
+      report.browser ? escapeHtml(report.browser) : null,
+      report.testerModel ? `Tester: <span class="mono">${escapeHtml(report.testerModel)}</span>` : null,
+      report.loginUser ? `login <span class="mono">${escapeHtml(report.loginUser)}</span>` : null,
+      report.steps ? `${fmt.number(report.steps)} langkah` : null
+    ].filter(Boolean).join(' · ');
+    const parts = [`<div class="small text-secondary">${head}</div>`];
+    if (report.error) parts.push(`<div class="alert alert-warning small mt-2 mb-2">${escapeHtml(report.error)}</div>`);
+    if (report.loginNeeded) {
+      parts.push(`<div class="alert alert-warning small mt-2 mb-2">🔐 Tester butuh login: ${escapeHtml(report.loginNeeded)}${report.loginUrl ? ` (<span class="mono">${escapeHtml(report.loginUrl)}</span>)` : ''}.
+        ${report.askedLogin ? 'Balas di chat dengan <span class="mono">login &lt;username&gt; &lt;password&gt;</span>, atau klik' : 'Klik'} <strong>🧪 Ulangi testing</strong> dan isi username &amp; password.</div>`);
+    }
+    if (report.summary) parts.push(`<div class="small mt-2">${escapeHtml(report.summary)}</div>`);
+    if (report.scenarios?.length) {
+      parts.push(`<div class="mt-2">${list(report.scenarios.map(s =>
+        `<li>${scenarioIcons[s.status] || '•'} <strong>${escapeHtml(s.title)}</strong>${s.details && s.details !== report.error ? ` — ${escapeHtml(s.details)}` : ''}</li>`))}</div>`);
+    }
+    if (report.browserErrors?.length) {
+      parts.push(winFrame({ id: 'testing-browser-errors', title: `Error di browser (${report.browserErrors.length})`, className: 'mb-2',
+        body: `<pre class="code-block small">${escapeHtml(report.browserErrors.join('\n'))}</pre>` }));
+    }
+    (report.requests || []).forEach((r, i) => parts.push(winFrame({
+      id: `testing-request-${i}`,
+      title: `${r.method} ${pathOf(r.url)} → ${r.error ? 'tanpa respons' : `${r.status} ${r.reason || ''}`.trim()} · ${fmt.ms(r.durationMs)}`,
+      className: 'mb-2',
+      minimized: i >= 3,
+      body: requestHtml(r)
+    })));
+    el('testingBody').innerHTML = parts.join('');
   }
 
   function renderFinal() {
@@ -284,6 +379,7 @@
     renderPlan();
     renderMetrics();
     renderVerification();
+    renderTesting();
     renderFinal();
     renderTasks();
   }
@@ -330,6 +426,38 @@
       toast(error.message, 'error');
     } finally {
       el('btnRetry').disabled = false;
+    }
+  });
+
+  // The login typed here goes with this one request and is never stored.
+  const retestModal = bootstrap.Modal.getOrCreateInstance(el('retestModal'));
+  el('btnRetest').addEventListener('click', () => {
+    const report = testingReport();
+    el('retestLoginNeeded').innerHTML = report?.loginNeeded
+      ? `<div class="alert alert-warning small">🔐 Testing sebelumnya butuh login: ${escapeHtml(report.loginNeeded)}${report.loginUrl ? ` (<span class="mono">${escapeHtml(report.loginUrl)}</span>)` : ''}</div>`
+      : '';
+    el('retestUsername').value = report?.loginUser || '';
+    el('retestPassword').value = '';
+    retestModal.show();
+  });
+  el('retestModal').addEventListener('hidden.bs.modal', () => {
+    el('retestPassword').value = '';
+  });
+
+  el('retestForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const username = el('retestUsername').value.trim();
+    const password = el('retestPassword').value;
+    if (!username !== !password) return toast('Isi username dan password, atau kosongkan keduanya.', 'info');
+    el('btnRetestConfirm').disabled = true;
+    try {
+      await api.post(`/api/threads/${threadId}/test`, { username: username || null, password: password || null });
+      retestModal.hide();
+      toast('Testing dijalankan ulang.', 'info');
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      el('btnRetestConfirm').disabled = false;
     }
   });
 

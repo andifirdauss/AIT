@@ -105,16 +105,18 @@ Output terdiri dari tiga bagian:
 | `📋 Rencana` | Ringkasan rencana, lalu satu entri per tugas: id, path relatif penuh, dependensi (`← T3` = menunggu T3), dan judul tugas di baris bawahnya. |
 | `🚀 Eksekusi` | Satu baris per tugas yang selesai, dalam kolom: status, id, durasi, executor, ringkasan. `✅` berhasil, `❌` gagal (dengan alasan), `⏩` dilewati karena tugas yang ditunggunya gagal, `🟡` node dialihkan ke cadangannya. Penutupnya menyebut waktu nyata dan, bila paralel memang menghemat waktu, berapa kali lebih cepat dari sekuensial. |
 | `🔍 Verifikasi` | AIT membuild project dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). `🔨` build gagal (error maks 5 baris), `🔎` temuan reviewer, `🔧 Perbaikan` = putaran tugas perbaikan `V1-1`, …, `🟡` peringatan. |
+| `🧪 Testing` | Hanya dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester): node Tester mencoba perubahan di aplikasi yang berjalan. Satu baris per tool (`browser_open`, `browser_fill  Deskripsi ← "AIT test"`, `http_request  POST /api/users`, …); di bawah `http_request` tampil status, durasi, dan awal body respons. `🌐` = browser tester dibuka (jendelanya muncul di layar), `🟡` = aplikasi tidak bisa dihubungi, `🔐` = tester butuh login. Penutupnya: `lolos 2/2 skenario`, `1 dari 3 skenario gagal`, atau *dilewati* beserta alasannya. |
 | `📦 Rangkuman` | Node Wrapper sedang menulis jawaban akhir. Tidak muncul bila tidak ada Wrapper aktif. |
 
 Jawaban akhir disusun sebagian oleh AIT sendiri (dari hasil, bukan dari model) dan sebagian oleh Wrapper:
 
 | Bagian | Dibuat oleh | Isi |
 |---|---|---|
-| Baris status | AIT | `✅ Selesai` / `🟡 Selesai sebagian` / `❌ Gagal`, jumlah tugas rencana yang berhasil (tugas perbaikan `V` tidak dihitung), hasil build dan reviewer terakhir. |
+| Baris status | AIT | `✅ Selesai` / `🟡 Selesai sebagian` / `❌ Gagal`, jumlah tugas rencana yang berhasil (tugas perbaikan `V` tidak dihitung), hasil build dan reviewer terakhir, dan hasil testing (`testing lolos`, `testing: 1 gagal`, …). Skenario testing yang gagal membuat status *Selesai sebagian*. |
 | **Perlu perhatian** | AIT | Hanya bila ada tugas gagal/dilewati atau error build/temuan reviewer yang tersisa. |
 | Teks | Wrapper | 1–3 kalimat tentang apa yang dikerjakan, saran untuk masalah yang tersisa, dan langkah lanjutan bila perlu. Tanpa node Wrapper (atau bila Wrapper gagal), ringkasan rencana yang tampil. |
 | **File berubah** | AIT | Satu baris per file dari diff: aksi (`baru`/`ubah`/`hapus`/`pindah`), baris `+`/`−`, dan tugas yang menyentuhnya. |
+| **🧪 Testing** | AIT | Hanya dengan Auto Testing: level, URL aplikasi, browser, ringkasan tester, `✅`/`❌`/`🚫` per skenario dengan penjelasannya, *Error di browser* (maks 5), lalu **Output API**: tiap request (maks 5) dengan status, durasi, dan body respons dalam blok kode (maks 30 baris / 2.000 karakter; selengkapnya di detail thread). Bila tester butuh login, ditutup dengan pertanyaan **🔐 Tester butuh login** — lihat [Login untuk testing](#login-untuk-testing). |
 | Footer | AIT | Durasi total, total token (planner + executor + reviewer + wrapper + ekstraksi memory), memory yang dipakai planner dan memory baru, antrian wiki bisnis (bila *Business memory* aktif), *Sisa kuota* provider, dan link ke halaman thread untuk detail & rollback. |
 
 Footer menunggu ekstraksi memory selesai, paling lama 30 detik. Bila lebih lama, footer menulis
@@ -145,9 +147,12 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 
 ## Yang tidak dilakukan AIT
 
-- Tidak menjalankan test, migrasi, git, instalasi paket, atau perintah shell lain. Satu-satunya perintah adalah
+- Tidak menjalankan unit test, migrasi, git, instalasi paket, atau perintah shell lain. Satu-satunya perintah adalah
   **build** project (bila *Build & verifikasi otomatis* menyala): Anda bisa meminta "build lalu perbaiki errornya",
   dan setelah tiap perubahan AIT membuild ulang sendiri. Langkah lain disebutkan di ringkasan.
+- Tidak menjalankan aplikasi Anda. Dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester), AIT hanya
+  mencoba aplikasi yang **sudah berjalan** di localhost (browser dan request HTTP), dan tidak memperbaiki kode
+  berdasarkan hasil testing.
 - Tidak memakai tool bawaan Claude Code: saat orkestrasi aktif, Claude Code berfungsi sebagai tampilan percakapan.
   Untuk pekerjaan yang butuh menjalankan perintah selain build, matikan *Orkestrasi aktif* sementara (Claude Code
   menjadi agen biasa lewat 9router) atau kembalikan integrasi.
@@ -165,7 +170,7 @@ Status thread:
 
 | Status | Arti |
 |---|---|
-| Selesai | Planner menjawab langsung, atau minimal satu tugas berhasil (tugas lain yang gagal, dan error build/temuan reviewer yang tersisa setelah verifikasi, dicatat di kolom error). |
+| Selesai | Planner menjawab langsung, atau minimal satu tugas berhasil (tugas lain yang gagal, error build/temuan reviewer yang tersisa setelah verifikasi, dan skenario testing yang gagal, dicatat di kolom error). |
 | Gagal | Tidak ada tugas berhasil, atau planner/9router gagal. Pesan penyebab tampil di Claude Code dan di detail thread. |
 | Dibatalkan | Dihentikan oleh Anda. |
 | Perubahan dibatalkan | Perubahan file thread ini sudah dikembalikan lewat **Batalkan perubahan file** (lihat di bawah). |
@@ -191,6 +196,27 @@ rencana yang belum berhasil).
 - Semuanya tercatat di thread yang sama; jumlahnya tampil di *Percobaan ulang* pada panel waktu & token.
 - Berguna setelah rate limit, setelah menambah node Executor yang tadinya belum ada, atau setelah memperbaiki
   konfigurasi model.
+
+## Login untuk testing
+
+Bila aplikasi meminta login, akhir jawaban berisi **🔐 Tester butuh login**. Balas di chat yang sama:
+
+```
+login admin rahasia123
+```
+
+AIT langsung menjalankan testing thread itu lagi dengan akun tersebut dan membalas dengan hasil testing barunya. Login
+diingat selama sesi chat (8 jam, di memori), jadi thread berikutnya tidak ditanya lagi. Password tidak ditulis ke disk
+dan tidak pernah dikirim ke model (tester hanya melihat `{{password}}`), tetapi tetap ada di riwayat chat Anda — pakai
+akun uji. Detail: [Login](07-cara-kerja.md#login).
+
+## Mengulang testing
+
+Detail thread → **🧪 Ulangi testing** (thread *Selesai* yang dibuat dengan Auto Testing dan punya rencana testing UI/API)
+menjalankan lagi skenario rencana testing ke aplikasi yang sedang berjalan, tanpa planner dan tanpa mengubah kode.
+Berguna bila aplikasinya belum jalan saat testing pertama atau perlu di-restart agar perubahan termuat. Modalnya punya
+field **username & password** opsional untuk aplikasi yang butuh login (dipakai sekali, tidak disimpan). Kemajuannya
+tampil di kartu *Testing* dan aktivitas thread (tidak di Claude Code).
 
 ## Membatalkan perubahan file (rollback)
 

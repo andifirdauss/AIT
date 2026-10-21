@@ -20,7 +20,7 @@ public sealed partial class PlannerAgent
         var node = input.Nodes.FirstOrDefault(n => n.Id == conversation.NodeId) ?? input.Nodes[0];
         var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, cancellationToken);
         var messages = conversation.Messages;
-        messages[0] = await SystemMessageAsync(node, groups, cancellationToken);
+        messages[0] = await SystemMessageAsync(node, groups, input.AutoTesting, cancellationToken);
         messages.Add(ChatMessages.Tool(conversation.AskCallId, toolResult));
 
         var run = new PlannerRun
