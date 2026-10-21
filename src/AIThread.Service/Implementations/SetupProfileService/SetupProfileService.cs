@@ -23,7 +23,8 @@ public sealed partial class SetupProfileService(
         [NodeRole.Executor] = "Executor",
         [NodeRole.Reviewer] = "Reviewer",
         [NodeRole.Wrapper] = "Wrapper",
-        [NodeRole.ContextKeeper] = "Context Keeper"
+        [NodeRole.ContextKeeper] = "Context Keeper",
+        [NodeRole.Tester] = "Tester"
     };
 
     private static readonly IReadOnlyDictionary<SetupProfileSection, string> SectionLabels = new Dictionary<SetupProfileSection, string>

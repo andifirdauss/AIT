@@ -30,7 +30,7 @@ public sealed partial class PlannerAgent
         {
             PlannerTools.Investigate => await InvestigateAsync(args, input, run, tools, recorder, progress, badge, cancellationToken),
             PlannerTools.AskUser => AskUser(args, input, run),
-            PlannerTools.SubmitPlan => SubmitPlan(call.Arguments, input.Scope, recorder),
+            PlannerTools.SubmitPlan => SubmitPlan(call.Arguments, input.Scope, input.AutoTesting, recorder),
             _ => await runner.RunAsync(call.Name, args, input, tools, run.MemoriesRead, string.Empty, recorder, progress, cancellationToken)
         };
     }

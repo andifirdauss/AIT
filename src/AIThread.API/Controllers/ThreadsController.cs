@@ -3,7 +3,9 @@ using AIThread.Common.Enums;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
+using AIThread.Service.Testing;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace AIThread.API.Controllers;
 
@@ -49,6 +51,18 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
     [HttpPost("{id:guid}/retry")]
     public async Task<ActionResult<ApiResponse<Guid>>> Retry(Guid id, CancellationToken cancellationToken) =>
         ApiResponse<Guid>.Ok(await orchestrator.RetryInBackgroundAsync(id, cancellationToken), "Tugas yang gagal dijalankan ulang.");
+
+    // Runs the thread's Auto Testing again from its stored test plan, with the login typed on the thread page (never
+    // stored); progress arrives over SSE.
+    [HttpPost("{id:guid}/test")]
+    public async Task<ActionResult<ApiResponse<Guid>>> Retest(Guid id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RetestRequest? request,
+        CancellationToken cancellationToken)
+    {
+        var login = TestLogin.From(request?.Username, request?.Password);
+        if (login is null && (!string.IsNullOrWhiteSpace(request?.Username) || !string.IsNullOrWhiteSpace(request?.Password)))
+            throw new AppValidationException("Isi username dan password, atau kosongkan keduanya.");
+        return ApiResponse<Guid>.Ok(await orchestrator.RetestInBackgroundAsync(id, login, cancellationToken), "Testing dijalankan ulang.");
+    }
 
     // What undoing the thread's file changes would do, file by file, without touching anything.
     [HttpGet("{id:guid}/rollback")]

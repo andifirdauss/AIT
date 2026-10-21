@@ -1,4 +1,5 @@
 using AIThread.Service.Models;
+using AIThread.Service.Testing;
 
 namespace AIThread.Service.Interfaces;
 
@@ -16,4 +17,9 @@ public interface IThreadOrchestrator
 
     // Validates like RetryAsync, then runs in the background. Returns the thread id.
     Task<Guid> RetryInBackgroundAsync(Guid threadId, CancellationToken cancellationToken);
+
+    // Runs the Auto Testing of a completed thread again in the background (e.g. after the app was started), from its
+    // stored test plan, with login when given (not stored). Throws AppValidationException when the thread has nothing
+    // to test. Returns the thread id.
+    Task<Guid> RetestInBackgroundAsync(Guid threadId, TestLogin? login, CancellationToken cancellationToken);
 }

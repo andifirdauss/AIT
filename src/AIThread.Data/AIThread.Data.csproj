@@ -17,6 +17,8 @@
     <PackageReference Include="Oracle.EntityFrameworkCore" Version="10.23.26301" />
     <PackageReference Include="Microsoft.Garnet" Version="2.1.8" />
     <PackageReference Include="StackExchange.Redis" Version="3.3.1" />
+    <!-- Pin transitive dependency of Microsoft.Data.SqlClient and Oracle.ManagedDataAccess.Core (9.0.11) to the patched version: CVE-2026-84008, CVE-2026-70162. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
   <PropertyGroup>

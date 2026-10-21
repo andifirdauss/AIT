@@ -125,7 +125,7 @@ Pipeline butuh minimal **1 Planner, 1 Executor, 1 Wrapper** yang aktif. Banner d
 kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)) dan **Context Keeper** (lihat
 [Konteks sesi](07-cara-kerja.md#konteks-sesi-context-keeper)) opsional, begitu juga **Tools Node** (lihat
-[Tools node planner](#tools-node-planner)).
+[Tools node planner](#tools-node-planner)) dan **Tester** (lihat [Auto Testing](#auto-testing-node-tester)).
 
 Cara tercepat mengisi semua peran sekaligus: Setup → langkah *Pilih model untuk tiap peran* (cukup pilih model kuat dan
 model murah) — lihat [preset pipeline](05-menu.md#setup). Node `AIT …` yang dibuatnya bisa diubah di sini seperti node lain.
@@ -135,16 +135,17 @@ model murah) — lihat [preset pipeline](05-menu.md#setup). Node `AIT …` yang 
 | Field | Default (UI) | Keterangan |
 |---|---|---|
 | Nama | — | Label bebas, tampil di progres dan detail thread. |
-| Role | Executor | Planner / Tools Node / Executor / Reviewer / Wrapper / Context Keeper. |
+| Role | Executor | Planner / Tools Node / Executor / Reviewer / Tester / Wrapper / Context Keeper. |
 | Model / combo | — | Dipilih dari `/v1/models` 9router, dikelompokkan: *Combo* dulu, lalu per provider. Jika 9router offline, muncul input teks untuk mengetik id model manual. |
-| Temperature | Planner 0.2 · Tools Node 0.1 · Executor 0.1 · Reviewer 0.1 · Wrapper 0.3 · Context Keeper 0.2 | 0–2. Kosongkan untuk nilai default yang sama. |
-| Max tokens | Planner 16384 · Tools Node 4096 · Executor 8192 · Reviewer 4096 · Wrapper 4096 · Context Keeper 4096 | 256–200000. Batas output per panggilan. |
-| Max paralel | Planner 2 · Tools Node 4 · Executor 6 · Reviewer 2 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
+| Temperature | Planner 0.2 · Tools Node 0.1 · Executor 0.1 · Reviewer 0.1 · Tester 0.1 · Wrapper 0.3 · Context Keeper 0.2 | 0–2. Kosongkan untuk nilai default yang sama. |
+| Max tokens | Planner 16384 · Tools Node 4096 · Executor 8192 · Reviewer 4096 · Tester 4096 · Wrapper 4096 · Context Keeper 4096 | 256–200000. Batas output per panggilan. |
+| Max paralel | Planner 2 · Tools Node 4 · Executor 6 · Reviewer 2 · Tester 1 · Wrapper 4 · Context Keeper 2 | 1–64. Berapa request ke model node ini yang boleh berjalan bersamaan, dihitung **di semua thread** (berguna untuk rate limit provider). Bukan jumlah proses/instance. |
 | Prioritas | 100 | Angka kecil diutamakan. |
 | Node cadangan | tidak ada | Node lain dengan **role yang sama** yang mengambil alih bila node ini tetap gagal setelah 9router mencoba ulang. Lihat [Node cadangan](#node-cadangan). |
 | Instruksi tambahan | kosong | Ditambahkan di akhir prompt bawaan peran, mis. konvensi coding tim. |
 | Skill | kosong | Skill dari gudang (maks 10). Cari sendiri lewat dropdown *Cari sendiri di gudang* (cocok dengan nama, deskripsi, tag, atau isi skill; klik untuk memasang/melepas), atau tulis kebutuhan di *Butuh kemampuan apa?* lalu klik **Cari skill**: Skill Orchestrator menyarankan skill yang cocok beserta alasannya, Anda centang, lalu **Terapkan** dan **Simpan**. Isi skill ditempel ke system prompt node setelah instruksi tambahan; field *Instruksi tambahan* tidak berubah. |
 | Delegasi tool | semua di planner | Khusus Planner: per tool baca, pilih *Planner langsung* atau sebuah Tools Node. Lihat [Tools node planner](#tools-node-planner). |
+| Auto Testing | mati | Khusus Planner: planner ikut menyusun rencana testing, lalu node Tester mencoba perubahan di aplikasi yang berjalan (UI lewat browser non-headless, API lewat HTTP). Lihat [Auto Testing](#auto-testing-node-tester). |
 | Aktif | aktif | Node nonaktif tidak dipakai. |
 
 Tombol **Test** mengirim prompt singkat ("Reply with exactly one word: pong") dan menampilkan latency, token, dan
@@ -165,6 +166,8 @@ balasan — cara cepat memastikan model dan key benar.
 - **Reviewer**: node aktif dengan prioritas terkecil memeriksa hasil executor (diff, kontrak, hasil build) di setiap
   putaran verifikasi. Tanpa node ini, verifikasi hanya memakai build. Model yang teliti lebih penting daripada model
   yang cepat: setiap temuannya memicu tugas perbaikan.
+- **Tester**: node aktif dengan prioritas terkecil, hanya bila planner yang dipakai menyalakan *Auto Testing*. Lihat
+  [Auto Testing](#auto-testing-node-tester).
 
 ### Node cadangan
 
@@ -187,8 +190,8 @@ Aturannya:
   yang hanya dipakai saat dibutuhkan.
 - Error lain (mis. 400 request tidak valid, 401 key salah) tidak memicu peralihan, karena node lain kemungkinan besar
   akan gagal dengan cara yang sama.
-- Berlaku untuk semua peran: Planner, Executor, Reviewer, Wrapper, Context Keeper, serta ekstraksi memory (memakai
-  node Wrapper).
+- Berlaku untuk semua peran: Planner, Executor, Reviewer, Tester, Wrapper, Context Keeper, serta ekstraksi memory
+  (memakai node Wrapper).
 - Menghapus node, atau mengubah role-nya, otomatis melepasnya dari node lain yang memakainya sebagai cadangan.
 - Sebelum fitur ini ada, planner aktif otomatis menjadi cadangan satu sama lain. Saat update, migrasi mengisi node
   cadangan planner yang sudah ada sesuai urutan prioritas, jadi perilakunya tetap sama dan sekarang bisa diubah.
@@ -230,6 +233,36 @@ Aturannya:
 - Trade-off: planner hanya melihat apa yang dilaporkan tools node. Pakai model tools node yang teliti menyalin nama dan
   nomor baris; model yang terlalu lemah membuat planner bertanya ulang (lebih banyak langkah).
 - Token tools node dicatat terpisah (*Token tools node* di detail thread) dan ikut dalam total token thread.
+
+### Auto Testing (node Tester)
+
+Dengan **Auto Testing** menyala di modal node Planner, perubahan yang lolos verifikasi langsung dicoba di aplikasi yang
+sedang berjalan:
+
+1. Planner menilai dari perubahannya **cara mengujinya** dan menuliskannya di rencana: `ui` (halaman), `api` (endpoint
+   HTTP), atau `none` (tidak bisa dicoba dari luar), beserta URL aplikasi di localhost dan 1–6 skenario.
+2. Setelah executor dan verifikasi selesai, node **Tester** menjalankannya:
+   - **UI**: halaman dibuka di browser Playwright **non-headless** — jendela Edge/Chrome muncul di layar dan Anda bisa
+     melihat tester mengisi form dan mengklik tombol;
+   - **API**: request HTTP dikirim ke endpoint, dan **output-nya** (status, durasi, body respons) tampil di progres CLI,
+     di jawaban akhir (*Output API*), dan di kartu *Testing* detail thread.
+3. Hasil per skenario (lolos / gagal / tidak bisa dicek) masuk ke jawaban akhir; skenario gagal membuat status
+   *Selesai sebagian*.
+
+Yang perlu disiapkan:
+
+- Tambah node ber-role **Tester** (model murah yang mendukung *tool calling*; default max paralel 1) lalu nyalakan
+  *Auto Testing* di node Planner. Tanpa node Tester aktif, banner pipeline memberi catatan dan testing dilewati.
+- **Jalankan aplikasinya** sebelum prompt (mis. `dotnet watch`, `npm run dev`): AIT tidak menjalankan aplikasi Anda.
+  Bila aplikasi tidak menjawab, testing berakhir *tidak bisa dicek* dan bisa diulang lewat **🧪 Ulangi testing** di detail
+  thread.
+- Login: tidak perlu disiapkan. Bila aplikasi meminta login, tester **bertanya di chat**; balas
+  `login <username> <password>` (akun uji) dan testing dijalankan lagi. Password tidak disimpan ke disk, tidak dikirim ke
+  model, dan diingat selama sesi chat itu. Untuk thread dari Dashboard/Telegram, isi di modal **🧪 Ulangi testing**.
+  Lihat [Login](07-cara-kerja.md#login).
+- Hanya alamat `localhost`/`127.0.0.1`/`[::1]` yang boleh dites. Arahkan aplikasinya ke database pengembangan.
+
+Detail alur, tool tester, dan batasannya: [Testing (Auto Testing)](07-cara-kerja.md#6-testing-auto-testing).
 
 ### Cara kerja *Max paralel*
 

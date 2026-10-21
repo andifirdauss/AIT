@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace AIThread.Service.Orchestration;
 
 // planner (expensive, explores + plans) -> executors (cheap, parallel, one file each) -> verification (build and/or
-// reviewer, with fix rounds) -> wrapper (pools and reports).
+// reviewer, with fix rounds) -> testing (Auto Testing: the tester uses the running app) -> wrapper (pools and reports).
 public sealed partial class ThreadOrchestrator(
     ISettingService settingService,
     INodeService nodeService,
@@ -24,6 +24,7 @@ public sealed partial class ThreadOrchestrator(
     IPlannerAgent plannerAgent,
     IExecutionEngine executionEngine,
     IVerificationStage verificationStage,
+    ITesterAgent testerAgent,
     IWrapperAgent wrapperAgent,
     IMemoryExtractor memoryExtractor,
     ICodeMapper codeMapper,
@@ -31,6 +32,7 @@ public sealed partial class ThreadOrchestrator(
     ICodeStructureService codeStructure,
     IFunctionCallQueue functionCalls,
     IPendingQuestionStore questions,
+    ITestLoginStore testLogins,
     INineRouterService router,
     IHostApplicationLifetime lifetime,
     ILogger<ThreadOrchestrator> logger) : IThreadOrchestrator
@@ -57,9 +59,18 @@ public sealed partial class ThreadOrchestrator(
         IReadOnlyList<PlanTask> RetryTasks,
         CancellationTokenSource Cancellation);
 
+    // A finished thread whose test runs again: the stored plan with every succeeded task, and their results.
+    private sealed record PreparedRetest(
+        ThreadRun Thread,
+        ProjectContext Project,
+        ThreadPlan Plan,
+        ExecutionSummary Execution,
+        AiNode Tester,
+        CancellationTokenSource Cancellation);
+
     // What verification and wrapping of a run need. MemoryNode extracts memories afterwards (null = skip);
     // KeepContext updates the Claude Code context pack (not for retries, which no chat turn started); MemoriesUsed is
-    // how many memories the planner read, for the footer.
+    // how many memories the planner read, for the footer. Tester is set when the planner has Auto Testing on.
     private sealed record Pipeline(
         ThreadRecorder Recorder,
         ClientProgress Progress,
@@ -73,5 +84,6 @@ public sealed partial class ThreadOrchestrator(
         FileJournal Journal,
         Stopwatch Total,
         bool KeepContext,
-        int MemoriesUsed = 0);
+        int MemoriesUsed = 0,
+        AiNode? Tester = null);
 }

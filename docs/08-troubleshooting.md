@@ -162,6 +162,22 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 | Reviewer terlalu cerewet atau memicu perubahan yang tidak diminta | Model reviewer melaporkan hal di luar permintaan. | Tambahkan batasan di *Instruksi tambahan* node Reviewer, ganti modelnya, atau nonaktifkan node itu (verifikasi tetap memakai build). |
 | Verifikasi tidak muncul | Tidak ada tugas yang berhasil, *Build & verifikasi otomatis* mati dan tidak ada node Reviewer, atau stack project tidak punya perintah build. | Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
 
+## Auto Testing
+
+| Gejala | Arti | Solusi |
+|---|---|---|
+| Fase `🧪 Testing` tidak muncul | *Auto Testing* mati di node Planner yang dipakai, tidak ada node Tester aktif (banner Node memberi catatan), tidak ada tugas yang berhasil, atau thread dibuat sebelum Auto Testing dinyalakan. | Nyalakan *Auto Testing* di Edit node Planner dan tambahkan node ber-role Tester. |
+| `Testing · dilewati` | Planner menilai perubahannya tidak bisa dicoba dari luar (alasannya tertulis), atau build terakhir masih gagal. | Perbaiki build dulu; atau sebut di prompt bagian mana yang harus dites. |
+| `Aplikasi tidak bisa dihubungi di http://localhost:…` | Aplikasinya tidak berjalan, atau berjalan di port lain dari yang ditemukan planner. | Jalankan aplikasinya, lalu **🧪 Ulangi testing** di detail thread. Bila port-nya salah, tulis URL-nya di prompt atau di *Instruksi tambahan* node Planner (mis. "aplikasi berjalan di http://localhost:5080"). |
+| `Browser tester tidak bisa dibuka` | Edge dan Chrome tidak ditemukan dan Chromium gagal diunduh (offline), atau folder `.playwright` di samping `AIThread.exe` hilang. | Pasang Edge/Chrome, atau sambungkan internet sekali agar Chromium terunduh; pasang ulang AIT bila `.playwright` hilang. |
+| Browser tidak terlihat | AIT berjalan sebagai service / di sesi Windows lain. | Jalankan AIT dari tray atau menu `AIThread.exe` di sesi Anda. |
+| Skenario *tidak bisa dicek — Butuh login* | Tester tidak punya akun. | Balas di chat `login <username> <password>`; untuk thread dari Dashboard/Telegram isi di modal **🧪 Ulangi testing**. |
+| Balasan `login …` dijalankan sebagai prompt biasa | Tidak ada pertanyaan login yang menunggu di sesi & project itu (lewat 2 jam, AIT di-restart, atau chat lain), atau formatnya bukan tiga kata `login <username> <password>`. | Pakai **🧪 Ulangi testing** di detail thread, atau minta testing lagi lewat prompt baru. Password berspasi: pakai format berlabel `username: …` / `password: …`. |
+| Skenario *tidak bisa dicek* karena captcha | Tester sudah mengisi captcha dengan nilai sembarang (cukup di lingkungan dev yang mem-bypass captcha asal terisi), tetapi aplikasi tetap memeriksanya. | Nyalakan bypass captcha di konfigurasi development (mis. flag di `appsettings.Development.json`/`.env`, atau test key reCAPTCHA), lalu **🧪 Ulangi testing**. |
+| Login ditolak padahal akunnya benar | Form login memakai 2FA/OTP atau SSO di host lain (bukan localhost). | Pakai akun uji tanpa 2FA di lingkungan pengembangan. Halaman SSO di host lain tidak bisa dibuka tester. |
+| Skenario gagal padahal diff benar | Aplikasi belum memuat perubahan (berjalan tanpa hot reload, atau view/JS di-cache). | Restart aplikasinya atau pakai `dotnet watch`/dev server, lalu **🧪 Ulangi testing**. |
+| Tester berputar di halaman yang sama | Model tester terlalu lemah membaca snapshot. | Pakai model tester yang lebih teliti, atau beri id elemen yang jelas di kontrak (planner menyalinnya ke langkah skenario). |
+
 ## Redis & database
 
 **Kartu Redis *Tidak terhubung***

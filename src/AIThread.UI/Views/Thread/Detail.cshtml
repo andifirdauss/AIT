@@ -10,9 +10,45 @@
         <p class="page-subtitle" id="threadMeta">Memuat…</p>
     </div>
     <div class="d-flex gap-2 flex-wrap justify-content-end">
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetest" title="Jalankan lagi testing dari rencana testing planner ke aplikasi yang sedang berjalan, mis. setelah aplikasinya dijalankan. Kode tidak diubah.">🧪 Ulangi testing</button>
         <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetry" title="Jalankan lagi tugas yang gagal, dilewati, atau dibatalkan memakai rencana yang sama (planner tidak dipanggil).">🔁 Ulangi yang gagal</button>
         <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnRollback" title="Kembalikan semua file yang diubah thread ini ke isi sebelum thread berjalan.">↩ Batalkan perubahan file</button>
         <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCancel">Batalkan thread</button>
+    </div>
+</div>
+
+<div class="modal fade" id="retestModal" tabindex="-1" aria-labelledby="retestModalTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="retestForm" autocomplete="off">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="retestModalTitle">Ulangi testing</h5>
+            </div>
+            <div class="modal-body">
+                <p class="small text-secondary">
+                    Skenario rencana testing dijalankan lagi ke aplikasi yang sedang berjalan; kode tidak diubah. Pastikan aplikasinya sudah jalan.
+                </p>
+                <div id="retestLoginNeeded"></div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small" for="retestUsername">Username (opsional)</label>
+                        <input type="text" class="form-control" id="retestUsername" autocomplete="off" spellcheck="false" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small" for="retestPassword">Password (opsional)</label>
+                        <input type="password" class="form-control" id="retestPassword" autocomplete="new-password" />
+                    </div>
+                </div>
+                <div class="form-text">
+                    Untuk aplikasi yang butuh login. Hanya dipakai untuk testing ini dan tidak disimpan. Tester hanya melihat
+                    <span class="mono">{{password}}</span>; AIT yang mengetikkan password aslinya.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary" id="btnRetestConfirm">🧪 Jalankan testing</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -92,6 +128,14 @@
                 <span id="verificationOutcome"></span>
             </div>
             <div class="card-body" id="verificationBody"></div>
+        </div>
+
+        <div class="card mb-3 d-none" id="testingCard">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Testing (Auto Testing)</span>
+                <span id="testingOutcome"></span>
+            </div>
+            <div class="card-body" id="testingBody"></div>
         </div>
 
         <div class="card mb-3">

@@ -259,6 +259,7 @@
     Planning: ['info', 'Planning'],
     Executing: ['primary', 'Eksekusi'],
     Verifying: ['info', 'Verifikasi'],
+    Testing: ['info', 'Testing'],
     Wrapping: ['info', 'Wrapping'],
     AwaitingInput: ['warning', 'Menunggu jawaban'],
     Completed: ['success', 'Selesai'],
@@ -272,7 +273,7 @@
 
   function statusBadge(status) {
     const [color, label] = statusStyles[status] || ['secondary', status];
-    const spinner = ['Planning', 'Executing', 'Verifying', 'Wrapping', 'Running'].includes(status)
+    const spinner = ['Planning', 'Executing', 'Verifying', 'Testing', 'Wrapping', 'Running'].includes(status)
       ? '<span class="spinner-border spinner-border-sm me-1" style="width:.7rem;height:.7rem"></span>' : '';
     return `<span class="badge text-bg-${color}">${spinner}${escapeHtml(label)}</span>`;
   }
@@ -284,7 +285,7 @@
   }
 
   function isActiveStatus(status) {
-    return ['Pending', 'Planning', 'Executing', 'Verifying', 'Wrapping'].includes(status);
+    return ['Pending', 'Planning', 'Executing', 'Verifying', 'Testing', 'Wrapping'].includes(status);
   }
 
   function statusDot(ok, warn = false) {

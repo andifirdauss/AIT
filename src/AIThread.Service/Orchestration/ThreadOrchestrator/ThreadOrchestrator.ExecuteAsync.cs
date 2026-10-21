@@ -39,6 +39,7 @@ public sealed partial class ThreadOrchestrator
                           ?? throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
             var executors = await nodeService.GetActiveAsync(NodeRole.Executor, cancellationToken);
             var wrapper = (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
+            var tester = await AutoTesterAsync(planner, recorder, cancellationToken);
 
             // 1. Plan
             await recorder.UpdateThreadAsync(t =>
@@ -50,7 +51,8 @@ public sealed partial class ThreadOrchestrator
             // A question needs a way back: a session to answer in, and not a dashboard run nobody is watching.
             var canAsk = settings.PlannerCanAsk && request.Source != ThreadSource.Dashboard && !string.IsNullOrEmpty(request.SessionId);
             var (codeMap, labelsFromSession, promptFiles) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
-            var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles);
+            var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles,
+                AutoTesting: tester is not null);
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
@@ -116,9 +118,9 @@ public sealed partial class ThreadOrchestrator
             });
             await ReportSpeedAsync(progress, execution, cancellationToken);
 
-            // 3. Verify, 4. wrap.
+            // 3. Verify, 4. test, 5. wrap.
             var pipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, wrapper ?? planner, scope, settings, journal, total, KeepContext: true,
-                planning.MemoriesUsed);
+                planning.MemoriesUsed, tester);
             return await CompleteAsync(pipeline, plan, execution, plan.Tasks.Count + 1, 1, cancellationToken);
         }, cancellationToken);
     }

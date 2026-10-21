@@ -80,12 +80,13 @@ public sealed class OrchestrationHarness : IAsyncDisposable
 
     public INodeService Nodes => _services.GetRequiredService<INodeService>();
 
-    public async Task<AiNode> AddNodeAsync(NodeRole role, string model, int priority = 100, bool isActive = true, Guid? fallbackNodeId = null)
+    public async Task<AiNode> AddNodeAsync(NodeRole role, string model, int priority = 100, bool isActive = true, Guid? fallbackNodeId = null,
+        bool autoTesting = false)
     {
         var node = new AiNode
         {
             Name = $"{role}-{model}", Role = role, Model = model, Priority = priority, MaxConcurrency = 4,
-            IsActive = isActive, FallbackNodeId = fallbackNodeId
+            IsActive = isActive, FallbackNodeId = fallbackNodeId, AutoTesting = autoTesting
         };
         await using var db = await CreateDbAsync();
         db.Nodes.Add(node);

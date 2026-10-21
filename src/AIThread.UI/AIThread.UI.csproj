@@ -10,6 +10,16 @@
     <None Include="..\..\docs\**\*.md" LinkBase="docs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The Playwright driver of the tester node (.playwright: node.exe and its package) must stay next to AIThread.exe,
+       where Microsoft.Playwright starts it from; the single-file bundle would otherwise swallow node.exe. -->
+  <Target Name="KeepPlaywrightDriverBesideExe" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('.playwright'))">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

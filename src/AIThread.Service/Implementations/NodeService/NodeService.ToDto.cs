@@ -17,5 +17,6 @@ public sealed partial class NodeService
         n.ToolDelegations
             .OrderBy(d => PlannerTools.Delegable.IndexOf(d.Tool))
             .Select(d => new ToolDelegationDto(d.Tool, d.ToolsNodeId, d.ToolsNode?.Name ?? string.Empty, d.ToolsNode?.IsActive ?? false))
-            .ToList());
+            .ToList(),
+        n.AutoTesting);
 }

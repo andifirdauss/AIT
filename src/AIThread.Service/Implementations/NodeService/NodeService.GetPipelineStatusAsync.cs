@@ -26,6 +26,9 @@ public sealed partial class NodeService
         if (wrappers == 0) issues.Add("Belum ada node Wrapper aktif.");
         if (wrappers > 1) issues.Add("Lebih dari satu Wrapper aktif — yang dipakai adalah prioritas terkecil.");
         if (Count(NodeRole.Reviewer) > 1) issues.Add("Lebih dari satu Reviewer aktif — yang dipakai adalah prioritas terkecil.");
+        if (Count(NodeRole.Tester) > 1) issues.Add("Lebih dari satu Tester aktif — yang dipakai adalah prioritas terkecil.");
+        if (Count(NodeRole.Tester) == 0 && await db.Nodes.AnyAsync(n => n.IsActive && n.Role == NodeRole.Planner && n.AutoTesting, cancellationToken))
+            issues.Add("Auto Testing menyala di planner, tetapi belum ada node Tester aktif — testing dilewati.");
         if (await db.PlannerToolDelegations.AnyAsync(d => d.PlannerNode!.IsActive && !d.ToolsNode!.IsActive, cancellationToken))
             issues.Add("Ada tool planner yang didelegasikan ke tools node nonaktif — tool itu dijalankan planner sendiri.");
 

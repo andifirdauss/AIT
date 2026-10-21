@@ -22,6 +22,7 @@ public class ThreadRun : BaseEntity
     public string? PlannerModel { get; set; }
     public string? WrapperModel { get; set; }
     public string? ReviewerModel { get; set; }
+    public string? TesterModel { get; set; }
     public int PlannerSteps { get; set; }
     public int PlannerTokens { get; set; }
 
@@ -34,6 +35,7 @@ public class ThreadRun : BaseEntity
     // Includes the fix tasks of the verification stage.
     public int ExecutorTokens { get; set; }
     public int ReviewerTokens { get; set; }
+    public int TesterTokens { get; set; }
     public int WrapperTokens { get; set; }
 
     public long? PlanningMs { get; set; }
@@ -49,6 +51,12 @@ public class ThreadRun : BaseEntity
 
     // VerificationReport as JSON: one entry per round with the build result and the reviewer's verdict.
     public string? VerificationJson { get; set; }
+
+    // Auto Testing after verification; null when it did not run.
+    public long? TestingMs { get; set; }
+
+    // TestingReport as JSON: the scenarios with their verdict and the HTTP requests the tester sent.
+    public string? TestingJson { get; set; }
 
     public long? WrappingMs { get; set; }
     public long? TotalMs { get; set; }

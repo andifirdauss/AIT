@@ -15,7 +15,9 @@ public sealed record TurnRecord(
     IReadOnlyList<ContractItem> Contract,
     IReadOnlyList<TurnTask> Tasks,
     string? Reply,
-    string? Error);
+    string? Error,
+    // TestingReport.Brief of the Auto Testing run, when there was one.
+    string? Testing = null);
 
 // Text the context keeper reads and writes. Pure functions, so the format is covered by unit tests.
 public static class ContextPackBuilder
@@ -46,6 +48,7 @@ public static class ContextPackBuilder
         }
         if (!string.IsNullOrWhiteSpace(turn.Reply)) builder.Append("Reply: ").Append(Shorten(turn.Reply, maxReplyChars)).Append('\n');
         if (!string.IsNullOrWhiteSpace(turn.Error)) builder.Append("Error: ").Append(Shorten(turn.Error, 600)).Append('\n');
+        if (!string.IsNullOrWhiteSpace(turn.Testing)) builder.Append("Testing: ").Append(Shorten(turn.Testing, 1_000)).Append('\n');
         return builder.ToString();
     }
 

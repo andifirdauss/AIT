@@ -70,7 +70,8 @@ public record SetupProfileNode(
     bool IsActive,
     string? Fallback = null,
     IReadOnlyList<SetupProfileDelegation>? ToolDelegations = null,
-    IReadOnlyList<SetupProfileSkillRef>? Skills = null);
+    IReadOnlyList<SetupProfileSkillRef>? Skills = null,
+    bool? AutoTesting = null);
 
 public record SetupProfileDelegation(string Tool, string ToolsNode);
 

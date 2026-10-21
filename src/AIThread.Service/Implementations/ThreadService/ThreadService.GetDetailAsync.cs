@@ -40,6 +40,10 @@ public sealed partial class ThreadService
             thread.PlannerCachedTokens,
             thread.RetryCount,
             thread.RolledBackAt,
-            thread.ToolsNodeTokens);
+            thread.ToolsNodeTokens,
+            thread.TesterModel,
+            thread.TesterTokens,
+            thread.TestingMs,
+            thread.TestingJson);
     }
 }

@@ -405,14 +405,151 @@ Hasilnya: **Lolos**, **Masih ada masalah**, atau **Tidak dapat dipastikan** (bui
 review). Thread tetap *Selesai*; masalah yang tersisa dicatat di kolom error thread dan disebutkan wrapper. Detail
 setiap putaran tampil di kartu *Verifikasi* pada detail thread.
 
-## 6. Wrapper
+## 6. Testing (Auto Testing)
+
+Bila node Planner yang dipakai menyalakan **Auto Testing** (modal node Planner) dan ada node **Tester** aktif, AIT
+mencoba perubahan di aplikasi yang **sedang berjalan** setelah verifikasi (status thread *Testing*). Yang dipakai node
+Tester aktif dengan prioritas terkecil.
+
+### Rencana testing dari planner
+
+Saat Auto Testing menyala, prompt planner mendapat bagian *Auto Testing* dan `submit_plan` mewajibkan field `test`
+untuk rencana yang mengubah file. Di situ planner menilai **seperti apa perubahan itu terlihat dari luar**:
+
+```json
+"test": {
+  "level": "ui",
+  "baseUrl": "http://localhost:5000",
+  "notes": "Menu Master → User.",
+  "scenarios": [
+    {
+      "title": "Simpan user dengan deskripsi",
+      "target": "/User",
+      "steps": ["Klik Tambah", "Isi #txtDescription dengan 'AIT test'", "Klik Simpan"],
+      "expect": "Baris baru di tabel menampilkan deskripsi 'AIT test'"
+    }
+  ]
+}
+```
+
+- `level`: `ui` bila perubahan tampil di halaman (tester mengendalikan browser dan boleh memanggil endpoint juga),
+  `api` bila hanya bisa dicapai lewat endpoint HTTP, `none` bila tidak bisa dicoba dari luar (refactor, script build,
+  library, job tanpa endpoint, script database saja) — alasannya di `notes`.
+- `baseUrl`: dicari planner sendiri dari `Properties/launchSettings.json`, `appsettings*.json` (Kestrel/`urls`), script
+  `package.json` dan konfigurasi dev server (vite, next, angular), `.env` (`PORT`), atau port `docker-compose`. Harus
+  alamat mesin ini: `localhost`, `*.localhost`, `127.0.0.1`, atau `[::1]`.
+- `scenarios`: 1–6 skenario (jalur utama dulu, lalu kasus tepi yang ditangani perubahan), masing-masing dengan `steps`
+  yang memakai nama dari kontrak dan `expect` yang bisa dilihat (teks, nilai, status code, field respons).
+- Validator mengembalikan rencana ke planner bila `test` tidak ada, `level` tidak dikenal, `baseUrl` kosong atau bukan
+  localhost, tidak ada skenario, atau skenario tanpa `expect`. Tanpa node Tester aktif planner tidak diminta bagian ini,
+  dan bagian `test` yang tetap dikirim diabaikan. Rencana tanpa tugas tidak dites.
+
+### Jalannya testing
+
+1. **Dilewati** bila `level` = `none` (progres: *Testing · dilewati* + alasan planner), atau bila build terakhir masih
+   gagal (aplikasi belum bisa memuat perubahan). Tidak berjalan sama sekali bila tidak ada tugas yang berhasil.
+2. **Cek aplikasi**: sebelum memanggil model, AIT mengirim `GET` ke `baseUrl` (5 detik). Respons apa pun (juga 404 atau
+   redirect ke login) berarti aplikasinya berjalan. Tanpa respons, semua skenario *tidak bisa dicek* tanpa token
+   terpakai, dengan pesan untuk menjalankan aplikasinya dulu. **AIT tidak menjalankan aplikasi Anda**: jalankan sendiri
+   (mis. `dotnet watch`, `npm run dev`); hot reload membuat perubahan executor langsung termuat.
+3. **Tester** bekerja dalam loop tool-nya sendiri (maks 40 langkah). Ia melihat permintaan, ringkasan rencana, kontrak,
+   diff tiap tugas yang berhasil (maks 80 baris per tugas), dan rencana testing — bukan kode lain. Tool-nya:
+
+| Tool | Level | Keterangan |
+|---|---|---|
+| `http_request(method, url, headers?, body?)` | ui, api | `url` = path relatif `baseUrl` atau URL localhost absolut. Body objek/array dikirim sebagai JSON. Cookie dari respons sebelumnya ikut terkirim (login sekali, lalu panggil endpoint yang dilindungi). Aplikasi dengan Windows Authentication (IIS/Negotiate) otomatis memakai akun Windows yang menjalankan AIT. Redirect tidak diikuti (302 menampilkan `Location`). Timeout 30 detik; body dibaca maks 512 KB, JSON dirapikan. |
+| `browser_open(url)` | ui | Membuka halaman di **browser yang tampil di layar** (non-headless). Hanya localhost. |
+| `browser_snapshot()` | ui | Halaman sebagai *accessibility snapshot* Playwright: elemen beserta `ref` (mis. `[ref=e12]`), teks, dan nilai field. |
+| `browser_click`, `browser_fill`, `browser_select` | ui | Elemen dipilih lewat `ref` dari snapshot terakhir, atau selector CSS/Playwright (`#txtDescription`, `text=Simpan`); `element` = nama elemen yang tampil di progres. `browser_fill` bisa menekan Enter sesudahnya. |
+| `browser_press(key)`, `browser_wait(text?, gone?, seconds?)` | ui | Menekan tombol (`Enter`, `Escape`, `Control+A`, …); menunggu teks muncul/hilang atau beberapa detik (maks 15). |
+| `report_test(summary, scenarios)` | — | Mengakhiri testing dengan `passed` / `failed` / `blocked` per skenario beserta penjelasannya. |
+| `ask_login(reason, loginUrl?)` | — | Hanya untuk thread dari chat (Claude Code/Codex/…, ada id sesi). Menghentikan testing untuk meminta login ke developer — lihat [Login](#login). |
+
+   Setiap aksi browser dijawab dengan URL, judul, kejadian sejak aksi sebelumnya — error console, error JavaScript yang
+   tidak tertangkap, request halaman (`xhr`/`fetch`/dokumen) yang 4xx/5xx atau gagal, dialog (`alert`/`confirm`
+   otomatis diterima) — lalu snapshot (maks 12.000 karakter). Aksi dijalankan pelan (250 ms per langkah) agar bisa
+   diikuti mata, dengan timeout 10 detik; elemen yang tidak ditemukan dilaporkan ke tester bersama snapshot terbaru. Tab
+   baru atau popup otomatis diikuti. Beberapa tool dalam satu giliran dijalankan berurutan.
+4. **Progres** di CLI: fase `🧪 Testing · UI · http://localhost:5000 · model`, satu baris per tool (mis.
+   `browser_fill  Deskripsi ← "AIT test"`), dan untuk `http_request` status, durasi, content type, serta 8 baris pertama
+   body respons di bawahnya.
+
+### Browser tester
+
+- Dipakai **Microsoft Edge** (bawaan Windows), lalu **Google Chrome**, lalu **Chromium** milik Playwright (diunduh sekali
+  ±150 MB ke `%LOCALAPPDATA%\ms-playwright` bila keduanya tidak ada). Driver Playwright ikut terpasang bersama AIT
+  (folder `.playwright` di samping `AIThread.exe`).
+- Profilnya terpisah dari browser harian Anda, di `%LOCALAPPDATA%\AIThread\tester-browser\<browser>`. Cookie persisten
+  ikut tersimpan antar testing, tetapi jangan mengandalkannya untuk login: session cookie hilang saat jendela ditutup.
+  Pakai [Login](#login).
+- Hanya satu browser tester terbuka pada satu waktu; testing UI thread lain menunggu giliran. Jendela ditutup 2 detik
+  setelah testing selesai. Testing API tidak membuka browser.
+- Browser hanya terlihat bila AIT berjalan di sesi Windows Anda (tray/menu `AIThread.exe`), bukan sebagai service.
+
+### Login
+
+Bila aplikasi meminta login dan tester belum punya akun, **tester bertanya ke Anda di chat**:
+
+1. Tester memanggil `ask_login` (mis. *`/User` mengalihkan ke halaman login*). Testing berhenti di situ; skenario yang belum
+   dicek menjadi *tidak bisa dicek — Butuh login*. Thread tetap **selesai** seperti biasa (wrapper, file berubah, footer),
+   dan bagian *Testing* di akhir jawaban ditutup dengan:
+
+   ```
+   🔐 Tester butuh login — /User mengalihkan ke halaman login (`/Account/Login`)
+
+   Balas pesan ini dengan `login <username> <password>` (akun uji) untuk menjalankan testing lagi dengan akun itu. …
+   ```
+
+2. Anda membalas di chat yang sama, mis. `login admin rahasia123`. Format lain yang diterima: balasan pendek berlabel
+   seperti `username: admin` + `password: rahasia123` (urutan bebas). Pesan lain dianggap prompt biasa.
+3. AIT menjalankan **testing thread tadi lagi** dengan akun itu — tanpa planner dan tanpa mengubah kode — dan
+   menampilkan progres serta bagian *Testing* barunya sebagai balasan. Kalau login ditolak, tester boleh bertanya lagi.
+
+Penanganan password:
+
+- Tester (model) **tidak pernah melihat password**. Ia hanya diberi username dan placeholder `{{password}}`; AIT
+  menggantinya dengan nilai asli saat `browser_fill` atau `http_request` dijalankan, lalu menyamarkannya lagi di semua
+  yang kembali ke model, di progres, log, dan laporan testing.
+- Password **tidak ditulis ke disk** (database, log, laporan). Ia disimpan di memori proses AIT untuk sesi chat itu dan
+  project itu selama 8 jam, sehingga thread berikutnya di sesi yang sama langsung login tanpa ditanya ulang. Hilang bila
+  AIT di-restart.
+- Riwayat chat berisi balasan `login …` ikut terkirim bersama setiap prompt berikutnya; AIT menyamarkan password itu
+  sebelum riwayat sampai ke planner atau model lain.
+- Balasan Anda tetap tercatat di riwayat chat klien (mis. transcript Claude Code). Pakai **akun uji**, bukan akun pribadi.
+- Pertanyaan menunggu 2 jam. Thread dari Dashboard atau Telegram tidak bisa ditanya; isi username & password di modal
+  **🧪 Ulangi testing** detail thread (juga tidak disimpan).
+- **Captcha**: di lingkungan pengembangan captcha biasanya tidak diperiksa asal terisi, jadi tester mengisi field captcha
+  dengan nilai apa saja (mis. `1234`) dan lanjut; widget centang (reCAPTCHA, hCaptcha, Turnstile) diklik sekali. Bila
+  aplikasi tetap menolak, skenario di baliknya *tidak bisa dicek* dengan keterangan captcha tidak di-bypass di lingkungan
+  ini — tester tidak meminta apa pun ke chat untuk itu.
+- Alternatif lama tetap berlaku: kredensial yang ditulis di *Instruksi tambahan* node Tester dipakai tester (tetapi
+  tersimpan apa adanya, terkirim ke model, dan ikut export profil setup — hindari untuk password).
+
+### Hasil
+
+*Lolos* (tidak ada skenario gagal dan minimal satu lolos), *Gagal* (ada skenario gagal), *Tidak bisa dicek* (tidak ada
+skenario yang bisa diperiksa: aplikasi mati, browser tidak terbuka, butuh login), atau *Dilewati*. Skenario yang gagal
+membuat baris status *🟡 Selesai sebagian* dan dicatat di kolom error thread (`Testing: n skenario gagal.`), tetapi
+**tidak** memicu tugas perbaikan; status thread tetap *Selesai*. Wrapper menerima hasilnya dan menyarankan langkah
+berikutnya. Jawaban akhir memuat bagian **🧪 Testing** (verdict per skenario, error browser, dan **Output API**) — lihat
+[Membaca output](04-penggunaan.md#membaca-output-di-claude-code). Detail lengkap, termasuk body request dan respons
+setiap `http_request` (maks 30 request), ada di kartu *Testing* detail thread.
+
+- **Data**: tester diminta memakai data yang ada, menandai data buatannya (mis. awalan `AIT test`), menghapusnya bila
+  aplikasi menyediakan caranya, dan tidak mengubah data lain. Arahkan aplikasi yang dites ke database pengembangan.
+- **Ulangi testing**: detail thread → **🧪 Ulangi testing** (thread *Selesai* yang punya rencana testing UI/API)
+  menjalankan testing lagi dari rencana tersimpan — kode, verifikasi, dan jawaban akhir tidak berubah. Berguna setelah
+  aplikasi dijalankan atau di-restart. Modalnya punya field username & password opsional (lihat [Login](#login)).
+  Hasilnya menggantikan kartu Testing.
+
+## 7. Wrapper
 
 Wrapper menerima permintaan Anda, ringkasan rencana, kontrak, hasil setiap tugas termasuk tugas perbaikan (ringkasan,
-error, maks 60 baris diff per tugas), dan ringkasan verifikasi per putaran, lalu menulis bagian jawaban yang perlu
-penjelasan, dalam bahasa permintaan Anda: 1–3 kalimat tentang apa yang dikerjakan, saran untuk tugas gagal atau
+error, maks 60 baris diff per tugas), ringkasan verifikasi per putaran, dan hasil testing, lalu menulis bagian jawaban
+yang perlu penjelasan, dalam bahasa permintaan Anda: 1–3 kalimat tentang apa yang dikerjakan, saran untuk tugas gagal atau
 masalah verifikasi yang tersisa, dan langkah lanjutan bila perlu. Fakta lainnya ditulis AIT sendiri dari hasil, bukan
-oleh model: baris status (tugas, build, reviewer) dan daftar *Perlu perhatian* sebelum teks Wrapper, tabel *File
-berubah* dan footer (durasi, token, memory, wiki, sisa kuota provider, link thread) sesudahnya — lihat
+oleh model: baris status (tugas, build, reviewer, testing) dan daftar *Perlu perhatian* sebelum teks Wrapper, tabel
+*File berubah*, bagian *Testing*, dan footer (durasi, token, memory, wiki, sisa kuota provider, link thread) sesudahnya — lihat
 [Membaca output di Claude Code](04-penggunaan.md#membaca-output-di-claude-code). Teks Wrapper di-stream ke Claude Code.
 
 Jika tidak ada wrapper aktif atau wrapper gagal, Claude Code menampilkan ringkasan rencana sebagai pengganti teksnya;
@@ -422,12 +559,12 @@ verifikasi).
 Setelah itu ekstraksi memory dijalankan dan ditunggu paling lama 30 detik agar footer bisa menyebut jumlah memory
 baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi tetap selesai di latar belakang.
 
-## 7. Setelah thread
+## 8. Setelah thread
 
 - Status akhir: *Selesai* bila ada tugas yang berhasil (atau jawaban langsung), *Gagal* bila tidak ada. Thread yang
   berhenti pada pertanyaan planner berstatus *Menunggu jawaban* sampai dijawab, dibatalkan, atau kedaluwarsa.
-- Waktu (termasuk verifikasi; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi cache-nya,
-  executor termasuk tugas perbaikan, reviewer, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
+- Waktu (termasuk verifikasi dan testing; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi
+  cache-nya, executor termasuk tugas perbaikan, reviewer, tester, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
 - Ekstraksi memory ditunggu sebelum footer jawaban (maks 30 detik, lalu lanjut di belakang) — lihat [Memory](06-memory.md).
 - Thread yang *Selesai* menunggu dirangkum ke wiki bisnis project oleh penulis wiki (berkala, default tiap 6 jam) —
   lihat [Business memory](06-memory.md#business-memory-wiki-bisnis). Gambar yang dilampirkan di prompt disimpan
@@ -534,6 +671,14 @@ lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offlin
   Tidak ada perintah shell lain (test, install paket, migrasi). Pengecualiannya `git clone --depth 1` saat menarik
   sumber skill dari host git non-GitHub/GitLab (atau bila unduhan ZIP gagal). Clone ini memakai URL yang Anda tempel,
   tanpa prompt kredensial, dan folder `.git`-nya dibuang.
+- **Auto Testing** menjalankan browser lewat Playwright (Edge/Chrome/Chromium dengan proses driver `node.exe` yang ikut
+  terpasang bersama AIT) dan request HTTP — keduanya hanya ke alamat mesin ini (`localhost`, `127.0.0.1`, `[::1]`);
+  URL lain ditolak, apa pun isi rencana atau jawaban model. Link yang diikuti halaman itu sendiri tidak dibatasi. Tester
+  bertindak seperti pengguna aplikasi Anda: ia bisa membuat atau mengubah data lewat aplikasi itu, jadi nyalakan Auto
+  Testing hanya untuk aplikasi yang berjalan dengan data pengembangan. Sertifikat HTTPS tidak diperiksa (sertifikat
+  pengembangan localhost), dan request HTTP tester memakai akun Windows yang menjalankan AIT bila aplikasi meminta
+  Windows Authentication. Password login testing hanya ada di memori AIT dan tidak dikirim ke model (lihat
+  [Login](#login)).
 - Isi skill masuk ke system prompt model node. Tarik skill hanya dari sumber yang Anda percaya, karena skill bisa
   mengarahkan perilaku model.
 - AIT menulis ke folder mana pun yang dikirim sebagai working directory. Biarkan aplikasi hanya mendengarkan

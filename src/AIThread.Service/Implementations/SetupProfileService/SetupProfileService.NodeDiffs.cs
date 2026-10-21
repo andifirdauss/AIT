@@ -22,6 +22,8 @@ public sealed partial class SetupProfileService
         var currentDelegations = (current.ToolDelegations ?? []).Select(d => $"{d.Tool}→{d.ToolsNodeName}".ToLowerInvariant()).Order();
         var targetDelegations = target.Delegations.Select(d => $"{d.Tool}→{d.ToolsNode}".ToLowerInvariant()).Order();
         if (current.Role == NodeRole.Planner && !currentDelegations.SequenceEqual(targetDelegations)) diffs.Add("delegasi tool");
+        if (current.Role == NodeRole.Planner && node.AutoTesting is { } autoTesting && autoTesting != current.AutoTesting)
+            diffs.Add(autoTesting ? "Auto Testing dinyalakan" : "Auto Testing dimatikan");
 
         var currentSkills = (current.Skills ?? []).Select(s => s.Id).Order();
         if (!currentSkills.SequenceEqual(target.SkillIds.Order())) diffs.Add("skill");

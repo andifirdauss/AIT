@@ -14,5 +14,9 @@ public enum NodeRole
 
     // Optional: a cheap investigator the planner hands its delegated tools to (PlannerToolDelegation); it runs them in
     // its own loop and returns short findings, so the raw tool output never enters the planner's conversation.
-    ToolsNode = 6
+    ToolsNode = 6,
+
+    // Optional: with Auto Testing on the planner node, checks the verified change on the running app the way the plan's
+    // test section describes — pages in a visible browser (Playwright), endpoints with HTTP requests.
+    Tester = 7
 }

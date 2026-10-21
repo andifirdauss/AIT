@@ -7,25 +7,32 @@ using AIThread.Common.Enums;
 namespace AIThread.Service.Orchestration;
 
 // The parts of the final answer AIT writes itself around the wrapper's text, from the results and never from a model:
-// a status line with what still needs attention, the table of changed files, and the footer (time, tokens, memory,
-// wiki, remaining provider quota, dashboard link).
+// a status line with what still needs attention, the table of changed files, the test with its API output, and the
+// footer (time, tokens, memory, wiki, remaining provider quota, dashboard link).
 public static partial class FinalReport
 {
     private const int MaxAttentionErrors = 10;
+
+    // API output in the answer: the first requests, each body cut to a readable size; the thread page keeps more.
+    private const int MaxReportedRequests = 5;
+    private const int MaxReportedBodyLines = 30;
+    private const int MaxReportedBodyChars = 2_000;
+    private const int MaxReportedBrowserErrors = 5;
 
     // Quota bars: one cell per 10%, coloured by what remains (terminals only colour emoji).
     private const int QuotaBarCells = 10;
     private const string QuotaEmptyCell = "⬜";
 
-    // "✅ **Selesai** · 8/8 tugas · build lolos · reviewer setuju", then "Perlu perhatian" when something failed.
-    // Fix tasks (V<round>-<n>) do not count as tasks of the plan; their failures are listed like the others.
-    public static string Status(ExecutionSummary execution, VerificationReport? verification)
+    // "✅ **Selesai** · 8/8 tugas · build lolos · reviewer setuju · testing lolos", then "Perlu perhatian" when
+    // something failed. Fix tasks (V<round>-<n>) do not count as tasks of the plan; their failures are listed like the
+    // others. A failed test makes the thread "Selesai sebagian": the change does not work yet.
+    public static string Status(ExecutionSummary execution, VerificationReport? verification, TestingReport? testing = null)
     {
         var planned = execution.Results.Where(r => !IsFixTask(r.TaskKey)).ToList();
         var succeeded = planned.Count(r => r.Status == ThreadTaskStatus.Succeeded);
         var verificationFailed = verification?.Outcome == VerificationReport.Failed;
         var (icon, label) = execution.Results.All(r => r.Status != ThreadTaskStatus.Succeeded) ? ("❌", "Gagal")
-            : succeeded < planned.Count || verificationFailed ? ("🟡", "Selesai sebagian")
+            : succeeded < planned.Count || verificationFailed || testing?.Outcome == TestingReport.Failed ? ("🟡", "Selesai sebagian")
             : ("✅", "Selesai");
 
         var parts = new List<string> { $"{icon} **{label}**", $"{succeeded}/{planned.Count} tugas" };
@@ -33,6 +40,7 @@ public static partial class FinalReport
         if (lastBuild is not null) parts.Add(BuildLabel(lastBuild));
         var lastReview = verification?.Rounds.LastOrDefault(r => r.Review is not null)?.Review;
         if (lastReview is not null) parts.Add(ReviewLabel(lastReview));
+        if (testing is not null) parts.Add(TestingLabel(testing));
 
         var builder = new StringBuilder(string.Join(" · ", parts)).Append("\n\n");
         var attention = Attention(execution, verificationFailed ? verification!.Rounds.LastOrDefault() : null);
@@ -73,6 +81,109 @@ public static partial class FinalReport
             builder.Append($"| {Code(row.Display)} | {row.Action} | {row.Lines} | {string.Join(", ", row.Tasks)} |\n");
         // The footer adds its own blank line.
         return builder.ToString().TrimEnd('\n');
+    }
+
+    // The tester's verdict per scenario, what kept it from running, the browser errors it saw, and the API responses:
+    //   **🧪 Testing** · API · `http://localhost:5000`
+    //   - ✅ **Tambah user** — tersimpan, status 201
+    //   **Output API**
+    //   `POST /api/users` → **201 Created** · 35 ms  + the body in a code block
+    public static string Testing(TestingReport report)
+    {
+        var builder = new StringBuilder("\n\n**🧪 Testing**");
+        if (report.Outcome == TestingReport.Skipped)
+            return builder.Append(" dilewati").Append(report.Summary is null ? string.Empty : $" — {OneLine(report.Summary)}").ToString();
+
+        builder.Append(report.Level == TestPlan.Ui ? " · UI" : " · API");
+        if (report.BaseUrl is not null) builder.Append(" · ").Append(Code(report.BaseUrl));
+        if (report.Browser is not null) builder.Append(" · ").Append(report.Browser);
+        if (report.LoginUser is not null) builder.Append(" · login ").Append(Code(report.LoginUser));
+        builder.Append('\n');
+        if (report.Error is not null) builder.Append("\n⚠️ ").Append(OneLine(report.Error)).Append('\n');
+        if (report.Summary is not null) builder.Append('\n').Append(OneLine(report.Summary)).Append('\n');
+
+        if (report.Scenarios.Count > 0)
+        {
+            builder.Append('\n');
+            foreach (var scenario in report.Scenarios)
+            {
+                var icon = scenario.Status switch { TestingReport.Passed => "✅", TestingReport.Failed => "❌", _ => "🚫" };
+                builder.Append($"- {icon} **{OneLine(scenario.Title)}**");
+                // A scenario that could not run because of the whole test says so in the line above already.
+                if (!string.IsNullOrWhiteSpace(scenario.Details) && scenario.Details != report.Error) builder.Append(" — ").Append(OneLine(scenario.Details));
+                builder.Append('\n');
+            }
+        }
+
+        if (report.BrowserErrors.Count > 0)
+        {
+            builder.Append("\n**Error di browser**\n");
+            foreach (var error in report.BrowserErrors.Take(MaxReportedBrowserErrors)) builder.Append("- ").Append(Code(error)).Append('\n');
+            if (report.BrowserErrors.Count > MaxReportedBrowserErrors) builder.Append($"- … {report.BrowserErrors.Count - MaxReportedBrowserErrors} lainnya\n");
+        }
+
+        if (report.Requests.Count > 0)
+        {
+            builder.Append("\n**Output API**\n");
+            foreach (var request in report.Requests.Take(MaxReportedRequests))
+            {
+                var path = Uri.TryCreate(request.Url, UriKind.Absolute, out var uri) ? uri.PathAndQuery : request.Url;
+                builder.Append('\n').Append(Code($"{request.Method} {path}")).Append(" → ");
+                if (request.Error is not null)
+                {
+                    builder.Append("❌ ").Append(OneLine(request.Error)).Append('\n');
+                    continue;
+                }
+                builder.Append($"**{request.Status} {request.Reason}** · {request.DurationMs} ms");
+                if (request.Location is not null) builder.Append(" · Location ").Append(Code(request.Location));
+                builder.Append('\n');
+                if (!string.IsNullOrWhiteSpace(request.ResponseBody))
+                    builder.Append(CodeBlock(request.ResponseBody, request.ContentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true ? "json" : "text"));
+            }
+            if (report.Requests.Count > MaxReportedRequests)
+                builder.Append($"\n… {report.Requests.Count - MaxReportedRequests} request lain ada di halaman thread.\n");
+        }
+
+        // Last, so the question is what the developer reads at the end of the answer.
+        if (report.LoginNeeded is not null)
+        {
+            builder.Append("\n🔐 **Tester butuh login** — ").Append(OneLine(report.LoginNeeded));
+            if (report.LoginUrl is not null) builder.Append(" (").Append(Code(report.LoginUrl)).Append(')');
+            builder.Append("\n\n").Append(report.AskedLogin
+                ? "Balas pesan ini dengan `login <username> <password>` (akun uji) untuk menjalankan testing lagi dengan akun itu. " +
+                  "AIT tidak menyimpannya ke disk dan tidak mengirim password ke model (tester hanya melihat `{{password}}`); " +
+                  "login diingat selama sesi chat ini agar tidak ditanya ulang. Password tetap tercatat di riwayat chat Anda, jadi pakai akun uji.\n"
+                : "Jalankan lagi lewat **🧪 Ulangi testing** di detail thread dan isi username & password di sana.\n");
+        }
+        // The footer adds its own blank line.
+        return builder.ToString().TrimEnd('\n');
+    }
+
+    // "testing lolos", "testing: 1 gagal", ... for the status line.
+    public static string TestingLabel(TestingReport report) => report.LoginNeeded is not null ? "testing menunggu login" : report.Outcome switch
+    {
+        TestingReport.Passed => report.Count(TestingReport.Blocked) == 0 ? "testing lolos" : $"testing lolos ({report.Count(TestingReport.Blocked)} tidak bisa dicek)",
+        TestingReport.Failed => $"testing: {report.Count(TestingReport.Failed)} gagal",
+        TestingReport.Skipped => "testing dilewati",
+        _ => "testing tidak bisa dijalankan"
+    };
+
+    // A body in a fenced block, cut to MaxReportedBodyLines/Chars; the fence is longer than any backtick run inside.
+    private static string CodeBlock(string body, string language)
+    {
+        var lines = body.ReplaceLineEndings("\n").TrimEnd('\n').Split('\n');
+        var text = string.Join('\n', lines.Take(MaxReportedBodyLines));
+        var cut = lines.Length > MaxReportedBodyLines || text.Length > MaxReportedBodyChars;
+        if (text.Length > MaxReportedBodyChars) text = text[..MaxReportedBodyChars];
+        if (cut) text += "\n…";
+        var longest = 0;
+        for (int i = 0, run = 0; i < text.Length; i++)
+        {
+            run = text[i] == '`' ? run + 1 : 0;
+            longest = Math.Max(longest, run);
+        }
+        var fence = new string('`', Math.Max(3, longest + 1));
+        return $"{fence}{language}\n{text}\n{fence}\n";
     }
 
     // memoriesUsed: read by the planner. extraction: null when no extraction ran; pending when it did not finish in time.

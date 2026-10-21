@@ -5,7 +5,7 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class WrapperAgent
 {
-    private static string BuildReport(string userRequest, ThreadPlan plan, ExecutionSummary execution, string? verification)
+    private static string BuildReport(string userRequest, ThreadPlan plan, ExecutionSummary execution, string? verification, string? testing)
     {
         var builder = new StringBuilder();
         builder.Append("# Developer request\n").Append(userRequest.Trim()).Append("\n\n");
@@ -37,6 +37,9 @@ public sealed partial class WrapperAgent
 
         if (!string.IsNullOrWhiteSpace(verification))
             builder.Append("\n# Verification (build and review after the tasks above)\n").Append(verification.Trim()).Append('\n');
+
+        if (!string.IsNullOrWhiteSpace(testing))
+            builder.Append("\n# Testing (the tester used the running app after verification)\n").Append(testing.Trim()).Append('\n');
 
         return builder.ToString();
     }

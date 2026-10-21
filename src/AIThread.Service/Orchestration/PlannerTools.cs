@@ -41,8 +41,9 @@ public static class PlannerTools
     // canBuild: build verification is enabled and the project has a build command AIThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
     // groups: tools delegated to tools nodes; the planner loses them and gets investigate instead.
+    // canTest: Auto Testing is on, so submit_plan asks for the test section.
     // The list stays the same for the whole planner run so the provider's prompt cache keeps matching.
-    public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null)
+    public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false)
     {
         var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
@@ -55,11 +56,11 @@ public static class PlannerTools
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());
-        tools.Add(SubmitPlanDefinition());
+        tools.Add(SubmitPlanDefinition(canTest));
         return tools;
     }
 
-    public static JsonArray SubmitOnly() => [SubmitPlanDefinition()];
+    public static JsonArray SubmitOnly(bool canTest = false) => [SubmitPlanDefinition(canTest)];
 
     // The tools one tools node may run: those delegated to it, plus the skeleton tools when it reads files.
     public static IReadOnlyList<string> ToolsNodeTools(IEnumerable<string> delegated)
@@ -320,10 +321,49 @@ public static class PlannerTools
             }
             """));
 
-    private static JsonObject SubmitPlanDefinition() =>
-        ChatMessages.Function(SubmitPlan,
-            "Submit the final plan. Call exactly once, after investigating. For requests that need no file change, send an empty tasks list and the full answer in \"answer\".",
-            Schema("""
+    private static JsonObject SubmitPlanDefinition(bool canTest)
+    {
+        var schema = SubmitPlanSchema();
+        if (canTest)
+        {
+            schema["properties"]!.AsObject()["test"] = TestSchema();
+            schema["required"]!.AsArray().Add("test");
+        }
+        return ChatMessages.Function(SubmitPlan,
+            "Submit the final plan. Call exactly once, after investigating. For requests that need no file change, send an empty tasks list and the full answer in \"answer\"." +
+            (canTest ? " When tasks change files, \"test\" tells the tester how to check the change on the running app." : string.Empty),
+            schema);
+    }
+
+    private static JsonObject TestSchema() => Schema("""
+        {
+          "type": "object",
+          "description": "How the tester checks the finished change on the running app. Ignored when tasks is empty.",
+          "properties": {
+            "level": { "type": "string", "enum": ["ui", "api", "none"], "description": "ui: the change shows in a page (the tester drives a visible browser and may call endpoints too); api: only reachable through HTTP endpoints; none: nothing can be exercised from outside (say why in notes)." },
+            "baseUrl": { "type": "string", "description": "Root URL of the app running on this machine, e.g. \"http://localhost:5000\" (localhost only)." },
+            "notes": { "type": "string", "description": "What the tester must know first (menu path to the page, login, data that must exist), or why level is none." },
+            "scenarios": {
+              "type": "array",
+              "description": "1-5 scenarios proving the request works: the main path first, then the edge cases the change handles.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string", "description": "Short name, in the developer's language." },
+                  "target": { "type": "string", "description": "Page path or endpoint the scenario starts at, e.g. \"/User\" or \"POST /api/users\"." },
+                  "steps": { "type": "array", "items": { "type": "string" }, "description": "What to do, with the exact element ids, field values and request bodies from the contract." },
+                  "expect": { "type": "string", "description": "What must be seen when it works: text, value, status code, response field." }
+                },
+                "required": ["title", "steps", "expect"]
+              }
+            }
+          },
+          "required": ["level"]
+        }
+        """);
+
+    private static JsonObject SubmitPlanSchema() =>
+        Schema("""
             {
               "type": "object",
               "properties": {
@@ -385,7 +425,7 @@ public static class PlannerTools
               },
               "required": ["summary", "tasks"]
             }
-            """));
+            """);
 
     private static JsonObject Schema(string json) => (JsonObject)JsonNode.Parse(json)!;
 }
