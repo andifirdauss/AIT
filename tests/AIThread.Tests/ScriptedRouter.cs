@@ -14,6 +14,7 @@ public enum ScriptedAgent
     ToolsNode,
     Executor,
     Reviewer,
+    Tester,
     Wrapper,
     MemoryExtractor,
     BusinessRouter,
@@ -154,6 +155,7 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.ToolsNode, StringComparison.Ordinal)) return ScriptedAgent.ToolsNode;
         if (system.StartsWith(AgentPrompts.Executor, StringComparison.Ordinal)) return ScriptedAgent.Executor;
         if (system.StartsWith(AgentPrompts.Reviewer, StringComparison.Ordinal)) return ScriptedAgent.Reviewer;
+        if (system.StartsWith(AgentPrompts.Tester, StringComparison.Ordinal)) return ScriptedAgent.Tester;
         if (system.StartsWith(AgentPrompts.Wrapper, StringComparison.Ordinal)) return ScriptedAgent.Wrapper;
         if (system.StartsWith(AgentPrompts.MemoryExtractor, StringComparison.Ordinal)) return ScriptedAgent.MemoryExtractor;
         if (system.StartsWith(AgentPrompts.BusinessRouter, StringComparison.Ordinal)) return ScriptedAgent.BusinessRouter;

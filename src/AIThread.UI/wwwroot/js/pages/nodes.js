@@ -2,13 +2,14 @@
   'use strict';
   const { api, toast, escapeHtml, fmt, stream, debounce } = window.AIThread;
   const el = id => document.getElementById(id);
-  const roles = ['Planner', 'ToolsNode', 'Executor', 'Reviewer', 'Wrapper', 'ContextKeeper'];
+  const roles = ['Planner', 'ToolsNode', 'Executor', 'Reviewer', 'Tester', 'Wrapper', 'ContextKeeper'];
   const roleLabels = { ContextKeeper: 'Context Keeper', ToolsNode: 'Tools Node' };
   const defaults = {
     Planner: { maxTokens: 16384, concurrency: 2, temperature: 0.2 },
     ToolsNode: { maxTokens: 4096, concurrency: 4, temperature: 0.1 },
     Executor: { maxTokens: 8192, concurrency: 6, temperature: 0.1 },
     Reviewer: { maxTokens: 4096, concurrency: 2, temperature: 0.1 },
+    Tester: { maxTokens: 4096, concurrency: 1, temperature: 0.1 },
     Wrapper: { maxTokens: 4096, concurrency: 4, temperature: 0.3 },
     ContextKeeper: { maxTokens: 4096, concurrency: 2, temperature: 0.2 }
   };
@@ -60,8 +61,21 @@
       : '';
     return `${nodeCardHead(n)}
         <div class="small text-secondary mt-1 text-truncate">
-          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}${delegationBadge(n)}${fallback}
+          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}${delegationBadge(n)}${testingBadge(n)}${fallback}
         </div>`;
+  }
+
+  // The tester Auto Testing uses: the active one with the smallest priority (NodeService.GetActiveAsync order).
+  const activeTester = () => [...nodes.values()].filter(t => t.role === 'Tester' && t.isActive)
+    .sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))[0];
+
+  // Planner with Auto Testing: tested by the active tester, if there is one.
+  function testingBadge(n) {
+    if (n.role !== 'Planner' || !n.autoTesting) return '';
+    const tester = activeTester();
+    return tester
+      ? ` · <span title="Auto Testing: perubahan dites oleh ${escapeHtml(tester.name)} (${escapeHtml(tester.model)}) setelah verifikasi.">🧪 auto test</span>`
+      : ' · <span class="text-warning" title="Auto Testing menyala, tetapi belum ada node Tester aktif — testing dilewati.">🧪 tanpa tester</span>';
   }
 
   // Planner: the tools it hands to tools nodes. Tools node: the planners that use it.
@@ -290,6 +304,17 @@
       .join('');
   }
 
+  // Only planners test their plans; the hint says which tester would run them.
+  function renderAutoTesting(checked) {
+    const isPlanner = el('nodeRole').value === 'Planner';
+    el('nodeAutoTestingBox').classList.toggle('d-none', !isPlanner);
+    el('nodeAutoTesting').checked = checked;
+    const tester = activeTester();
+    el('nodeAutoTestingHint').innerHTML = tester
+      ? `Tester yang dipakai: <strong>${escapeHtml(tester.name)}</strong> <span class="mono">${escapeHtml(tester.model)}</span>.`
+      : '<span class="text-warning">Belum ada node Tester aktif. Tambahkan node ber-role Tester dulu; tanpa itu testing dilewati.</span>';
+  }
+
   // One select per delegable tool; only planners delegate. Keeps the choices made in the form when re-rendered.
   function renderDelegations(selected) {
     const isPlanner = el('nodeRole').value === 'Planner';
@@ -355,6 +380,7 @@
     renderModelOptions(node?.model || '');
     renderFallbackOptions(node?.fallbackNodeId || '');
     renderDelegations(node?.toolDelegations || []);
+    renderAutoTesting(node?.autoTesting ?? false);
     el('nodeModalTitle').textContent = node ? `Edit node · ${node.name}` : 'Tambah node';
     modal.show();
   }
@@ -363,6 +389,7 @@
     if (!el('nodeId').value) applyRoleDefaults(el('nodeRole').value);
     renderFallbackOptions(el('nodeFallback').value);
     renderDelegations(readDelegations());
+    renderAutoTesting(el('nodeAutoTesting').checked);
   });
 
   el('nodeForm').addEventListener('submit', async event => {
@@ -382,7 +409,8 @@
       isActive: el('nodeActive').checked,
       skillIds: nodeSkills.map(s => s.id),
       fallbackNodeId: el('nodeFallback').value || null,
-      toolDelegations: el('nodeRole').value === 'Planner' ? readDelegations() : []
+      toolDelegations: el('nodeRole').value === 'Planner' ? readDelegations() : [],
+      autoTesting: el('nodeRole').value === 'Planner' && el('nodeAutoTesting').checked
     };
     try {
       if (id) await api.put(`/api/nodes/${id}`, body);

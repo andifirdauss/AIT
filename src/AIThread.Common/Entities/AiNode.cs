@@ -34,4 +34,8 @@ public class AiNode : BaseEntity
 
     // Planner only: tools handed to tools nodes (role ToolsNode).
     public List<PlannerToolDelegation> ToolDelegations { get; set; } = [];
+
+    // Planner only: the plan says how the change can be tested from outside, and the active Tester node runs that test
+    // after verification.
+    public bool AutoTesting { get; set; }
 }

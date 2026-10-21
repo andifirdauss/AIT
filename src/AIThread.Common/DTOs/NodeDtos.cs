@@ -18,7 +18,8 @@ public record NodeDto(
     IReadOnlyList<NodeSkillDto>? Skills = null,
     Guid? FallbackNodeId = null,
     string? FallbackNodeName = null,
-    IReadOnlyList<ToolDelegationDto>? ToolDelegations = null);
+    IReadOnlyList<ToolDelegationDto>? ToolDelegations = null,
+    bool AutoTesting = false);
 
 // A planner tool run by a tools node instead of the planner itself.
 public record ToolDelegationDto(string Tool, Guid ToolsNodeId, string ToolsNodeName, bool ToolsNodeActive);
@@ -27,6 +28,7 @@ public record ToolDelegationRequest(string Tool, Guid ToolsNodeId);
 
 // FallbackNodeId: a node of the same role that takes over when this one is unavailable; null = none.
 // ToolDelegations (planners only): null = leave as they are (clients that do not know about tools nodes).
+// AutoTesting (planners only): null = leave it as it is.
 public record SaveNodeRequest(
     string Name,
     NodeRole Role,
@@ -39,7 +41,8 @@ public record SaveNodeRequest(
     bool IsActive,
     IReadOnlyList<Guid>? SkillIds = null,
     Guid? FallbackNodeId = null,
-    IReadOnlyList<ToolDelegationRequest>? ToolDelegations = null);
+    IReadOnlyList<ToolDelegationRequest>? ToolDelegations = null,
+    bool? AutoTesting = null);
 
 public record PipelineStatusDto(
     bool IsReady,

@@ -10,6 +10,7 @@ using AIThread.Service.Memory;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Skills;
 using AIThread.Service.Telegram;
+using AIThread.Service.Testing;
 using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
 using Microsoft.AspNetCore.DataProtection;
@@ -97,6 +98,9 @@ public static class DependencyInjection
         services.AddSingleton<IBuildRunner, BuildRunner>();
         services.AddSingleton<IReviewerAgent, ReviewerAgent>();
         services.AddSingleton<IVerificationStage, VerificationStage>();
+        services.AddSingleton<ITestBrowserLauncher, TestBrowserLauncher>();
+        services.AddSingleton<ITestLoginStore>(_ => new TestLoginStore(TimeProvider.System));
+        services.AddSingleton<ITesterAgent, TesterAgent>();
         services.AddSingleton<IWrapperAgent, WrapperAgent>();
         services.AddSingleton<IMemoryExtractor, MemoryExtractor>();
         services.AddSingleton<IContextKeeper, ContextKeeper>();

@@ -88,14 +88,15 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 
 | Bagian | Isi |
 |---|---|
-| Header | Status, project, sumber, sesi Claude Code, waktu, working directory. Tombol *Batalkan thread* saat berjalan; setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)). |
+| Header | Status, project, sumber, sesi Claude Code, waktu, working directory. Tombol *Batalkan thread* saat berjalan (juga saat testing); setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)), serta *🧪 Ulangi testing* untuk thread yang punya rencana testing UI/API, dengan username & password opsional (lihat [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
 | Permintaan | Prompt Anda (tanpa blok `<system-reminder>` Claude Code). |
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
 | Verifikasi | Muncul bila build/reviewer berjalan. Hasil akhir (*Lolos* / *Masih ada masalah* / *Tidak dapat dipastikan*), perintah build, model reviewer, lalu per putaran: hasil build dan errornya, temuan reviewer, masalah yang tidak bisa diperbaiki otomatis, dan id tugas perbaikan (`V1-1`, …) yang tampil juga di tabel tugas. |
+| Testing | Muncul bila Auto Testing berjalan. Hasil (*Lolos* / *Gagal* / *Tidak bisa dicek* / *Dilewati*), level (UI/API), URL aplikasi, browser, model tester, username yang dipakai login, jumlah langkah, alasan bila tidak bisa berjalan, *🔐 Tester butuh login* bila tester berhenti meminta login, ringkasan tester, verdict per skenario, error browser, lalu satu jendela per `http_request` dengan URL, body request, dan body respons (jendela ke-4 dst. dilipat). |
 | Hasil wrapper | Balasan yang diterima Claude Code. |
 | Konteks sesi dari Context Keeper | Ringkasan percakapan sampai thread ini (khusus thread dari Claude Code) — titik awal planner di prompt berikutnya pada chat yang sama. Muncul beberapa detik setelah thread selesai. |
-| Waktu & token | Model planner/reviewer/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / verifikasi / wrapping / total, speedup, token per peran. |
+| Waktu & token | Model planner/reviewer/tester/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / verifikasi / testing / wrapping / total, speedup, token per peran. |
 | Aktivitas | Log thread ini, termasuk setiap panggilan tool planner dan penolakan validator. |
 
 ## Project
@@ -230,11 +231,12 @@ Tab *Bisnis (wiki)* — lihat [Business memory](06-memory.md#business-memory-wik
 
 ## Node
 
-Enam kolom: Planner, Tools Node (opsional), Executor, Reviewer (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
+Tujuh kolom: Planner, Tools Node (opsional), Executor, Reviewer (opsional), Tester (opsional), Wrapper, Context Keeper (opsional). Setiap kartu menampilkan model, temperature, max token, max paralel,
 prioritas, penanda *📝 instruksi* bila ada instruksi tambahan (isinya di tooltip), penanda *🧩 n* bila node memakai n skill
 (namanya di tooltip), penanda *🛰 n tool* di planner yang mendelegasikan tool ke [tools node](02-konfigurasi.md#tools-node-planner)
-(di kartu tools node: *🛰 n planner* yang memakainya; detail di tooltip), penanda *↪ nama* bila node punya [node cadangan](02-konfigurasi.md#node-cadangan), dengan tombol *Test*, *Edit*, *Hapus*.
-Di modal node Planner, bagian *Delegasi tool ke tools node* berisi satu pilihan per tool baca (*Planner langsung* atau tools node). Di modal node, bagian *Skill* menampilkan skill terpasang
+(di kartu tools node: *🛰 n planner* yang memakainya; detail di tooltip), penanda *🧪 auto test* di planner yang menyalakan
+[Auto Testing](02-konfigurasi.md#auto-testing-node-tester) (*🧪 tanpa tester* bila belum ada node Tester aktif), penanda *↪ nama* bila node punya [node cadangan](02-konfigurasi.md#node-cadangan), dengan tombol *Test*, *Edit*, *Hapus*.
+Di modal node Planner, bagian *Delegasi tool ke tools node* berisi satu pilihan per tool baca (*Planner langsung* atau tools node), dan switch *Auto Testing* (dengan nama tester yang akan dipakai). Di modal node, bagian *Skill* menampilkan skill terpasang
 sebagai chip. Kolom *Cari sendiri di gudang* membuka dropdown skill yang cocok dengan nama, deskripsi, tag, sumber,
 atau isi skill (potongan isi yang cocok ditampilkan); klik item untuk memasang/melepas. Kolom *Butuh kemampuan apa?* + **Cari skill** meminta Skill Orchestrator mencarikan skill yang cocok
 dari gudang (lihat [Skill pada node](07-cara-kerja.md#skill-pada-node)).

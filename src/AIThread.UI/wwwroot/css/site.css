@@ -459,7 +459,11 @@ body {
 }
 
 @media (min-width: 1900px) {
-  .node-columns { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .node-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 2560px) {
+  .node-columns { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
 .node-card {
@@ -583,6 +587,7 @@ body {
 .role-Wrapper { border-left-color: var(--app-warn); }
 .role-ContextKeeper { border-left-color: #4fb8d8; }
 .role-ToolsNode { border-left-color: #8fa3b8; }
+.role-Tester { border-left-color: #e8a33d; }
 
 .model-combo {
   position: relative;

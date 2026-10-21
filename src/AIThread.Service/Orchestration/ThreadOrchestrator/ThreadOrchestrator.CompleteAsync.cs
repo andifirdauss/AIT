@@ -7,10 +7,10 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ThreadOrchestrator
 {
-    // Verification (build and/or reviewer, with fix rounds), then the final answer, then the thread is finished.
-    // plan and execution cover every task the developer should hear about. The answer is the status (FinalReport),
-    // the wrapper's text, the changed files and, once the memory extraction is done, the footer; the thread stores
-    // only the wrapper's text (or the automatic summary) as its final response.
+    // Verification (build and/or reviewer, with fix rounds), testing (Auto Testing), then the final answer, then the
+    // thread is finished. plan and execution cover every task the developer should hear about. The answer is the status
+    // (FinalReport), the wrapper's text, the changed files, the test with its API output and, once the memory extraction
+    // is done, the footer; the thread stores only the wrapper's text (or the automatic summary) as its final response.
     private async Task<ThreadResult> CompleteAsync(Pipeline pipeline, ThreadPlan plan, ExecutionSummary execution, int nextTaskOrder, int firstRound, CancellationToken cancellationToken)
     {
         var (recorder, progress, request, wrapper) = (pipeline.Recorder, pipeline.Progress, pipeline.Request, pipeline.Wrapper);
@@ -24,7 +24,10 @@ public sealed partial class ThreadOrchestrator
             execution = verification.Execution;
         }
 
-        // 4. Wrap
+        // 4. Test: the tester node uses the running app the way the plan's test section describes.
+        var testing = await TestAsync(pipeline, plan, execution, verification, cancellationToken);
+
+        // 5. Wrap
         await recorder.UpdateThreadAsync(t =>
         {
             t.Status = ThreadStatus.Wrapping;
@@ -32,7 +35,7 @@ public sealed partial class ThreadOrchestrator
         });
 
         if (wrapper is not null) await progress.PhaseAsync("📦", $"Rangkuman · {wrapper.Model}", cancellationToken);
-        await progress.FinalAsync(FinalReport.Status(execution, verification?.Report), cancellationToken);
+        await progress.FinalAsync(FinalReport.Status(execution, verification?.Report, testing?.Report), cancellationToken);
 
         // Without the wrapper's text the developer still gets the plan summary between the status and the files.
         var wrapClock = Stopwatch.StartNew();
@@ -41,7 +44,7 @@ public sealed partial class ThreadOrchestrator
         var narrated = false;
         if (wrapper is null)
         {
-            finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report);
+            finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report);
             await progress.FinalAsync(plan.Summary, cancellationToken);
         }
         else
@@ -55,29 +58,31 @@ public sealed partial class ThreadOrchestrator
                         narrated = true;
                         return progress.FinalAsync(delta, cancellationToken);
                     }, cancellationToken,
-                    change => change.ReportAsync("Wrapper", recorder, progress, cancellationToken));
+                    change => change.ReportAsync("Wrapper", recorder, progress, cancellationToken), testing?.ForModels);
                 if (answered.Id != wrapper.Id) await recorder.UpdateThreadAsync(t => t.WrapperModel = answered.Model);
                 if (string.IsNullOrWhiteSpace(finalText))
                 {
-                    finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report);
+                    finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report);
                     if (!narrated) await progress.FinalAsync(plan.Summary, cancellationToken);
                 }
             }
             catch (NineRouterException ex)
             {
                 recorder.Log(ActivityLevel.Warning, $"Wrapper gagal ({ex.Message}); memakai ringkasan otomatis.");
-                finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report);
+                finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report);
                 if (!narrated) await progress.FinalAsync(plan.Summary, cancellationToken);
             }
         }
         wrapClock.Stop();
         await progress.FinalAsync(FinalReport.ChangedFiles(execution), cancellationToken);
+        if (testing is not null) await progress.FinalAsync(FinalReport.Testing(testing.Report), cancellationToken);
 
         var succeeded = execution.Results.Count(r => r.Status == ThreadTaskStatus.Succeeded);
         var status = succeeded == 0 ? ThreadStatus.Failed : ThreadStatus.Completed;
         var notes = new List<string>();
         if (succeeded < execution.Results.Count) notes.Add($"{execution.Results.Count - succeeded} tugas tidak berhasil.");
         if (verification?.Report.Outcome == VerificationReport.Failed) notes.Add(VerificationNote(verification.Report));
+        if (testing?.Report.Outcome == TestingReport.Failed) notes.Add(TestingNote(testing.Report));
         await FinishAsync(recorder, status, finalText, pipeline.Total, wrapTokens, wrapClock.ElapsedMilliseconds, notes.Count > 0 ? string.Join(" ", notes) : null);
         if (succeeded > 0) CodeChanged(pipeline.Project.ProjectId, thread.Id);
 

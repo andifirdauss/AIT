@@ -43,7 +43,7 @@
             <div class="col-md-6 col-xxl-3">
                 <div class="fw-semibold text-info-emphasis">prioritas — angka kecil diutamakan</div>
                 <div class="text-secondary">
-                    Planner, Reviewer, Wrapper, Context Keeper: hanya node aktif dengan prioritas terkecil yang dipakai
+                    Planner, Reviewer, Tester, Wrapper, Context Keeper: hanya node aktif dengan prioritas terkecil yang dipakai
                     (planner lain menjadi cadangan otomatis). Executor: semua dipakai; prioritas menentukan urutan bila slot kosongnya sama.
                 </div>
             </div>
@@ -52,6 +52,7 @@
             <span class="mono">📝 instruksi</span> = node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).
             <span class="mono">🧩 n</span> = node memakai n skill dari gudang (Setting → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.
             <span class="mono">🛰 n tool</span> = planner menyerahkan n tool ke tools node (detail di tooltip).
+            <span class="mono">🧪 auto test</span> = Auto Testing planner menyala: perubahan dites node Tester setelah verifikasi.
             Detail lengkap: <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">Docs → Konfigurasi</a>.
         </div>
     </div>
@@ -85,6 +86,13 @@
             <p class="small text-secondary">Opsional. Setelah executor selesai (dan build dijalankan), memeriksa apakah hasil sesuai rencana &amp; kontrak; temuannya diperbaiki executor. Tanpa node ini, verifikasi hanya memakai build.</p>
         </div>
         <div id="nodes-Reviewer"></div>
+    </div>
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Tester</h2>
+            <p class="small text-secondary">Opsional. Bila <em>Auto Testing</em> menyala di planner, setelah verifikasi ia mencoba perubahan di aplikasi yang sedang berjalan sesuai rencana testing planner: UI lewat browser Playwright yang tampil (non-headless), API lewat request HTTP yang output-nya ditampilkan.</p>
+        </div>
+        <div id="nodes-Tester"></div>
     </div>
     <div class="node-column">
         <div>
@@ -123,6 +131,7 @@
                             <option value="ToolsNode">Tools Node</option>
                             <option value="Executor">Executor</option>
                             <option value="Reviewer">Reviewer</option>
+                            <option value="Tester">Tester</option>
                             <option value="Wrapper">Wrapper</option>
                             <option value="ContextKeeper">Context Keeper</option>
                         </select>
@@ -168,6 +177,22 @@
                             </div>
                             <div class="row g-2" id="nodeDelegations"></div>
                             <div class="form-text" id="nodeDelegationHint"></div>
+                        </div>
+                    </div>
+                    <div class="col-12" id="nodeAutoTestingBox">
+                        <div class="border rounded p-2">
+                            <div class="form-check form-switch mb-1">
+                                <input class="form-check-input" type="checkbox" id="nodeAutoTesting" />
+                                <label class="form-check-label small" for="nodeAutoTesting">Auto Testing</label>
+                            </div>
+                            <div class="small text-secondary">
+                                Planner ikut menyusun rencana testing: dari perubahannya ia menilai cara mengujinya —
+                                <strong>UI</strong> (halaman dibuka di browser Playwright non-headless yang muncul di layar),
+                                <strong>API</strong> (request HTTP ke endpoint, output-nya ditampilkan), atau tidak bisa dites dari luar.
+                                Setelah verifikasi, node Tester langsung menjalankannya ke aplikasi yang sedang berjalan di <span class="mono">localhost</span>.
+                                Jalankan aplikasinya dulu (mis. <span class="mono">dotnet watch</span> / <span class="mono">npm run dev</span>).
+                            </div>
+                            <div class="form-text" id="nodeAutoTestingHint"></div>
                         </div>
                     </div>
                     <div class="col-12">

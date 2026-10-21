@@ -66,9 +66,16 @@ public record ThreadDetailDto(
     int PlannerCachedTokens = 0,
     int RetryCount = 0,
     DateTime? RolledBackAt = null,
-    int ToolsNodeTokens = 0);
+    int ToolsNodeTokens = 0,
+    string? TesterModel = null,
+    int TesterTokens = 0,
+    long? TestingMs = null,
+    string? TestingJson = null);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);
+
+// The login for one retest from the thread page; both empty = without login. Never stored.
+public record RetestRequest(string? Username, string? Password);
 
 // Action per file when undoing a thread: "restore" (put the original content back), "delete" (the thread created the
 // file), "unchanged" (nothing to undo) or "conflict" (changed again after the thread; Problem says how).
