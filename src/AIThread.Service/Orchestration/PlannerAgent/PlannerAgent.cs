@@ -82,6 +82,7 @@ public sealed partial class PlannerAgent(
         public int CachedTokens { get; set; }
         public int QuestionsAsked { get; set; }
         public bool CanBuild { get; init; }
+        public bool CanGit { get; init; }
         public int MaxSteps { get; init; }
         public IReadOnlyList<ToolsNodeGroup> Groups { get; init; } = [];
         public HashSet<Guid> MemoriesRead { get; } = [];
