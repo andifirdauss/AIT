@@ -19,6 +19,8 @@
         })();
     </script>
     <script type="importmap"></script>
+    <link rel="icon" href="~/img/aithread.svg" type="image/svg+xml" />
+    <link rel="alternate icon" href="~/favicon.ico" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/AIThread.UI.styles.css" asp-append-version="true" />
@@ -27,7 +29,7 @@
     <div class="app-shell">
         <aside class="app-sidebar">
             <a class="app-brand" asp-controller="Home" asp-action="Index">
-                <span class="app-brand-mark">⧉</span>
+                <img class="app-brand-mark" src="~/img/aithread.svg" alt="" width="30" height="30" />
                 <span>AIT</span>
             </a>
             <a id="npmUpdate" class="app-update d-none" href="https://www.npmjs.com/package/aithread" target="_blank" rel="noopener" data-version="@appVersion">
