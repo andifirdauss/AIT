@@ -52,7 +52,8 @@ public sealed class ThreadLifecycleWorker(
 
             var threads = await db.Threads
                 .Where(t => t.Status == ThreadStatus.Pending || t.Status == ThreadStatus.Planning
-                            || t.Status == ThreadStatus.Executing || t.Status == ThreadStatus.Verifying || t.Status == ThreadStatus.Wrapping)
+                            || t.Status == ThreadStatus.Executing || t.Status == ThreadStatus.Verifying || t.Status == ThreadStatus.Testing
+                            || t.Status == ThreadStatus.Wrapping)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(t => t.Status, ThreadStatus.Cancelled)
                     .SetProperty(t => t.Error, "AIT berhenti saat thread ini berjalan.")

@@ -7,7 +7,8 @@ namespace AIThread.Service.Orchestration;
 public sealed partial class PlannerAgent
 {
     // The planner can read a skill's supporting files with its read tools.
-    private async Task<JsonObject> SystemMessageAsync(AiNode node, IReadOnlyList<ToolsNodeGroup> groups, CancellationToken cancellationToken) =>
+    private async Task<JsonObject> SystemMessageAsync(AiNode node, IReadOnlyList<ToolsNodeGroup> groups, bool autoTesting, CancellationToken cancellationToken) =>
         ChatMessages.System(await prompts.BuildAsync(
-            groups.Count == 0 ? AgentPrompts.Planner : AgentPrompts.Planner + AgentPrompts.PlannerDelegation(groups), node, cancellationToken, canReadFiles: true));
+            AgentPrompts.Planner + (groups.Count == 0 ? string.Empty : AgentPrompts.PlannerDelegation(groups)) + (autoTesting ? AgentPrompts.PlannerTesting : string.Empty),
+            node, cancellationToken, canReadFiles: true));
 }

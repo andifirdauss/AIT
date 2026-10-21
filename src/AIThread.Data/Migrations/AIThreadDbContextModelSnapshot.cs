@@ -69,6 +69,9 @@ namespace AIThread.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("AutoTesting")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1212,6 +1215,19 @@ namespace AIThread.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TesterModel")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("TesterTokens")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TestingJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long?>("TestingMs")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("ToolsNodeTokens")
                         .HasColumnType("int");

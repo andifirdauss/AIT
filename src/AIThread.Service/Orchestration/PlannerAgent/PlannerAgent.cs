@@ -11,6 +11,7 @@ namespace AIThread.Service.Orchestration;
 // CodeMap: module and layer of the files the request names, as far as known before planning (the first search layer).
 // LabelsFromSession: set when the request names no file and CodeMap comes from the session instead (a follow-up).
 // Files: the project files behind CodeMap, also those whose module is not known yet; the brief outlines them.
+// AutoTesting: the planner node has Auto Testing on and a Tester node is active, so the plan must say how to test it.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -20,7 +21,8 @@ public sealed record PlannerInput(
     bool CanAsk = false,
     IReadOnlyList<Memory.CodeMapHit>? CodeMap = null,
     SessionLabelSource? LabelsFromSession = null,
-    IReadOnlyList<string>? Files = null);
+    IReadOnlyList<string>? Files = null,
+    bool AutoTesting = false);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.

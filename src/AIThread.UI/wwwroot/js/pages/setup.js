@@ -5,7 +5,8 @@
   const { api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill } = window.AIThread;
   const el = id => document.getElementById(id);
   const roleLabels = {
-    Planner: 'Planner', ToolsNode: 'Tools Node', Executor: 'Executor', Reviewer: 'Reviewer', Wrapper: 'Wrapper', ContextKeeper: 'Context Keeper'
+    Planner: 'Planner', ToolsNode: 'Tools Node', Executor: 'Executor', Reviewer: 'Reviewer', Tester: 'Tester', Wrapper: 'Wrapper',
+    ContextKeeper: 'Context Keeper'
   };
   const sectionLabels = {
     Router: 'Koneksi 9router', Orchestration: 'Proxy & orkestrasi', Nodes: 'Node', Memory: 'Penyimpanan memory', Business: 'Business memory', Skills: 'Skill'

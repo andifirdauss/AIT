@@ -36,7 +36,10 @@ public sealed partial class ThreadOrchestrator
             var executors = await nodeService.GetActiveAsync(NodeRole.Executor, cancellationToken);
             if (executors.Count == 0) throw new OrchestrationException("Belum ada node Executor aktif. Tambahkan di menu Node.");
             var wrapper = (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
-            var memoryNode = wrapper ?? (await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken)).FirstOrDefault();
+            var planner = (await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken)).FirstOrDefault();
+            var memoryNode = wrapper ?? planner;
+            // The stored plan has a test section only when it was made with Auto Testing on.
+            var tester = plan.Test is null ? null : await AutoTesterAsync(planner, recorder, cancellationToken);
 
             var retryIds = prepared.RetryTasks.Select(t => t.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var planIds = plan.Tasks.Select(t => t.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -121,9 +124,10 @@ public sealed partial class ThreadOrchestrator
             var fresh = execution.Results.ToDictionary(r => r.TaskKey, StringComparer.OrdinalIgnoreCase);
             var results = tasks.Select(t => fresh.TryGetValue(t.Id, out var result) ? result : ToResult(keptByKey[t.Id])).ToList();
             var combined = new ExecutionSummary(results, execution.WallMs, execution.SumMs, execution.Tokens);
-            var fullPlan = new ThreadPlan { Summary = plan.Summary, Answer = plan.Answer, Contract = plan.Contract, Tasks = tasks };
+            var fullPlan = new ThreadPlan { Summary = plan.Summary, Answer = plan.Answer, Contract = plan.Contract, Tasks = tasks, Test = plan.Test };
 
-            var pipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, memoryNode, scope, settings, journal, total, KeepContext: false);
+            var pipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, memoryNode, scope, settings, journal, total, KeepContext: false,
+                Tester: tester);
             return await CompleteAsync(pipeline, fullPlan, combined, nextOrder, PreviousRounds(thread.VerificationJson) + 1, cancellationToken);
         }, cancellationToken);
     }
