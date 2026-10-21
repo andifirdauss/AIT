@@ -83,11 +83,13 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
 4. **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AIT sebelumnya (lihat
    [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
 5. percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
-   ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter;
+   ringkasannya dipakai. Tiap pesan maks 1.500 karakter, total maks 12.000 karakter. Lalu **catatan investigasi**
+   thread AIT terakhir di chat ini (lihat [Konteks sesi](#konteks-sesi-context-keeper)), maks 8.000 karakter;
 6. **peta kode** file yang disebut permintaan (modul · layer), **peta memory** per modul, dan **indeks memory**
    (id + label, maks 25) hasil pencarian label: memory modul file tersebut lebih dulu, lalu diurutkan per keyword.
    Bila permintaan tidak menyebut file (lanjutan seperti "berlaku buat yang lainnya juga"), labelnya diambil dari
-   sesi: file yang diubah thread AIT terakhir di chat ini (atau yang disebut prompt-nya), bila tidak ada dari
+   sesi: file yang diubah lalu file yang dibaca planner thread AIT terakhir di chat ini (atau yang disebut
+   prompt-nya), bila tidak ada dari
    percakapan terakhir lalu dari konteks sesi; prompt thread terakhir itu ikut dipakai sebagai keyword;
 7. **outline** file-file tersebut (maks 6 file, 12.000 karakter): class, member, dan function beserta rentang
    `baris-awal-baris-akhir` dan signature-nya, dibaca langsung dari disk (sama dengan `code_outline`). Planner jadi
@@ -640,6 +642,13 @@ lama memulihkan ringkasannya. Pencarian dibatasi ke project yang sama dan thread
   maksimal 15 thread terakhir di database.
 - **Detail tidak hilang**: planner bisa memanggil `read_thread` untuk catatan lengkap thread mana pun, dan
   ringkasan berisi penunjuk file, bukan isi file, sehingga planner membaca versi terbaru.
+- **Hasil analisa ikut disimpan** (`ThreadRun.InvestigationJson`): selama merencanakan, AIT mencatat file yang dibaca
+  planner beserta rentang barisnya (digabung, maks 40 file), lookup (`find_symbol`, `find_references`,
+  `search_text`, `find_files`, `function_calls` dengan awal hasilnya; `code_outline` tanpa hasil, maks 30), dan
+  temuan sub agent `investigate` (maks 8). Catatan ini masuk ke brief prompt berikutnya di chat yang sama, file yang
+  dibaca ikut di-outline, Context Keeper menjadikannya *Key facts*, dan `read_thread` menampilkannya. Pertanyaan
+  lanjutan ("button A itu type apa?") jadi dijawab dari analisa sebelumnya; planner hanya membaca ulang rentang baris
+  yang perlu dipastikan. Thread yang dilanjutkan setelah pertanyaan planner meneruskan catatan sebelum jeda.
 - Ringkasan terbaru bisa dilihat di detail thread (panel *Konteks sesi dari Context Keeper*).
 
 Untuk sesi Claude Code biasa (termasuk yang tidak lewat proxy), Context Keeper juga bisa menjembatani `/clear`

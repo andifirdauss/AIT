@@ -12,6 +12,7 @@ namespace AIThread.Service.Orchestration;
 // LabelsFromSession: set when the request names no file and CodeMap comes from the session instead (a follow-up).
 // Files: the project files behind CodeMap, also those whose module is not known yet; the brief outlines them.
 // AutoTesting: the planner node has Auto Testing on and a Tester node is active, so the plan must say how to test it.
+// PreviousTurn: what the planner of the session's last thread went through, so a follow-up does not search again.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -22,11 +23,15 @@ public sealed record PlannerInput(
     IReadOnlyList<Memory.CodeMapHit>? CodeMap = null,
     SessionLabelSource? LabelsFromSession = null,
     IReadOnlyList<string>? Files = null,
-    bool AutoTesting = false);
+    bool AutoTesting = false,
+    PreviousTurn? PreviousTurn = null);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.
 public sealed record SessionLabelSource(Guid? ThreadId, string? Prompt);
+
+// Investigation: InvestigationLog.Brief of that thread.
+public sealed record PreviousTurn(Guid ThreadId, string Investigation);
 
 // Node is the planner that finished (a fallback when the preferred one failed). Plan is null when the planner paused
 // on a question instead (Pause). Steps and tokens are totals for the thread, including the run before a pause.

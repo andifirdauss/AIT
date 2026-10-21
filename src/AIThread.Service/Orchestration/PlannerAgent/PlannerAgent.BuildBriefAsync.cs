@@ -61,6 +61,12 @@ public sealed partial class PlannerAgent
             builder.Append(request.ConversationContext).Append("\n\n");
         }
 
+        if (input.PreviousTurn is { } previous)
+        {
+            builder.Append($"# What the planner of the previous turn (thread {ThreadAnchor.ShortId(previous.ThreadId)}) already looked at (files may have changed since)\n");
+            builder.Append(previous.Investigation).Append("\n\n");
+        }
+
         if (input.CodeMap is { Count: > 0 } codeMap)
         {
             builder.Append(input.LabelsFromSession is null
