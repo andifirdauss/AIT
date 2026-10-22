@@ -962,11 +962,17 @@ namespace AIThread.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("PassthroughSecretMasking")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("PlannerCanAsk")
                         .HasColumnType("bit");
 
                     b.Property<int>("PlannerMaxSteps")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("PrivacyNoticeAcknowledgedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("ProxyApiKey")
                         .HasMaxLength(200)
@@ -974,6 +980,9 @@ namespace AIThread.Data.Migrations
 
                     b.Property<int>("RequestTimeoutSeconds")
                         .HasColumnType("int");
+
+                    b.Property<bool>("SecretMaskingEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<string>("SkillOrchestratorModel")
                         .HasMaxLength(200)

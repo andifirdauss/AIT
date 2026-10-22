@@ -17,6 +17,7 @@ public sealed partial class MemoryExtractor(
     ICodeMapper codeMapper,
     IModuleRegistry registry,
     IActivityLogService activityLog,
+    ISecretGuard secrets,
     ILogger<MemoryExtractor> logger) : IMemoryExtractor
 {
     private const int MaxMemories = 5;

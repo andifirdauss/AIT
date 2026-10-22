@@ -576,7 +576,10 @@ Bila `baseUrl` tidak menjawab, AIT menjalankan aplikasinya sendiri untuk testing
 
 - Dipakai **Microsoft Edge** (bawaan Windows), lalu **Google Chrome**, lalu **Chromium** milik Playwright (diunduh sekali
   ±150 MB ke `%LOCALAPPDATA%\ms-playwright` bila keduanya tidak ada). Driver Playwright ikut terpasang bersama AIT
-  (folder `.playwright` di samping `AIThread.exe`).
+  (folder `.playwright` di samping `AIThread.exe`), tetapi tanpa `node.exe`-nya agar paket tidak membengkak ±90 MB.
+  Node.js untuk driver dicari saat browser tester pertama kali dibuka: env `PLAYWRIGHT_NODEJS_PATH` → `node.exe`
+  bawaan driver (build dev) → `node` di `PATH` (versi 20+) → unduhan sebelumnya → unduh Node.js resmi sekali (±36 MB,
+  dicek SHA-256 dari nodejs.org) ke `%LOCALAPPDATA%\AIThread\node\v<versi>\node.exe`.
 - Profilnya terpisah dari browser harian Anda, di `%LOCALAPPDATA%\AIThread\tester-browser\<browser>`. Cookie persisten
   ikut tersimpan antar testing, tetapi jangan mengandalkannya untuk login: session cookie hilang saat jendela ditutup.
   Pakai [Login](#login).
@@ -1076,8 +1079,14 @@ lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offlin
 
 - Planner hanya bisa membaca; executor hanya bisa menulis file target tugasnya. Penulisan dibatasi ke root workspace
   dan tidak bisa menyentuh folder yang disembunyikan. Pembacaan planner boleh keluar root (path absolut), jadi ia dapat
-  membaca file apa pun yang bisa dibaca akun yang menjalankan AIT, dan isinya dikirim ke model planner. Permintaan
-  "cek" ke folder lain hanya menghasilkan jawaban; mengubah file di luar root tidak didukung.
+  membaca file yang bisa dibaca akun yang menjalankan AIT, kecuali file kredensial (kunci, sertifikat, kunci SSH,
+  `.npmrc`, `~/.aws`, user-secrets, data AIT), yang tidak pernah dibaca maupun ditulis. Permintaan "cek" ke folder lain
+  hanya menghasilkan jawaban; mengubah file di luar root tidak didukung.
+- **Secret disamarkan** sebelum teks apa pun dikirim ke model: isi file, prompt dan riwayat chat, output tool, respons
+  aplikasi saat testing. Password, API key, token, JWT, private key, dan password di connection string diganti
+  `{{AIT_SECRET:…}}`, lalu nilai aslinya dipasang kembali hanya saat executor menulis file (atau Tester memanggil
+  aplikasi). Log, memory, wiki, dan export juga disimpan dalam bentuk tersamar. Detail dan batasannya ada di
+  [Keamanan & privasi](12-keamanan.md).
 - Satu-satunya perintah yang dijalankan AIT adalah **perintah build** project (tabel di
   [Verifikasi](#5-verifikasi-build-dan-reviewer)), dengan program dan argumen tetap; model hanya memilih manifest di
   dalam root. Build menjalankan apa pun yang didefinisikan project itu sendiri (target MSBuild, script `build` di
@@ -1085,8 +1094,8 @@ lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offlin
   Tidak ada perintah shell lain (test, install paket, migrasi). Pengecualiannya `git clone --depth 1` saat menarik
   sumber skill dari host git non-GitHub/GitLab (atau bila unduhan ZIP gagal). Clone ini memakai URL yang Anda tempel,
   tanpa prompt kredensial, dan folder `.git`-nya dibuang.
-- **Auto Testing** menjalankan browser lewat Playwright (Edge/Chrome/Chromium dengan proses driver `node.exe` yang ikut
-  terpasang bersama AIT) dan request HTTP — keduanya hanya ke alamat mesin ini (`localhost`, `127.0.0.1`, `[::1]`);
+- **Auto Testing** menjalankan browser lewat Playwright (Edge/Chrome/Chromium dengan proses driver Node.js: `node` di
+  `PATH`, atau diunduh sekali dari nodejs.org bila tidak ada) dan request HTTP — keduanya hanya ke alamat mesin ini (`localhost`, `127.0.0.1`, `[::1]`);
   URL lain ditolak, apa pun isi rencana atau jawaban model. Link yang diikuti halaman itu sendiri tidak dibatasi. Tester
   bertindak seperti pengguna aplikasi Anda: ia bisa membuat atau mengubah data lewat aplikasi itu, jadi nyalakan Auto
   Testing hanya untuk aplikasi yang berjalan dengan data pengembangan. Sertifikat HTTPS tidak diperiksa (sertifikat

@@ -25,6 +25,10 @@ public class AIThreadOptions
     // Offline skill store (one folder per skill source). Empty = %LOCALAPPDATA%\AIThread\skills.
     public string? SkillsDirectory { get; set; }
 
+    // Key of the secret placeholders (HMAC, encrypted with Data Protection), so a secret keeps its placeholder across
+    // restarts. Empty = %LOCALAPPDATA%\AIThread\secret-mask.key.
+    public string? SecretKeyPath { get; set; }
+
     public TelegramOptions Telegram { get; set; } = new();
 
     public EmbeddedRedisOptions EmbeddedRedis { get; set; } = new();

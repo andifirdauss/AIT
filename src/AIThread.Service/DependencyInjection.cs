@@ -8,6 +8,7 @@ using AIThread.Service.Implementations.Cli;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Memory;
 using AIThread.Service.Orchestration;
+using AIThread.Service.Security;
 using AIThread.Service.Skills;
 using AIThread.Service.Telegram;
 using AIThread.Service.Testing;
@@ -42,6 +43,9 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromMinutes(5);
             client.DefaultRequestHeaders.UserAgent.ParseAdd("AIThread-SkillOrchestrator");
         });
+
+        // Node.js for the Playwright driver when none is installed (±36 MB from nodejs.org).
+        services.AddHttpClient(TestBrowserLauncher.HttpClientName, client => client.Timeout = TimeSpan.FromMinutes(10));
 
         services.AddScoped<IHealthService, HealthService>();
 
@@ -108,6 +112,8 @@ public static class DependencyInjection
         services.AddSingleton<IVerificationStage, VerificationStage>();
         services.AddSingleton<ITestBrowserLauncher, TestBrowserLauncher>();
         services.AddSingleton<ITestLoginStore>(_ => new TestLoginStore(TimeProvider.System));
+        services.AddSingleton<ISecretGuard, SecretGuard>();
+        services.AddSingleton<ISecurityService, SecurityService>();
         services.AddSingleton<ITesterAgent, TesterAgent>();
         services.AddSingleton<IAppLauncher, AppLauncher>();
         services.AddSingleton<IWrapperAgent, WrapperAgent>();

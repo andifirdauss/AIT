@@ -10,7 +10,7 @@ public sealed partial class PlannerAgent
     {
         if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
 
-        var tools = new WorkspaceTools(input.Scope);
+        var tools = new WorkspaceTools(input.Scope, secrets);
         var build = input.Settings.BuildEnabled ? BuildCommandResolver.Resolve(input.Project.RootPath, input.Project.Modules, null, out _) : null;
         var (brief, relevant) = await BuildBriefAsync(input, tools, build, cancellationToken);
         await progress.StepAsync(LabelLine(input.CodeMap, relevant, input.LabelsFromSession), cancellationToken, hang: 3);

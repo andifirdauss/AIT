@@ -28,6 +28,7 @@ public sealed class AgentProxyHandler(
     IThreadOrchestrator orchestrator,
     IActivityLogService activityLog,
     IContextKeeper contextKeeper,
+    ISecretGuard secrets,
     ILogger<AgentProxyHandler> logger)
 {
     private static readonly string[] AnthropicForwardedHeaders = ["anthropic-version", "anthropic-beta"];
@@ -171,6 +172,16 @@ public sealed class AgentProxyHandler(
 
         var path = ProtocolAdapter.RouterPath(call.Protocol, model, call.GeminiAction, ForwardQuery(http.Request));
 
+        // The client's own file reads travel in this request too. Its edits come back with the placeholders, which the
+        // PreToolUse hook of Claude Code (ClaudeHookConfig) turns back into the values before they are written.
+        var masked = 0;
+        if (secrets.MaskPassthrough)
+        {
+            using var tally = secrets.BeginTally();
+            secrets.RedactJson(body);
+            masked = secrets.TallyCount;
+        }
+
         HttpResponseMessage upstream;
         try
         {
@@ -198,7 +209,8 @@ public sealed class AgentProxyHandler(
             }
         }
 
-        activityLog.Debug("proxy", $"Passthrough ({reason}) [{call.Protocol}] {requestedModel} → {model} [{(int)upstream.StatusCode}]");
+        activityLog.Debug("proxy", $"Passthrough ({reason}) [{call.Protocol}] {requestedModel} → {model} [{(int)upstream.StatusCode}]"
+                                   + (masked > 0 ? $" · 🔒 {masked} secret disamarkan" : string.Empty));
     }
 
     // Explicit setting first, then the cheapest configured workers.

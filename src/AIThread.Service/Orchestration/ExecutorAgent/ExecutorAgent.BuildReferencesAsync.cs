@@ -5,7 +5,7 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ExecutorAgent
 {
-    private static async Task<string> BuildReferencesAsync(ExecutorJob job, CancellationToken cancellationToken)
+    private async Task<string> BuildReferencesAsync(ExecutorJob job, CancellationToken cancellationToken)
     {
         var builder = new StringBuilder();
         foreach (var reference in job.Task.Context ?? [])
@@ -15,7 +15,7 @@ public sealed partial class ExecutorAgent
             if (!job.Scope.TryResolveForRead(reference.File, out var fullPath, out _) || !File.Exists(fullPath)) continue;
 
             var state = await TextFileIo.ReadAsync(fullPath, cancellationToken);
-            var lines = WorkspaceTools.SplitLines(state.Content);
+            var lines = WorkspaceTools.SplitLines(secrets.RedactFile(fullPath, state.Content, job.Scope.Secrets.Keys));
             if (lines.Length == 0) continue;
 
             var start = Math.Clamp(reference.StartLine ?? 1, 1, lines.Length);
