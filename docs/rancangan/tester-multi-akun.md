@@ -17,6 +17,17 @@
 >   `none` dari scan juga dihitung "sudah dideteksi"; ulangi lewat tombol **Deteksi**.
 > - Pengamatan tester tidak menimpa hasil yang dikonfirmasi, diisi developer, atau yang sudah `available`.
 > - Export memakai flag `MemoryQuery.IncludeTestAccounts` (default menyala), terpisah dari unit test.
+>
+> **Fase 2 sudah diimplementasikan** (2026-10-23): [07-cara-kerja.md → Test lanjutan](../07-cara-kerja.md#test-lanjutan-dan-nilai-antar-langkah).
+> Yang berbeda:
+> - Test lanjutan tidak membuat thread baru: ia testing ulang thread yang sama dengan skenario saran itu. Hasilnya
+>   disimpan di saran (`TestingReport.FollowUps[].LastRun`), laporan utama thread tetap, dan saran baru dari run itu
+>   ditambahkan dengan nomor berikutnya (maks 20 per thread, judul sama tidak digandakan).
+> - Nilai yang diingat (`TestingReport.Values`) juga dibawa ke *Ulangi testing*; saran lama tetap dipertahankan bila
+>   testing ulang tidak menyarankan apa pun.
+> - Thread yang hanya menguji (tanpa tugas) kini bisa diulang testing-nya (sebelumnya ditolak *tidak ada perubahan*).
+> - Balasan chat yang dikenali: `jalankan test lanjutan <n>`, `test lanjutan #n`, `lanjut test n`, `run follow-up n`
+>   (seluruh pesan; kalimat lain tetap prompt biasa).
 
 ## Latar belakang
 

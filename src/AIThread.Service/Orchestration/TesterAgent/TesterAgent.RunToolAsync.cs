@@ -18,6 +18,8 @@ public sealed partial class TesterAgent
         // The progress and the log show the placeholders; only the tool gets the real values.
         var detail = Describe(call.Name, args, run.Test.BaseUrl!);
         if (run.Login is { } login) args = (JsonObject)Fill(args, login)!;
+        // Remembered values are not secret; the progress keeps showing their placeholders like the model wrote them.
+        if (run.Report.Values.Count > 0 && call.Name != TesterTools.Remember) args = (JsonObject)FillValues(args, run.Report.Values)!;
         // A token the app returned earlier reached the model as a placeholder; the request gets the real one.
         secrets.RestoreJson(args);
         recorder.Log(ActivityLevel.Debug, $"Tester → {call.Name} {detail}");
@@ -30,6 +32,7 @@ public sealed partial class TesterAgent
             {
                 TesterTools.HttpRequest => await HttpRequestAsync(args, run, recorder, progress, cancellationToken),
                 TesterTools.SwitchUser => await SwitchUserAsync(args, run, recorder),
+                TesterTools.Remember => Remember(args, run, recorder),
                 _ => await BrowserAsync(call.Name, args, run, progress, cancellationToken)
             });
         }

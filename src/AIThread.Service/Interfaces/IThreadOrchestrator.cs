@@ -22,4 +22,8 @@ public interface IThreadOrchestrator
     // stored test plan, with login when given (not stored). Throws AppValidationException when the thread has nothing
     // to test. Returns the thread id.
     Task<Guid> RetestInBackgroundAsync(Guid threadId, TestLogin? login, CancellationToken cancellationToken);
+
+    // Runs one of the tester's suggested follow-up tests of a completed thread in the background. Throws
+    // AppValidationException when the thread or the suggestion cannot run. Returns the thread id.
+    Task<Guid> FollowUpInBackgroundAsync(Guid threadId, int number, CancellationToken cancellationToken);
 }

@@ -37,7 +37,7 @@ public class AutoTestingTests
             .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
             .On(ScriptedAgent.Tester, call =>
             {
-                Assert.Equal([TesterTools.HttpRequest, TesterTools.ReportTest], call.ToolNames!);
+                Assert.Equal([TesterTools.HttpRequest, TesterTools.Remember, TesterTools.ReportTest], call.ToolNames!);
                 Assert.Contains("Base URL: " + app.BaseUrl, call.LastUser);
                 Assert.Contains("+    public string Hello() => \"Halo\";", call.LastUser);
                 return router.Tools(10,
@@ -494,6 +494,102 @@ public class AutoTestingTests
         Assert.Equal((ImpersonationInfo.Available, ImpersonationInfo.FromTester, false), (info.Status, info.Source, info.Confirmed));
         Assert.Equal("Admin › Users › cari {{target}} › Login as", info.How);
     }
+
+    [Fact]
+    public async Task Suggested_follow_up_tests_run_from_the_chat_with_the_values_the_submit_remembered()
+    {
+        await using var app = LocalApp.Start(request => (200, "application/json", request.HttpMethod == "POST" ? ReadBody(request) : """{"no":"REQ-0123"}"""));
+        await using var harness = await CreateTestingHarnessAsync();
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        await harness.Service<ITestAccountService>().AddAsync(harness.ProjectId, new SaveTestAccountRequest("atasan01", "Atasan", null, null));
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, app.BaseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.HttpRequest, new { method = "GET", url = "/api/leave" }))
+            .On(ScriptedAgent.Tester, call =>
+            {
+                Assert.Contains(TesterTools.Remember, call.ToolNames!);
+                return router.Tool(TesterTools.Remember, new { name = "requestNo", value = "REQ-0123" });
+            })
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new
+            {
+                summary = "Submit berhasil.",
+                scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Tersimpan." } },
+                follow_ups = new[]
+                {
+                    new
+                    {
+                        title = "Approve level 1 oleh atasan",
+                        why = "Status harus pindah ke Menunggu HR.",
+                        needs = (string?)null,
+                        scenarios = new[] { new { title = "Approve", actor = "atasan01", target = "POST /api/approve", steps = new[] { "Approve {{requestNo}}." }, expect = "200" } }
+                    }
+                }
+            }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (first, firstObserver) = await harness.RunAsync("Sapaan jadi Halo", ThreadSource.ClaudeCode, "chat-1");
+
+        Assert.Equal(ThreadStatus.Completed, first.Status);
+        Assert.Contains("**🧭 Test lanjutan yang disarankan**", firstObserver.Final);
+        Assert.Contains("1. **Approve level 1 oleh atasan** — Status harus pindah ke Menunggu HR. · `atasan01`", firstObserver.Final);
+        Assert.Contains("`jalankan test lanjutan 1`", firstObserver.Final);
+
+        // The follow-up runs from the chat: its scenarios, the remembered value, the account.
+        router
+            .On(ScriptedAgent.Tester, call =>
+            {
+                Assert.Contains("Follow-up test 1 of the earlier test", call.LastUser);
+                Assert.Contains("## Scenario 1: Approve", call.LastUser);
+                Assert.Contains("As: atasan01", call.LastUser);
+                Assert.Contains("- {{requestNo}} = REQ-0123", call.LastUser);
+                return router.Tool(TesterTools.SwitchUser, new { account = "atasan01" });
+            })
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.HttpRequest, new { method = "POST", url = "/api/approve", body = new { no = "{{requestNo}}", by = "{{username}}" } }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new
+            {
+                summary = "Approve berhasil.",
+                scenarios = new[] { new { title = "Approve", status = "passed", details = "Menunggu HR.", actor = "atasan01" } },
+                follow_ups = new[]
+                {
+                    new
+                    {
+                        title = "Approve level 2 oleh HR",
+                        why = "Alur selesai.",
+                        needs = "Akun uji dengan peran HR.",
+                        scenarios = new[] { new { title = "Approve HR", actor = "HR", target = "POST /api/approve", steps = new[] { "Approve {{requestNo}}." }, expect = "200" } }
+                    }
+                }
+            }));
+
+        var (second, secondObserver) = await harness.RunAsync("jalankan test lanjutan 1", ThreadSource.ClaudeCode, "chat-1");
+
+        Assert.Equal(first.ThreadId, second.ThreadId);
+        Assert.Contains(app.Bodies, b => b.Contains("\"no\":\"REQ-0123\"") && b.Contains("\"by\":\"atasan01\""));
+        Assert.Contains(secondObserver.Lines, l => l.Contains("Test lanjutan 1 · Approve level 1 oleh atasan"));
+        Assert.Contains("✅ **Approve** (`atasan01`) — Menunggu HR.", secondObserver.Final);
+        Assert.Contains("2. **Approve level 2 oleh HR**", secondObserver.Final);
+        Assert.Contains("Perlu: Akun uji dengan peran HR.", secondObserver.Final);
+
+        var report = TestingReport.FromJson((await harness.LoadThreadAsync(first.ThreadId)).TestingJson)!;
+        Assert.Equal("Sapaan", report.Scenarios.Single().Title);
+        Assert.Equal(TestingReport.Passed, report.FollowUps[0].LastRun!.Outcome);
+        Assert.Equal(2, report.FollowUps.Count);
+        Assert.Equal("REQ-0123", report.Values["requestNo"]);
+
+        // A number no thread suggested is an ordinary prompt.
+        Assert.Null(TestFollowUpReply.Find(report.ToJson(), 9));
+    }
+
+    [Theory]
+    [InlineData("jalankan test lanjutan 2", 2)]
+    [InlineData("Test lanjutan #1", 1)]
+    [InlineData("run follow-up 3", 3)]
+    [InlineData("lanjut test no. 4.", 4)]
+    [InlineData("jalankan test lanjutan untuk approval", null)]
+    [InlineData("tambah test lanjutan 2 untuk HR", null)]
+    public void Follow_up_replies_are_recognised(string reply, int? expected) => Assert.Equal(expected, TestFollowUpReply.Parse(reply));
 
     [Fact]
     public void A_scenario_actor_must_be_a_test_account_or_its_role()

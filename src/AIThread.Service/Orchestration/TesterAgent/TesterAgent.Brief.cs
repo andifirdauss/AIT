@@ -74,6 +74,11 @@ public sealed partial class TesterAgent
         }
         if (accounts is not null && TestAccountText.Brief(accounts, forTester: true) is { } accountList)
             builder.Append('\n').Append(accountList);
+        if (input.Values is { Count: > 0 } values)
+        {
+            builder.Append("\n# Remembered values (from earlier runs of this thread; write {{name}} and AIT puts the value in)\n");
+            foreach (var (name, value) in values) builder.Append($"- {{{{{name}}}}} = {value}\n");
+        }
 
         builder.Append("\n# Test plan\n");
         builder.Append($"Level: {test.Level}").Append(test.Level == TestPlan.Ui
