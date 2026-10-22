@@ -10,6 +10,7 @@ namespace AIThread.Service.Implementations;
 public sealed partial class SettingService(
     IDbContextFactory<AIThreadDbContext> dbFactory,
     IDataProtectionProvider dataProtection,
+    ISecretGuard secrets,
     ILogger<SettingService> logger) : ISettingService
 {
     // The purpose keeps the pre-rename "AiThread" spelling; a different purpose cannot read values already saved.

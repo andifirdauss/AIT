@@ -37,6 +37,6 @@ public sealed partial class PlannerAgent
             MaxSteps = Math.Max(input.Settings.PlannerMaxSteps, conversation.Step + StepsAfterAnswer),
             Groups = groups
         };
-        return await RunAsync(input, run, new WorkspaceTools(input.Scope), recorder, progress, cancellationToken);
+        return await RunAsync(input, run, new WorkspaceTools(input.Scope, secrets), recorder, progress, cancellationToken);
     }
 }

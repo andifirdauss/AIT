@@ -37,9 +37,9 @@ public sealed partial class BusinessPageStore
         page.ProjectName = draft.ProjectName ?? page.ProjectName;
         page.Module = Clip(draft.Module.Trim(), 100);
         page.Title = Clip(draft.Title.Trim(), 200);
-        page.Summary = string.IsNullOrWhiteSpace(draft.Summary) ? null : Clip(draft.Summary.Trim(), 1000);
+        page.Summary = string.IsNullOrWhiteSpace(draft.Summary) ? null : Clip(secrets.Redact(draft.Summary.Trim()), 1000);
         page.Labels = Clip(string.IsNullOrWhiteSpace(draft.Labels) ? DefaultLabels(draft.Module, draft.Title) : draft.Labels.Trim(), 500);
-        page.Content = draft.Content;
+        page.Content = secrets.Redact(draft.Content);
         page.AutoUpdate = draft.AutoUpdate;
         page.UpdatedBy = Clip(draft.Author, 200);
         page.LastEditKind = draft.EditKind;

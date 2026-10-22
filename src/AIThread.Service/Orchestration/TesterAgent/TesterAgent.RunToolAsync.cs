@@ -18,6 +18,8 @@ public sealed partial class TesterAgent
         // The progress and the log show the placeholders; only the tool gets the real values.
         var detail = Describe(call.Name, args, run.Test.BaseUrl!);
         if (run.Login is { } login) args = (JsonObject)Fill(args, login)!;
+        // A token the app returned earlier reached the model as a placeholder; the request gets the real one.
+        secrets.RestoreJson(args);
         recorder.Log(ActivityLevel.Debug, $"Tester → {call.Name} {detail}");
         await progress.StepAsync(PlannerToolRunner.Lead(string.Empty, call.Name) + ClientProgress.BadgeSlot(badge) + detail, cancellationToken,
             hang: PlannerToolRunner.LeadColumn + ClientProgress.SlotWidth);

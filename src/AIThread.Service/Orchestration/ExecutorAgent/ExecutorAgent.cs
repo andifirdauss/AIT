@@ -25,8 +25,14 @@ public sealed record ExecutorOutcome(bool Success, string? Summary, string? Diff
 
 // Cheap model, tiny scope: one file, the instruction, the contract and a few excerpts. Its SEARCH/REPLACE
 // output is applied under a per-file lock against the file's current content; failures are fed back for a retry.
+// The executor sees secrets as placeholders (SecretGuard); its edits get the values back just before they are applied.
 // The caller (ExecutionEngine) holds a concurrency slot of job.Node; a fallback node gets its own slot per call.
-public sealed partial class ExecutorAgent(INodeCaller caller, IFileLockProvider fileLocks, INodePromptBuilder prompts, IOptions<AIThreadOptions> options) : IExecutorAgent
+public sealed partial class ExecutorAgent(
+    INodeCaller caller,
+    IFileLockProvider fileLocks,
+    INodePromptBuilder prompts,
+    ISecretGuard secrets,
+    IOptions<AIThreadOptions> options) : IExecutorAgent
 {
     private const int ExcerptMargin = 40;
     private const int MaxContextLinesPerRef = 250;

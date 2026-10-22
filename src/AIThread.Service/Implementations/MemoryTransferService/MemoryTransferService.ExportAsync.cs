@@ -46,7 +46,9 @@ public sealed partial class MemoryTransferService
                 m.HitCount, m.LastAccessedAt, Label(m.LabelVersion, m.Module, m.Layers, m.Kind, m.Area, m.Keywords, m.ExtraModules), m.LegacyLabel)));
         }
 
+        // The file leaves this machine: a secret that slipped into a memory (written by an older version) stays masked.
         return new MemoryExportFile(MemoryExportFile.FormatName, MemoryExportFile.CurrentVersion, DateTime.UtcNow, AppVersion(),
-            items.OrderBy(i => i.CreatedAt).ToList(), await ExportUnitTestsAsync(filter, scope, cancellationToken));
+            items.OrderBy(i => i.CreatedAt).Select(i => i with { Description = secrets.Redact(i.Description) }).ToList(),
+            await ExportUnitTestsAsync(filter, scope, cancellationToken));
     }
 }

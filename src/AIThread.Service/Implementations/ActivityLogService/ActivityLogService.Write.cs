@@ -9,6 +9,7 @@ public sealed partial class ActivityLogService
 {
     public void Write(ActivityLevel level, string category, string message, Guid? threadId = null, Guid? projectId = null)
     {
+        message = secrets.Redact(message);
         var entry = new ActivityLog
         {
             CreatedAt = DateTime.UtcNow,

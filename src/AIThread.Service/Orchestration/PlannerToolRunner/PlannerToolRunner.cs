@@ -12,7 +12,8 @@ public sealed partial class PlannerToolRunner(
     ICodeMapper codeMapper,
     IFunctionCallQueue functionCalls,
     ICodeSkeletonTools skeleton,
-    IUnitTestStage unitTests) : IPlannerToolRunner
+    IUnitTestStage unitTests,
+    ISecretGuard secrets) : IPlannerToolRunner
 {
     // Paths and queries are shortened in the client progress so a tool line rarely wraps; the activity log keeps them whole.
     private const int ProgressPathChars = 48;

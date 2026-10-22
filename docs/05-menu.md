@@ -321,9 +321,21 @@ refresh dan bisa ditautkan langsung.
 - **Skill** (`#skills`) — model Skill Orchestrator, batas karakter skill per node, sumber skill (tempel link →
   **Tarik skill**, status live, *Sync* / *Hapus*), dan gudang skill dengan pencarian serta pratinjau isi. Disimpan
   terpisah lewat **Simpan Skill**.
+- **Keamanan & privasi** (`#keamanan`) — saklar penyamaran secret dan penyamaran request passthrough, hitungan sejak AIT
+  berjalan (disamarkan, bisa dipasang kembali, dipasang kembali, akses file kredensial ditolak), contoh aturan
+  `.aithread/project.json`, dan tombol untuk membuka penjelasan lengkap. Disimpan lewat **Simpan setting keamanan**
+  ([Keamanan & privasi](12-keamanan.md)).
 
 Tiga tab pertama adalah satu form: **Simpan setting** di tab mana pun menyimpan isi ketiganya sekaligus, dan field
-yang tidak valid membuka tabnya sendiri. Tab Telegram dan Skill disimpan terpisah lewat tombolnya masing-masing.
+yang tidak valid membuka tabnya sendiri. Tab Telegram, Skill, dan Keamanan & privasi disimpan terpisah lewat tombolnya
+masing-masing.
+
+## Keamanan & privasi (popup)
+
+Saat AIT pertama kali dibuka, popup **Keamanan & privasi** menjelaskan apa yang dilakukan AIT terhadap secret dan data
+Anda: penyamaran sebelum ke model, pemulihan saat menulis file, file kredensial yang diblokir, apa yang disimpan dan
+dikirim, serta batasannya. Popup ini hanya muncul sekali per instalasi (dicatat di database, bukan di browser), dan bisa
+dibuka lagi lewat tombol **Keamanan & privasi** di grup Bantuan sidebar.
 
 Detail di [Konfigurasi](02-konfigurasi.md) dan [Prompt dari Telegram](11-telegram.md).
 

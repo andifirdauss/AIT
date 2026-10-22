@@ -23,6 +23,7 @@ public sealed partial class MemoryTransferService(
     IModuleRegistry registry,
     IEventBus eventBus,
     IActivityLogService activityLog,
+    ISecretGuard secrets,
     ILogger<MemoryTransferService> logger) : IMemoryTransferService
 {
     private const int MaxItems = 100_000;

@@ -19,7 +19,7 @@ public sealed partial class TesterAgent
             Scenarios = test.Scenarios.Select(s => new TestScenarioResult { Title = s.Title }).ToList()
         };
         using var http = CreateClient();
-        var run = new TestRun(input, report, http);
+        var run = new TestRun(input, report, http, secrets);
         try
         {
             // An app that is not running is started first; one that still does not answer fails every scenario the same

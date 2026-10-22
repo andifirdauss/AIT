@@ -35,6 +35,7 @@ Dipanggil oleh HTTP hook yang dipasang dari Setting (lihat
 |---|---|---|
 | `POST` | `/api/hooks/claude/session-end` | Hanya `reason: "clear"`: mencatat sesi, lalu meringkas transcript-nya di latar. Membalas `200` kosong seketika. `transcript_path` harus berada di `~/.claude/projects` (atau `$CLAUDE_CONFIG_DIR/projects`). |
 | `POST` | `/api/hooks/claude/session-start` | Hanya `source: "clear"`: menunggu ringkasan sesi yang di-`/clear` di `cwd` yang sama (maks 40 detik), lalu membalas `{ "hookSpecificOutput": { "hookEventName": "SessionStart", "additionalContext": "..." } }`. Tanpa ringkasan: `200` kosong. |
+| `POST` | `/api/hooks/claude/pre-tool-use` | Pemulih secret ([Keamanan & privasi](12-keamanan.md#pemulihan-nilai-asli)). Placeholder `{{AIT_SECRET:…}}` di `tool_input` diganti nilai asli dan dibalas `permissionDecision: "ask"` (atau `"allow"` bila `permission_mode` sudah menerima tanpa bertanya) dengan `updatedInput`. Placeholder yang tidak dikenali dibalas `"deny"`. Tanpa placeholder: `200` kosong. Hanya menjawab request dari loopback. |
 
 ## REST `/api`
 
@@ -59,6 +60,9 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `GET` | `/api/settings/claude/hooks?scope=User\|Project&projectId=&baseUrl=` | status hook `/clear` Context Keeper di file settings Claude Code |
 | `POST` | `/api/settings/claude/hooks/apply` | pasang hook `/clear`; body sama dengan apply (`proxyBaseUrl` = alamat AIT) |
 | `POST` | `/api/settings/claude/hooks/revert` | lepas hook `/clear` AIT; hook lain tetap |
+| `GET` | `/api/security` | status keamanan: `maskingEnabled`, `passthroughMasking`, `noticeAcknowledgedAt`, `masked`, `knownSecrets`, `restored`, `blockedReads` |
+| `PUT` | `/api/security` | `{ "maskingEnabled": true, "passthroughMasking": true }` |
+| `POST` | `/api/security/acknowledge` | popup Keamanan & privasi sudah dibaca (sekali per instalasi) |
 | `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
 | `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
 
