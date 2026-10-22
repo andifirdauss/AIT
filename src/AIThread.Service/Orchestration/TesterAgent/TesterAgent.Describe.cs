@@ -25,6 +25,7 @@ public sealed partial class TesterAgent
                 ? $"\"{Short(waitFor)}\"{(PlannerToolRunner.Bool(args, "gone") ? " hilang" : string.Empty)}"
                 : $"{(args["seconds"] is JsonValue s && s.TryGetValue<double>(out var seconds) ? seconds : 5):0.#}s",
             TesterTools.SwitchUser => $"👤 {PlannerToolRunner.Str(args, "account") ?? "?"}",
+            TesterTools.Remember => $"{PlannerToolRunner.Str(args, "name") ?? "?"} = \"{Short(PlannerToolRunner.Str(args, "value") ?? string.Empty)}\"",
             _ => string.Empty
         };
     }

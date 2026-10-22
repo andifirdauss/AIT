@@ -31,7 +31,8 @@ public sealed partial class ThreadOrchestrator
                 throw new AppValidationException("Thread ini tidak punya rencana testing UI/API: Auto Testing belum menyala saat thread dibuat, atau planner menilai perubahannya tidak bisa dites dari luar.");
 
             var succeeded = rows.Where(r => r.Status == ThreadTaskStatus.Succeeded).GroupBy(r => r.TaskKey, StringComparer.OrdinalIgnoreCase).Select(g => g.Last()).ToList();
-            if (succeeded.Count == 0) throw new AppValidationException("Tidak ada perubahan yang berhasil untuk dites.");
+            // A thread that only tested (no task) tests the existing behaviour again.
+            if (succeeded.Count == 0 && plan.Tasks.Count > 0) throw new AppValidationException("Tidak ada perubahan yang berhasil untuk dites.");
             var tester = (await nodeService.GetActiveAsync(NodeRole.Tester, cancellationToken)).FirstOrDefault()
                          ?? throw new AppValidationException("Belum ada node Tester aktif. Tambahkan di menu Node.");
             var project = await projectService.GetContextAsync(projectId, cancellationToken)

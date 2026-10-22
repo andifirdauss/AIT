@@ -16,6 +16,10 @@ public sealed partial class ThreadOrchestrator
         if (TestLogin.ParseDevPassword(request.Prompt) is { } devPassword && testLogins.TakeAsk(request.SessionId, request.ProjectId) is { } refused)
             return await TestWithDevPasswordAsync(refused, devPassword, request, observer, cancellationToken);
 
+        // "jalankan test lanjutan <n>": a suggestion of the session's latest thread that has one with that number.
+        if (TestFollowUpReply.Parse(request.Prompt) is { } number && await FollowUpThreadAsync(request, number, cancellationToken) is { } suggested)
+            return await FollowUpFromChatAsync(suggested, number, request, observer, cancellationToken);
+
         var prepared = await PrepareOrResumeAsync(Redacted(request), cancellationToken);
         return await ExecuteAsync(prepared, observer, cancellationToken);
     }

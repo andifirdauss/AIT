@@ -8,7 +8,8 @@ using Microsoft.Extensions.Logging;
 namespace AIThread.Service.Orchestration;
 
 // Plan and Execution include the verification fix tasks. Login: given by the developer for this test (TestLogin);
-// CanAskLogin: the developer can answer a login question in the chat, so the tester gets ask_login.
+// CanAskLogin: the developer can answer a login question in the chat, so the tester gets ask_login. Values: what earlier
+// runs of the thread remembered (a document number from the submit), for {{name}} placeholders.
 public sealed record TestingInput(
     AiNode Tester,
     ThreadRequest Request,
@@ -16,7 +17,8 @@ public sealed record TestingInput(
     ExecutionSummary Execution,
     ProjectContext Project,
     TestLogin? Login = null,
-    bool CanAskLogin = false);
+    bool CanAskLogin = false,
+    IReadOnlyDictionary<string, string>? Values = null);
 
 // ForModels describes the test in English for the wrapper. Node is the tester that answered (a fallback when the given
 // one was unavailable).
@@ -98,6 +100,13 @@ public sealed class TestingReport
     public const string LoginKindLogin = "login";
     public const string LoginKindDevPassword = "dev_password";
 
+    // Values the tester remembered (remember) for later steps and follow-up tests, by name: REQ-0123 as "requestNo".
+    public Dictionary<string, string> Values { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // Further tests the tester suggests (approval per level, edit before approve, reject), numbered for the developer;
+    // each keeps the result of its latest run.
+    public List<TestFollowUp> FollowUps { get; set; } = [];
+
     // Set when the tester stopped to ask for a login (ask_login): what needed it, and the login page.
     public string? LoginNeeded { get; set; }
     public string? LoginUrl { get; set; }
@@ -144,6 +153,23 @@ public sealed class TestScenarioResult
 
     // The test account the scenario was checked as, when the tester switched to one.
     public string? Actor { get; set; }
+}
+
+// A test the tester suggests after a run: what to check next and why, as scenarios like the planner's (with actors),
+// and what the developer still has to provide (an account, data). LastRun: the result of its latest run (its own
+// follow-ups merged into the parent report).
+public sealed class TestFollowUp
+{
+    public int Number { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Why { get; set; }
+    public string? Needs { get; set; }
+    public List<TestScenario> Scenarios { get; set; } = [];
+    public TestingReport? LastRun { get; set; }
+    public DateTime? LastRunAt { get; set; }
+
+    // Set when the follow-up became a scenario sheet (phase 3): its id.
+    public Guid? ScenarioId { get; set; }
 }
 
 // One http_request of the tester, as the developer sees it.

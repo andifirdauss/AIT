@@ -64,6 +64,11 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
         return ApiResponse<Guid>.Ok(await orchestrator.RetestInBackgroundAsync(id, login, cancellationToken), "Testing dijalankan ulang.");
     }
 
+    // Runs one of the tester's suggested follow-up tests; progress arrives over SSE.
+    [HttpPost("{id:guid}/follow-ups/{number:int}/run")]
+    public async Task<ActionResult<ApiResponse<Guid>>> RunFollowUp(Guid id, int number, CancellationToken cancellationToken) =>
+        ApiResponse<Guid>.Ok(await orchestrator.FollowUpInBackgroundAsync(id, number, cancellationToken), $"Test lanjutan {number} dijalankan.");
+
     // What undoing the thread's file changes would do, file by file, without touching anything.
     [HttpGet("{id:guid}/rollback")]
     public async Task<ActionResult<ApiResponse<RollbackPreviewDto>>> RollbackPreview(Guid id, CancellationToken cancellationToken) =>
