@@ -3,6 +3,7 @@ using AIThread.Common.Entities;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
+using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Orchestration;
 
@@ -84,6 +85,19 @@ public sealed class TestingReport
     // The username the test ran with (never the password).
     public string? LoginUser { get; set; }
 
+    // The project's test accounts the tester acted as (switch_user), in the order used.
+    public List<string> Accounts { get; set; } = [];
+
+    // The accounts logged in with the default development password (the project has none set).
+    public bool DefaultDevPassword { get; set; }
+
+    // What the login question was about: login (a username and password for this session) or dev_password (the
+    // project's development password was refused).
+    public string? LoginKind { get; set; }
+
+    public const string LoginKindLogin = "login";
+    public const string LoginKindDevPassword = "dev_password";
+
     // Set when the tester stopped to ask for a login (ask_login): what needed it, and the login page.
     public string? LoginNeeded { get; set; }
     public string? LoginUrl { get; set; }
@@ -127,6 +141,9 @@ public sealed class TestScenarioResult
     // passed | failed | blocked
     public string Status { get; set; } = TestingReport.Blocked;
     public string? Details { get; set; }
+
+    // The test account the scenario was checked as, when the tester switched to one.
+    public string? Actor { get; set; }
 }
 
 // One http_request of the tester, as the developer sees it.
@@ -152,7 +169,15 @@ public sealed class HttpExchange
 // (ITestBrowserLauncher), endpoints with HTTP requests, both only on localhost (TestUrls). An app that is not running is
 // started for the test and stopped after it (IAppLauncher). It never changes code and never fails the thread: a test that
 // cannot run is reported as blocked.
-public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder prompts, ITestBrowserLauncher browsers, IAppLauncher apps, ISecretGuard secrets) : ITesterAgent
+public sealed partial class TesterAgent(
+    INodeCaller caller,
+    INodePromptBuilder prompts,
+    ITestBrowserLauncher browsers,
+    IAppLauncher apps,
+    ISecretGuard secrets,
+    ITestAccountStore accountStore,
+    IImpersonationDetector impersonation,
+    ILogger<TesterAgent> logger) : ITesterAgent
 {
     private const int MaxSteps = 40;
     private const int MaxDiffLinesPerTask = 80;
@@ -178,16 +203,33 @@ public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder p
     private static readonly TimeSpan Linger = TimeSpan.FromSeconds(2);
 
     // One test run: its own cookies (a login carries over to the next request), and the browser once a browser tool
-    // asked for it.
-    private sealed class TestRun(TestingInput input, TestingReport report, HttpClient http, ISecretGuard secrets)
+    // asked for it. With the project's test accounts, switch_user makes one of them the current account: its own cookie
+    // jar for http_request, its own browser profile (a login made there survives the next runs), and the login the
+    // placeholders stand for (its username, the project's development password).
+    private sealed class TestRun(TestingInput input, TestingReport report, HttpClient http, ISecretGuard secrets) : IDisposable
     {
+        private readonly Dictionary<string, HttpClient> _clients = new(StringComparer.OrdinalIgnoreCase);
+
         public ISecretGuard Secrets { get; } = secrets;
         public TestingInput Input { get; } = input;
-        public TestLogin? Login => Input.Login;
         public TestingReport Report { get; } = report;
-        public HttpClient Http { get; } = http;
         public TestPlan Test => Input.Plan.Test!;
         public ITestBrowser? Browser { get; set; }
+
+        // The project's test accounts; null when it has no key or the store could not be read.
+        public TestAccountSet? Accounts { get; set; }
+
+        // The account switch_user made current; null: the developer's login (Input.Login), if any.
+        public TestAccount? Account { get; private set; }
+
+        public TestLogin? Login => Account is { } account && Accounts is { } set
+            ? new TestLogin(account.Username, set.Settings.EffectiveDevPassword)
+            : Input.Login;
+
+        public HttpClient Http => Account is { } account && _clients.TryGetValue(account.Username, out var client) ? client : http;
+
+        // Problems the browsers closed by switch_user saw, for the report.
+        public List<string> BrowserProblems { get; } = [];
 
         // The app this run started because it was not running; stopped when the run ends.
         public RunningApp? App { get; set; }
@@ -195,8 +237,29 @@ public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder p
         // Set when the browser could not start; later browser tools answer with it instead of trying again.
         public string? BrowserError { get; set; }
 
-        // The password back to its placeholder, in anything the model, the log or the report get, and the secrets the
+        // The browser profile of the current account: one per project and account, since localhost cookies are not kept
+        // apart by port. Null: the tester's shared profile.
+        public string? Profile => Account is null ? null : $"{ProfileKey(Input.Project.Key)}-{Account.Username}";
+
+        public void Switch(TestAccount account, Func<HttpClient> create)
+        {
+            Account = account;
+            if (!_clients.ContainsKey(account.Username)) _clients[account.Username] = create();
+        }
+
+        // The passwords back to their placeholder, in anything the model, the log or the report get, and the secrets the
         // app answered with (a token from a login endpoint) masked too; RunToolAsync writes them back into later calls.
-        public string Mask(string text) => Secrets.Redact(Login?.Mask(text) ?? text);
+        public string Mask(string text)
+        {
+            var masked = Input.Login?.Mask(text) ?? text;
+            if (Accounts is { } set && Account is not null) masked = new TestLogin(Account.Username, set.Settings.EffectiveDevPassword).Mask(masked);
+            return Secrets.Redact(masked);
+        }
+
+        public void Dispose()
+        {
+            foreach (var client in _clients.Values) client.Dispose();
+            _clients.Clear();
+        }
     }
 }

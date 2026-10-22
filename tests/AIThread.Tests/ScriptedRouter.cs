@@ -25,6 +25,7 @@ public enum ScriptedAgent
     MemoryRelabeler,
     ModuleDuplicates,
     FunctionCalls,
+    ImpersonationDetector,
     Other
 }
 
@@ -83,6 +84,7 @@ public sealed class ScriptedRouter : INineRouterService
                         ScriptedAgent.ModuleDuplicates => _ => Text("""{"merges": []}"""),
                         ScriptedAgent.FunctionCalls => _ => Text("""{"functions": []}"""),
                         ScriptedAgent.UnitTestLabeler => _ => Text("""{"tests": []}"""),
+                        ScriptedAgent.ImpersonationDetector => _ => Text("""{"available": false}"""),
                         _ => throw new InvalidOperationException($"Unscripted {call.Agent} call (model {call.Model}).")
                     };
         var result = reply(call);
@@ -169,6 +171,7 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.MemoryRelabeler, StringComparison.Ordinal)) return ScriptedAgent.MemoryRelabeler;
         if (system.StartsWith(AgentPrompts.ModuleDuplicates, StringComparison.Ordinal)) return ScriptedAgent.ModuleDuplicates;
         if (system.StartsWith(AgentPrompts.FunctionCalls, StringComparison.Ordinal)) return ScriptedAgent.FunctionCalls;
+        if (system.StartsWith(AgentPrompts.ImpersonationDetector, StringComparison.Ordinal)) return ScriptedAgent.ImpersonationDetector;
         return ScriptedAgent.Other;
     }
 }

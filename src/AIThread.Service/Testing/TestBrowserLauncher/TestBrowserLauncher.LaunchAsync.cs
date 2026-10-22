@@ -6,7 +6,7 @@ namespace AIThread.Service.Testing;
 public sealed partial class TestBrowserLauncher
 {
     // notice: progress text for the developer (waiting for another thread's test, downloading Node.js or Chromium).
-    public async Task<ITestBrowser> LaunchAsync(Func<string, Task> notice, CancellationToken cancellationToken)
+    public async Task<ITestBrowser> LaunchAsync(Func<string, Task> notice, CancellationToken cancellationToken, string? profile = null)
     {
         if (!await _gate.WaitAsync(0, cancellationToken))
         {
@@ -24,9 +24,9 @@ public sealed partial class TestBrowserLauncher
             foreach (var (channel, name) in Browsers)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                context = await TryLaunchAsync(playwright, channel, failures);
+                context = await TryLaunchAsync(playwright, channel, profile, failures);
                 if (context is null && channel is null && await InstallChromiumAsync(notice, failures, cancellationToken))
-                    context = await TryLaunchAsync(playwright, channel, failures);
+                    context = await TryLaunchAsync(playwright, channel, profile, failures);
                 if (context is null) continue;
 
                 context.SetDefaultTimeout(ActionTimeoutMs);

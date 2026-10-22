@@ -626,6 +626,57 @@ Penanganan password:
 - Alternatif lama tetap berlaku: kredensial yang ditulis di *Instruksi tambahan* node Tester dipakai tester (tetapi
   tersimpan apa adanya, terkirim ke model, dan ikut export profil setup — hindari untuk password).
 
+### Akun uji (berganti user)
+
+Alur bisnis jarang selesai di satu user: pengaju submit, atasan level 1 meng-approve, HR level 2, dan seterusnya. Untuk
+itu tiap project punya **akun uji** (Project > Detail → *Akun uji*), dibagi ke semua developer project lewat project
+key dan ikut store long memory seperti katalog unit test.
+
+- Tiap akun: **username**, **peran** (*Pengaju*, *Atasan*, *HR*, *Administrator*, …), **atribut bebas** (NIK, Unit,
+  Level approval, Atasan = username atasannya, …), dan catatan. Username unik per project, tidak peka huruf besar/kecil.
+- **Tidak ada password per akun.** Project punya satu **Password dev**: kosong = bawaan `Test@1234` (cukup panjang, ada
+  huruf besar, angka, dan simbol, supaya lolos validasi browser yang umum). Nilai ini bukan rahasia dan terlihat oleh
+  semua developer project; untuk password asli tetap pakai balasan `login <user> <password>` (memori saja).
+- Brief planner dan tester mendapat bagian `# Test accounts` (username · peran · atribut, tanpa password). Planner
+  memberi skenario field **`actor`** (username atau peran dari daftar itu); validator menolak aktor yang tidak dikenal.
+  Alur yang melewati beberapa user ditulis sebagai beberapa skenario berurutan, masing-masing dengan aktornya.
+- Tool tester **`switch_user(account)`** menjadikan satu akun aktif:
+  - **browser**: jendela yang terbuka ditutup, dan tool browser berikutnya membuka **profil browser milik akun itu**
+    (`%LOCALAPPDATA%\AIThread\tester-browser\accounts\<project>-<username>\<browser>`), terpisah per project karena cookie
+    `localhost` tidak dipisah per port. Login akun itu bertahan untuk run berikutnya;
+  - **HTTP**: `http_request` memakai cookie jar akun itu (sesi akun lain tetap utuh dalam run yang sama);
+  - **placeholder**: `{{username}}` = username akun aktif, `{{password}}` = Password dev project. Model tidak pernah
+    melihat nilainya, dan nilainya disamarkan lagi di semua output.
+- Progres `👤 switch_user`, laporan menyebut `akun pengaju01, atasan01` dan aktor per skenario
+  (`✅ **Approve** (atasan01) — …`). Bila password dev bawaan yang dipakai, laporan memberi catatan dan menautkan ke
+  kartu *Akun uji*.
+- **Password dev ditolak**: tester memanggil `ask_login` dengan `kind: "dev_password"`. Jawaban akhir meminta balasan
+  `password dev <nilai>`. Nilai itu disimpan sebagai Password dev project (sumber *chat*), lalu testing thread tadi
+  diulang dengan akun uji. Balasan `login <user> <password>` tetap bisa dipakai sebagai gantinya (hanya untuk sesi itu).
+
+#### Login as / impersonate
+
+Banyak aplikasi internal punya fitur admin *login sebagai user lain*. Ada atau tidaknya, cara memakainya, dan peran yang
+boleh memakainya berbeda per project, jadi AIT **mendeteksinya per project**:
+
+1. **Scan kode tanpa model** (`ImpersonationScanner`): pola seperti `Impersonate`, `LoginAs`, `SwitchUser`, `RunAs`,
+   `SignInAs`, *login sebagai*, beserta beberapa baris di sekitarnya (tempat `[Authorize(Roles = …)]`/`IsInRole`
+   biasanya ada). Folder build/pihak ketiga dan file yang dilindungi kebijakan rahasia dilewati.
+2. **Model murah** (node Tools → Wrapper → Planner, seperti `MemoryAi`) membaca temuan itu dan menjawab: tersedia atau
+   tidak, *cara* (menu/URL/endpoint, dengan `{{target}}` untuk user tujuan), *cara kembali*, dan *peran* yang boleh.
+   Tanpa temuan tidak ada model yang dipanggil (hasil: *tidak ada*).
+3. Berjalan **sekali** saat test pertama di project yang punya lebih dari satu akun uji (progres
+   `🔎 Mencari fitur login as…`), atau lewat tombol **Deteksi** di kartu *Akun uji*.
+4. **Pengamatan tester**: bila tester melihat fitur *login as* yang belum tercatat, ia melaporkannya di `report_test`
+   (`impersonation`), dan AIT mencatatnya (sumber *tester*), kecuali developer sudah mengisi atau mengonfirmasinya.
+5. Hasil tampil di kartu *Akun uji* beserta dasarnya (file:baris), dan bisa **diubah/dikonfirmasi** developer. Hasil yang
+   belum dikonfirmasi tetap dipakai, dan brief tester menyebutnya.
+
+Saat `switch_user` ke akun yang bukan pemegang peran itu, tester diberi jalan pintas: login di profil akun itu sebagai
+akun uji ber-peran admin (password dev), lalu pakai *cara* login as untuk masuk sebagai akun tujuan; bila gagal, logout
+dan login biasa. Peran dicocokkan tanpa peka huruf besar/kecil. SSO (Microsoft/Google) di luar cakupan: skenario yang
+membutuhkannya ditandai *tidak bisa dicek* dengan alasan.
+
 ### Hasil
 
 *Lolos* (tidak ada skenario gagal dan minimal satu lolos), *Gagal* (ada skenario gagal), *Tidak bisa dicek* (tidak ada

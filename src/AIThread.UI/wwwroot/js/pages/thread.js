@@ -333,11 +333,16 @@
       report.browser ? escapeHtml(report.browser) : null,
       report.testerModel ? `Tester: <span class="mono">${escapeHtml(report.testerModel)}</span>` : null,
       report.loginUser ? `login <span class="mono">${escapeHtml(report.loginUser)}</span>` : null,
+      report.accounts?.length ? `akun ${report.accounts.map(a => `<span class="mono">${escapeHtml(a)}</span>`).join(', ')}` : null,
       report.appStarted ? `dijalankan AIT <span class="mono">${escapeHtml(report.appStarted)}</span>` : null,
       report.steps ? `${fmt.number(report.steps)} langkah` : null
     ].filter(Boolean).join(' · ');
     const parts = [`<div class="small text-secondary">${head}</div>`];
     if (report.error) parts.push(`<div class="alert alert-warning small mt-2 mb-2">${escapeHtml(report.error)}</div>`);
+    if (report.defaultDevPassword) {
+      parts.push(`<div class="small text-secondary mt-2">ℹ️ Login akun uji memakai password dev bawaan. Bila aplikasi memakai password lain di dev, isi di
+        <a href="/Project/Detail/${detail.summary.projectId}#testAccountCard">Project › Akun uji</a>.</div>`);
+    }
     if (report.appOutput) {
       parts.push(winFrame({ id: 'testing-app-output', title: 'Output aplikasi', className: 'mb-2',
         body: `<pre class="code-block small">${escapeHtml(report.appOutput)}</pre>` }));
@@ -349,7 +354,7 @@
     if (report.summary) parts.push(`<div class="small mt-2">${escapeHtml(report.summary)}</div>`);
     if (report.scenarios?.length) {
       parts.push(`<div class="mt-2">${list(report.scenarios.map(s =>
-        `<li>${scenarioIcons[s.status] || '•'} <strong>${escapeHtml(s.title)}</strong>${s.details && s.details !== report.error ? ` — ${escapeHtml(s.details)}` : ''}</li>`))}</div>`);
+        `<li>${scenarioIcons[s.status] || '•'} <strong>${escapeHtml(s.title)}</strong>${s.actor ? ` <span class="mono small text-secondary">(${escapeHtml(s.actor)})</span>` : ''}${s.details && s.details !== report.error ? ` — ${escapeHtml(s.details)}` : ''}</li>`))}</div>`);
     }
     if (report.browserErrors?.length) {
       parts.push(winFrame({ id: 'testing-browser-errors', title: `Error di browser (${report.browserErrors.length})`, className: 'mb-2',

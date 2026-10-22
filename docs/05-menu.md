@@ -178,6 +178,21 @@ dan setting-nya dipakai bersama semua developer project (lewat project key) dan 
   detik; kosong = ikut *Timeout build*).
 - Kartu diperbarui sendiri saat thread project ini selesai.
 
+### Akun uji
+
+Kartu **Akun uji** (di bawah Unit test) berisi akun yang dipakai node Tester untuk [berganti user](07-cara-kerja.md#akun-uji-berganti-user)
+saat testing, misalnya pengaju, atasan, approver per level, dan admin. Akun dibagi ke semua developer project lewat
+project key; tanpa project key kartu menjelaskan bahwa akun belum bisa disimpan. Semua developer project boleh mengubahnya.
+
+- Tabel: username, peran, atribut (`NIK: 123`, `Atasan: atasan01`, …), catatan, dan siapa yang terakhir mengubah.
+  **Tambah akun** / **Ubah** membuka form dengan atribut dinamis; akun baru diawali kunci atribut yang sudah dipakai akun
+  lain di project, supaya kolomnya konsisten. Pakai akun uji, bukan akun karyawan sungguhan.
+- **Password dev**: kosong = bawaan `Test@1234`. Nilai yang diisi (di sini atau lewat balasan chat `password dev <nilai>`)
+  terlihat oleh semua developer project, jadi hanya untuk password bypass di dev.
+- **Login as / impersonate**: hasil deteksi (tersedia/tidak ada/belum diketahui, cara, cara kembali, peran, dasar
+  temuan file:baris, sumber, dikonfirmasi atau belum). **Deteksi** menjalankan scan kode + model murah lagi; **Ubah**
+  mengisi atau mengoreksi sendiri dan bisa menandai *sudah dicek*.
+
 ### Struktur kode
 
 Paling bawah, jendela **Struktur kode** menampilkan isi project tanpa compile dan tanpa dependensi tambahan. Data

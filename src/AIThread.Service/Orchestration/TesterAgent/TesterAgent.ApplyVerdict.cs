@@ -46,5 +46,6 @@ public sealed partial class TesterAgent
         var status = PlannerToolRunner.Str(verdict, "status")?.Trim().ToLowerInvariant();
         scenario.Status = status is TestingReport.Passed or TestingReport.Failed ? status : TestingReport.Blocked;
         scenario.Details = PlannerToolRunner.Str(verdict, "details")?.Trim() ?? string.Empty;
+        scenario.Actor = PlannerToolRunner.Str(verdict, "actor")?.Trim() is { Length: > 0 } actor ? actor : null;
     }
 }

@@ -8,7 +8,7 @@ public sealed partial class TesterAgent
 {
     private async Task<string> RunToolAsync(ToolCall call, TestRun run, ThreadRecorder recorder, ClientProgress progress, string? badge, CancellationToken cancellationToken)
     {
-        var available = TesterTools.Available(run.Test.Level);
+        var available = TesterTools.Available(run.Test.Level, canSwitchUser: CanSwitchUser(run));
         if (!available.Contains(call.Name))
             return $"Error: tool '{call.Name}' is not available. Available: {string.Join(", ", available)}, {TesterTools.ReportTest}.";
 
@@ -26,9 +26,12 @@ public sealed partial class TesterAgent
 
         try
         {
-            return run.Mask(call.Name == TesterTools.HttpRequest
-                ? await HttpRequestAsync(args, run, recorder, progress, cancellationToken)
-                : await BrowserAsync(call.Name, args, run, progress, cancellationToken));
+            return run.Mask(call.Name switch
+            {
+                TesterTools.HttpRequest => await HttpRequestAsync(args, run, recorder, progress, cancellationToken),
+                TesterTools.SwitchUser => await SwitchUserAsync(args, run, recorder),
+                _ => await BrowserAsync(call.Name, args, run, progress, cancellationToken)
+            });
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

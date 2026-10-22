@@ -20,7 +20,9 @@ public static class PlanValidator
 
     // requireTest: Auto Testing is on, so a plan that changes files must say how to test it. unitTests: the project has
     // a unit test catalog; null drops the plan's tests section.
-    public static IReadOnlyList<string> Validate(ThreadPlan plan, WorkspaceScope scope, bool requireTest = false, UnitTestRules? unitTests = null)
+    // actors: the test accounts and roles a test scenario may name; null keeps any actor.
+    public static IReadOnlyList<string> Validate(ThreadPlan plan, WorkspaceScope scope, bool requireTest = false, UnitTestRules? unitTests = null,
+        IReadOnlyCollection<string>? actors = null)
     {
         var errors = new List<string>();
         plan.Summary = plan.Summary?.Trim() ?? string.Empty;
@@ -31,7 +33,7 @@ public static class PlanValidator
             // Nothing changes. The developer may still want the existing behaviour tested: on the running app (a
             // runnable test section) and/or by unit tests (tests.run).
             if (requireTest && plan.Test is { } wanted && !string.Equals(wanted.Level?.Trim(), TestPlan.None, StringComparison.OrdinalIgnoreCase))
-                ValidateTest(plan, requireTest, errors);
+                ValidateTest(plan, requireTest, errors, actors);
             else
                 plan.Test = null;
             ValidateTestRun(plan, unitTests, errors);
@@ -39,7 +41,7 @@ public static class PlanValidator
                 errors.Add("The plan has no tasks and no answer. Add tasks, or put the full answer in \"answer\".");
             return errors;
         }
-        ValidateTest(plan, requireTest, errors);
+        ValidateTest(plan, requireTest, errors, actors);
 
         if (plan.Tasks.Count > MaxTasks)
             errors.Add($"The plan has {plan.Tasks.Count} tasks; the maximum is {MaxTasks}. Merge related changes.");
@@ -284,7 +286,7 @@ public static class PlanValidator
 
     private static bool IsCSharp(string path) => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
 
-    private static void ValidateTest(ThreadPlan plan, bool requireTest, List<string> errors)
+    private static void ValidateTest(ThreadPlan plan, bool requireTest, List<string> errors, IReadOnlyCollection<string>? actors)
     {
         if (!requireTest)
         {
@@ -307,6 +309,7 @@ public static class PlanValidator
             scenario.Target = string.IsNullOrWhiteSpace(scenario.Target) ? null : scenario.Target.Trim();
             scenario.Steps = (scenario.Steps ?? []).Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim()).ToList();
             scenario.Expect = scenario.Expect?.Trim() ?? string.Empty;
+            scenario.Actor = string.IsNullOrWhiteSpace(scenario.Actor) ? null : scenario.Actor.Trim();
         }
 
         if (test.Level is not (TestPlan.Ui or TestPlan.Api or TestPlan.None))
@@ -335,6 +338,8 @@ public static class PlanValidator
             var scenario = test.Scenarios[i];
             if (scenario.Title.Length == 0) scenario.Title = $"Scenario {i + 1}";
             if (scenario.Expect.Length == 0) errors.Add($"test: scenario \"{scenario.Title}\" needs \"expect\", what the tester must see when it works.");
+            if (scenario.Actor is { } actor && actors is { Count: > 0 } && !actors.Contains(actor, StringComparer.OrdinalIgnoreCase))
+                errors.Add($"test: scenario \"{scenario.Title}\" has actor '{actor}', which is neither a test account nor the role of one. Use a username or a role from \"# Test accounts\": {string.Join(", ", actors.Distinct(StringComparer.OrdinalIgnoreCase))}.");
         }
     }
 

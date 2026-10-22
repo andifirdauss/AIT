@@ -14,9 +14,10 @@ public sealed partial class TesterAgent
         {
             try
             {
-                run.Browser = await browsers.LaunchAsync(text => progress.DetailAsync(text, cancellationToken), cancellationToken);
+                run.Browser = await browsers.LaunchAsync(text => progress.DetailAsync(text, cancellationToken), cancellationToken, run.Profile);
                 run.Report.Browser = run.Browser.Name;
-                await progress.DetailAsync($"🌐 {run.Browser.Name} dibuka (non-headless)", cancellationToken);
+                await progress.DetailAsync($"🌐 {run.Browser.Name} dibuka (non-headless)" + (run.Account is { } account ? $" · profil {account.Username}" : string.Empty),
+                    cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
