@@ -112,6 +112,8 @@ public class UnitTestCatalogTests
         var all = new ThreadPlan { Summary = "s", Tests = new PlanTests { Run = ["UT-0001", "all"] } };
         Assert.Empty(Errors(all));
         Assert.Equal([PlanTests.All], all.Tests!.Run);
+        // New tests without the tasks that write them are refused, not dropped: the request would go untested.
+        Assert.Contains(Errors(new ThreadPlan { Summary = "s", Answer = "a", Tests = new PlanTests { New = [newTest] } }), e => e.Contains("tests.new needs tasks that write the tests"));
     }
 
     [Fact]
