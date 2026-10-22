@@ -128,7 +128,7 @@ menyambung ulang otomatis bila 9router baru menyala setelah AIT. Short memory (G
 
 ## 6. AIThread.exe standalone (tanpa .NET)
 
-Untuk dipakai tanpa .NET SDK atau `dotnet run`, buat `AIThread.exe` self-contained (Windows x64, ±60 MB, satu berkas):
+Untuk dipakai tanpa .NET SDK atau `dotnet run`, buat `AIThread.exe` self-contained (Windows x64, ±80 MB, satu berkas):
 
 ```powershell
 .\scripts\publish-exe.ps1 -Zip     # hasil: dist\AIThread\ dan dist\AIThread-win-x64.zip
@@ -180,7 +180,7 @@ instance kedua mendeteksi yang pertama dan hanya membuka dashboard.
 
 ### Lewat npm
 
-`.\scripts\publish-npm.ps1` membuat dua paket di `dist\npm`: `aithread-win-x64` (berisi `AIThread.exe`, ±60 MB) dan
+`.\scripts\publish-npm.ps1` membuat dua paket di `dist\npm`: `aithread-win-x64` (berisi `AIThread.exe`, ±80 MB terkompresi) dan
 `aithread` (launcher kecil, `optionalDependencies` ke paket platform, `dependencies` ke `9router`). Pasang dengan
 `npm i -g dist\npm\aithread-win-x64-<versi>.tgz dist\npm\aithread-<versi>.tgz`, lalu jalankan `aithread` (perintah dan
 opsinya sama dengan exe). `-Publish` menjalankan `npm publish` untuk kedua paket; versi diambil dari `<Version>` di

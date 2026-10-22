@@ -5,7 +5,7 @@ namespace AIThread.Service.Testing;
 
 public sealed partial class TestBrowserLauncher
 {
-    // notice: progress text for the developer (waiting for another thread's test, downloading Chromium).
+    // notice: progress text for the developer (waiting for another thread's test, downloading Node.js or Chromium).
     public async Task<ITestBrowser> LaunchAsync(Func<string, Task> notice, CancellationToken cancellationToken)
     {
         if (!await _gate.WaitAsync(0, cancellationToken))
@@ -18,6 +18,7 @@ public sealed partial class TestBrowserLauncher
         IBrowserContext? context = null;
         try
         {
+            await EnsureNodeAsync(notice, cancellationToken);
             playwright = await Playwright.CreateAsync();
             var failures = new List<string>();
             foreach (var (channel, name) in Browsers)

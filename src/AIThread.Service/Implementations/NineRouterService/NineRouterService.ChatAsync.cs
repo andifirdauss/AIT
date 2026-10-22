@@ -11,6 +11,9 @@ public sealed partial class NineRouterService
         CancellationToken cancellationToken = default)
     {
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
+        // The last line of defence: every model call of every agent goes through here, so nothing reaches a provider
+        // with a secret in it (in place, so the agent's own message list keeps the placeholders too).
+        secrets.RedactMessages(request.Messages);
         var emitted = false;
         Func<string, Task>? trackedDelta = onDelta is null
             ? null

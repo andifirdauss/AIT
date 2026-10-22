@@ -55,8 +55,9 @@ public sealed partial class MemoryExtractor
                 var area = areas is [{ } single] ? single : null;
                 try
                 {
+                    // Memory outlives the thread and may be shared with the team: a secret the model repeated stays masked.
                     saved.Add(await memoryService.AddShortAsync(new SaveMemoryRequest(type, thread.ProjectId, memory.Module, kind, memory.Keywords,
-                        memory.Description, layers, area, memory.OtherModules), thread.Id, cancellationToken));
+                        secrets.Redact(memory.Description), layers, area, memory.OtherModules), thread.Id, cancellationToken));
                 }
                 catch (AppValidationException ex)
                 {

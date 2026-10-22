@@ -1217,3 +1217,48 @@ body.win-modal-docked .modal-backdrop { opacity: 0 !important; pointer-events: n
   font-weight: 600;
   line-height: 1.5;
 }
+
+/* Security & privacy notice (Views/Shared/_SecurityNotice.cshtml): one card per measure, the illustration reuses the
+   tour's .ob-svg classes so it follows the color mode. */
+.security-point {
+  display: flex;
+  gap: 0.75rem;
+  height: 100%;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background: var(--app-muted-bg);
+}
+
+.security-point-icon {
+  flex: 0 0 auto;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.security-point h6 {
+  margin-bottom: 0.3rem;
+  font-size: 0.95rem;
+}
+
+.security-point p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--bs-secondary-color);
+}
+
+.security-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.security-stat {
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: var(--app-muted-bg);
+}
+
+.security-stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}

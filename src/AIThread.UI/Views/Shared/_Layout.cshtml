@@ -47,6 +47,7 @@
                 <symbol id="nav-setting" viewBox="0 0 24 24"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></symbol>
                 <symbol id="nav-docs" viewBox="0 0 24 24"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5h-5A1.5 1.5 0 0 1 3 16z" /><path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5h5a1.5 1.5 0 0 0 1.5-1.5z" /></symbol>
                 <symbol id="nav-guide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.4M12 17h.01" /></symbol>
+                <symbol id="nav-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></symbol>
             </svg>
             <nav class="app-nav">
                 <div class="app-nav-section">Ruang kerja</div>
@@ -63,6 +64,7 @@
                 <div class="app-nav-section">Bantuan</div>
                 <a class="app-nav-link @Active("Docs")" asp-controller="Docs" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-docs" /></svg>Docs</a>
                 <button type="button" class="app-nav-link" id="onboardingOpen"><svg class="app-nav-icon"><use href="#nav-guide" /></svg>Panduan memulai</button>
+                <button type="button" class="app-nav-link" id="securityNoticeOpen"><svg class="app-nav-icon"><use href="#nav-shield" /></svg>Keamanan &amp; privasi</button>
             </nav>
             <div class="app-sidebar-footer">
                 <div id="routerPill" class="router-pill" title="Status koneksi 9router">
@@ -113,6 +115,8 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
 
     <partial name="_Onboarding" />
+
+    <partial name="_SecurityNotice" />
 
     @* Asked once, the first time AIThread is opened, when no developer name is saved and git has no user.name (site.js). *@
     <div class="modal fade" id="developerNameModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="developerNameTitle" aria-hidden="true">

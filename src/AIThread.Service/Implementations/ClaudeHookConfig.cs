@@ -3,7 +3,8 @@ using System.Text.Json.Nodes;
 namespace AIThread.Service.Implementations;
 
 // AIThread's entries in the "hooks" block of a Claude Code settings.json: official HTTP hooks that carry a
-// conversation across /clear (see SessionHandoff). Hooks the user configured themselves are never touched.
+// conversation across /clear (see SessionHandoff), and one that writes masked secrets back into Claude Code's edit
+// and shell tools before they run (PreToolUse, see SecretGuard). Hooks the user configured themselves are never touched.
 public static class ClaudeHookConfig
 {
     public const string PathMarker = "/api/hooks/claude/";
@@ -14,13 +15,20 @@ public static class ClaudeHookConfig
     // Above SessionHandoff's 40-second wait for the summary.
     private const int SessionStartTimeoutSeconds = 60;
 
+    // Runs before every matching tool call; the endpoint only reads the file the call changes.
+    private const int PreToolUseTimeoutSeconds = 10;
+
+    // The tools whose input may carry a placeholder copied from a masked file or answer.
+    public const string PreToolUseMatcher = "Edit|MultiEdit|Write|NotebookEdit|Bash";
+
     public static JsonObject Block(string baseUrl)
     {
         var root = baseUrl.Trim().TrimEnd('/');
         return new JsonObject
         {
             ["SessionEnd"] = new JsonArray { Group($"{root}{PathMarker}session-end", SessionEndTimeoutSeconds) },
-            ["SessionStart"] = new JsonArray { Group($"{root}{PathMarker}session-start", SessionStartTimeoutSeconds) }
+            ["SessionStart"] = new JsonArray { Group($"{root}{PathMarker}session-start", SessionStartTimeoutSeconds) },
+            ["PreToolUse"] = new JsonArray { Group($"{root}{PathMarker}pre-tool-use", PreToolUseTimeoutSeconds, PreToolUseMatcher) }
         };
     }
 
@@ -61,6 +69,13 @@ public static class ClaudeHookConfig
         if (hooks.Count == 0) settings.Remove("hooks");
     }
 
+    // Every hook of Block is there (an install from an older version lacks the PreToolUse one).
+    public static bool IsComplete(JsonObject settings) =>
+        settings["hooks"] is JsonObject hooks
+        && Block("http://localhost").Select(p => p.Key).All(hookEvent =>
+            hooks[hookEvent] is JsonArray groups
+            && groups.Any(g => g?["hooks"] is JsonArray handlers && handlers.Any(IsAIThread)));
+
     // The base URL the installed AIThread hooks point at, or null when none is installed.
     public static string? InstalledBaseUrl(JsonObject settings)
     {
@@ -81,9 +96,9 @@ public static class ClaudeHookConfig
         return null;
     }
 
-    private static JsonObject Group(string url, int timeoutSeconds) => new()
+    private static JsonObject Group(string url, int timeoutSeconds, string matcher = "clear") => new()
     {
-        ["matcher"] = "clear",
+        ["matcher"] = matcher,
         ["hooks"] = new JsonArray { new JsonObject { ["type"] = "http", ["url"] = url, ["timeout"] = timeoutSeconds } }
     };
 

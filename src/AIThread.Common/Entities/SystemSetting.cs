@@ -61,4 +61,13 @@ public class SystemSetting : BaseEntity
 
     // Name recorded on business pages and revisions. Null = the Windows user name.
     public string? DeveloperName { get; set; }
+
+    // Secrets (passwords, API keys, tokens, private keys, ...) are replaced by placeholders before any text reaches a
+    // model, and put back only when AIT writes a file (SecretGuard). PassthroughSecretMasking also masks the requests
+    // forwarded to 9router without orchestration.
+    public bool SecretMaskingEnabled { get; set; } = true;
+    public bool PassthroughSecretMasking { get; set; } = true;
+
+    // When the security & privacy notice was closed; null = it opens on the next page load.
+    public DateTime? PrivacyNoticeAcknowledgedAt { get; set; }
 }

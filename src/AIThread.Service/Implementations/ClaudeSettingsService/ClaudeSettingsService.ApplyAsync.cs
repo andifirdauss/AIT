@@ -24,6 +24,8 @@ public sealed partial class ClaudeSettingsService
                 continue;
             env[key] = value?.DeepClone();
         }
+        // With its requests going through AIT, Claude Code also stops reading credential files itself.
+        ClaudePermissionRules.Apply(root);
 
         await WriteAsync(target.Path, root, cancellationToken);
         return await GetStatusAsync(request.Scope, request.ProjectId, request.ProxyBaseUrl, cancellationToken);

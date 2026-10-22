@@ -50,6 +50,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | 9 | [Referensi API](09-referensi-api.md) | Endpoint proxy Anthropic, REST `/api`, event SSE |
 | 10 | [Pengembangan](10-pengembangan.md) | Struktur solusi, build, test, migrasi, titik ekstensi |
 | 11 | [Prompt dari Telegram](11-telegram.md) | Bot Telegram pribadi untuk prompt jarak jauh: setup, perintah, progres live, keamanan, troubleshooting |
+| 12 | [Keamanan & privasi](12-keamanan.md) | Penyamaran secret sebelum ke model, pemulihan saat menulis file, file kredensial yang diblokir, aturan per project, data yang disimpan & dikirim, batasan |
 
 ## Istilah
 

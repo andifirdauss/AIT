@@ -20,6 +20,7 @@ namespace AIThread.Service.Implementations;
 public sealed partial class NineRouterService(
     IHttpClientFactory httpClientFactory,
     ISettingService settingService,
+    ISecretGuard secrets,
     ILogger<NineRouterService> logger) : INineRouterService
 {
     public const string HttpClientName = "NineRouter";

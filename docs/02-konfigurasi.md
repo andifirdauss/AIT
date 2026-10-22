@@ -119,6 +119,19 @@ Tab `/Setting#skills` berisi Skill Orchestrator dan gudang skill offline. Cara k
 berubah langsung tanpa refresh. Folder gudang: `%LOCALAPPDATA%\AIThread\skills`, bisa diubah lewat
 `AIThread:SkillsDirectory` di `appsettings.json`.
 
+### Keamanan & privasi
+
+Tab `/Setting#keamanan` mengatur penyamaran secret. Detailnya ada di [Keamanan & privasi](12-keamanan.md).
+
+| Field | Default | Keterangan |
+|---|---|---|
+| Samarkan secret sebelum dikirim ke model dan sebelum disimpan | aktif | Password, API key, token, JWT, private key, dan password di connection string diganti `{{AIT_SECRET:…}}` sebelum dikirim ke model, lalu dipasang kembali saat AIT menulis file. Bila dimatikan, semuanya dikirim apa adanya. |
+| Samarkan juga request passthrough | aktif | Berlaku untuk request yang diteruskan apa adanya ke 9router. Untuk Claude Code, pasang hook di menu CLI agar placeholder dikembalikan sebelum Edit/Write/Bash. |
+
+Blokir file kredensial (`.pem`, `.pfx`, kunci SSH, `.npmrc`, `~/.aws`, …) selalu berlaku. Pengecualian dan nama setting
+tambahan diatur per project di `.aithread/project.json` → `"secrets"`. Lokasi kunci placeholder bisa diubah lewat
+`AIThread:SecretKeyPath` di `appsettings.json` (default `%LOCALAPPDATA%\AIThread\secret-mask.key`).
+
 ## Menu Node
 
 Pipeline butuh minimal **1 Planner, 1 Executor, 1 Wrapper** yang aktif. Banner di atas halaman menunjukkan

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300" role="img" aria-label="Ikon chip prosesor">
+  <title>Ikon chip prosesor</title>
+
+  <!-- Pin: 2 per sisi -->
+  <g fill="#3B6FD4">
+    <rect x="111" y="28"  width="28" height="50" rx="4"/>
+    <rect x="161" y="28"  width="28" height="50" rx="4"/>
+    <rect x="111" y="222" width="28" height="50" rx="4"/>
+    <rect x="161" y="222" width="28" height="50" rx="4"/>
+    <rect x="28"  y="111" width="50" height="28" rx="4"/>
+    <rect x="28"  y="161" width="50" height="28" rx="4"/>
+    <rect x="222" y="111" width="50" height="28" rx="4"/>
+    <rect x="222" y="161" width="50" height="28" rx="4"/>
+  </g>
+
+  <!-- Badan chip -->
+  <rect x="60" y="60" width="180" height="180" rx="28" fill="#3B6FD4"/>
+
+  <!-- 8 thread putih -->
+  <g fill="#fff">
+    <rect x="90" y="90" width="32" height="32" rx="4"/>
+    <rect x="134" y="90" width="32" height="32" rx="4"/>
+    <rect x="178" y="90" width="32" height="32" rx="4"/>
+    <rect x="90" y="134" width="32" height="32" rx="4"/>
+    <rect x="178" y="134" width="32" height="32" rx="4"/>
+    <rect x="90" y="178" width="32" height="32" rx="4"/>
+    <rect x="134" y="178" width="32" height="32" rx="4"/>
+    <rect x="178" y="178" width="32" height="32" rx="4"/>
+  </g>
+</svg>

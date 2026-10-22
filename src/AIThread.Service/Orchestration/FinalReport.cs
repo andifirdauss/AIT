@@ -276,6 +276,7 @@ public static partial class FinalReport
 
     // memoriesUsed: read by the planner. extraction: null when no extraction ran; pending when it did not finish in time.
     // quotas: the 9router accounts behind the nodes' models; now: the moment reset times are counted from.
+    // secretsMasked: distinct secrets replaced by placeholders before they reached a model (SecretGuard).
     public static string Footer(
         TimeSpan elapsed,
         int tokens,
@@ -286,10 +287,12 @@ public static partial class FinalReport
         string? dashboardUrl,
         Guid threadId,
         IReadOnlyList<RouterQuotaDto>? quotas = null,
-        DateTime? now = null)
+        DateTime? now = null,
+        int secretsMasked = 0)
     {
         // Two spaces: terminals render ⏱️ and 🪙 as one cell but draw them two cells wide.
         var parts = new List<string> { $"⏱️  {Duration(elapsed)}", $"🪙  {Tokens(tokens)} token" };
+        if (secretsMasked > 0) parts.Add($"🔒 {secretsMasked} secret disamarkan");
 
         var memory = new List<string>();
         if (memoriesUsed > 0) memory.Add($"{memoriesUsed} memory dipakai");

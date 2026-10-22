@@ -152,7 +152,7 @@ public sealed class HttpExchange
 // (ITestBrowserLauncher), endpoints with HTTP requests, both only on localhost (TestUrls). An app that is not running is
 // started for the test and stopped after it (IAppLauncher). It never changes code and never fails the thread: a test that
 // cannot run is reported as blocked.
-public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder prompts, ITestBrowserLauncher browsers, IAppLauncher apps) : ITesterAgent
+public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder prompts, ITestBrowserLauncher browsers, IAppLauncher apps, ISecretGuard secrets) : ITesterAgent
 {
     private const int MaxSteps = 40;
     private const int MaxDiffLinesPerTask = 80;
@@ -179,8 +179,9 @@ public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder p
 
     // One test run: its own cookies (a login carries over to the next request), and the browser once a browser tool
     // asked for it.
-    private sealed class TestRun(TestingInput input, TestingReport report, HttpClient http)
+    private sealed class TestRun(TestingInput input, TestingReport report, HttpClient http, ISecretGuard secrets)
     {
+        public ISecretGuard Secrets { get; } = secrets;
         public TestingInput Input { get; } = input;
         public TestLogin? Login => Input.Login;
         public TestingReport Report { get; } = report;
@@ -194,7 +195,8 @@ public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder p
         // Set when the browser could not start; later browser tools answer with it instead of trying again.
         public string? BrowserError { get; set; }
 
-        // The password back to its placeholder, in anything the model, the log or the report get.
-        public string Mask(string text) => Login?.Mask(text) ?? text;
+        // The password back to its placeholder, in anything the model, the log or the report get, and the secrets the
+        // app answered with (a token from a login endpoint) masked too; RunToolAsync writes them back into later calls.
+        public string Mask(string text) => Secrets.Redact(Login?.Mask(text) ?? text);
     }
 }

@@ -19,6 +19,7 @@ public sealed partial class ClaudeSettingsService
                     env.Remove("ANTHROPIC_CUSTOM_HEADERS");
                 if (env.Count == 0) root.Remove("env");
             }
+            ClaudePermissionRules.Remove(root);
             await WriteAsync(target.Path, root, cancellationToken);
         }
 

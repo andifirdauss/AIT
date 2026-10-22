@@ -358,6 +358,49 @@
     }
   });
 
+  // --- Keamanan & privasi ---
+
+  function fillSecurity(s) {
+    el('secMasking').checked = s.maskingEnabled;
+    el('secPassthrough').checked = s.passthroughMasking;
+    el('secPassthrough').disabled = !s.maskingEnabled;
+    const stat = (value, label) =>
+      `<div class="security-stat"><div class="security-stat-value">${Number(value || 0).toLocaleString('id-ID')}</div><div class="small text-secondary">${escapeHtml(label)}</div></div>`;
+    el('securityStats').innerHTML = [
+      stat(s.masked, 'secret disamarkan sejak AIT berjalan'),
+      stat(s.knownSecrets, 'secret berbeda yang bisa dipasang kembali'),
+      stat(s.restored, 'dipasang kembali saat menulis'),
+      stat(s.blockedReads, 'akses file kredensial ditolak')
+    ].join('');
+  }
+
+  async function loadSecurity() {
+    try {
+      fillSecurity(await api.get('/api/security'));
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
+  el('secMasking').addEventListener('change', () => { el('secPassthrough').disabled = !el('secMasking').checked; });
+
+  el('securityForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const body = { maskingEnabled: el('secMasking').checked, passthroughMasking: el('secPassthrough').checked };
+    if (!body.maskingEnabled && !confirm('Matikan penyamaran secret? Isi file, prompt, dan output tool akan dikirim ke model apa adanya, termasuk password dan API key.')) return;
+    try {
+      fillSecurity(await api.put('/api/security', body));
+      toast('Setting keamanan tersimpan.');
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
+
+  el('btnSecurityExplain').addEventListener('click', () => {
+    const modal = document.getElementById('securityNoticeOpen');
+    if (modal) modal.click();
+  });
+
   // --- Telegram ---
 
   const telegramStates = {
@@ -664,6 +707,7 @@
   load();
   loadMemoryStorage();
   loadBusinessSettings();
+  loadSecurity();
   loadTelegram(false);
   loadSkillSettings();
   loadSkillSources();

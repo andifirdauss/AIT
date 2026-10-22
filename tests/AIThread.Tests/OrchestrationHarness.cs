@@ -33,7 +33,11 @@ public sealed class OrchestrationHarness : IAsyncDisposable
         ConfigureSettings = configureSettings;
 
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["AIThread:SkillsDirectory"] = Path.Combine(_dataDir, "skills") })
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AIThread:SkillsDirectory"] = Path.Combine(_dataDir, "skills"),
+                ["AIThread:SecretKeyPath"] = Path.Combine(_dataDir, "secret-mask.key")
+            })
             .Build();
 
         var services = new ServiceCollection();

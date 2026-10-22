@@ -26,7 +26,8 @@ public sealed record BusinessPageDraft(
 // Saving business pages and their images. Every save writes a revision; a page changed by someone else since it was
 // read is never overwritten (BusinessPageConflictException), since several developers may share the store.
 // The module is the one of the project's module list (shared with memory labels) and the labels are PascalCase.
-public sealed partial class BusinessPageStore(BusinessMemoryStore store, IModuleRegistry registry, ILogger<BusinessPageStore> logger) : IBusinessPageStore
+// The text of a page is saved with its secrets masked (SecretGuard): the wiki is shared and read by the planner.
+public sealed partial class BusinessPageStore(BusinessMemoryStore store, IModuleRegistry registry, ISecretGuard secrets, ILogger<BusinessPageStore> logger) : IBusinessPageStore
 {
     public const int MaxContentChars = 200_000;
 }

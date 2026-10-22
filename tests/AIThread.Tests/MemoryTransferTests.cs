@@ -173,6 +173,7 @@ public class MemoryTransferTests
                 harness.Service<IModuleRegistry>(),
                 harness.Service<IEventBus>(),
                 harness.Service<IActivityLogService>(),
+                harness.Service<ISecretGuard>(),
                 NullLogger<MemoryTransferService>.Instance);
             return new TransferFixture(redis, shortStore, service);
         }

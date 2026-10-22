@@ -5,7 +5,7 @@
 <div class="page-header">
     <div>
         <h1>Setting</h1>
-        <p class="page-subtitle">Koneksi 9router, perilaku proxy, build & verifikasi, penyimpanan memory & business memory, Telegram, dan gudang skill.</p>
+        <p class="page-subtitle">Koneksi 9router, perilaku proxy, build & verifikasi, penyimpanan memory & business memory, Telegram, gudang skill, serta keamanan & privasi.</p>
     </div>
 </div>
 
@@ -27,6 +27,9 @@
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="skills-tab" data-bs-toggle="tab" data-bs-target="#tab-skills" data-tab="skills" type="button" role="tab" aria-controls="tab-skills" aria-selected="false">Skill</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="keamanan-tab" data-bs-toggle="tab" data-bs-target="#tab-keamanan" data-tab="keamanan" type="button" role="tab" aria-controls="tab-keamanan" aria-selected="false">Keamanan &amp; privasi</button>
     </li>
 </ul>
 
@@ -355,6 +358,51 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="tab-pane" id="tab-keamanan" role="tabpanel" aria-labelledby="keamanan-tab" tabindex="0">
+        <form class="card" id="securityForm" autocomplete="off" novalidate>
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                <span>Penyamaran secret</span>
+                <button type="button" class="btn btn-link btn-sm ms-auto p-0" id="btnSecurityExplain">Apa yang dilakukan AIT? →</button>
+            </div>
+            <div class="card-body">
+                <p class="small text-secondary">
+                    Password, API key, token, JWT, private key, dan password di connection string diganti placeholder <span class="mono">{{AIT_SECRET:…}}</span>
+                    sebelum isi file, prompt, atau output tool dikirim ke model. Nilai aslinya hanya disimpan di memori AIT, lalu dipasang kembali saat AIT
+                    (atau Claude Code lewat hook) menulis ke file Anda. File kredensial seperti <span class="mono">.pem</span>, <span class="mono">.pfx</span>,
+                    kunci SSH, <span class="mono">.npmrc</span>, dan <span class="mono">~/.aws</span> tidak pernah dibaca, apa pun setting di halaman ini.
+                </p>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="secMasking" />
+                    <label class="form-check-label" for="secMasking">Samarkan secret sebelum dikirim ke model dan sebelum disimpan</label>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" role="switch" id="secPassthrough" />
+                    <label class="form-check-label" for="secPassthrough">Samarkan juga request passthrough (yang diteruskan apa adanya ke 9router)</label>
+                </div>
+                <div class="form-text mb-3">
+                    Untuk Claude Code, pasang hook di menu <a href="/Cli">CLI</a> agar placeholder dari request passthrough ditulis kembali sebagai nilai asli.
+                    CLI lain bisa menerima placeholder apa adanya; matikan opsi ini bila CLI tersebut sering mengedit file berisi secret.
+                </div>
+
+                <div class="security-stats mb-3" id="securityStats"></div>
+
+                <div class="small text-secondary">
+                    Atur per project di <span class="mono">.aithread/project.json</span>:
+                    <pre class="mono small mb-0 mt-1">{
+  "secrets": {
+    "deny":  ["config/production/**"],   // file tambahan yang tidak boleh dibaca
+    "allow": ["tests/certs/test.pem"],   // file kredensial yang boleh dibaca (fixture test)
+    "keys":  ["LicenseCode"]             // nama setting tambahan yang nilainya disamarkan
+  }
+}</pre>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">Simpan setting keamanan</button>
+            </div>
+        </form>
     </div>
 </div>
 

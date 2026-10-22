@@ -34,6 +34,7 @@ public sealed partial class ThreadOrchestrator(
     IFunctionCallQueue functionCalls,
     IPendingQuestionStore questions,
     ITestLoginStore testLogins,
+    ISecretGuard secrets,
     INineRouterService router,
     IHostApplicationLifetime lifetime,
     ILogger<ThreadOrchestrator> logger) : IThreadOrchestrator

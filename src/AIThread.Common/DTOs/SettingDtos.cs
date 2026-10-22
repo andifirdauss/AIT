@@ -43,7 +43,8 @@ public record ClaudeSettingsStatusDto(
     bool FileExists,
     bool PointsToAIThread,
     string? CurrentBaseUrl,
-    string PreviewJson);
+    string PreviewJson,
+    bool SecretRulesApplied = false);
 
 // Enabled = the project's settings.local.json points Claude Code at this proxy. CurrentBaseUrl is set when it points
 // somewhere else (e.g. an old port); Error when the file cannot be read.
@@ -62,3 +63,17 @@ public record ClaudeSettingsApplyRequest(
     Guid? ProjectId,
     string ProxyBaseUrl,
     int? TimeoutMs);
+
+// The Setting tab "Keamanan & privasi" and the first-run notice. The counters are since AIT started: Masked counts every
+// value replaced on its way to a model, KnownSecrets the distinct values AIT can write back, Restored the placeholders
+// written back into files or tool calls, BlockedReads the reads of credential files refused.
+public record SecurityStatusDto(
+    bool MaskingEnabled,
+    bool PassthroughMasking,
+    DateTime? NoticeAcknowledgedAt,
+    long Masked,
+    int KnownSecrets,
+    long Restored,
+    long BlockedReads);
+
+public record UpdateSecurityRequest(bool MaskingEnabled, bool PassthroughMasking);

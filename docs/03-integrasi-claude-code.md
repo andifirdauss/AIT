@@ -52,8 +52,12 @@ dengan model passthrough, sehingga Claude Code tetap bekerja seperti biasa di sa
 | Belum diarahkan | Belum ada `ANTHROPIC_BASE_URL`. |
 
 Sebelum perubahan pertama, file asli dibackup **sekali** sebagai `settings.json.aithread-backup` /
-`settings.local.json.aithread-backup`. Kunci lain di file (permission, model, hooks, dll.) tidak diubah, dan
+`settings.local.json.aithread-backup`. Kunci lain di file (model, hooks, dll.) tidak diubah, dan
 `ANTHROPIC_CUSTOM_HEADERS` milik Anda sendiri tidak ditimpa.
+
+AIT juga menambahkan aturan `permissions.deny` untuk file kredensial (`Read(//**/*.pem)`, `Read(//**/.npmrc)`,
+`Read(~/.ssh/**)`, `Read(~/.aws/**)`, dll.), sehingga Claude Code sendiri tidak membacanya. Aturan permission milik Anda
+tidak disentuh. Daftar lengkapnya ada di [Keamanan & privasi](12-keamanan.md#file-kredensial-yang-diblokir).
 
 ## Cara B — manual
 
@@ -95,7 +99,7 @@ Jika jawaban datang tanpa baris `**AIT**`, lihat [Troubleshooting](08-troublesho
 
 - UI: menu **CLI** → matikan switch yang sama (atau switch **AIT** di tabel Project). Kunci AIT
   (`ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `API_TIMEOUT_MS`, dan header `X-AIThread-Project`, atau
-  `X-AIThread-Solution` dari versi lama) dihapus;
+  `X-AIThread-Solution` dari versi lama) dihapus, begitu juga aturan `permissions.deny` yang ditambahkan AIT;
   isi lain dibiarkan.
 - Manual: hapus kunci-kunci tersebut, atau pulihkan dari file `*.aithread-backup`.
 
@@ -117,8 +121,9 @@ termasuk sesi yang tidak diarahkan ke proxy AIThread:
 
 `/clear` berikutnya membangun ringkasan dari ringkasan sebelumnya plus sesi terbaru, jadi alur tetap tersambung.
 
-**Memasang**: **CLI → kartu Claude Code → Context Keeper untuk /clear** → pilih cakupan (Global disarankan agar
-berlaku di semua project) → **Pasang hook**. Yang ditulis ke file settings (hook lain milik Anda tidak disentuh):
+**Memasang**: **CLI → kartu Claude Code → Hook: Context Keeper /clear & pemulih secret** → pilih cakupan (Global
+disarankan agar berlaku di semua project) → **Pasang hook**. Yang ditulis ke file settings (hook lain milik Anda tidak
+disentuh):
 
 ```json
 {
@@ -128,10 +133,19 @@ berlaku di semua project) → **Pasang hook**. Yang ditulis ke file settings (ho
     ],
     "SessionStart": [
       { "matcher": "clear", "hooks": [ { "type": "http", "url": "http://localhost:5225/api/hooks/claude/session-start", "timeout": 60 } ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Edit|MultiEdit|Write|NotebookEdit|Bash", "hooks": [ { "type": "http", "url": "http://localhost:5225/api/hooks/claude/pre-tool-use", "timeout": 10 } ] }
     ]
   }
 }
 ```
+
+Hook `PreToolUse` adalah **pemulih secret**. Model hanya melihat secret sebagai `{{AIT_SECRET:…}}`
+([Keamanan & privasi](12-keamanan.md)). Sebelum Claude Code menjalankan Edit/Write/Bash yang berisi placeholder, AIT
+menggantinya dengan nilai asli, dan Claude Code tetap meminta konfirmasi Anda. Placeholder yang tidak dikenali AIT
+menghentikan tool tersebut, supaya tidak tertulis ke file apa adanya. Hook yang dipasang oleh versi lama (tanpa
+`PreToolUse`) ditandai *versi lama*; klik **Pasang hook** lagi untuk memperbaruinya.
 
 Hook berlaku untuk sesi Claude Code yang dibuka setelah dipasang. **Lepas hook** menghapus entri AIT saja.
 

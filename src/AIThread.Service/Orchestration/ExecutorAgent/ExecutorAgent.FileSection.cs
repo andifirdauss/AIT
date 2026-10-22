@@ -5,16 +5,18 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ExecutorAgent
 {
-    private string FileSection(PlanTask task, TextFileState file)
+    // Secrets in the file are shown as placeholders.
+    private string FileSection(PlanTask task, TextFileState file, WorkspaceScope scope)
     {
         var language = LanguageOf(task.File);
         if (!file.Exists)
             return $"## Current content of {task.File}\n(the file does not exist yet — create it with one block whose SEARCH section is empty)\n";
 
-        var lines = WorkspaceTools.SplitLines(file.Content);
+        var content = secrets.RedactFile(task.File, file.Content, scope.Secrets.Keys);
+        var lines = WorkspaceTools.SplitLines(content);
         var fullMax = options.Value.ExecutorFullFileMaxLines;
         if (lines.Length <= fullMax)
-            return $"## Current content of {task.File}\n```{language}\n{file.Content.TrimEnd('\n')}\n```\n";
+            return $"## Current content of {task.File}\n```{language}\n{content.TrimEnd('\n')}\n```\n";
 
         // Large file: show the planner's focus ranges with a margin, marking what is hidden.
         var ranges = (task.Focus ?? [])

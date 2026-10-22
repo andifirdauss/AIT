@@ -1,0 +1,138 @@
+@* What AIT does to keep secrets and data safe. Opens by itself until it is closed once on this installation
+   (site.js initSecurityNotice, POST /api/security/acknowledge), and again from the sidebar button "Keamanan & privasi".
+   The status line is filled from GET /api/security. *@
+<div class="modal fade" id="securityNoticeModal" tabindex="-1" aria-labelledby="securityNoticeTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content security-notice">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="securityNoticeTitle">Keamanan &amp; privasi di AIT</h5>
+            </div>
+            <div class="modal-body">
+                <figure class="onboarding-figure">
+                    <svg class="ob-svg" viewBox="0 0 560 150" role="img" aria-label="Isi file dan prompt melewati AIT; secret diganti placeholder sebelum dikirim ke model lewat 9router. Saat model menulis perubahan, AIT memasang nilai aslinya kembali ke file Anda.">
+                        @* Its own arrowhead: the tour's #obArrow sits in a hidden modal, where markers are not drawn. *@
+                        <defs>
+                            <marker id="secArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                                <path class="ob-arrowhead" d="M0 0 L10 5 L0 10 z" />
+                            </marker>
+                        </defs>
+
+                        <rect class="ob-panel" x="8" y="30" width="128" height="90" rx="10" />
+                        <text class="ob-t ob-strong" x="72" y="54" text-anchor="middle">File &amp; prompt</text>
+                        <text class="ob-m ob-mono" x="20" y="78">DB_PASSWORD=</text>
+                        <text class="ob-m ob-mono ob-ok-text" x="20" y="94">s3cr3t!Pass</text>
+                        <text class="ob-m" x="72" y="112" text-anchor="middle">di komputer Anda</text>
+
+                        <path class="ob-arrow" style="marker-end: url(#secArrow)" d="M140 62 H175" />
+                        <path class="ob-arrow" style="marker-end: url(#secArrow)" d="M175 92 H140" />
+
+                        <rect class="ob-panel ob-accent-stroke" x="180" y="20" width="200" height="110" rx="12" />
+                        <circle class="ob-accent" cx="280" cy="46" r="15" />
+                        <text class="ob-on-accent ob-strong" x="280" y="51" text-anchor="middle">AIT</text>
+                        <text class="ob-t ob-sm" x="280" y="86" text-anchor="middle">🔒 samarkan saat keluar</text>
+                        <text class="ob-t ob-sm" x="280" y="108" text-anchor="middle">✍️ pasang lagi saat menulis</text>
+
+                        <path class="ob-arrow" style="marker-end: url(#secArrow)" d="M385 62 H420" />
+                        <path class="ob-arrow" style="marker-end: url(#secArrow)" d="M420 92 H385" />
+
+                        <rect class="ob-panel" x="424" y="30" width="128" height="90" rx="10" />
+                        <text class="ob-t ob-strong" x="488" y="54" text-anchor="middle">9router → model</text>
+                        <text class="ob-m ob-mono" x="436" y="78">DB_PASSWORD=</text>
+                        <text class="ob-m ob-mono ob-accent-text" x="436" y="94">{{AIT_SECRET…}}</text>
+                        <text class="ob-m" x="488" y="112" text-anchor="middle">tidak melihat nilainya</text>
+                    </svg>
+                </figure>
+
+                <p class="mb-3">
+                    AIT membaca kode Anda supaya model AI bisa bekerja. Isinya melewati AIT dulu sebelum sampai ke model,
+                    sehingga AIT bisa menjaga apa yang ikut terkirim dan apa yang tersimpan. Berikut yang dilakukan AIT:
+                </p>
+
+                <div class="row g-3 security-points">
+                    <div class="col-md-6">
+                        <div class="security-point">
+                            <div class="security-point-icon" aria-hidden="true">🔒</div>
+                            <div>
+                                <h6>Secret disamarkan sebelum sampai ke model</h6>
+                                <p>Password, API key, token, JWT, private key, dan password di connection string atau URL diganti placeholder
+                                    <span class="mono">{{AIT_SECRET:…}}</span>. Model tetap tahu nama setting-nya, tetapi tidak melihat nilainya.
+                                    Ini berlaku untuk file yang dibaca, prompt, riwayat chat, output build/test, dan respons aplikasi saat testing.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="security-point">
+                            <div class="security-point-icon" aria-hidden="true">✍️</div>
+                            <div>
+                                <h6>Nilai asli hanya dipasang saat menulis file</h6>
+                                <p>Nilai aslinya hanya disimpan di memori proses AIT, tidak ditulis ke disk. Nilai itu dipasang kembali ketika executor
+                                    menulis ke file Anda, atau sebelum Claude Code menjalankan Edit/Write/Bash. Untuk Claude Code, Anda tetap diminta
+                                    konfirmasi seperti biasa.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="security-point">
+                            <div class="security-point-icon" aria-hidden="true">🚫</div>
+                            <div>
+                                <h6>File kredensial tidak pernah dibaca</h6>
+                                <p>Kunci dan sertifikat (<span class="mono">.pem</span>, <span class="mono">.key</span>, <span class="mono">.pfx</span>), kunci SSH,
+                                    <span class="mono">.git-credentials</span>, <span class="mono">.npmrc</span>, folder <span class="mono">~/.ssh</span> dan
+                                    <span class="mono">~/.aws</span>, user-secrets .NET, serta data AIT sendiri tidak dibaca dan tidak diubah agen AIT.
+                                    Aturan yang sama ditambahkan ke <span class="mono">permissions.deny</span> Claude Code.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="security-point">
+                            <div class="security-point-icon" aria-hidden="true">💾</div>
+                            <div>
+                                <h6>Tidak ikut tersimpan atau terbagi</h6>
+                                <p>Prompt, log aktivitas, catatan investigasi planner, memory, wiki bisnis, dan file export memory disamarkan
+                                    sebelum disimpan. Jadi secret tidak menyebar ke tim saat memory atau wiki dibagi.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="security-point">
+                            <div class="security-point-icon" aria-hidden="true">🏠</div>
+                            <div>
+                                <h6>Data tetap di komputer Anda</h6>
+                                <p>Database, memory, dan log tersimpan lokal, kecuali Anda memindahkannya ke database tim. AIT tidak mengirim telemetri.
+                                    Koneksi keluar hanya ke 9router (lalu provider model pilihan Anda), Telegram bila diaktifkan, cek versi npm,
+                                    dan unduhan yang Anda minta (skill, browser untuk testing).</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="security-point">
+                            <div class="security-point-icon" aria-hidden="true">🔑</div>
+                            <div>
+                                <h6>Kunci &amp; login dijaga</h6>
+                                <p>API key 9router dan token Telegram disimpan terenkripsi. Login untuk testing hanya ada di memori, dan model hanya melihat
+                                    <span class="mono">{{password}}</span>. Tester hanya boleh mengakses <span class="mono">localhost</span>, dan endpoint
+                                    pengembali secret hanya menjawab request dari komputer ini.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-secondary small mt-3 mb-2">
+                    <strong>Batasannya:</strong> penyamaran ini mengenali secret dari pola dan nama setting. Secret dengan format tidak lazim,
+                    atau yang ditulis langsung di kode tanpa nama setting yang jelas, bisa lolos. Simpan secret di user-secrets atau
+                    environment variable, dan tambahkan nama setting khusus project Anda di <span class="mono">.aithread/project.json</span>
+                    (<span class="mono">"secrets": { "keys": [...] }</span>).
+                </div>
+                <p class="small text-secondary mb-0" id="securityNoticeStatus"></p>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-sm btn-outline-secondary" asp-controller="Setting" asp-action="Index" asp-fragment="keamanan">Atur di Setting</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="~/Docs/12-keamanan">Baca selengkapnya</a>
+                </div>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Saya mengerti</button>
+            </div>
+        </div>
+    </div>
+</div>

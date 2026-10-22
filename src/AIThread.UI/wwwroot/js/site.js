@@ -655,6 +655,60 @@
     return false;
   }
 
+  // The secret guard in one line, for the security notice and the Setting tab.
+  function securityStatusText(s) {
+    const masking = s.maskingEnabled
+      ? `Penyamaran secret aktif${s.passthroughMasking ? ', termasuk request passthrough' : ', kecuali request passthrough'}`
+      : 'Penyamaran secret NONAKTIF, aktifkan lagi di Setting → Keamanan & privasi';
+    const count = n => Number(n || 0).toLocaleString('id-ID');
+    return `${masking}. Sejak AIT berjalan: ${count(s.masked)} secret disamarkan, ${count(s.restored)} dipasang kembali saat menulis, `
+      + `${count(s.blockedReads)} akses ke file kredensial ditolak.`;
+  }
+
+  // Security & privacy: opens by itself until it is closed once on this installation (the server remembers it, so
+  // another browser does not show it again), and from the sidebar button. Resolves when it is closed, or at once when
+  // it does not open, so the next first-run dialog never stacks on it.
+  async function initSecurityNotice() {
+    const modalElement = document.getElementById('securityNoticeModal');
+    if (!modalElement) return;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    const status = document.getElementById('securityNoticeStatus');
+    let acknowledged = true;
+
+    async function refresh() {
+      try {
+        const s = await api.get('/api/security');
+        acknowledged = Boolean(s.noticeAcknowledgedAt);
+        status.textContent = securityStatusText(s);
+        return s;
+      } catch {
+        return null; // Server or database not ready; the notice tries again on a later page load.
+      }
+    }
+
+    // keepalive: the request survives a link out of the dialog (Setting, Docs).
+    function acknowledge() {
+      if (acknowledged) return;
+      acknowledged = true;
+      fetch('/api/security/acknowledge', { method: 'POST', keepalive: true }).catch(() => { /* asked again next time */ });
+    }
+
+    modalElement.addEventListener('hidden.bs.modal', acknowledge);
+    modalElement.addEventListener('click', event => {
+      if (event.target.closest('a[href]')) acknowledge();
+    });
+    document.getElementById('securityNoticeOpen')?.addEventListener('click', () => {
+      refresh();
+      modal.show();
+    });
+
+    const first = await refresh();
+    if (!first || first.noticeAcknowledgedAt) return;
+    const closed = new Promise(resolve => modalElement.addEventListener('hidden.bs.modal', resolve, { once: true }));
+    modal.show();
+    await closed;
+  }
+
   // First run: the developer name comes from git (user.name). Only without it is the name asked, once, and kept in the
   // settings so it is never asked again on this machine.
   async function initDeveloperName() {
@@ -702,10 +756,14 @@
     initUpdateBar();
     initNpmUpdate();
     initOnboarding();
-    initSetupStatus().then(leaving => { if (!leaving) initDeveloperName(); });
+    initSetupStatus().then(async leaving => {
+      if (leaving) return;
+      await initSecurityNotice();
+      initDeveloperName();
+    });
     refreshRouterPill();
     setInterval(refreshRouterPill, 20000);
   });
 
-  window.AIThread = { api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager, renderSetupStatus };
+  window.AIThread = { api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager, renderSetupStatus, securityStatusText };
 })();
