@@ -827,7 +827,7 @@ nomor, judul, tujuan, file → target, dan hasil terakhir. `submit_plan` mendapa
   bertanya lewat `ask_user`.
 - Validator menolak rencana bila nomor test tidak ada di katalog, satu test punya dua keputusan, `update`/`obsolete`
   tanpa alasan, `update` tanpa tugas edit file test-nya, test baru tanpa nama/judul/skenario/file atau tanpa tugas yang
-  menulis file-nya, lebih dari 15 test baru, atau test baru padahal dimatikan.
+  menulis file-nya, lebih dari 15 test baru, test baru padahal dimatikan, atau test baru di rencana tanpa tugas.
 
 Tool `run_tests(tests?, file?, all?)` menjalankan test katalog (nomor, satu file test, atau semua) dan mengembalikan
 hasilnya ke planner: lolos, gagal beserta pesannya, atau dilewati beserta alasannya. Dipakai hanya untuk permintaan
@@ -947,6 +947,17 @@ atau `["all"]`) dan/atau bagian `test` [Auto Testing](#6-testing-auto-testing); 
 Tester terhadap perilaku yang sudah ada, tanpa eksekusi, build, atau review, lalu Wrapper menjelaskan hasilnya. Baris
 status: `🧪 **Pengujian selesai** · tanpa perubahan kode · unit test lolos (12)` (atau *ada yang gagal*). Test yang
 gagal dicatat di kolom error thread.
+
+| Yang diminta | Yang dijalankan |
+|---|---|
+| Form / halaman | Rencana tanpa tugas + `test.level = ui`: Tester mencoba flow-nya di browser (aplikasi dijalankan AIT bila belum jalan) |
+| API | Rencana tanpa tugas + `test.level = api`: Tester mengirim request, respons tampil di *Output API* |
+| Function / scheduler yang sudah punya test di katalog | Rencana tanpa tugas + `tests.run` |
+| Function / scheduler **tanpa** test (atau yang tidak terlihat dari aplikasi: job Hangfire/Quartz, hosted service, consumer) | Planner menulis **test dry-run** baru: tugasnya hanya file test (dan test project bila belum ada), **kode yang diuji tidak diubah**. Test itu dijalankan setelah build lalu masuk katalog. File test-nya tetap ada di repository; rollback thread bila tidak ingin menyimpannya |
+
+Planner tidak boleh menjawab permintaan seperti itu tanpa test atau menyuruh developer mengetes sendiri. Rencana
+tanpa tugas yang berisi `tests.new` ditolak validator (*tests.new needs tasks that write the tests*), sehingga test
+baru tidak pernah hilang diam-diam. Butuh project key dan katalog unit test yang tidak *Mati*.
 
 ### Saat thread selesai
 
