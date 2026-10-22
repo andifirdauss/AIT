@@ -333,6 +333,7 @@
       report.browser ? escapeHtml(report.browser) : null,
       report.testerModel ? `Tester: <span class="mono">${escapeHtml(report.testerModel)}</span>` : null,
       report.loginUser ? `login <span class="mono">${escapeHtml(report.loginUser)}</span>` : null,
+      report.appStarted ? `dijalankan AIT <span class="mono">${escapeHtml(report.appStarted)}</span>` : null,
       report.steps ? `${fmt.number(report.steps)} langkah` : null
     ].filter(Boolean).join(' · ');
     const parts = [`<div class="small text-secondary">${head}</div>`];
