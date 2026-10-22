@@ -207,6 +207,9 @@ public static class PlanValidator
             return;
         }
         tests.Decisions = [];
+        // New tests only exist once a task writes them; dropping them silently would leave the request untested.
+        if (rules.AllowNew && (tests.New ?? []).Any(n => n is not null))
+            errors.Add("tests.new needs tasks that write the tests: add a create or edit task for each test file (and for the test project when there is none). A plan without tasks can only run registered tests (tests.run).");
         tests.New = [];
         var run = new List<string>();
         foreach (var item in (tests.Run ?? []).Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()))

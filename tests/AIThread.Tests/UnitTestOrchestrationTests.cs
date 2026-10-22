@@ -299,6 +299,45 @@ public class UnitTestOrchestrationTests
     }
 
     [Fact]
+    public async Task Asked_only_to_test_a_function_the_planner_writes_a_dry_run_test_and_no_code_under_test_changes()
+    {
+        const string newTest = "IsValid_RejectsEmptyName";
+        var runner = new FakeTestRunner().Then(_ => UnitTestResult.Passed);
+        await using var harness = await OrchestrationHarness.CreateAsync(configureServices: s => s.AddSingleton<ITestRunner>(runner));
+        await harness.AddStandardNodesAsync();
+        await PrepareAsync(harness);
+        const string lastTest = "    [Fact]\n    public void Save_WithName_IsAccepted()\n    {\n        Assert.True(User.IsValid(\"Andi\"));\n    }";
+        var withNew = lastTest + $"\n\n    [Fact]\n    public void {newTest}()\n    {{\n        Assert.False(User.IsValid(\"\"));\n    }}";
+        var newTests = new PlanTests
+        {
+            New = [new PlanNewTest { Title = "Nama kosong ditolak", Scenario = "given \"\", when validated, then false", File = TestFile, Name = newTest, Targets = [UserFile] }]
+        };
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, call =>
+            {
+                Assert.Contains("never the code under test", call.System);
+                // First a plan with new tests but no task to write them: refused.
+                return router.SubmitPlan(new ThreadPlan { Summary = "Test IsValid.", Answer = "Dites.", Tests = newTests });
+            })
+            .On(ScriptedAgent.Planner, call =>
+            {
+                Assert.Contains("tests.new needs tasks that write the tests", call.Messages.ToJsonString());
+                return router.SubmitPlan(new ThreadPlan { Summary = "Test IsValid.", Tasks = [Step("T1", TestFile, "Add the dry-run test.")], Tests = newTests });
+            })
+            .OnExecutor(TestFile, ScriptedRouter.Edit(lastTest, withNew, "Test ditambah."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync($"Tolong test fungsi IsValid di {UserFile}, jangan ubah kodenya");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Equal(UserLine, harness.ReadFile(UserFile));
+        Assert.Contains(runner.Calls, call => call.Contains(newTest));
+        var added = UnitTestReport.FromJson((await harness.LoadThreadAsync(result.ThreadId)).UnitTestJson)!.Tests.Single(t => t.Decision == "new");
+        Assert.Equal(UnitTestReportItem.Ok, added.Verdict);
+    }
+
+    [Fact]
     public async Task A_new_test_that_cannot_run_because_the_restore_fails_stays_skipped()
     {
         const string newTest = "Save_WithSpaces_IsRejected";
