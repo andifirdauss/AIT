@@ -6,7 +6,7 @@ public sealed partial class BuildRunner
 {
     public async Task<BuildResult> RunAsync(BuildCommand command, TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var gate = _gates.GetOrAdd(command.Root, _ => new SemaphoreSlim(1, 1));
+        var gate = RootGates.For(command.Root);
         await gate.WaitAsync(cancellationToken);
         try
         {

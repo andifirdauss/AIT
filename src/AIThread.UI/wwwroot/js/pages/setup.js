@@ -13,7 +13,7 @@
   };
   // Names of the nodes the preset creates (SetupService.PresetNames).
   const presetNames = {
-    Planner: 'AIT Planner', ToolsNode: 'AIT Tools Node', Executor: 'AIT Executor', Reviewer: 'AIT Reviewer', Wrapper: 'AIT Wrapper',
+    Planner: 'AIT Planner', ToolsNode: 'AIT Tools Node', Executor: 'AIT Executor', Reviewer: 'AIT Reviewer', Tester: 'AIT Tester', Wrapper: 'AIT Wrapper',
     ContextKeeper: 'AIT Context Keeper'
   };
   const isPreset = n => n.name.toLowerCase() === (presetNames[n.role] || '').toLowerCase();
@@ -224,6 +224,7 @@
       el('presetTools').checked = on('ToolsNode');
       el('presetContext').checked = on('ContextKeeper');
       el('presetReviewer').checked = on('Reviewer');
+      el('presetTester').checked = on('Tester');
     }
     presetChoicesLoaded = true;
   }
@@ -268,6 +269,7 @@
         cheapModel: el('presetCheap').value || null,
         toolsNode: el('presetTools').checked,
         reviewer: el('presetReviewer').checked,
+        tester: el('presetTester').checked,
         contextKeeper: el('presetContext').checked
       });
       el('presetResult').innerHTML = `<div class="table-responsive"><table class="table table-sm align-middle mb-0">

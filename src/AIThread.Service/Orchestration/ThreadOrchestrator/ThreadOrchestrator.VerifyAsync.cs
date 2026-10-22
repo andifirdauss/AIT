@@ -7,8 +7,9 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ThreadOrchestrator
 {
-    // Runs when something was changed and there is a way to check it: a build command (and building is allowed) or an
-    // active Reviewer node. Null when skipped. A crash in here only costs the verification, not the edits already made.
+    // Runs when something was changed and there is a way to check it: a build command (and building is allowed), an
+    // active Reviewer node or the project's unit tests. Null when skipped. A crash in here only costs the verification,
+    // not the edits already made.
     private async Task<VerificationResult?> VerifyAsync(
         Pipeline pipeline,
         ThreadPlan plan,
@@ -22,14 +23,14 @@ public sealed partial class ThreadOrchestrator
         var (recorder, progress, project, settings) = (pipeline.Recorder, pipeline.Progress, pipeline.Project, pipeline.Settings);
         var reviewer = (await nodeService.GetActiveAsync(NodeRole.Reviewer, cancellationToken)).FirstOrDefault();
         var build = settings.BuildEnabled ? BuildCommandResolver.Resolve(project.RootPath, project.Modules, null, out _) : null;
-        if (build is null && reviewer is null) return null;
+        if (build is null && reviewer is null && pipeline.UnitTests is null) return null;
 
         await recorder.UpdateThreadAsync(t =>
         {
             t.Status = ThreadStatus.Verifying;
             t.ReviewerModel = reviewer?.Model;
         });
-        var what = string.Join(" + ", new[] { build?.Display, reviewer is null ? null : $"reviewer {reviewer.Model}" }.OfType<string>());
+        var what = string.Join(" + ", new[] { build?.Display, reviewer is null ? null : $"reviewer {reviewer.Model}", pipeline.UnitTests is null ? null : "unit test" }.OfType<string>());
         await progress.PhaseAsync("🔍", $"Verifikasi · {what}", cancellationToken);
 
         var clock = Stopwatch.StartNew();
@@ -37,7 +38,7 @@ public sealed partial class ThreadOrchestrator
         {
             var result = await verificationStage.RunAsync(
                 new VerificationInput(pipeline.Request, plan, execution, build, reviewer, pipeline.Executors, pipeline.Scope, settings, nextTaskOrder,
-                    pipeline.Journal, firstRound),
+                    pipeline.Journal, firstRound, pipeline.UnitTests, pipeline.Triage),
                 recorder, progress, cancellationToken);
             clock.Stop();
 
@@ -47,6 +48,8 @@ public sealed partial class ThreadOrchestrator
                 t.VerificationJson = result.Report.ToJson();
                 t.ReviewerTokens += result.ReviewerTokens;
                 t.ExecutorTokens += result.ExecutorTokens;
+                t.TesterTokens += result.TesterTokens;
+                if (result.TesterTokens > 0) t.TesterModel ??= pipeline.Triage?.Model;
             });
             await progress.StepAsync(VerificationClosing(result.Report), cancellationToken, last: true);
             return result;

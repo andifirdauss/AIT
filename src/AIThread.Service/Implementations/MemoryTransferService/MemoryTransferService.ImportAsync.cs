@@ -100,7 +100,24 @@ public sealed partial class MemoryTransferService
             .Select(k => new MemoryImportProjectDto(k.Key, k.Value.Name, k.Value.Count, k.Value.Registered))
             .OrderByDescending(p => p.Count)
             .ToList();
-        var result = new MemoryImportResultDto(dryRun, items.Count, adds.Count, updates.Count, skipped, duplicates, invalid.Count, projectSummary, warnings);
+
+        UnitTestImport unitTests;
+        try
+        {
+            unitTests = await ImportUnitTestsAsync(file.UnitTests ?? [], dryRun, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Unit test import stopped.");
+            throw new AppValidationException($"Import unit test berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Unit test yang sudah masuk tidak akan digandakan bila import diulang.");
+        }
+        warnings.AddRange(unitTests.Warnings.Take(MaxListedWarnings));
+        if (unitTests.Renumbered > 0)
+            warnings.Add($"{unitTests.Renumbered} unit test mendapat nomor baru karena nomornya sudah dipakai test lain di project yang sama.");
+        var result = new MemoryImportResultDto(dryRun, items.Count, adds.Count, updates.Count, skipped, duplicates, invalid.Count, projectSummary, warnings,
+            unitTests.Added, unitTests.Updated, unitTests.Renumbered, unitTests.Skipped);
+        if (!dryRun && unitTests.Added + unitTests.Updated > 0)
+            activityLog.Info("memory", $"Import unit test: {unitTests.Added} ditambahkan, {unitTests.Updated} diperbarui, {unitTests.Skipped} dilewati.");
         if (dryRun || (adds.Count == 0 && updates.Count == 0)) return result;
 
         try

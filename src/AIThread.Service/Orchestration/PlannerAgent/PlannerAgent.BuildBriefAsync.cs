@@ -104,6 +104,15 @@ public sealed partial class PlannerAgent
         var index = relevant.Concat(recent.Where(r => r.Level is MemoryLevel.Short or MemoryLevel.Business)).DistinctBy(e => e.Id).Take(25).ToList();
         builder.Append(index.Count == 0 ? "(empty)\n" : PlannerToolRunner.FormatIndex(index)).Append('\n');
 
+        if (input.SessionChanges is { Count: > 0 } sessionChanges)
+            builder.Append(SessionChanges.Brief(sessionChanges, input.CanAsk, input.UnitTests, DateTime.UtcNow)).Append('\n');
+
+        if (input.UnitTests is { } unitTests)
+        {
+            var files = (input.Files ?? []).Concat(input.CodeMap?.Select(h => h.Path) ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            builder.Append(UnitTestStage.Brief(unitTests, files, focusModules ?? [])).Append('\n');
+        }
+
         builder.Append("# Developer request\n");
         builder.Append(PlannerToolRunner.Limit(request.Prompt, MaxRequestChars)).Append('\n');
 

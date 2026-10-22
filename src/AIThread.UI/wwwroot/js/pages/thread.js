@@ -116,6 +116,7 @@
       ['Eksekusi (jika sekuensial)', fmt.ms(s.executionSumMs)],
       ['Speedup paralel', fmt.speedup(s.executionSumMs, s.executionWallMs)],
       ['Verifikasi', fmt.ms(detail.verificationMs)],
+      ['Unit test', fmt.ms(detail.unitTestMs)],
       ['Testing', fmt.ms(detail.testingMs)],
       ['Wrapping', fmt.ms(detail.wrappingMs)],
       ['Total', fmt.ms(s.totalMs)],
@@ -165,6 +166,12 @@
           + list(v.issues.map(i => `<li><span class="mono">${escapeHtml(i.file)}</span> — ${escapeHtml(i.problem)}<div class="text-secondary">${escapeHtml(i.fix)}</div></li>`)));
       }
     }
+    if (r.unitTests) {
+      const u = r.unitTests;
+      const regressions = u.regressions?.length ? ` · <span class="text-danger">masih gagal: ${u.regressions.map(escapeHtml).join(', ')}</span>` : '';
+      parts.push(`<div class="small">${u.regressions?.length ? '🔴' : '🧪'} Unit test: ${u.ran} dijalankan · ${u.passed} lolos, ${u.failed} gagal, ${u.skipped} dilewati${regressions}`
+        + `${u.triage ? `<div class="text-secondary">Triase Tester${u.testerModel ? ` (${escapeHtml(u.testerModel)})` : ''}: ${escapeHtml(u.triage)}</div>` : ''}</div>`);
+    }
     if (r.unfixable?.length) {
       parts.push('<div class="small text-secondary">Tidak bisa diperbaiki otomatis:</div>' + list(r.unfixable.map(u => `<li>${escapeHtml(u)}</li>`)));
     }
@@ -197,6 +204,79 @@
       report.reviewerModel ? `Reviewer: <span class="mono">${escapeHtml(report.reviewerModel)}</span>` : 'Tanpa reviewer'
     ].join(' · ');
     el('verificationBody').innerHTML = `<div class="small text-secondary">${head}</div>${(report.rounds || []).map(roundHtml).join('')}`;
+  }
+
+  const unitOutcomes = {
+    passed: ['success', 'Lolos'],
+    failed: ['danger', 'Ada yang gagal'],
+    skipped: ['secondary', 'Tidak ada yang dijalankan']
+  };
+  const unitVerdicts = {
+    ok: ['success', 'Lolos'],
+    fixed: ['success', 'Sekarang lolos'],
+    regression: ['danger', 'Regresi'],
+    'new-failing': ['danger', 'Test baru gagal'],
+    failing: ['danger', 'Gagal'],
+    preexisting: ['warning', 'Sudah gagal sebelumnya'],
+    skipped: ['secondary', 'Dilewati'],
+    notfound: ['secondary', 'Tidak dilaporkan'],
+    missing: ['warning', 'Tidak ditemukan'],
+    flaky: ['secondary', 'Tidak stabil'],
+    obsolete: ['warning', 'Obsolete']
+  };
+  const unitDecisions = { keep: 'tetap', update: 'diperbarui', obsolete: 'obsolete', new: 'baru' };
+  const unitResults = { passed: '✅ lolos', failed: '❌ gagal', error: '❌ error', skipped: '⏭️ dilewati', notfound: '❔ tidak dilaporkan', unknown: '–' };
+  const restoreLabels = {
+    moved: 'pindah file', snapshot: 'dipulihkan dari snapshot', method: 'method dikembalikan dari snapshot',
+    task: 'dikembalikan executor', regenerate: 'ditulis ulang dari skenario', missing: 'tidak bisa dipulihkan'
+  };
+
+  function renderUnitTests() {
+    let report = null;
+    try {
+      report = detail.unitTestJson ? JSON.parse(detail.unitTestJson) : null;
+    } catch {
+      report = null;
+    }
+    el('unitTestCard').classList.toggle('d-none', !report);
+    if (!report) return;
+
+    const [color, label] = unitOutcomes[report.outcome] || ['secondary', report.outcome];
+    el('unitTestOutcome').innerHTML = `<span class="badge text-bg-${color}">${label}</span>`;
+    const head = [
+      report.testOnly ? 'Hanya pengujian (kode tidak diubah)' : `Mode ${escapeHtml(report.mode || '–')}`,
+      report.baselineRan || report.baselineCached ? `baseline: ${report.baselineRan} dijalankan, ${report.baselineCached} dari hasil sebelumnya${report.baselineMs ? ` (${fmt.ms(report.baselineMs)})` : ''}` : null,
+      report.testerModel ? `triase: <span class="mono">${escapeHtml(report.testerModel)}</span>` : null
+    ].filter(Boolean).join(' · ');
+    const parts = [`<div class="small text-secondary">${head}</div>`];
+    if (report.suites?.length) parts.push(`<div class="small text-secondary">Runner: ${report.suites.map(s => `<span class="chip mono">${escapeHtml(s)}</span>`).join('')}</div>`);
+    (report.problems || []).forEach(p => parts.push(`<div class="small text-warning">⚠️ ${escapeHtml(p)}</div>`));
+    if (report.summary) parts.push(`<div class="small mt-2">${escapeHtml(report.summary)}</div>`);
+
+    if (report.tests?.length) {
+      parts.push(`<div class="table-responsive mt-2"><table class="table table-sm align-middle mb-0 small">
+        <thead><tr><th>No</th><th>Test</th><th>Keputusan</th><th>Sebelum</th><th>Sesudah</th><th>Hasil</th></tr></thead><tbody>
+        ${report.tests.map(t => {
+          const [vc, vl] = unitVerdicts[t.verdict] || ['secondary', t.verdict];
+          const note = t.skipReason || (['ok', 'fixed'].includes(t.verdict) ? null : t.message);
+          const triage = t.triage ? `<div class="text-secondary">Tester: ${escapeHtml(t.triage)}${t.triageReason ? ` — ${escapeHtml(t.triageReason)}` : ''}</div>` : '';
+          return `<tr>
+            <td class="mono text-nowrap">${escapeHtml(t.number)}</td>
+            <td>${escapeHtml(t.title)}${t.file ? `<div class="mono text-secondary text-break">${escapeHtml(t.file)}</div>` : ''}${note ? `<div class="text-secondary text-break">${escapeHtml(note.split(/\r?\n/)[0])}</div>` : ''}${triage}</td>
+            <td>${escapeHtml(unitDecisions[t.decision] || t.decision || '–')}</td>
+            <td class="text-nowrap">${t.baseline ? `${unitResults[t.baseline] || escapeHtml(t.baseline)}${t.baselineCached ? ' <span class="text-secondary">(cache)</span>' : ''}` : '–'}</td>
+            <td class="text-nowrap">${t.after ? unitResults[t.after] || escapeHtml(t.after) : '–'}</td>
+            <td><span class="badge text-bg-${vc}">${vl}</span></td>
+          </tr>`;
+        }).join('')}
+        </tbody></table></div>`);
+    }
+    if (report.restored?.length) {
+      parts.push(`<div class="small mt-2 fw-semibold">Dipulihkan otomatis</div>` + list(report.restored.map(r =>
+        `<li><span class="mono">${escapeHtml(r.number)}</span> <span class="mono text-secondary">${escapeHtml(r.file)}</span> — ${escapeHtml(restoreLabels[r.how] || r.how)}${r.note ? ` (${escapeHtml(r.note)})` : ''}</li>`)));
+    }
+    if (report.notes?.length) parts.push(list(report.notes.map(n => `<li class="text-secondary">ℹ️ ${escapeHtml(n)}</li>`)));
+    el('unitTestBody').innerHTML = parts.join('');
   }
 
   const testingOutcomes = {
@@ -379,6 +459,7 @@
     renderPlan();
     renderMetrics();
     renderVerification();
+    renderUnitTests();
     renderTesting();
     renderFinal();
     renderTasks();

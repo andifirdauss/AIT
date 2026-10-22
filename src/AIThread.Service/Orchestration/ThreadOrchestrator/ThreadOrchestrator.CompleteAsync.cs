@@ -27,6 +27,9 @@ public sealed partial class ThreadOrchestrator
         // 4. Test: the tester node uses the running app the way the plan's test section describes.
         var testing = await TestAsync(pipeline, plan, execution, verification, cancellationToken);
 
+        // The unit test catalog learns the results, the new tests and the decisions of this change.
+        var unitReport = pipeline.UnitTests is { } unitTests ? await FinishUnitTestsAsync(unitTests, plan, execution, recorder, cancellationToken) : null;
+
         // 5. Wrap
         await recorder.UpdateThreadAsync(t =>
         {
@@ -35,7 +38,7 @@ public sealed partial class ThreadOrchestrator
         });
 
         if (wrapper is not null) await progress.PhaseAsync("📦", $"Rangkuman · {wrapper.Model}", cancellationToken);
-        await progress.FinalAsync(FinalReport.Status(execution, verification?.Report, testing?.Report), cancellationToken);
+        await progress.FinalAsync(FinalReport.Status(execution, verification?.Report, testing?.Report, unitReport), cancellationToken);
 
         // Without the wrapper's text the developer still gets the plan summary between the status and the files.
         var wrapClock = Stopwatch.StartNew();
@@ -44,7 +47,7 @@ public sealed partial class ThreadOrchestrator
         var narrated = false;
         if (wrapper is null)
         {
-            finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report);
+            finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report, unitReport);
             await progress.FinalAsync(plan.Summary, cancellationToken);
         }
         else
@@ -62,19 +65,20 @@ public sealed partial class ThreadOrchestrator
                 if (answered.Id != wrapper.Id) await recorder.UpdateThreadAsync(t => t.WrapperModel = answered.Model);
                 if (string.IsNullOrWhiteSpace(finalText))
                 {
-                    finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report);
+                    finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report, unitReport);
                     if (!narrated) await progress.FinalAsync(plan.Summary, cancellationToken);
                 }
             }
             catch (NineRouterException ex)
             {
                 recorder.Log(ActivityLevel.Warning, $"Wrapper gagal ({ex.Message}); memakai ringkasan otomatis.");
-                finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report);
+                finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report, unitReport);
                 if (!narrated) await progress.FinalAsync(plan.Summary, cancellationToken);
             }
         }
         wrapClock.Stop();
         await progress.FinalAsync(FinalReport.ChangedFiles(execution), cancellationToken);
+        if (unitReport is not null) await progress.FinalAsync(FinalReport.UnitTests(unitReport), cancellationToken);
         if (testing is not null) await progress.FinalAsync(FinalReport.Testing(testing.Report), cancellationToken);
 
         var succeeded = execution.Results.Count(r => r.Status == ThreadTaskStatus.Succeeded);
@@ -83,6 +87,7 @@ public sealed partial class ThreadOrchestrator
         if (succeeded < execution.Results.Count) notes.Add($"{execution.Results.Count - succeeded} tugas tidak berhasil.");
         if (verification?.Report.Outcome == VerificationReport.Failed) notes.Add(VerificationNote(verification.Report));
         if (testing?.Report.Outcome == TestingReport.Failed) notes.Add(TestingNote(testing.Report));
+        if (unitReport?.Outcome == UnitTestReport.Failed) notes.Add(UnitTestNote(unitReport));
         await FinishAsync(recorder, status, finalText, pipeline.Total, wrapTokens, wrapClock.ElapsedMilliseconds, notes.Count > 0 ? string.Join(" ", notes) : null);
         if (succeeded > 0) CodeChanged(pipeline.Project.ProjectId, thread.Id);
 
