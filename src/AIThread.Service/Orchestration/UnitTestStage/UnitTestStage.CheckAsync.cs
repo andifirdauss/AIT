@@ -14,11 +14,15 @@ public sealed partial class UnitTestStage
         var plan = input.Plan;
         var retired = (plan.Tests?.Decisions ?? []).Where(d => d.Decision == PlanTests.Obsolete).Select(d => d.Test).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        RefreshSuites(session, plan);
         FindNewTests(session, plan, input.ThreadId);
         // Fix tasks may touch files the plan did not: the tests of those files join.
         foreach (var test in UnitTestSelection.Relevant(session.Tests, UnitTestMode.Relevant, input.ChangedFiles, []))
             if (!retired.Contains(test.DisplayNumber)) session.Relevant.Add(test.Id);
         var tests = session.Tests.Where(t => session.Relevant.Contains(t.Id) && t.State == UnitTestState.Active).Concat(session.NewTests).ToList();
+        if (session.Suites.Count == 0)
+            return new UnitTestCheck(round, [], [], 0, 0,
+                "Unit tests: not run — the project still has no test project AIT recognizes (the plan's test project was not created, or its manifest is deeper than three folders).\n");
         if (!session.CanRun)
             return new UnitTestCheck(round, [], [], 0, 0,
                 $"Unit tests: not run — no test runner of this project can run on this machine: {string.Join("; ", session.Report.Problems)}\n");
@@ -41,6 +45,14 @@ public sealed partial class UnitTestStage
             round.Commands = execution.Suites.Select(s => s.Display).ToList();
         }
         round.Ran = toRun.Count;
+
+        // A test written in this change is a dry-run test. One that fails on a missing database, network or config is not
+        // isolated: it is a failure to fix, not a skip for "the environment" (the thread would pass with no test that ran).
+        foreach (var test in session.NewTests)
+        {
+            if (verdicts.TryGetValue(test.Id, out var verdict) && verdict is { Result: UnitTestResult.Skipped, Requirement: not null })
+                verdicts[test.Id] = new TestVerdict(UnitTestResult.Failed, verdict.DurationMs, verdict.Message ?? verdict.SkipReason, null);
+        }
 
         var problems = new List<(UnitTestCase Test, UnitTestReportItem Item, string Label)>();
         var newIndex = 0;

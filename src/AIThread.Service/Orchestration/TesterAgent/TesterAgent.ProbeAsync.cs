@@ -18,7 +18,8 @@ public sealed partial class TesterAgent
         }
         catch (HttpRequestException ex)
         {
-            return ex.InnerException?.Message ?? ex.Message;
+            // Shown inside parentheses that end the sentence: "(… actively refused it)."
+            return (ex.InnerException?.Message ?? ex.Message).Trim().TrimEnd('.');
         }
     }
 }

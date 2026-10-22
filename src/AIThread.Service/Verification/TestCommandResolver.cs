@@ -6,7 +6,8 @@ using System.Text.RegularExpressions;
 namespace AIThread.Service.Verification;
 
 // Finds the test suites of a project from its manifests and builds the command that runs a suite, or only some of its
-// tests. Supported: .NET (dotnet test with TRX; vstest.console for old-format .NET Framework projects), Node.js (jest,
+// tests. Supported: .NET (dotnet test with TRX; vstest.console for old-format .NET Framework projects, and for SDK-style
+// test projects that reference them: built by Visual Studio's MSBuild first), Node.js (jest,
 // vitest, mocha from node_modules; any other "test" script by exit code only), Python (pytest), PHP (PHPUnit), Java
 // (Maven surefire, Gradle), Go and Rust. Programs and arguments are constants; test names only reach a runner as a
 // filter AIT escapes itself.
@@ -15,6 +16,9 @@ public static partial class TestCommandResolver
     // Above this the filter is dropped and the whole suite runs: a very long command line fails on Windows.
     private const int MaxFilteredTests = 120;
     private const int MaxFilterChars = 6_000;
+
+    // How many levels of ProjectReference are followed looking for an old-format project.
+    private const int MaxReferenceDepth = 4;
 
     private static readonly string[] ProjectExtensions = [".csproj", ".fsproj", ".vbproj"];
     private static readonly string[] SolutionExtensions = [".sln", ".slnx"];
@@ -74,6 +78,7 @@ public static partial class TestCommandResolver
         var command = suite.Framework switch
         {
             _ when suite.IsLegacyDotNet => VsTest(suite, wanted, reportPath),
+            _ when suite.BuildsWithMsBuild => MsBuildVsTest(suite, wanted, reportPath),
             TestSuite.XUnit or TestSuite.NUnit or TestSuite.MsTest or TestSuite.DotNet => DotNetTest(suite, wanted, reportPath),
             TestSuite.Jest => Jest(suite, wanted, reportPath),
             TestSuite.Vitest => Vitest(suite, wanted, reportPath),
@@ -153,7 +158,15 @@ public static partial class TestCommandResolver
         if (framework is null) return null;
 
         if (!BuildCommandResolver.IsLegacyProject(project))
-            return Make(framework, ".NET", root, project, TestReportFormat.Trx);
+        {
+            if (!ReferencesLegacyProject(project, MaxReferenceDepth, [])) return Make(framework, ".NET", root, project, TestReportFormat.Trx);
+
+            // dotnet cannot restore packages.config or import Visual Studio's targets: Visual Studio's MSBuild builds it.
+            var missing = MsBuildLocator.Find() is null ? BuildCommandResolver.NoMsBuild
+                : VsTestConsole() is null ? "vstest.console.exe dari Visual Studio tidak ditemukan di mesin ini."
+                : null;
+            return Make(framework, ".NET Framework", root, project, TestReportFormat.Trx, missing) with { BuildsWithMsBuild = true };
+        }
 
         // Old-format projects only build with Visual Studio's MSBuild; their tests run from the built assembly.
         var vstest = VsTestConsole();
@@ -162,6 +175,37 @@ public static partial class TestCommandResolver
             : assembly is null ? "Assembly test belum di-build (jalankan build dulu)."
             : null;
         return Make(framework, ".NET Framework", root, project, TestReportFormat.Trx, problem) with { IsLegacyDotNet = true };
+    }
+
+    // A ProjectReference, directly or through another project, to an old-format project (a few levels deep is enough).
+    private static bool ReferencesLegacyProject(string project, int depth, HashSet<string> seen)
+    {
+        if (depth == 0 || !seen.Add(project)) return false;
+        string text;
+        try
+        {
+            text = File.ReadAllText(project);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+
+        foreach (Match match in ProjectReferenceInclude().Matches(text))
+        {
+            string reference;
+            try
+            {
+                reference = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(project)!, match.Groups[1].Value.Trim().Replace('\\', '/')));
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                continue;
+            }
+            if (!File.Exists(reference) || !Has(ProjectExtensions, Path.GetExtension(reference))) continue;
+            if (BuildCommandResolver.IsLegacyProject(reference) || ReferencesLegacyProject(reference, depth - 1, seen)) return true;
+        }
+        return false;
     }
 
     // Null when the project references no test framework.
@@ -184,6 +228,51 @@ public static partial class TestCommandResolver
         if (filter is not null) arguments.AddRange(["--filter", filter]);
         return new TestCommand(suite, "dotnet", arguments, $"dotnet test {suite.Manifest}" + (filter is null ? string.Empty : $" ({targets!.Count} test)"),
             Path.GetDirectoryName(reportPath), filter is not null);
+    }
+
+    // Visual Studio's MSBuild builds the test project (restore included, packages.config too) into a folder next to the
+    // report, which the runner removes afterwards; vstest.console then runs the assembly there. The build uses the same
+    // restore and credentials as the solution build of the verification.
+    private static TestCommand MsBuildVsTest(TestSuite suite, IReadOnlyList<TestTarget>? targets, string reportPath)
+    {
+        var project = Path.Combine(suite.Root, suite.Manifest);
+        var outputDirectory = Path.Combine(Path.GetDirectoryName(reportPath)!, "bin") + Path.DirectorySeparatorChar;
+        var assembly = Path.Combine(outputDirectory, AssemblyNameOf(project, SafeRead(project) ?? string.Empty) + ".dll");
+        var filter = targets is null ? null : DotNetFilter(targets);
+        List<string> arguments = [assembly, "/Logger:trx", $"/ResultsDirectory:{Path.GetDirectoryName(reportPath)}"];
+        if (filter is not null) arguments.Add($"/TestCaseFilter:{filter}");
+
+        // The restore of packages.config needs the solution folder (where the packages folder sits), which a build of one
+        // project does not have: the nearest solution above the test project, else the root.
+        var msBuild = MsBuildLocator.Find() ?? "MSBuild.exe";
+        string[] build =
+        [
+            project, "-nologo", "-v:q", "-clp:NoSummary", "-m", "-nr:false", "-restore", "-p:RestorePackagesConfig=true", "-p:GenerateFullPaths=true",
+            "-p:CopyRetryCount=1", "-p:NuGetAudit=false", "-t:Build", $"-p:OutDir={outputDirectory}",
+            $"-p:SolutionDir={SolutionDirectory(suite.Root, Path.GetDirectoryName(project)!)}{Path.DirectorySeparatorChar}"
+        ];
+        return new TestCommand(suite, VsTestConsole() ?? "vstest.console.exe", arguments,
+            $"vstest.console {Path.GetFileName(assembly)}" + (filter is null ? string.Empty : $" ({targets!.Count} test)"), Path.GetDirectoryName(reportPath), filter is not null,
+            new TestPrepare(msBuild, build, $"msbuild {suite.Manifest}"));
+    }
+
+    // The folder of the nearest solution at or above the project, not above the root; the root when there is none.
+    private static string SolutionDirectory(string root, string projectDirectory)
+    {
+        for (var directory = Path.TrimEndingDirectorySeparator(projectDirectory);
+             directory is not null && IsInside(directory, root);
+             directory = Path.GetDirectoryName(directory))
+        {
+            try
+            {
+                if (Directory.EnumerateFiles(directory).Any(f => Has(SolutionExtensions, Path.GetExtension(f)))) return directory;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Not readable: look further up.
+            }
+        }
+        return Path.TrimEndingDirectorySeparator(root);
     }
 
     private static TestCommand VsTest(TestSuite suite, IReadOnlyList<TestTarget>? targets, string reportPath)
@@ -228,9 +317,12 @@ public static partial class TestCommandResolver
     }
 
     // The newest <AssemblyName>.dll below the project's bin folder.
+    private static string AssemblyNameOf(string project, string projectText) =>
+        AssemblyName().Match(projectText) is { Success: true } match ? match.Groups[1].Value.Trim() : Path.GetFileNameWithoutExtension(project);
+
     private static string? BuiltAssembly(string project, string projectText)
     {
-        var name = AssemblyName().Match(projectText) is { Success: true } match ? match.Groups[1].Value.Trim() : Path.GetFileNameWithoutExtension(project);
+        var name = AssemblyNameOf(project, projectText);
         var bin = Path.Combine(Path.GetDirectoryName(project)!, "bin");
         if (!Directory.Exists(bin)) return null;
         try
@@ -561,4 +653,7 @@ public static partial class TestCommandResolver
 
     [GeneratedRegex(@"<AssemblyName>([^<]+)</AssemblyName>", RegexOptions.IgnoreCase)]
     private static partial Regex AssemblyName();
+
+    [GeneratedRegex(@"<ProjectReference\b[^>]*?\bInclude\s*=\s*""([^""]+)""", RegexOptions.IgnoreCase)]
+    private static partial Regex ProjectReferenceInclude();
 }

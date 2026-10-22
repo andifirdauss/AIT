@@ -197,6 +197,31 @@ public class AutoTestingTests
     }
 
     [Fact]
+    public async Task App_that_fails_to_start_shows_one_sentence_and_its_output_in_a_block()
+    {
+        var port = LocalApp.FreePort();
+        var baseUrl = $"http://localhost:{port}";
+        var launcher = new FakeAppLauncher(port, new AppStartResult(null, "npm run dev berhenti dengan exit code 1 sebelum menjawab", "Error: boom\n    at main.js:3"));
+        await using var harness = await CreateTestingHarnessAsync(services => services.AddSingleton<IAppLauncher>(launcher));
+        harness.Project.Write(ProjectKeyResolver.OverrideFile, """{ "run": "npm run dev" }""");
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, baseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Sapaan diganti."));
+
+        var (result, observer) = await harness.RunAsync("Sapaan jadi Halo");
+
+        Assert.Empty(router.CallsTo(ScriptedAgent.Tester));
+        Assert.Contains($"⚠️ Aplikasi belum jalan di `{baseUrl}` dan AIT gagal menjalankannya: `npm run dev` berhenti dengan exit code 1 sebelum menjawab. " +
+                        "Jalankan aplikasinya sendiri, lalu ulangi testing.", observer.Final);
+        Assert.Contains("**Output aplikasi**", observer.Final);
+        Assert.Contains("```text\nError: boom\n    at main.js:3\n```", observer.Final);
+        var report = JsonNode.Parse((await harness.LoadThreadAsync(result.ThreadId)).TestingJson!)!;
+        Assert.Equal("Error: boom\n    at main.js:3", report["appOutput"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task Tester_asks_for_a_login_in_the_chat_and_never_sees_the_password()
     {
         const string password = "rahasia123";
@@ -631,8 +656,9 @@ public class AutoTestingTests
         }
     }
 
-    // "Starts" the app by opening a local listener on the port, so the URL answers the way a started app would.
-    private sealed class FakeAppLauncher(int port) : IAppLauncher
+    // "Starts" the app by opening a local listener on the port, so the URL answers the way a started app would; with
+    // failure, the start fails with it instead.
+    private sealed class FakeAppLauncher(int port, AppStartResult? failure = null) : IAppLauncher
     {
         public AppLaunchCommand? Command { get; private set; }
 
@@ -641,6 +667,7 @@ public class AutoTestingTests
         public Task<AppStartResult> StartAsync(AppLaunchCommand command, string baseUrl, CancellationToken cancellationToken)
         {
             Command = command;
+            if (failure is not null) return Task.FromResult(failure);
             App = LocalApp.Start(_ => (200, "application/json", """{"text":"Halo"}"""), port);
             return Task.FromResult(new AppStartResult(null, null));
         }
