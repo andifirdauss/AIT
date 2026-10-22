@@ -78,17 +78,21 @@
                 <win-controls for="alert" />
                 <div class="update-notes">
                     <div class="update-note">
-                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Auto Testing menjalankan aplikasinya sendiri</strong>: bila aplikasi belum jalan, AIT menjalankannya untuk testing (project ASP.NET Core, Laravel, script <code>dev</code>/<code>start</code> npm, atau <code>"run"</code> di <code>.aithread/project.json</code>), menunggu sampai menjawab, lalu menghentikannya lagi setelah testing. Aplikasi yang sudah Anda jalankan tetap dipakai apa adanya.
-                        <a href="~/Docs/07-cara-kerja#menjalankan-aplikasi" class="alert-link ms-2">Detail →</a>
+                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Background job dan function dicek dengan unit test dry-run</strong>: scheduler, Hangfire, atau function yang tidak terlihat dari aplikasi tidak lagi "dilewati, cek sendiri"; planner menulis test yang memanggilnya langsung dengan database dan API eksternal dipalsukan, juga bila Anda hanya minta testing. Project tanpa test project dibuatkan, test project untuk project .NET Framework lama dibuild dengan MSBuild Visual Studio, dan test baru yang menyentuh database diperbaiki, bukan dilewati.
+                        <a href="~/Docs/07-cara-kerja#background-job-dan-sistem-eksternal" class="alert-link ms-2">Detail →</a>
                     </div>
                     <div class="update-more" id="updateMore" hidden>
+                        <div class="update-note">
+                            <strong>🚀 AIT versi 1.7.5</strong> — <strong>Auto Testing menjalankan aplikasinya sendiri</strong>: bila aplikasi belum jalan, AIT menjalankannya untuk testing (project ASP.NET Core lewat launch profile-nya, Laravel, script <code>dev</code>/<code>start</code> npm, atau <code>"run"</code> di <code>.aithread/project.json</code>), menunggu sampai menjawab, lalu menghentikannya lagi. Bila gagal start, alasannya tampil di blok <em>Output aplikasi</em>.
+                            <a href="~/Docs/07-cara-kerja#menjalankan-aplikasi" class="alert-link ms-2">Detail →</a>
+                        </div>
                         <div class="update-note">
                             <strong>🚀 AIT versi 1.7.4</strong> — <strong>Node Tester lebih stabil membuat dan menjalankan unit test</strong>: katalog unit test per project (scan, jalankan, karantina, setting) di Project &gt; Detail, baseline berjalan paralel dengan planner, regresi dinilai Tester lalu diperbaiki otomatis (maksimal 3 putaran), dan test yang hilang dipulihkan sebelum planner. Katalog ikut export/import memory.
                             <a href="~/Docs/07-cara-kerja" class="alert-link ms-2">Detail →</a>
                         </div>
                     </div>
                     <button type="button" class="btn btn-link alert-link update-toggle" aria-expanded="false" aria-controls="updateMore"
-                            data-more="1 versi lain hari ini ▾" data-less="Sembunyikan ▴">1 versi lain hari ini ▾</button>
+                            data-more="2 versi lain hari ini ▾" data-less="Sembunyikan ▴">2 versi lain hari ini ▾</button>
                 </div>
             </div>
             @if (!string.Equals(controller, "Setup", StringComparison.OrdinalIgnoreCase))
