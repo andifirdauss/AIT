@@ -14,6 +14,7 @@ public sealed partial class TesterAgent
         if (report.Browser is not null) builder.Append($", browser {report.Browser}");
         builder.Append('\n');
         if (report.Error is not null) builder.Append($"Could not run: {report.Error}\n");
+        if (report.AppStarted is not null) builder.Append($"The app was not running; AIT started it for the test with `{report.AppStarted}` and stopped it afterwards.\n");
         if (report.LoginUser is not null) builder.Append($"Logged in as {report.LoginUser} (login given by the developer).\n");
         if (report.LoginNeeded is not null)
             builder.Append($"Stopped to ask for a login: {report.LoginNeeded}")

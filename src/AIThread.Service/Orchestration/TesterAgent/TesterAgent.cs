@@ -73,6 +73,9 @@ public sealed class TestingReport
     // Console errors and failed requests the browser saw during the run.
     public List<string> BrowserErrors { get; set; } = [];
 
+    // The command AIT started the app with because it was not running (stopped again after the test).
+    public string? AppStarted { get; set; }
+
     // The username the test ran with (never the password).
     public string? LoginUser { get; set; }
 
@@ -141,9 +144,10 @@ public sealed class HttpExchange
 }
 
 // The tester node checks a verified change on the running app in its own tool-calling loop: pages in a visible browser
-// (ITestBrowserLauncher), endpoints with HTTP requests, both only on localhost (TestUrls). It never changes code and
-// never fails the thread: a test that cannot run is reported as blocked.
-public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder prompts, ITestBrowserLauncher browsers) : ITesterAgent
+// (ITestBrowserLauncher), endpoints with HTTP requests, both only on localhost (TestUrls). An app that is not running is
+// started for the test and stopped after it (IAppLauncher). It never changes code and never fails the thread: a test that
+// cannot run is reported as blocked.
+public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder prompts, ITestBrowserLauncher browsers, IAppLauncher apps) : ITesterAgent
 {
     private const int MaxSteps = 40;
     private const int MaxDiffLinesPerTask = 80;
@@ -178,6 +182,9 @@ public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder p
         public HttpClient Http { get; } = http;
         public TestPlan Test => Input.Plan.Test!;
         public ITestBrowser? Browser { get; set; }
+
+        // The app this run started because it was not running; stopped when the run ends.
+        public RunningApp? App { get; set; }
 
         // Set when the browser could not start; later browser tools answer with it instead of trying again.
         public string? BrowserError { get; set; }

@@ -107,7 +107,7 @@ Output terdiri dari tiga bagian:
 | `🚀 Eksekusi` | Satu baris per tugas yang selesai, dalam kolom: status, id, durasi, executor, ringkasan. `✅` berhasil, `❌` gagal (dengan alasan), `⏩` dilewati karena tugas yang ditunggunya gagal, `🟡` node dialihkan ke cadangannya. Penutupnya menyebut waktu nyata dan, bila paralel memang menghemat waktu, berapa kali lebih cepat dari sekuensial. |
 | `🧪 Unit test · baseline` | Hanya dengan [katalog unit test](07-cara-kerja.md#unit-test): hasil test terkait sebelum perubahan (dijalankan paralel dengan planner, atau diambil dari hasil sebelumnya untuk kode yang sama). |
 | `🔍 Verifikasi` | AIT membuild project, menjalankan unit test terkait, dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). `🔨` build gagal (error maks 5 baris), `🔎` temuan reviewer, `✅`/`🔴 Unit test · 14 test · 12 lolos, 1 regresi` hasil unit test (test yang gagal di bawahnya), `🩺 Triase` node Tester mendiagnosis test yang gagal, `🔧 Perbaikan` = putaran tugas perbaikan `V1-1`, …, `🟡` peringatan. |
-| `🧪 Testing` | Hanya dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester): node Tester mencoba perubahan di aplikasi yang berjalan. Satu baris per tool (`browser_open`, `browser_fill  Deskripsi ← "AIT test"`, `http_request  POST /api/users`, …); di bawah `http_request` tampil status, durasi, dan awal body respons. `🌐` = browser tester dibuka (jendelanya muncul di layar), `🟡` = aplikasi tidak bisa dihubungi, `🔐` = tester butuh login. Penutupnya: `lolos 2/2 skenario`, `1 dari 3 skenario gagal`, atau *dilewati* beserta alasannya. |
+| `🧪 Testing` | Hanya dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester): node Tester mencoba perubahan di aplikasi yang berjalan. Satu baris per tool (`browser_open`, `browser_fill  Deskripsi ← "AIT test"`, `http_request  POST /api/users`, …); di bawah `http_request` tampil status, durasi, dan awal body respons. `🌐` = browser tester dibuka (jendelanya muncul di layar), `🚀`/`🟢` = aplikasi belum jalan lalu dijalankan AIT dan sudah menjawab, `🟡` = aplikasi tidak bisa dihubungi, `🔐` = tester butuh login. Penutupnya: `lolos 2/2 skenario`, `1 dari 3 skenario gagal`, atau *dilewati* beserta alasannya. |
 | `📦 Rangkuman` | Node Wrapper sedang menulis jawaban akhir. Tidak muncul bila tidak ada Wrapper aktif. |
 
 Jawaban akhir disusun sebagian oleh AIT sendiri (dari hasil, bukan dari model) dan sebagian oleh Wrapper:
@@ -160,9 +160,10 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
   pytest, PHPUnit, Maven/Gradle, `go test`, `cargo test`). Anda bisa meminta "build lalu perbaiki errornya" atau
   "jalankan unit test modul order", dan setelah tiap perubahan AIT membuild ulang dan menjalankan test terkait
   sendiri. Langkah lain disebutkan di ringkasan.
-- Tidak menjalankan aplikasi Anda. Dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester), AIT hanya
-  mencoba aplikasi yang **sudah berjalan** di localhost (browser dan request HTTP), dan tidak memperbaiki kode
-  berdasarkan hasil testing.
+- Menjalankan aplikasi Anda hanya untuk testing. Dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester), AIT
+  mencoba aplikasi di localhost (browser dan request HTTP); yang belum jalan dijalankan lalu dihentikan lagi setelah
+  testing ([Menjalankan aplikasi](07-cara-kerja.md#menjalankan-aplikasi)). AIT tidak memperbaiki kode berdasarkan hasil
+  testing.
 - Tidak memakai tool bawaan Claude Code: saat orkestrasi aktif, Claude Code berfungsi sebagai tampilan percakapan.
   Untuk pekerjaan yang butuh menjalankan perintah selain build, matikan *Orkestrasi aktif* sementara (Claude Code
   menjadi agen biasa lewat 9router) atau kembalikan integrasi.

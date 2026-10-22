@@ -162,6 +162,41 @@ public class AutoTestingTests
     }
 
     [Fact]
+    public async Task App_that_is_not_running_is_started_with_the_project_run_command()
+    {
+        var port = LocalApp.FreePort();
+        var baseUrl = $"http://localhost:{port}";
+        var launcher = new FakeAppLauncher(port);
+        await using var harness = await CreateTestingHarnessAsync(services => services.AddSingleton<IAppLauncher>(launcher));
+        harness.Project.Write(ProjectKeyResolver.OverrideFile, """{ "run": "npm run dev" }""");
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, baseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.HttpRequest, new { method = "GET", url = "/api/greeting" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new { summary = "Oke.", scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Halo." } } }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Sapaan diganti."));
+
+        try
+        {
+            var (result, observer) = await harness.RunAsync("Sapaan jadi Halo");
+
+            Assert.Equal(ThreadStatus.Completed, result.Status);
+            Assert.Equal("npm run dev", launcher.Command?.Display);
+            Assert.Equal(harness.Project.Root, launcher.Command?.WorkingDirectory);
+            Assert.Equal(port.ToString(), launcher.Command?.Environment["PORT"]);
+            Assert.Contains(observer.Lines, l => l.Contains("AIT menjalankannya") && l.Contains("npm run dev"));
+            var report = JsonNode.Parse((await harness.LoadThreadAsync(result.ThreadId)).TestingJson!)!;
+            Assert.Equal(TestingReport.Passed, report["outcome"]!.GetValue<string>());
+            Assert.Contains("GET /api/greeting", launcher.App!.Requests);
+        }
+        finally
+        {
+            if (launcher.App is { } app) await app.DisposeAsync();
+        }
+    }
+
+    [Fact]
     public async Task Tester_asks_for_a_login_in_the_chat_and_never_sees_the_password()
     {
         const string password = "rahasia123";
@@ -593,6 +628,21 @@ public class AutoTestingTests
         {
             _listener.Close();
             await _loop;
+        }
+    }
+
+    // "Starts" the app by opening a local listener on the port, so the URL answers the way a started app would.
+    private sealed class FakeAppLauncher(int port) : IAppLauncher
+    {
+        public AppLaunchCommand? Command { get; private set; }
+
+        public LocalApp? App { get; private set; }
+
+        public Task<AppStartResult> StartAsync(AppLaunchCommand command, string baseUrl, CancellationToken cancellationToken)
+        {
+            Command = command;
+            App = LocalApp.Start(_ => (200, "application/json", """{"text":"Halo"}"""), port);
+            return Task.FromResult(new AppStartResult(null, null));
         }
     }
 
