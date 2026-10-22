@@ -27,7 +27,7 @@ public class NineRouterServiceTests
             return Json(HttpStatusCode.BadRequest, "{\"error\":{\"message\":\"Missing model\"}}");
         });
 
-        return new NineRouterService(new StubFactory(handler), new StubSettings(storedKey), NullLogger<NineRouterService>.Instance);
+        return new NineRouterService(new StubFactory(handler), new StubSettings(storedKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance);
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class NineRouterServiceTests
             }
             return Json(HttpStatusCode.OK, "{\"choices\":[{\"message\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}");
         });
-        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), NullLogger<NineRouterService>.Instance);
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance);
 
         var result = await router.ChatAsync(new ChatCompletionRequest { Model = "cc/claude-opus-5-5", Messages = [ChatMessages.User("hi")] });
 
@@ -112,7 +112,7 @@ public class NineRouterServiceTests
             calls++;
             return Json(HttpStatusCode.ServiceUnavailable, body);
         });
-        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), NullLogger<NineRouterService>.Instance);
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance);
 
         var ex = await Assert.ThrowsAsync<NineRouterException>(() =>
             router.ChatAsync(new ChatCompletionRequest { Model = "cc/claude-opus-5-5", Messages = [ChatMessages.User("hi")] }));
@@ -137,7 +137,7 @@ public class NineRouterServiceTests
                 ? Json(HttpStatusCode.BadRequest, "{\"error\":{\"message\":\"Unrecognized request argument supplied: prompt_cache_key\"}}")
                 : Json(HttpStatusCode.OK, "{\"choices\":[{\"message\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}");
         });
-        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), NullLogger<NineRouterService>.Instance);
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance);
         ChatCompletionRequest Request(string model) => new()
         {
             Model = model,

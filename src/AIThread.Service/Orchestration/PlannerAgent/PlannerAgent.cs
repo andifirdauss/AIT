@@ -58,7 +58,8 @@ public sealed partial class PlannerAgent(
     IPlannerToolRunner runner,
     IToolsNodeAgent toolsNodeAgent,
     INodePromptBuilder prompts,
-    ICodeSkeletonTools skeleton) : IPlannerAgent
+    ICodeSkeletonTools skeleton,
+    ISecretGuard secrets) : IPlannerAgent
 {
     private const int MaxRequestChars = 40_000;
     private const int MaxAttachedContextChars = 30_000;

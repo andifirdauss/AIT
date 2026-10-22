@@ -133,7 +133,7 @@
         body: `<pre class="code-block">${escapeHtml(global.preview)}</pre>`
       })}
       ${cli.note ? `<p class="small text-secondary mb-0">${escapeHtml(cli.note)}</p>` : ''}
-      ${cli.id === CLAUDE ? sectionHtml('cli-hooks', 'Context Keeper untuk <span class="mono">/clear</span>', hooksShell()) : ''}`;
+      ${cli.id === CLAUDE ? sectionHtml('cli-hooks', 'Hook: Context Keeper <span class="mono">/clear</span> &amp; pemulih secret', hooksShell()) : ''}`;
   }
 
   el('cliCards').addEventListener('toggle', event => {
@@ -183,6 +183,11 @@
         <span class="mono">/clear</span>, AIT meringkas sesi lama dan menyisipkannya ke sesi baru. Berlaku juga untuk sesi yang
         <em>tidak</em> diarahkan ke proxy.
       </p>
+      <p class="small text-secondary">
+        Hook <span class="mono">PreToolUse</span> memulihkan secret: model hanya melihat placeholder <span class="mono">{{AIT_SECRET:…}}</span>,
+        dan sebelum Claude Code menjalankan Edit/Write/Bash, AIT mengganti placeholder itu dengan nilai aslinya (Anda tetap diminta konfirmasi).
+        Placeholder yang tidak dikenali akan ditolak, supaya tidak tertulis ke file apa adanya.
+      </p>
       <select class="form-select form-select-sm mb-2" id="hooksTarget">${options.join('')}</select>
       <div class="alert small" id="hooksStatus">Memuat status…</div>
       ${winFrame({
@@ -215,10 +220,10 @@
     box.classList.remove('alert-success', 'alert-secondary', 'alert-warning');
     if (status.installed) {
       box.classList.add('alert-success');
-      box.innerHTML = `✓ Hook /clear terpasang.<br><span class="mono">${escapeHtml(status.path)}</span>`;
+      box.innerHTML = `✓ Hook /clear dan pemulih secret terpasang.<br><span class="mono">${escapeHtml(status.path)}</span>`;
     } else if (status.installedBaseUrl) {
       box.classList.add('alert-warning');
-      box.innerHTML = `Hook terpasang ke alamat lain: <span class="mono">${escapeHtml(status.installedBaseUrl)}</span> — pasang ulang untuk memperbarui.<br><span class="mono">${escapeHtml(status.path)}</span>`;
+      box.innerHTML = `Hook versi lama atau ke alamat lain: <span class="mono">${escapeHtml(status.installedBaseUrl)}</span> — pasang ulang untuk memperbarui.<br><span class="mono">${escapeHtml(status.path)}</span>`;
     } else {
       box.classList.add('alert-secondary');
       box.innerHTML = `Belum terpasang: <span class="mono">${escapeHtml(status.path)}</span>`;

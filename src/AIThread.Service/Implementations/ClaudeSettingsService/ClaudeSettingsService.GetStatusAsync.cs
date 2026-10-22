@@ -19,6 +19,7 @@ public sealed partial class ClaudeSettingsService
             File.Exists(target.Path),
             currentBaseUrl is not null && SameUrl(currentBaseUrl, proxyBaseUrl),
             currentBaseUrl,
-            new JsonObject { ["env"] = env }.ToJsonString(WriteOptions));
+            new JsonObject { ["env"] = env, ["permissions"] = ClaudePermissionRules.Block() }.ToJsonString(WriteOptions),
+            ClaudePermissionRules.IsApplied(root));
     }
 }

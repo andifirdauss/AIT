@@ -16,6 +16,7 @@ public sealed partial class ThreadOrchestrator
         var cancellationToken = prepared.Cancellation.Token;
         var recorder = new ThreadRecorder(dbFactory, eventBus, activityLog, thread);
         var total = Stopwatch.StartNew();
+        using var secretTally = secrets.BeginTally();
         var request = new ThreadRequest(thread.Source, thread.Prompt, null, null, thread.WorkingDirectory, prepared.Project.ProjectId, thread.SessionId);
 
         RuntimeSettings settings;

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using AIThread.Service.Interfaces;
 using AIThread.Service.Workspace.Documents;
 using Microsoft.Extensions.FileSystemGlobbing;
 
@@ -7,8 +8,12 @@ namespace AIThread.Service.Workspace;
 
 // Read-only repository access for the planner. Output is plain text sized for a model context. Relative paths are
 // relative to the project root; absolute paths may point outside it, for checking another folder or project.
-public sealed class WorkspaceTools(WorkspaceScope scope)
+// With secrets, the secrets in what is read come back as placeholders (SecretGuard); credential files are listed with a
+// mark but never read (WorkspaceScope).
+public sealed class WorkspaceTools(WorkspaceScope scope, ISecretGuard? secrets = null)
 {
+    private const string ProtectedMark = "  (protected: credential file)";
+
     public const int MaxReadLines = 600;
     private const int MaxOutputChars = 24_000;
     private const long MaxSearchFileBytes = 1_000_000;
@@ -76,7 +81,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
                     truncated = true;
                     return;
                 }
-                builder.Append(indent).Append(Path.GetFileName(file)).Append('\n');
+                builder.Append(indent).Append(Path.GetFileName(file)).Append(scope.IsProtected(file) ? ProtectedMark : string.Empty).Append('\n');
             }
         }
     }
@@ -93,7 +98,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         foreach (var file in scope.EnumerateFiles(baseDirectory))
         {
             if (!matcher.Match(MatchPath(file, baseDirectory)).HasMatches) continue;
-            results.Add(scope.ToDisplay(file));
+            results.Add(scope.ToDisplay(file) + (scope.IsProtected(file) ? ProtectedMark : string.Empty));
             if (results.Count >= maxResults) break;
         }
 
@@ -129,6 +134,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
         {
             var display = scope.ToDisplay(file);
             if (matcher is not null ? !matcher.Match(MatchPath(file, baseDirectory)).HasMatches : !TextExtensions.Contains(Path.GetExtension(file))) continue;
+            if (scope.IsProtected(file)) continue;
 
             try
             {
@@ -147,7 +153,8 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
                         fileMatched = true;
                         filesWithMatches++;
                     }
-                    builder.Append(display).Append(':').Append(lineNumber).Append(": ").Append(Truncate(line.Trim(), 200)).Append('\n');
+                    var shown = secrets?.RedactFile(file, line.Trim(), scope.Secrets.Keys) ?? line.Trim();
+                    builder.Append(display).Append(':').Append(lineNumber).Append(": ").Append(Truncate(shown, 200)).Append('\n');
                     if (++matches >= maxMatches)
                     {
                         builder.Append($"... (stopped at {maxMatches} matches; refine the query or file glob)\n");
@@ -197,6 +204,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope)
             content = (await TextFileIo.ReadAsync(fullPath, cancellationToken)).Content;
         }
 
+        if (secrets is not null) content = secrets.RedactFile(fullPath, content, scope.Secrets.Keys);
         var lines = SplitLines(content);
         var total = lines.Length;
         if (total == 0) return $"File: {scope.ToDisplay(fullPath)} (empty)";

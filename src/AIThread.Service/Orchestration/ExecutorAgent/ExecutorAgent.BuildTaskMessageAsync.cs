@@ -35,7 +35,7 @@ public sealed partial class ExecutorAgent
         var references = await BuildReferencesAsync(job, cancellationToken);
         if (references.Length > 0) builder.Append("## Reference excerpts (read-only, from other files)\n").Append(references).Append('\n');
 
-        builder.Append(FileSection(task, file));
+        builder.Append(FileSection(task, file, job.Scope));
         builder.Append("\nRespond with SEARCH/REPLACE blocks and the SUMMARY line only.");
         return builder.ToString();
     }

@@ -15,6 +15,8 @@ public sealed partial class ThreadOrchestrator
         var cancellationToken = cancellation.Token;
         var recorder = new ThreadRecorder(dbFactory, eventBus, activityLog, thread);
         var total = Stopwatch.StartNew();
+        // The secrets masked on the way to the models of this thread, for the footer.
+        using var secretTally = secrets.BeginTally();
 
         RuntimeSettings settings;
         try

@@ -6,8 +6,18 @@ namespace AIThread.Service.Testing;
 // Opens the visible tester browser with Playwright: Edge first (it comes with Windows), then Chrome, then Playwright's
 // own Chromium, downloaded once when neither is installed. Each browser keeps its own profile under
 // %LOCALAPPDATA%\AIThread\tester-browser, so a login the developer makes there survives the next test runs.
-public sealed partial class TestBrowserLauncher(ILogger<TestBrowserLauncher> logger) : ITestBrowserLauncher
+// The Playwright driver ships without its node.exe (half the install size); EnsureNodeAsync finds a Node.js for it.
+public sealed partial class TestBrowserLauncher(IHttpClientFactory httpClientFactory, ILogger<TestBrowserLauncher> logger)
+    : ITestBrowserLauncher
 {
+    public const string HttpClientName = "playwright-node";
+
+    // The Node.js the Playwright driver was built with; downloaded when no usable Node.js is installed.
+    private const string NodeVersion = "24.21.0";
+    // The driver package's "engines" requirement.
+    private const int MinNodeMajor = 20;
+    private const string NodePathVariable = "PLAYWRIGHT_NODEJS_PATH";
+
     // Slow enough for the developer to follow what the tester does.
     private const float SlowMoMs = 250;
     private const float ActionTimeoutMs = 10_000;
@@ -22,4 +32,7 @@ public sealed partial class TestBrowserLauncher(ILogger<TestBrowserLauncher> log
 
     public static string ProfileRoot =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AIThread", "tester-browser");
+
+    private static string DownloadedNode =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AIThread", "node", $"v{NodeVersion}", "node.exe");
 }

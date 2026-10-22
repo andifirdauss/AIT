@@ -1,8 +1,11 @@
+using AIThread.Service.Security;
+
 namespace AIThread.Service.Workspace;
 
 // Sandbox for every file operation of a thread. Writes (and the executors' work) are resolved against the project root
 // and anything that escapes it, or points into build output / VCS folders, is rejected. The planner's read-only checks
 // may go beyond the root (TryResolveForRead), e.g. to look at another project when the developer asks for it.
+// Credential files (SecretPaths, plus the project's own rules in .aithread/project.json) are refused both ways.
 public sealed class WorkspaceScope
 {
     // Folders that are never source in any stack: VCS, IDE, package caches and tool caches.
@@ -14,6 +17,7 @@ public sealed class WorkspaceScope
     };
 
     private readonly HashSet<string> _extraIgnored;
+    private SecretPolicy? _secrets;
 
     // extraIgnoredDirectories: build output that only counts as noise for the stacks of this project
     // (e.g. "target" for Maven), see ProjectLocator.IgnoredDirectoriesFor.
@@ -24,6 +28,12 @@ public sealed class WorkspaceScope
     }
 
     public string Root { get; }
+
+    // The project's secret rules (.aithread/project.json "secrets"), read once per scope.
+    public SecretPolicy Secrets => _secrets ??= SecretPolicy.Load(Root);
+
+    // A credential file: never read for a model, never written.
+    public bool IsProtected(string fullPath) => SecretPaths.IsProtected(fullPath, Root, Secrets);
 
     public static bool IsIgnoredDirectoryName(string name) => IgnoredDirectoryNames.Contains(name);
 
@@ -56,7 +66,7 @@ public sealed class WorkspaceScope
     // For anything that changes files: the path must stay inside the project root.
     public bool TryResolve(string? path, out string fullPath, out string? error)
     {
-        if (!TryNormalize(path, out fullPath, out error)) return false;
+        if (!TryNormalize(path, out fullPath, out error) || Refuse(path, ref fullPath, out error)) return false;
         if (IsInside(fullPath)) return true;
 
         fullPath = string.Empty;
@@ -65,7 +75,18 @@ public sealed class WorkspaceScope
     }
 
     // For read-only checks by the planner: an absolute path (or one with "..") may point anywhere on this machine.
-    public bool TryResolveForRead(string? path, out string fullPath, out string? error) => TryNormalize(path, out fullPath, out error);
+    public bool TryResolveForRead(string? path, out string fullPath, out string? error) =>
+        TryNormalize(path, out fullPath, out error) && !Refuse(path, ref fullPath, out error);
+
+    private bool Refuse(string? path, ref string fullPath, out string? error)
+    {
+        error = null;
+        if (!IsProtected(fullPath)) return false;
+        SecretPaths.CountBlocked();
+        error = SecretPaths.Refusal(path ?? fullPath);
+        fullPath = string.Empty;
+        return true;
+    }
 
     private bool TryNormalize(string? path, out string fullPath, out string? error)
     {
