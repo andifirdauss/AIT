@@ -46,7 +46,8 @@ public sealed partial class ThreadOrchestrator
             var unitTests = await unitTestStage.OpenAsync(project, settings, cancellationToken);
             var (codeMap, labelsFromSession, promptFiles, previousTurn) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
             var sessionChanges = await SessionChangesAsync(project, request.Session, thread.Id, cancellationToken);
-            if (unitTests is not null)
+            // Without a test project there is nothing to restore into or to run before the change.
+            if (unitTests is { Suites.Count: > 0 })
             {
                 await RestoreUnitTestsAsync(unitTests, executors, scope, settings, recorder, progress, cancellationToken);
                 unitTestStage.StartBaseline(unitTests, promptFiles.Concat(codeMap.Select(h => h.Path)).ToList(), codeMap.Select(h => h.Module).Distinct().ToList(),
@@ -84,6 +85,8 @@ public sealed partial class ThreadOrchestrator
                 return await AwaitAnswerAsync(recorder, progress, project, request, planning, pause, planClock, total, cancellationToken);
 
             var plan = planning.Plan!;
+            // A project without a test project keeps the session only for the test project and tests the plan adds.
+            if (unitTests is { Suites.Count: 0 } && plan.Tests?.New is not { Count: > 0 }) unitTests = null;
             await recorder.UpdateThreadAsync(t =>
             {
                 t.PlannerModel = planner.Model;

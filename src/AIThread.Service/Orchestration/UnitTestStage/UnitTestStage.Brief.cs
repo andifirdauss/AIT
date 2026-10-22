@@ -8,17 +8,22 @@ public sealed partial class UnitTestStage
 {
     // The "# Unit tests" section of the planner's brief: the suites, the rule for new tests, and the registered tests
     // related to the files and modules the request names, with their last result.
-    public static string Brief(UnitTestSession session, IReadOnlyCollection<string> files, IReadOnlyCollection<string> modules)
+    // autoTesting: a change the tester cannot reach on the running app gets a dry-run test too.
+    public static string Brief(UnitTestSession session, IReadOnlyCollection<string> files, IReadOnlyCollection<string> modules, bool autoTesting = false)
     {
         var builder = new StringBuilder("# Unit tests (the project's catalog: AIT runs the related ones before and after your change)\n");
         foreach (var suite in session.Suites)
             builder.Append($"- Suite: {suite.Framework} · {suite.Manifest}").Append(suite.CanRun ? string.Empty : $" (cannot run on this machine: {suite.Problem})").Append('\n');
+        if (session.Suites.Count == 0)
+            builder.Append("- No test project yet. When a new test is needed, the plan creates the test project too (see the Unit tests rules).\n");
         builder.Append(session.Settings.Authoring switch
         {
-            UnitTestAuthoring.AutoLogic => "New tests: when the developer asks, and for changes to business logic no test covers yet.\n",
-            UnitTestAuthoring.Off => "New tests: turned off for this project.\n",
-            _ => "New tests: only when the developer asks for tests.\n"
-        });
+            UnitTestAuthoring.AutoLogic => "New tests: when the developer asks, and for changes to business logic no test covers yet",
+            UnitTestAuthoring.Off => "New tests: turned off for this project",
+            _ => "New tests: only when the developer asks for tests"
+        }).Append(autoTesting && session.Settings.Authoring != UnitTestAuthoring.Off
+            ? ", and always a dry-run test for a change the tester cannot check on the running app (background job, external system).\n"
+            : ".\n");
 
         var active = session.Active.ToList();
         var related = UnitTestSelection.Relevant(active, session.Settings.Mode == UnitTestMode.All ? UnitTestMode.Relevant : session.Settings.Mode, files, modules);

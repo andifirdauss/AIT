@@ -13,6 +13,8 @@ public sealed partial class AppLauncher
         var tail = new Queue<string>();
         void OnLine(string line)
         {
+            // dotnet run builds first; its warnings (NU1903, CS8618, ...) would push the startup error out of the tail.
+            if (string.IsNullOrWhiteSpace(line) || BuildWarning().IsMatch(line)) return;
             lock (tail)
             {
                 tail.Enqueue(line);
@@ -22,7 +24,7 @@ public sealed partial class AppLauncher
         string Output()
         {
             string text;
-            lock (tail) text = string.Join('\n', tail).Trim();
+            lock (tail) text = string.Join('\n', tail).Trim('\n', '\r');
             return text.Length <= MaxTailChars ? text : "…" + text[^MaxTailChars..];
         }
 
@@ -50,7 +52,7 @@ public sealed partial class AppLauncher
         {
             process.Dispose();
             logger.LogWarning("Aplikasi tidak bisa dijalankan dengan {Command}: {Error}", command.Display, ex.Message);
-            return new AppStartResult(null, $"'{command.FileName}' tidak bisa dijalankan ({ex.Message}). Apakah toolchain {command.Stack} terpasang dan ada di PATH?");
+            return new AppStartResult(null, $"'{command.FileName}' tidak bisa dijalankan ({ex.Message.TrimEnd('.')}); pastikan toolchain {command.Stack} terpasang dan ada di PATH");
         }
 
         logger.LogInformation("Menjalankan aplikasi untuk testing: {Command} (PID {ProcessId})", command.Display, process.Id);
@@ -76,13 +78,15 @@ public sealed partial class AppLauncher
                     await app.DisposeAsync();
                     // Another instance (started meanwhile by the developer or a parallel thread) holds the port.
                     if (await AnswersAsync(http, baseUrl, cancellationToken)) return new AppStartResult(null, null);
-                    return Failed(command, $"berhenti dengan exit code {exitCode} sebelum menjawab di {baseUrl}", Output());
+                    // Windows crash codes read better in hex: -1073741819 is 0xC0000005 (access violation).
+                    var code = exitCode < 0 ? $"{exitCode} (0x{exitCode:X8})" : exitCode.ToString();
+                    return Failed(command, $"berhenti dengan exit code {code} sebelum menjawab", Output());
                 }
 
                 if (clock.Elapsed > StartTimeout)
                 {
                     await app.DisposeAsync();
-                    return Failed(command, $"belum menjawab di {baseUrl} setelah {StartTimeout.TotalMinutes:0} menit, jadi dihentikan lagi", Output());
+                    return Failed(command, $"belum menjawab setelah {StartTimeout.TotalMinutes:0} menit, jadi dihentikan lagi", Output());
                 }
 
                 await Task.Delay(PollInterval, cancellationToken);
@@ -98,6 +102,6 @@ public sealed partial class AppLauncher
     private AppStartResult Failed(AppLaunchCommand command, string what, string output)
     {
         logger.LogWarning("Aplikasi untuk testing {What}: {Command}\n{Output}", what, command.Display, output);
-        return new AppStartResult(null, $"`{command.Display}` {what}." + (output.Length == 0 ? string.Empty : $" Output terakhir: {output}"));
+        return new AppStartResult(null, $"{command.Display} {what}", output.Length == 0 ? null : output);
     }
 }

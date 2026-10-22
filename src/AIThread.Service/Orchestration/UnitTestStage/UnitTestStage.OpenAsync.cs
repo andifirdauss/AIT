@@ -18,13 +18,15 @@ public sealed partial class UnitTestStage
             var unitSettings = await catalog.GetSettingsAsync(project.Key, limit.Token);
             if (unitSettings.Mode == UnitTestMode.Off) return null;
             var suites = TestCommandResolver.Suites(project.RootPath, project.Modules);
-            if (suites.Count == 0) return null;
+            // Without a test project the session only lets the planner have one created with the tests a change needs;
+            // the thread drops it when the plan adds none (ThreadOrchestrator.ExecuteAsync).
+            if (suites.Count == 0 && unitSettings.Authoring == UnitTestAuthoring.Off) return null;
 
             var tests = (await catalog.ListAsync(project.Key, limit.Token)).ToList();
             // The first thread of a project that already has tests fills the catalog from the code (no model). The
             // store answered by then, so the reads after a scan, which may take a while, are not limited.
             var reads = limit.Token;
-            if (tests.Count == 0)
+            if (tests.Count == 0 && suites.Count > 0)
             {
                 await scanner.ScanAsync(project, label: false, settings.EffectiveDeveloperName, cancellationToken);
                 tests = (await catalog.ListAsync(project.Key, cancellationToken)).ToList();

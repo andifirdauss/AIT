@@ -227,7 +227,7 @@ public class UnitTestOrchestrationTests
     }
 
     [Fact]
-    public async Task Without_a_runnable_suite_a_project_runs_no_unit_tests()
+    public async Task Without_a_test_project_the_planner_may_create_one_but_a_plan_without_tests_runs_none()
     {
         var runner = new FakeTestRunner();
         await using var harness = await CreateAsync();
@@ -236,7 +236,8 @@ public class UnitTestOrchestrationTests
         router
             .On(ScriptedAgent.Planner, call =>
             {
-                Assert.DoesNotContain("# Unit tests", call.LastUser);
+                Assert.Contains("No test project yet", call.LastUser);
+                Assert.Contains("create the test project in the same plan", call.System);
                 Assert.DoesNotContain(PlannerTools.RunTests, call.ToolNames!);
                 return router.SubmitPlan(new ThreadPlan { Summary = "Sapaan.", Tasks = [Step("T1", GreeterFile, "Return \"Halo\".")] });
             })
@@ -250,12 +251,151 @@ public class UnitTestOrchestrationTests
         Assert.Empty(runner.Calls);
     }
 
+    [Fact]
+    public async Task A_new_dry_run_test_that_reaches_the_database_is_fixed_not_skipped_as_the_environment()
+    {
+        const string newTest = "Save_WithSpaces_IsRejected";
+        // The runner's own classification (a missing database) would skip it; the thread fixes it instead.
+        var runner = new FakeTestRunner { FailureMessage = t => $"System.Data.SqlClient.SqlException: Cannot open database requested by the login ({t.MethodName})" }
+            .Then(_ => UnitTestResult.Passed)
+            .Then(t => t.MethodName == newTest ? UnitTestResult.Failed : UnitTestResult.Passed) // after the change: skipped by the runner, so not retried
+            .Then(_ => UnitTestResult.Passed);                                                  // after the fix
+        await using var harness = await OrchestrationHarness.CreateAsync(configureServices: s => s.AddSingleton<ITestRunner>(runner));
+        await harness.AddStandardNodesAsync();
+        await harness.AddNodeAsync(NodeRole.Tester, "tester-model");
+        await PrepareAsync(harness);
+        const string lastTest = "    [Fact]\n    public void Save_WithName_IsAccepted()\n    {\n        Assert.True(User.IsValid(\"Andi\"));\n    }";
+        var withNew = lastTest + $"\n\n    [Fact]\n    public void {newTest}()\n    {{\n        Assert.False(User.IsValid(\"  \"));\n    }}";
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan
+            {
+                Summary = "Nama berisi spasi ditolak.",
+                Tasks = [Step("T1", UserFile, "Reject blank names."), Step("T2", TestFile, "Add the test.")],
+                Tests = new PlanTests
+                {
+                    New = [new PlanNewTest { Title = "Nama berisi spasi ditolak", Scenario = "given \"  \", when validated, then false", File = TestFile, Name = newTest, Targets = [UserFile] }]
+                }
+            }))
+            .OnExecutor(UserFile, ScriptedRouter.Edit(UserLine, UserLine.Replace("name.Length > 0", "name.Trim().Length > 0"), "Spasi ditolak."))
+            .OnExecutor(TestFile, ScriptedRouter.Edit(lastTest, withNew, "Test ditambah."))
+            // The tester calls it the environment; for a new test that verdict becomes "the test is not isolated".
+            .On(ScriptedAgent.TesterTriage, ScriptedRouter.Text($$"""{"summary":"Database tidak ada.","verdicts":[{"test":"NEW-1","verdict":"environment","reason":"database tidak tersedia"}]}""", 7))
+            .OnExecutor(TestFile, call =>
+            {
+                Assert.Contains("The test is not isolated", call.LastUser);
+                Assert.Contains("fake or inject", call.LastUser);
+                return ScriptedRouter.Edit("        Assert.False(User.IsValid(\"  \"));", "        Assert.False(User.IsValid(\"   \"));", "Test dibuat dry-run.");
+            })
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync("Tolak nama yang hanya spasi, buatkan unit test-nya");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        var thread = await harness.LoadThreadAsync(result.ThreadId);
+        Assert.Contains(thread.Tasks, t => t.TaskKey == "V1-1" && t.FilePath == TestFile);
+        var added = UnitTestReport.FromJson(thread.UnitTestJson)!.Tests.Single(t => t.Decision == "new");
+        Assert.Equal(UnitTestReportItem.Ok, added.Verdict);
+    }
+
+    [Fact]
+    public async Task A_new_test_that_cannot_run_because_the_restore_fails_stays_skipped()
+    {
+        const string newTest = "Save_WithSpaces_IsRejected";
+        // The restore of the test project fails on a feed that needs credentials: no test code can fix that.
+        var runner = new FakeTestRunner { FailureMessage = _ => "error NU1301: Failed to retrieve information from remote source; response status code 401 (Unauthorized)" }
+            .Then(_ => UnitTestResult.Passed)
+            .Then(t => t.MethodName == newTest ? UnitTestResult.Error : UnitTestResult.Passed);
+        await using var harness = await OrchestrationHarness.CreateAsync(configureServices: s => s.AddSingleton<ITestRunner>(runner));
+        await harness.AddStandardNodesAsync();
+        await harness.AddNodeAsync(NodeRole.Tester, "tester-model");
+        await PrepareAsync(harness);
+        const string lastTest = "    [Fact]\n    public void Save_WithName_IsAccepted()\n    {\n        Assert.True(User.IsValid(\"Andi\"));\n    }";
+        var withNew = lastTest + $"\n\n    [Fact]\n    public void {newTest}()\n    {{\n        Assert.False(User.IsValid(\"  \"));\n    }}";
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan
+            {
+                Summary = "Nama berisi spasi ditolak.",
+                Tasks = [Step("T1", UserFile, "Reject blank names."), Step("T2", TestFile, "Add the test.")],
+                Tests = new PlanTests
+                {
+                    New = [new PlanNewTest { Title = "Nama berisi spasi ditolak", Scenario = "given \"  \", when validated, then false", File = TestFile, Name = newTest, Targets = [UserFile] }]
+                }
+            }))
+            .OnExecutor(UserFile, ScriptedRouter.Edit(UserLine, UserLine.Replace("name.Length > 0", "name.Trim().Length > 0"), "Spasi ditolak."))
+            .OnExecutor(TestFile, ScriptedRouter.Edit(lastTest, withNew, "Test ditambah."))
+            .On(ScriptedAgent.TesterTriage, ScriptedRouter.Text($$"""{"summary":"Feed NuGet butuh kredensial.","verdicts":[{"test":"NEW-1","verdict":"environment","reason":"NU1301 401 dari feed NuGet"}]}""", 7))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync("Tolak nama yang hanya spasi, buatkan unit test-nya");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        var thread = await harness.LoadThreadAsync(result.ThreadId);
+        Assert.DoesNotContain(thread.Tasks, t => t.TaskKey.StartsWith("V"));
+        var added = UnitTestReport.FromJson(thread.UnitTestJson)!.Tests.Single(t => t.Decision == "new");
+        Assert.Equal(UnitTestReportItem.SkippedVerdict, added.Verdict);
+        Assert.Contains("Lingkungan (menurut Tester)", added.SkipReason);
+    }
+
+    [Fact]
+    public async Task A_test_project_the_plan_creates_is_found_and_its_new_test_runs_and_joins_the_catalog()
+    {
+        const string newTest = "Sync_WithoutEmail_SavesEmptyString";
+        var runner = new FakeTestRunner().Then(_ => UnitTestResult.Passed);
+        await using var harness = await OrchestrationHarness.CreateAsync(configureServices: s => s.AddSingleton<ITestRunner>(runner));
+        await harness.AddStandardNodesAsync();
+        harness.Project.Write("Shop.slnx", """<Solution><Project Path="src/Shop.csproj" /></Solution>""");
+        harness.Project.Write("src/Shop.csproj", """<Project Sdk="Microsoft.NET.Sdk"></Project>""");
+        harness.Project.Write(UserFile, UserLine);
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/shop");
+        var testCode = $"public class UserTests\n{{\n    [Fact]\n    public void {newTest}()\n    {{\n        Assert.True(User.IsValid(\"Andi\"));\n    }}\n}}\n";
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, call =>
+            {
+                Assert.Contains("No test project yet", call.LastUser);
+                return router.SubmitPlan(new ThreadPlan
+                {
+                    Summary = "Sync tanpa email + test dry-run.",
+                    Tasks =
+                    [
+                        Step("T1", UserFile, "Keep the rule."),
+                        Step("T2", TestProject, "Create the xUnit test project.", "create"),
+                        Step("T3", TestFile, "Add the dry-run test.", "create", "T2")
+                    ],
+                    Tests = new PlanTests
+                    {
+                        New = [new PlanNewTest { Title = "Sync tanpa email", Scenario = "given no email, when synced, then saved empty", File = TestFile, Name = newTest, Targets = [UserFile] }]
+                    }
+                });
+            })
+            .OnExecutor(UserFile, ScriptedRouter.Edit(UserLine, UserLine.Replace("name.Length > 0", "name.Length >= 1"), "Aturan tetap."))
+            .OnExecutor(TestProject, ScriptedRouter.Create("""<Project Sdk="Microsoft.NET.Sdk"><ItemGroup><PackageReference Include="xunit" Version="2.9.3" /></ItemGroup></Project>""", "Test project dibuat."))
+            .OnExecutor(TestFile, ScriptedRouter.Create(testCode, "Test dibuat."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync("Sync karyawan tanpa email jangan error");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Contains(runner.Calls, call => call.Contains(newTest));
+        var report = UnitTestReport.FromJson((await harness.LoadThreadAsync(result.ThreadId)).UnitTestJson)!;
+        Assert.Contains(report.Suites, s => s.Contains("Shop.Tests.csproj"));
+        var added = report.Tests.Single(t => t.Decision == "new");
+        Assert.Equal(("UT-0001", UnitTestReportItem.Ok), (added.Number, added.Verdict));
+        var registered = Assert.Single(await harness.Service<IUnitTestCatalog>().ListAsync("github.com/org/shop", CancellationToken.None));
+        Assert.Equal((newTest, UnitTestOrigin.Ait), (registered.MethodName, registered.Origin));
+    }
+
     // Answers each test of a run from the next script step (the last step repeats); records the methods per run.
     private sealed class FakeTestRunner : ITestRunner
     {
         private readonly List<Func<TestTarget, UnitTestResult>> _steps = [];
         private readonly ConcurrentQueue<IReadOnlyList<string>> _calls = new();
         private int _next;
+
+        // The message of a failed test; the default reads like a failed assertion.
+        public Func<TestTarget, string>? FailureMessage { get; set; }
 
         public IReadOnlyList<IReadOnlyList<string>> Calls => _calls.ToList();
 
@@ -273,7 +413,7 @@ public class UnitTestOrchestrationTests
             var outcomes = wanted.Select(t =>
             {
                 var result = step(t);
-                return new TestCaseOutcome(t.ClassName, t.MethodName, null, result, 4, result == UnitTestResult.Failed ? $"Assert failed in {t.MethodName}" : null);
+                return new TestCaseOutcome(t.ClassName, t.MethodName, null, result, 4, result == UnitTestResult.Failed ? FailureMessage?.Invoke(t) ?? $"Assert failed in {t.MethodName}" : null);
             }).ToList();
             var command = TestCommandResolver.Command(suite, targets, Path.Combine(Path.GetTempPath(), "fake-report.json"));
             return Task.FromResult(new TestRunResult(command, false, outcomes.Any(o => o.Result == UnitTestResult.Failed) ? 1 : 0, outcomes, string.Empty, 10));
