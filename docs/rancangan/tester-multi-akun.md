@@ -28,6 +28,21 @@
 > - Thread yang hanya menguji (tanpa tugas) kini bisa diulang testing-nya (sebelumnya ditolak *tidak ada perubahan*).
 > - Balasan chat yang dikenali: `jalankan test lanjutan <n>`, `test lanjutan #n`, `lanjut test n`, `run follow-up n`
 >   (seluruh pesan; kalimat lain tetap prompt biasa).
+>
+> **Fase 3 sudah diimplementasikan** (2026-10-23): [07-cara-kerja.md → Skenario multi-langkah](../07-cara-kerja.md#skenario-multi-langkah-excel).
+> Yang berbeda:
+> - Skenario disimpan di tabel `TestingScenarios` di context testing yang sama dengan akun uji (bukan context sendiri).
+>   Store eksternal yang sudah punya `TestAccounts` tetapi belum `TestingScenarios` tidak mendapat tabel itu otomatis;
+>   ini hanya mungkin bila build fase 1/2 (tidak pernah dirilis) sempat dipakai dengan DB eksternal.
+> - Sheet *Langkah* memakai **peran** sebagai aktor (dropdown dari sheet *Akun*); peran dipetakan ke username lewat
+>   sheet *Akun*. Saran yang aktornya username diubah ke peran akun itu.
+> - Akun baru di sheet *Akun* langsung ditambahkan saat file dibaca (membaca/mengunggah file dianggap konfirmasi);
+>   akun yang sudah ada tidak diubah (beda peran hanya diperingatkan).
+> - Versi skenario hanya naik bila isi file berubah, jadi `jalankan skenario` boleh selalu membaca file project.
+> - Skenario dijalankan di thread asalnya (rencana, perubahan, nilai yang diingat); hasilnya juga disimpan di saran asal.
+> - Balasan chat: `buat skenario test lanjutan <n>` / `buatkan skenario excel untuk test lanjutan #n`, dan
+>   `jalankan skenario <slug>` (+ `setuju`/`ya`/`ok` untuk konfirmasi efek samping).
+> - Saran tester mendapat `fields` (kolom form sheet) dan skenarionya `action`.
 
 ## Latar belakang
 

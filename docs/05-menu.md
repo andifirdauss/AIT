@@ -193,6 +193,17 @@ project key; tanpa project key kartu menjelaskan bahwa akun belum bisa disimpan.
   temuan file:baris, sumber, dikonfirmasi atau belum). **Deteksi** menjalankan scan kode + model murah lagi; **Ubah**
   mengisi atau mengoreksi sendiri dan bisa menandai *sudah dicek*.
 
+### Skenario test
+
+Kartu **Skenario test** (di bawah Akun uji) berisi [skenario multi-langkah](07-cara-kerja.md#skenario-multi-langkah-excel)
+project: judul, nama file (slug), versi, kolom form, jumlah langkah, peran beserta akunnya (yang belum diisi ditandai),
+hasil terakhir, dan tautan ke thread asalnya.
+
+- **Excel** mengunduh file skenario untuk diisi; **Unggah Excel** membaca file yang sudah diisi (baris yang salah
+  ditampilkan per nomor baris; username baru menjadi akun uji project).
+- **Jalankan** (aktif bila semua peran punya akun) meminta konfirmasi efek samping, lalu membuka halaman thread asalnya
+  tempat kemajuannya tampil. **Hapus** menghapus skenario untuk semua developer project.
+
 ### Struktur kode
 
 Paling bawah, jendela **Struktur kode** menampilkan isi project tanpa compile dan tanpa dependensi tambahan. Data

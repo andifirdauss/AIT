@@ -409,8 +409,8 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
   bersama tetap berbagi katalog: judul, skenario, status, alasan obsolete, hasil terakhir, dan **snapshot** isi file test
   (kecuali project yang mematikan *Simpan snapshot test*). Tidak ikut bila filter memakai pencarian teks atau tipe
   *Knowledge*. Riwayat run tidak ikut.
-- **Akun uji** dan setting testing project (password dev, hasil deteksi *login as*) ikut dengan aturan yang sama
-  (bagian `testing`). Password dev ikut karena isinya hanya password bypass di dev yang terlihat seluruh tim.
+- **Akun uji**, **skenario test** (langkah, peran, kolom form; tanpa hasil run), dan setting testing project (password
+  dev, hasil deteksi *login as*) ikut dengan aturan yang sama (bagian `testing`). Password dev ikut karena isinya hanya password bypass di dev yang terlihat seluruh tim.
 - Project ditulis dengan **project key**-nya (memory lama tanpa key memakai key project-nya di mesin ini), jadi di
   mesin lain memory masuk ke clone project yang sama walau folder root-nya berbeda.
 - **Import** memeriksa file dulu (*dry run*) dan menampilkan ringkasan: yang ditambahkan, ditimpa, sudah ada, tidak
