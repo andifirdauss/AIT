@@ -16,7 +16,8 @@ public record SetupRouterResultDto(RouterStatusDto Status, bool Saved, string Me
 
 // One click pipeline: the strong model plans (and reviews), the cheap one does the rest. CheapModel empty = the strong
 // model everywhere. Running it again updates the same nodes instead of adding new ones.
-public record SetupPresetRequest(string StrongModel, string? CheapModel, bool ToolsNode = true, bool Reviewer = false, bool ContextKeeper = true);
+// Tester: the strong model also triages failing unit tests and runs Auto Testing.
+public record SetupPresetRequest(string StrongModel, string? CheapModel, bool ToolsNode = true, bool Reviewer = false, bool ContextKeeper = true, bool Tester = false);
 
 // Created = a new node; otherwise an existing preset node was updated (or deactivated when its role was unticked).
 public record SetupPresetNodeDto(NodeDto Node, bool Created);

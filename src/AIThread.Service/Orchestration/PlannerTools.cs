@@ -25,6 +25,7 @@ public static class PlannerTools
     public const string GitShow = "git_show";
     public const string GitBlame = "git_blame";
     public const string RunBuild = "run_build";
+    public const string RunTests = "run_tests";
     public const string Investigate = "investigate";
     public const string AskUser = "ask_user";
     public const string SetModule = "set_module";
@@ -45,15 +46,17 @@ public static class PlannerTools
     public static readonly ImmutableArray<string> Skeleton = [CodeOutline, FunctionCalls];
 
     // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
-    public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Max(n => n.Length) + 2;
+    public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Append(RunTests).Max(n => n.Length) + 2;
 
     // canBuild: build verification is enabled and the project has a build command AIThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
     // groups: tools delegated to tools nodes; the planner loses them and gets investigate instead.
     // canTest: Auto Testing is on, so submit_plan asks for the test section.
     // canGit: the project lives in a git repository (GitTools.IsRepository).
+    // unitTests: the project has a unit test catalog AIT can run: run_tests, and the tests section of submit_plan.
     // The list stays the same for the whole planner run so the provider's prompt cache keeps matching.
-    public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false)
+    public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false,
+        bool unitTests = false)
     {
         var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
@@ -63,14 +66,15 @@ public static class PlannerTools
             tools.Add(Definition(name));
         }
         foreach (var name in Skeleton) tools.Add(Definition(name));
+        if (unitTests) tools.Add(RunTestsDefinition());
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());
-        tools.Add(SubmitPlanDefinition(canTest));
+        tools.Add(SubmitPlanDefinition(canTest, unitTests));
         return tools;
     }
 
-    public static JsonArray SubmitOnly(bool canTest = false) => [SubmitPlanDefinition(canTest)];
+    public static JsonArray SubmitOnly(bool canTest = false, bool unitTests = false) => [SubmitPlanDefinition(canTest, unitTests)];
 
     // Whether a delegable tool can run for this project, for the planner and for its tools nodes alike.
     public static bool Offered(string name, bool canBuild, bool canGit) =>
@@ -314,6 +318,20 @@ public static class PlannerTools
             }
             """));
 
+    private static JsonObject RunTestsDefinition() =>
+        ChatMessages.Function(RunTests,
+            "Run unit tests of the project's catalog and get their results: passed, failed with the message, skipped with the reason. Give test numbers from the brief (\"UT-0012\"), a test file, or all. Use it only when the request is about tests. Takes seconds to minutes; never call it in parallel with itself.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "tests": { "type": "array", "items": { "type": "string" }, "description": "Test numbers, e.g. [\"UT-0012\", \"UT-0015\"]." },
+                "file": { "type": "string", "description": "A test file relative to the project root: runs its registered tests." },
+                "all": { "type": "boolean", "description": "Every active test of the catalog." }
+              }
+            }
+            """));
+
     // agent is only asked for when there is a choice; its enum is the keys of the groups.
     private static JsonObject InvestigateDefinition(IReadOnlyList<ToolsNodeGroup> groups)
     {
@@ -399,7 +417,7 @@ public static class PlannerTools
             }
             """));
 
-    private static JsonObject SubmitPlanDefinition(bool canTest)
+    private static JsonObject SubmitPlanDefinition(bool canTest, bool unitTests)
     {
         var schema = SubmitPlanSchema();
         if (canTest)
@@ -407,16 +425,58 @@ public static class PlannerTools
             schema["properties"]!.AsObject()["test"] = TestSchema();
             schema["required"]!.AsArray().Add("test");
         }
+        if (unitTests) schema["properties"]!.AsObject()["tests"] = UnitTestsSchema();
         return ChatMessages.Function(SubmitPlan,
             "Submit the final plan. Call exactly once, after investigating. For requests that need no file change, send an empty tasks list and the full answer in \"answer\"." +
-            (canTest ? " When tasks change files, \"test\" tells the tester how to check the change on the running app." : string.Empty),
+            (canTest ? " When tasks change files, \"test\" tells the tester how to check the change on the running app." : string.Empty) +
+            (unitTests ? " \"tests\" holds the decisions about registered unit tests and the new ones." : string.Empty),
             schema);
     }
+
+    private static JsonObject UnitTestsSchema() => Schema("""
+        {
+          "type": "object",
+          "description": "Unit tests of the project's catalog. Leave it out when the change concerns no registered test and adds none.",
+          "properties": {
+            "decisions": {
+              "type": "array",
+              "description": "Registered tests the change concerns, when not simply kept.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "test": { "type": "string", "description": "Test number, e.g. \"UT-0012\"." },
+                  "decision": { "type": "string", "enum": ["keep", "update", "obsolete"] },
+                  "reason": { "type": "string", "description": "Required for update and obsolete: why, quoting the request. In the developer's language." }
+                },
+                "required": ["test", "decision"]
+              }
+            },
+            "new": {
+              "type": "array",
+              "description": "New tests this plan writes (each needs a create or edit task for its file).",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string", "description": "What it proves, in the developer's language." },
+                  "purpose": { "type": "string", "description": "The rule or behaviour it guards." },
+                  "scenario": { "type": "string", "description": "Given / when / then with concrete values." },
+                  "file": { "type": "string", "description": "The test file, relative to the project root." },
+                  "name": { "type": "string", "description": "The test as it will appear in the code: method name, or the it()/test() title." },
+                  "targets": { "type": "array", "items": { "type": "string" }, "description": "Project files the test exercises." },
+                  "requires": { "type": "array", "items": { "type": "string", "enum": ["database", "network", "config"] } }
+                },
+                "required": ["title", "scenario", "file", "name"]
+              }
+            },
+            "run": { "type": "array", "items": { "type": "string" }, "description": "Only with an empty task list: the test numbers to run, or [\"all\"]." }
+          }
+        }
+        """);
 
     private static JsonObject TestSchema() => Schema("""
         {
           "type": "object",
-          "description": "How the tester checks the finished change on the running app. Ignored when tasks is empty.",
+          "description": "How the tester checks the finished change on the running app. With an empty task list: a check of the existing behaviour when the developer only asked for a test (level none otherwise).",
           "properties": {
             "level": { "type": "string", "enum": ["ui", "api", "none"], "description": "ui: the change shows in a page (the tester drives a visible browser and may call endpoints too); api: only reachable through HTTP endpoints; none: nothing can be exercised from outside (say why in notes)." },
             "baseUrl": { "type": "string", "description": "Root URL of the app running on this machine, e.g. \"http://localhost:5000\" (localhost only)." },

@@ -51,8 +51,8 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 | Field | Default | Rentang | Keterangan |
 |---|---|---|---|
 | Build & verifikasi otomatis | aktif | — | AIT boleh menjalankan perintah build project (`dotnet build --no-incremental`, MSBuild Visual Studio untuk project .NET Framework format lama, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
-| Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. |
-| Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. |
+| Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. Juga batas satu kali run [unit test](07-cara-kerja.md#unit-test) bila project tidak mengisi *Batas waktu run test*. |
+| Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. Regresi unit test punya batas sendiri (3 putaran); `0` juga mematikannya. |
 
 Tab *Koneksi 9router*, *Proxy & orkestrasi*, dan *Build & verifikasi* adalah satu form: **Simpan setting** di tab
 mana pun menyimpan ketiganya. Setelah mengganti proxy API key, terapkan ulang integrasi Claude Code agar
@@ -125,7 +125,8 @@ Pipeline butuh minimal **1 Planner, 1 Executor, 1 Wrapper** yang aktif. Banner d
 kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)) dan **Context Keeper** (lihat
 [Konteks sesi](07-cara-kerja.md#konteks-sesi-context-keeper)) opsional, begitu juga **Tools Node** (lihat
-[Tools node planner](#tools-node-planner)) dan **Tester** (lihat [Auto Testing](#auto-testing-node-tester)).
+[Tools node planner](#tools-node-planner)). Node **Tester** wajib bersyarat: dibutuhkan bila project memakai
+[katalog unit test](#unit-test-project) atau [Auto Testing](#auto-testing-node-tester); tanpa itu boleh tidak ada.
 
 Cara tercepat mengisi semua peran sekaligus: Setup → langkah *Pilih model untuk tiap peran* (cukup pilih model kuat dan
 model murah) — lihat [preset pipeline](05-menu.md#setup). Node `AIT …` yang dibuatnya bisa diubah di sini seperti node lain.
@@ -166,8 +167,9 @@ balasan — cara cepat memastikan model dan key benar.
 - **Reviewer**: node aktif dengan prioritas terkecil memeriksa hasil executor (diff, kontrak, hasil build) di setiap
   putaran verifikasi. Tanpa node ini, verifikasi hanya memakai build. Model yang teliti lebih penting daripada model
   yang cepat: setiap temuannya memicu tugas perbaikan.
-- **Tester**: node aktif dengan prioritas terkecil, hanya bila planner yang dipakai menyalakan *Auto Testing*. Lihat
-  [Auto Testing](#auto-testing-node-tester).
+- **Tester**: node aktif dengan prioritas terkecil. Dipakai untuk menilai unit test yang gagal setelah perubahan
+  (project dengan [katalog unit test](#unit-test-project)), dan untuk testing aplikasi bila planner yang dipakai
+  menyalakan *Auto Testing* (lihat [Auto Testing](#auto-testing-node-tester)).
 
 ### Node cadangan
 
@@ -253,8 +255,9 @@ sedang berjalan:
 
 Yang perlu disiapkan:
 
-- Tambah node ber-role **Tester** (model murah yang mendukung *tool calling*; default max paralel 1) lalu nyalakan
-  *Auto Testing* di node Planner. Tanpa node Tester aktif, banner pipeline memberi catatan dan testing dilewati.
+- Tambah node ber-role **Tester** (model yang mendukung *tool calling*; default max paralel 1) lalu nyalakan
+  *Auto Testing* di node Planner. Tanpa node Tester aktif, banner pipeline memberi catatan dan testing dilewati. Node
+  yang sama menilai unit test yang gagal, jadi pakai model kuat (preset `AIT Tester` di Setup).
 - **Jalankan aplikasinya** sebelum prompt (mis. `dotnet watch`, `npm run dev`): AIT tidak menjalankan aplikasi Anda.
   Bila aplikasi tidak menjawab, testing berakhir *tidak bisa dicek* dan bisa diulang lewat **🧪 Ulangi testing** di detail
   thread.
@@ -265,6 +268,28 @@ Yang perlu disiapkan:
 - Hanya alamat `localhost`/`127.0.0.1`/`[::1]` yang boleh dites. Arahkan aplikasinya ke database pengembangan.
 
 Detail alur, tool tester, dan batasannya: [Testing (Auto Testing)](07-cara-kerja.md#6-testing-auto-testing).
+
+### Unit test project
+
+Project yang punya unit test (xUnit/NUnit/MSTest, jest/vitest/mocha, pytest, PHPUnit, Maven/Gradle, Go, Rust) otomatis
+memakai [katalog unit test](07-cara-kerja.md#unit-test): thread pertama mendaftarkan test-nya, lalu setiap thread
+menjalankan test yang terkait sebelum dan sesudah perubahan. Tidak ada switch global; setting-nya per project di
+[Project > Detail → Unit test](05-menu.md#unit-test) dan berlaku untuk semua developer project itu (lewat project
+key, jadi project butuh key — lihat [Project key](06-memory.md#berbagi-memory-antar-developer-project-key)).
+
+Yang perlu disiapkan:
+
+- **Runner bisa jalan di mesin ini**: .NET SDK (atau Visual Studio untuk `vstest.console` project .NET Framework lama,
+  yang assembly test-nya sudah di-build), `npm install` (jest/vitest/mocha di `node_modules`), `composer install`
+  (`vendor/bin/phpunit`), Python dengan pytest (virtualenv `.venv`/`venv` dipakai bila ada), Maven/Gradle (atau
+  wrapper `mvnw`/`gradlew`), Go, Cargo. AIT tidak menginstal paket; suite yang tidak bisa jalan tampil dengan alasannya
+  di kartu Unit test.
+- **Node Tester** (model kuat) untuk menilai test yang gagal: regresi di kode, test baru yang salah, lingkungan, atau
+  tidak stabil. Tanpa Tester, AIT langsung memperbaiki kode yang diuji test itu, dan banner pipeline memberi catatan.
+- Test yang butuh database/jaringan/config yang tidak ada di mesin Anda tidak perlu dimatikan: hasilnya *dilewati*
+  dengan alasan, bukan gagal.
+- Untuk project yang kodenya tidak boleh disimpan di luar repository, matikan *Simpan snapshot test* (test yang hilang
+  lalu hanya bisa ditulis ulang dari skenarionya).
 
 ### Cara kerja *Max paralel*
 
@@ -316,6 +341,7 @@ Untuk menghemat lebih jauh:
 | Executor | Murah, cepat, patuh format. | Model murah/gratis. Tambahkan beberapa node dari provider berbeda agar beban dan rate limit tersebar; combo memberi fallback otomatis. |
 | Wrapper | Murah, bisa merangkum. | Model murah yang sama dengan executor cukup. |
 | Tools Node | Murah, **wajib mendukung tool calling**, teliti menyalin path, nomor baris, dan identifier. | Model murah yang kuat di kode; konteksnya cukup untuk beberapa file sekaligus. |
+| Tester | Teliti menilai diff dan kode test; **wajib tool calling** untuk Auto Testing. | Model kuat, sekelas planner: keputusannya menentukan apakah kode atau test yang diperbaiki. Hanya dipanggil bila ada unit test yang gagal atau Auto Testing berjalan. |
 | Context Keeper | Murah, teliti menyalin nama file & identifier, konteks cukup untuk ±15 catatan thread. | Model murah yang rapi merangkum; tidak perlu tool calling. Jangan pakai model langganan Claude agar tidak memakai kuota. |
 
 Tips:

@@ -24,6 +24,7 @@ public sealed partial class ThreadOrchestrator(
     IPlannerAgent plannerAgent,
     IExecutionEngine executionEngine,
     IVerificationStage verificationStage,
+    IUnitTestStage unitTestStage,
     ITesterAgent testerAgent,
     IWrapperAgent wrapperAgent,
     IMemoryExtractor memoryExtractor,
@@ -74,6 +75,8 @@ public sealed partial class ThreadOrchestrator(
     // What verification and wrapping of a run need. MemoryNode extracts memories afterwards (null = skip);
     // KeepContext updates the Claude Code context pack (not for retries, which no chat turn started); MemoriesUsed is
     // how many memories the planner read, for the footer. Tester is set when the planner has Auto Testing on.
+    // UnitTests: the project's unit test catalog for this thread (null: none run); Triage: the Tester node that triages
+    // failing unit tests, whether Auto Testing is on or not.
     private sealed record Pipeline(
         ThreadRecorder Recorder,
         ClientProgress Progress,
@@ -88,5 +91,7 @@ public sealed partial class ThreadOrchestrator(
         Stopwatch Total,
         bool KeepContext,
         int MemoriesUsed = 0,
-        AiNode? Tester = null);
+        AiNode? Tester = null,
+        UnitTestSession? UnitTests = null,
+        AiNode? Triage = null);
 }

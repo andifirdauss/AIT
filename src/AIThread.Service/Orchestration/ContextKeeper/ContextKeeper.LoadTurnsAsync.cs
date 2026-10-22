@@ -10,7 +10,7 @@ public sealed partial class ContextKeeper
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var threads = await db.Threads.AsNoTracking()
             .Where(t => ids.Contains(t.Id) && t.ProjectId == projectId)
-            .Select(t => new { t.Id, t.CreatedAt, t.Status, t.Prompt, t.PlanSummary, t.PlanJson, t.FinalResponse, t.Error, t.TestingJson, t.InvestigationJson })
+            .Select(t => new { t.Id, t.CreatedAt, t.Status, t.Prompt, t.PlanSummary, t.PlanJson, t.FinalResponse, t.Error, t.TestingJson, t.UnitTestJson, t.InvestigationJson })
             .ToListAsync(cancellationToken);
         var tasks = (await db.ThreadTasks.AsNoTracking()
                 .Where(t => ids.Contains(t.ThreadRunId))
@@ -34,7 +34,7 @@ public sealed partial class ContextKeeper
                 tasks[t.Id].Select(x => new TurnTask(x.TaskKey, x.TargetPath is null ? x.FilePath : $"{x.FilePath} → {x.TargetPath}", x.Action, x.Title, x.Status.ToString(), x.Summary ?? x.Error)).ToList(),
                 t.FinalResponse,
                 t.Error,
-                TestingReport.FromJson(t.TestingJson)?.Brief(),
+                Testing(TestingReport.FromJson(t.TestingJson)?.Brief(), UnitTestReport.FromJson(t.UnitTestJson)?.Summary),
                 InvestigationLog.FromJson(t.InvestigationJson)?.Brief(MaxInvestigationChars)));
         }
         return records;

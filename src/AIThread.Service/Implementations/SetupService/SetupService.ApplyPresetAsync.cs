@@ -7,7 +7,7 @@ namespace AIThread.Service.Implementations;
 
 public sealed partial class SetupService
 {
-    // Planner (and reviewer) on the strong model, the rest on the cheap one. Nodes added by hand are left alone; the
+    // Planner (and reviewer, tester) on the strong model, the rest on the cheap one. Nodes added by hand are left alone; the
     // preset nodes get a lower priority number so they are the ones used.
     public async Task<SetupPresetResultDto> ApplyPresetAsync(SetupPresetRequest request, CancellationToken cancellationToken = default)
     {
@@ -22,6 +22,7 @@ public sealed partial class SetupService
         var toolsNode = await PresetAsync(existing, NodeRole.ToolsNode, cheap, request.ToolsNode, null, results, cancellationToken);
         await PresetAsync(existing, NodeRole.Executor, cheap, true, null, results, cancellationToken);
         await PresetAsync(existing, NodeRole.Reviewer, strong, request.Reviewer, null, results, cancellationToken);
+        await PresetAsync(existing, NodeRole.Tester, strong, request.Tester, null, results, cancellationToken);
         await PresetAsync(existing, NodeRole.Wrapper, cheap, true, null, results, cancellationToken);
         await PresetAsync(existing, NodeRole.ContextKeeper, cheap, request.ContextKeeper, null, results, cancellationToken);
 

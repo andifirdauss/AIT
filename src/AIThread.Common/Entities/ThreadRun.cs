@@ -58,6 +58,12 @@ public class ThreadRun : BaseEntity
     // TestingReport as JSON: the scenarios with their verdict and the HTTP requests the tester sent.
     public string? TestingJson { get; set; }
 
+    // Unit tests of the project catalog (baseline, the runs after the change, the tester's triage); null when none ran.
+    public long? UnitTestMs { get; set; }
+
+    // UnitTestReport as JSON: every test with its result before and after the change, and the tests restored.
+    public string? UnitTestJson { get; set; }
+
     public long? WrappingMs { get; set; }
     public long? TotalMs { get; set; }
     public DateTime? CompletedAt { get; set; }

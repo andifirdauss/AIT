@@ -47,6 +47,6 @@ public sealed partial class MemoryTransferService
         }
 
         return new MemoryExportFile(MemoryExportFile.FormatName, MemoryExportFile.CurrentVersion, DateTime.UtcNow, AppVersion(),
-            items.OrderBy(i => i.CreatedAt).ToList());
+            items.OrderBy(i => i.CreatedAt).ToList(), await ExportUnitTestsAsync(filter, scope, cancellationToken));
     }
 }

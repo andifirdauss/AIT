@@ -40,6 +40,26 @@ public sealed partial class GitTools(WorkspaceScope scope)
         return false;
     }
 
+    // The commit and branch the project root is on, for the unit test catalog's snapshots; nulls when git cannot tell
+    // (no repository, no commit yet).
+    public async Task<(string? Commit, string? Branch)> HeadAsync(CancellationToken cancellationToken = default)
+    {
+        var commit = await RunGitAsync(scope.Root, ["rev-parse", "HEAD"], cancellationToken);
+        var branch = await RunGitAsync(scope.Root, ["rev-parse", "--abbrev-ref", "HEAD"], cancellationToken);
+        return (commit.Error is null ? commit.Text.Trim() : null, branch.Error is null ? branch.Text.Trim() : null);
+    }
+
+    // Whether the current branch already holds a commit; null when git does not know the commit (it was never fetched).
+    public async Task<bool?> ContainsAsync(string commit, CancellationToken cancellationToken = default)
+    {
+        if (!IsRevision(commit)) return null;
+        var known = await RunGitAsync(scope.Root, ["cat-file", "-e", commit + "^{commit}"], cancellationToken);
+        if (known.Error is not null) return null;
+        // --is-ancestor answers with its exit code: 0 yes, 1 no.
+        var result = await RunGitAsync(scope.Root, ["merge-base", "--is-ancestor", commit, "HEAD"], cancellationToken);
+        return result.Error is null;
+    }
+
     public async Task<string> StatusAsync(string? path, CancellationToken cancellationToken = default)
     {
         if (!TryLocate(path, out var target, out var error)) return $"Error: {error}";

@@ -54,7 +54,8 @@ public class MemoriesController(IMemoryService memoryService, IMemoryTransferSer
             ? ApiResponse<bool>.Ok(true, "Memory dipindah ke long memory.")
             : NotFound(ApiResponse<bool>.Fail("Short memory tidak ditemukan."));
 
-    // The memories matching the Memory menu filters, as a file to download.
+    // The memories matching the Memory menu filters, as a file to download, with the unit test catalog of the projects
+    // (includeUnitTests=false leaves it out).
     [HttpGet("export")]
     public async Task<IActionResult> Export([FromQuery] MemoryQuery query, CancellationToken cancellationToken)
     {
@@ -69,7 +70,8 @@ public class MemoriesController(IMemoryService memoryService, IMemoryTransferSer
     {
         var result = await transferService.ImportAsync(file, mode, dryRun, cancellationToken);
         return ApiResponse<MemoryImportResultDto>.Ok(result, dryRun ? null
-            : $"{result.Added} memory ditambahkan, {result.Updated} ditimpa, {result.Skipped + result.Duplicates} dilewati.");
+            : $"{result.Added} memory ditambahkan, {result.Updated} ditimpa, {result.Skipped + result.Duplicates} dilewati."
+              + (result.UnitTestsAdded + result.UnitTestsUpdated > 0 ? $" Unit test: {result.UnitTestsAdded} ditambahkan, {result.UnitTestsUpdated} diperbarui." : string.Empty));
     }
 
     // Modules of a project (memory labels and wiki), or of knowledge memory with knowledge=true.

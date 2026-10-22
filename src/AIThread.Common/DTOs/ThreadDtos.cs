@@ -70,7 +70,9 @@ public record ThreadDetailDto(
     string? TesterModel = null,
     int TesterTokens = 0,
     long? TestingMs = null,
-    string? TestingJson = null);
+    string? TestingJson = null,
+    long? UnitTestMs = null,
+    string? UnitTestJson = null);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);
 

@@ -15,6 +15,10 @@ public sealed class ThreadPlan
     // Only while the planner node has Auto Testing on: how the tester node can check the change on the running app.
     public TestPlan? Test { get; set; }
 
+    // Only while the project has a unit test catalog: decisions about registered tests, new tests, or (without tasks)
+    // the tests to run.
+    public PlanTests? Tests { get; set; }
+
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         AllowTrailingCommas = true,
@@ -149,6 +153,51 @@ public sealed class TestScenario
 
     public List<string> Steps { get; set; } = [];
     public string Expect { get; set; } = string.Empty;
+}
+
+// The unit test part of a plan. A registered test the change concerns is kept unless a decision says otherwise.
+public sealed class PlanTests
+{
+    public const string Keep = "keep";
+    public const string Update = "update";
+    public const string Obsolete = "obsolete";
+    public const string All = "all";
+
+    public List<PlanTestDecision> Decisions { get; set; } = [];
+    public List<PlanNewTest> New { get; set; } = [];
+
+    // Only with an empty task list: the test numbers to run, or "all".
+    public List<string> Run { get; set; } = [];
+
+    [JsonIgnore]
+    public bool IsEmpty => Decisions.Count == 0 && New.Count == 0 && Run.Count == 0;
+
+    public PlanTestDecision? DecisionFor(string number) =>
+        Decisions.FirstOrDefault(d => string.Equals(d.Test, number, StringComparison.OrdinalIgnoreCase));
+}
+
+public sealed class PlanTestDecision
+{
+    // The test's number, e.g. "UT-0012".
+    public string Test { get; set; } = string.Empty;
+
+    // keep | update | obsolete
+    public string Decision { get; set; } = PlanTests.Keep;
+    public string? Reason { get; set; }
+}
+
+// A test the plan adds. Name is the test as it appears in the code: the method name, or the it()/test() title.
+public sealed class PlanNewTest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Purpose { get; set; }
+    public string Scenario { get; set; } = string.Empty;
+    public string File { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public List<string>? Targets { get; set; }
+
+    // database | network | config
+    public List<string>? Requires { get; set; }
 }
 
 public sealed class LineRange

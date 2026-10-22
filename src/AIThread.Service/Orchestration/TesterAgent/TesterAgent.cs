@@ -21,6 +21,31 @@ public sealed record TestingInput(
 // one was unavailable).
 public sealed record TestingResult(TestingReport Report, int Tokens, string ForModels, AiNode Node);
 
+// A unit test that fails after the change, as the tester triages it. Test: its number, or NEW-<n> for a test of this
+// change; Decision: keep, update or new.
+public sealed record UnitTestFailure(string Test, string Title, string? Purpose, string Decision, string TestFile, string? Source, string? Message);
+
+public sealed record UnitTestTriageInput(
+    AiNode Tester,
+    ThreadRequest Request,
+    ThreadPlan Plan,
+    IReadOnlyList<PlanTask> Tasks,
+    IReadOnlyList<TaskResult> Results,
+    IReadOnlyList<UnitTestFailure> Failures);
+
+// Verdict: regression | test_wrong | plan_wrong | environment | flaky.
+public sealed record UnitTestTriageVerdict(string Test, string Verdict, string? File, string? Anchor, string? Fix, string? Reason)
+{
+    public const string Regression = "regression";
+    public const string TestWrong = "test_wrong";
+    public const string PlanWrong = "plan_wrong";
+    public const string Environment = "environment";
+    public const string Flaky = "flaky";
+}
+
+// Error: the tester could not be asked or answered unreadably; the failures are then handled by the mechanical rule.
+public sealed record UnitTestTriageResult(IReadOnlyList<UnitTestTriageVerdict> Verdicts, string? Summary, int Tokens, AiNode Node, string? Error = null);
+
 // Stored on the thread as JSON (ThreadRun.TestingJson) for the thread page.
 public sealed class TestingReport
 {
@@ -123,6 +148,9 @@ public sealed partial class TesterAgent(INodeCaller caller, INodePromptBuilder p
     private const int MaxSteps = 40;
     private const int MaxDiffLinesPerTask = 80;
     private const int MaxInstructionChars = 600;
+
+    // Triage of unit tests: more of each diff, since the failing code may sit anywhere in it.
+    private const int MaxTriageDiffLines = 150;
 
     // A response body as the model reads it, and as the report keeps it.
     private const int MaxResponseChars = 6_000;

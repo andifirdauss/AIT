@@ -2,9 +2,10 @@
 
 Proxy untuk Claude Code yang memecah satu permintaan menjadi tugas-tugas sangat kecil:
 **planner** (model paling cerdas) merencanakan, banyak **executor** (model murah) mengerjakan secara paralel,
-AIT membuild project dan (opsional) **reviewer** memeriksa hasilnya sampai lolos, (opsional) **tester** mencoba
-perubahannya di aplikasi yang berjalan — UI lewat browser Playwright yang tampil, API lewat request HTTP — lalu
-**wrapper** merangkum hasilnya untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
+AIT membuild project, menjalankan **unit test** project yang terkait (katalog bersama per project; regresi diperbaiki
+di kode) dan (opsional) **reviewer** memeriksa hasilnya sampai lolos, (opsional) **tester** mencoba perubahannya di
+aplikasi yang berjalan — UI lewat browser Playwright yang tampil, API lewat request HTTP — lalu **wrapper** merangkum
+hasilnya untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
 
 > **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** — instalasi, konfigurasi, integrasi Claude Code,
 > penggunaan sehari-hari, memory, cara kerja, troubleshooting, dan referensi API.
@@ -13,7 +14,7 @@ perubahannya di aplikasi yang berjalan — UI lewat browser Playwright yang tamp
 Claude Code ──(ANTHROPIC_BASE_URL)──► AIT /v1/messages
                                           │
                   ┌───────────────────────┴───────────────────────┐
-                  │ Planner (tool loop, read-only + run_build)     │
+                  │ Planner (tool loop read-only + run_build/tests)│
                   │  list_directory · find_files · search_text     │
                   │  read_file · search_memory · read_memory       │
                   │  └─► submit_plan: summary + KONTRAK + tugas    │
@@ -24,8 +25,9 @@ Claude Code ──(ANTHROPIC_BASE_URL)──► AIT /v1/messages
                  (view)     (js)      (api)     (service)  (sql)     SEARCH/REPLACE, retry bila gagal
                      └──────────┴─────────┼─────────┴──────────┘
                                           ▼
-                  Verifikasi: build (dotnet build, tsc, …) + Reviewer (opsional)
-                     error/temuan ─► tugas perbaikan V1-1… ─► cek ulang (maks 2 putaran)
+                  Verifikasi: build (dotnet build, tsc, …) + unit test terkait
+                     (baseline paralel planner) + Reviewer (opsional)
+                     error/temuan/regresi ─► (triase Tester) ─► tugas perbaikan V1-1… ─► cek ulang
                                           ▼
                   Testing (Auto Testing, opsional): Tester → localhost
                      UI: browser Playwright non-headless · API: http_request + output
@@ -92,7 +94,7 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    - Executor: model murah & cepat; tambah beberapa node untuk menyebar beban. `Max paralel` dibatasi per node lintas semua thread.
    - Wrapper: model murah; juga dipakai untuk ekstraksi memory dan sebagai model passthrough default.
    - Reviewer (opsional): model yang teliti; memeriksa hasil executor terhadap rencana, kontrak, dan hasil build.
-   - Tester (opsional): model murah dengan *tool calling*; nyalakan *Auto Testing* di Edit node Planner agar perubahan dicoba di aplikasi yang sedang berjalan (UI lewat browser non-headless, API lewat HTTP) — lihat [docs/02-konfigurasi.md](docs/02-konfigurasi.md#auto-testing-node-tester).
+   - Tester (wajib bila project punya unit test atau memakai Auto Testing): model kuat dengan *tool calling*; menilai unit test yang gagal setelah perubahan (regresi, test salah, lingkungan, tidak stabil) — lihat [docs/07-cara-kerja.md](docs/07-cara-kerja.md#unit-test) — dan, dengan *Auto Testing* di Edit node Planner, mencoba perubahan di aplikasi yang sedang berjalan (UI lewat browser non-headless, API lewat HTTP) — lihat [docs/02-konfigurasi.md](docs/02-konfigurasi.md#auto-testing-node-tester).
    - Tools Node (opsional): model murah dengan *tool calling*; di Edit node Planner, tool yang boros (mis. `read_file`, `search_text`) bisa didelegasikan ke sini agar output mentahnya tidak membebani token planner — lihat [docs/02-konfigurasi.md](docs/02-konfigurasi.md#tools-node-planner).
 3. Menu **CLI** → kartu *Claude Code* → nyalakan switch *Per project* (disarankan) atau *Global*. Untuk Claude Code, ini menulis blok `env` ke `.claude/settings.local.json` (atau `~/.claude/settings.json`):
 
@@ -120,9 +122,9 @@ Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifika
 | Menu | Fungsi |
 |---|---|
 | Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
-| Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), **project key** untuk berbagi memory antar developer, stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual |
+| Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), **project key** untuk berbagi memory antar developer, stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual, **katalog unit test** (scan, jalankan, obsolete/karantina, setting per project) |
 | Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi. Tab **Bisnis**: wiki bisnis per modul (business memory) dengan editor, screenshot, dan riwayat versi |
-| Node | Planner / executor / reviewer / tester (Auto Testing) / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan, skill (dicarikan Skill Orchestrator dari gudang skill) |
+| Node | Planner / executor / reviewer / tester (triase unit test, Auto Testing) / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan, skill (dicarikan Skill Orchestrator dari gudang skill) |
 | Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, penyimpanan memory (short/long/bisnis) & penulis wiki bisnis, bot Telegram, Skill Orchestrator & gudang skill |
 
 ## Prompt dari Telegram

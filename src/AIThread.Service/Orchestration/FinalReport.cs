@@ -19,20 +19,24 @@ public static partial class FinalReport
     private const int MaxReportedBodyChars = 2_000;
     private const int MaxReportedBrowserErrors = 5;
 
+    // Unit tests in the answer: the ones that need a word (failed, fixed, skipped, ...), each detail cut short.
+    private const int MaxReportedUnitTests = 10;
+    private const int MaxUnitTestDetailChars = 200;
+
     // Quota bars: one cell per 10%, coloured by what remains (terminals only colour emoji).
     private const int QuotaBarCells = 10;
     private const string QuotaEmptyCell = "⬜";
 
-    // "✅ **Selesai** · 8/8 tugas · build lolos · reviewer setuju · testing lolos", then "Perlu perhatian" when
-    // something failed. Fix tasks (V<round>-<n>) do not count as tasks of the plan; their failures are listed like the
-    // others. A failed test makes the thread "Selesai sebagian": the change does not work yet.
-    public static string Status(ExecutionSummary execution, VerificationReport? verification, TestingReport? testing = null)
+    // "✅ **Selesai** · 8/8 tugas · build lolos · reviewer setuju · unit test lolos (12) · testing lolos", then "Perlu
+    // perhatian" when something failed. Fix tasks (V<round>-<n>) do not count as tasks of the plan; their failures are
+    // listed like the others. A failed test makes the thread "Selesai sebagian": the change does not work yet.
+    public static string Status(ExecutionSummary execution, VerificationReport? verification, TestingReport? testing = null, UnitTestReport? unitTests = null)
     {
         var planned = execution.Results.Where(r => !IsFixTask(r.TaskKey)).ToList();
         var succeeded = planned.Count(r => r.Status == ThreadTaskStatus.Succeeded);
         var verificationFailed = verification?.Outcome == VerificationReport.Failed;
         var (icon, label) = execution.Results.All(r => r.Status != ThreadTaskStatus.Succeeded) ? ("❌", "Gagal")
-            : succeeded < planned.Count || verificationFailed || testing?.Outcome == TestingReport.Failed ? ("🟡", "Selesai sebagian")
+            : succeeded < planned.Count || verificationFailed || testing?.Outcome == TestingReport.Failed || unitTests?.Outcome == UnitTestReport.Failed ? ("🟡", "Selesai sebagian")
             : ("✅", "Selesai");
 
         var parts = new List<string> { $"{icon} **{label}**", $"{succeeded}/{planned.Count} tugas" };
@@ -40,10 +44,13 @@ public static partial class FinalReport
         if (lastBuild is not null) parts.Add(BuildLabel(lastBuild));
         var lastReview = verification?.Rounds.LastOrDefault(r => r.Review is not null)?.Review;
         if (lastReview is not null) parts.Add(ReviewLabel(lastReview));
+        if (unitTests is { Tests.Count: > 0 }) parts.Add(UnitTestLabel(unitTests));
         if (testing is not null) parts.Add(TestingLabel(testing));
 
         var builder = new StringBuilder(string.Join(" · ", parts)).Append("\n\n");
         var attention = Attention(execution, verificationFailed ? verification!.Rounds.LastOrDefault() : null);
+        if (unitTests is not null)
+            attention.AddRange(unitTests.Tests.Where(t => t.IsProblem).Select(t => $"🧪 **{t.Number}** {OneLine(t.Title)}: {OneLine(t.Message ?? "gagal")}"));
         if (attention.Count > 0)
         {
             builder.Append("**Perlu perhatian**\n");
@@ -158,6 +165,76 @@ public static partial class FinalReport
         // The footer adds its own blank line.
         return builder.ToString().TrimEnd('\n');
     }
+
+    // A thread that only ran tests: "🧪 **Pengujian** · unit test: 1 gagal · testing lolos".
+    public static string TestOnlyStatus(UnitTestReport? unitTests, TestingReport? testing)
+    {
+        var failed = unitTests?.Outcome == UnitTestReport.Failed || testing?.Outcome == TestingReport.Failed;
+        var parts = new List<string> { failed ? "🟡 **Pengujian selesai, ada yang gagal**" : "🧪 **Pengujian selesai**", "tanpa perubahan kode" };
+        if (unitTests is not null) parts.Add(UnitTestLabel(unitTests));
+        if (testing is not null) parts.Add(TestingLabel(testing));
+        return string.Join(" · ", parts) + "\n\n";
+    }
+
+    // Every test the thread ran, with what changed: "❌ **UT-0012** Simpan tanpa nama ditolak — lolos → gagal: ...".
+    // Tests that stayed passing are counted, not listed.
+    public static string UnitTests(UnitTestReport report)
+    {
+        var builder = new StringBuilder("\n\n**🧪 Unit test**");
+        if (report.Summary is not null) builder.Append(" · ").Append(OneLine(report.Summary));
+        builder.Append('\n');
+        var listed = report.Tests.Where(t => t.Verdict is not (UnitTestReportItem.Ok or UnitTestReportItem.Retired)).ToList();
+        if (listed.Count > 0) builder.Append('\n');
+        foreach (var test in listed.Take(MaxReportedUnitTests))
+        {
+            var icon = test.Verdict switch
+            {
+                UnitTestReportItem.Regression or UnitTestReportItem.NewFailing or UnitTestReportItem.Failing => "❌",
+                UnitTestReportItem.Fixed => "✅",
+                UnitTestReportItem.Preexisting => "🟠",
+                UnitTestReportItem.Flaky => "〰️",
+                _ => "⏭️"
+            };
+            builder.Append($"- {icon} **{test.Number}** {OneLine(test.Title)} — {UnitTestVerdictLabel(test)}");
+            var detail = test.SkipReason ?? (test.Verdict is UnitTestReportItem.Fixed ? null : test.Message);
+            if (!string.IsNullOrWhiteSpace(detail)) builder.Append(": ").Append(Code(Clip(OneLine(detail), MaxUnitTestDetailChars)));
+            builder.Append('\n');
+        }
+        if (listed.Count > MaxReportedUnitTests) builder.Append($"- … {listed.Count - MaxReportedUnitTests} lainnya ada di halaman thread\n");
+        foreach (var retired in report.Tests.Where(t => t.Verdict == UnitTestReportItem.Retired))
+            builder.Append($"- 🗃️ **{retired.Number}** {OneLine(retired.Title)} — ditandai obsolete, menunggu konfirmasi hapus di Project > Detail\n");
+        foreach (var restored in report.Restored.Take(MaxReportedUnitTests))
+            builder.Append($"- ♻️ **{restored.Number}** `{restored.File}` — {UnitTestStage.RestoreLabel(restored)}\n");
+        foreach (var note in report.Notes) builder.Append($"- ℹ️ {OneLine(note)}\n");
+        // The footer adds its own blank line.
+        return builder.ToString().TrimEnd('\n');
+    }
+
+    // "unit test lolos (12)", "unit test: 1 regresi", ... for the status line.
+    public static string UnitTestLabel(UnitTestReport report)
+    {
+        var ran = report.Tests.Count(t => t.After is not null);
+        var regressions = report.Tests.Count(t => t.Verdict == UnitTestReportItem.Regression);
+        var failing = report.Tests.Count(t => t.Verdict is UnitTestReportItem.NewFailing or UnitTestReportItem.Failing);
+        if (regressions > 0) return $"unit test: {regressions} regresi";
+        if (failing > 0) return $"unit test: {failing} gagal";
+        return ran == 0 ? "unit test dilewati" : $"unit test lolos ({ran})";
+    }
+
+    private static string UnitTestVerdictLabel(UnitTestReportItem test) => test.Verdict switch
+    {
+        UnitTestReportItem.Regression => "lolos sebelum perubahan, sekarang gagal",
+        UnitTestReportItem.NewFailing => "test baru gagal",
+        UnitTestReportItem.Failing => "gagal",
+        UnitTestReportItem.Fixed => "gagal sebelum perubahan, sekarang lolos",
+        UnitTestReportItem.Preexisting => "sudah gagal sebelum perubahan (bukan karena perubahan ini)",
+        UnitTestReportItem.Flaky => "tidak stabil",
+        UnitTestReportItem.NotFound => "tidak dilaporkan runner",
+        UnitTestReportItem.Missing => "test baru tidak ditemukan di file-nya",
+        _ => "dilewati"
+    };
+
+    private static string Clip(string text, int max) => text.Length <= max ? text : text[..max] + "…";
 
     // "testing lolos", "testing: 1 gagal", ... for the status line.
     public static string TestingLabel(TestingReport report) => report.LoginNeeded is not null ? "testing menunggu login" : report.Outcome switch

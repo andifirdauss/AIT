@@ -95,13 +95,19 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
    `baris-awal-baris-akhir` dan signature-nya, dibaca langsung dari disk (sama dengan `code_outline`). Planner jadi
    tahu kerangka file sebelum membacanya, dan cukup membaca rentang baris yang dibutuhkan. File yang modulnya belum
    terpetakan tetap ikut;
-8. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
+8. **perubahan di sesi ini**: file yang diubah thread-thread AIT sebelumnya di chat ini (10 thread terakhir yang
+   benar-benar mengubah file; thread yang hanya menjawab/membaca dan thread yang di-rollback tidak ikut), dikelompokkan
+   per modul (file tanpa modul di peta kode dikelompokkan per thread), terbaru dulu, beserta unit test yang
+   meng-cover-nya — lihat [Merujuk perubahan sebelumnya](#merujuk-perubahan-sebelumnya);
+9. **unit test** dari [katalog unit test](#unit-test) project (bila aktif): suite, aturan membuat test baru, dan test
+   yang terkait file/modul permintaan beserta hasil terakhirnya (maks 30);
+10. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
 
 Bila sebuah bagian melebihi batas, yang dibuang adalah bagian tengahnya; awal dan akhir teks tetap ada.
 
 Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**, kecuali `run_build` yang
 menjalankan build project (tidak mengubah kode; hanya ditawarkan bila *Build & verifikasi otomatis* menyala dan project
-punya perintah build). Path relatif dihitung dari
+punya perintah build) dan `run_tests` yang menjalankan unit test katalog (juga tidak mengubah kode). Path relatif dihitung dari
 root project; tool baca (`list_directory`, `find_files`, `search_text`, `find_symbol`, `find_references`, `code_outline` untuk file, `read_file`) juga menerima **path absolut di luar
 root**, supaya planner bisa mengecek folder atau project lain ketika Anda memintanya (mis. "cek ke
 `D:/project/otherproject`"). Di luar root hasilnya ditampilkan dengan path absolut:
@@ -125,6 +131,7 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `git_show(commit, path?, stat?)` | satu commit: author, tanggal, pesan lengkap, daftar file, dan diff; `stat` = tanpa diff |
 | `git_blame(path, startLine?, endLine?)` | commit, author, dan tanggal terakhir per baris (baris yang belum di-commit: `Not Committed Yet`); maks 200 baris per panggilan, file ≤ 2 MB |
 | `run_build(target?)` | build project, hasilnya status + setiap error `file(baris,kolom): kode: pesan` (maks 40). `target` = solution/project/manifest lain di dalam root. Dipakai bila Anda minta build atau memperbaiki error build |
+| `run_tests(tests?, file?, all?)` | hanya bila project punya [katalog unit test](#unit-test) aktif: menjalankan test katalog (nomor `UT-0012`, satu file test, atau semua) dan mengembalikan hasil per test (lolos, gagal + pesan, dilewati + alasan). Dipakai bila permintaan memang soal test |
 | `investigate(question, agent?)` | hanya ada bila node planner [mendelegasikan tool ke tools node](02-konfigurasi.md#tools-node-planner); tools node menjalankan tool yang didelegasikan (yang hilang dari daftar ini) dalam loop sendiri, maks 12 langkah, lalu mengembalikan temuan ringkas maks 12.000 karakter. Di progres: `investigate  #1 "…"`, lalu baris `#1 › read_file …` per tool tools node, dan `#1 › complete  n langkah · token · model` (sejajar dengan kolom tool; bila gagal `#1 › failed  …`). Di progres CLI, path panjang diringkas menjadi `folder-awal/…/folder/file` (maks 48 karakter) dan query pencarian dipotong di 60 karakter agar satu tool tetap satu baris; log aktivitas menyimpan versi lengkap |
 | `ask_user(question, options?)` | menghentikan thread dengan satu pertanyaan ke developer (lihat [Pertanyaan dari planner](#pertanyaan-dari-planner)); hanya ditawarkan bila *Planner boleh bertanya* menyala dan prompt berasal dari sesi yang bisa menjawab |
 | `submit_plan(plan)` | mengakhiri planning |
@@ -187,6 +194,19 @@ Batasan:
   dari Dashboard, tidak pernah ditanya. Prompt di project lain dalam sesi yang sama menutup pertanyaan yang tertunda.
 - Matikan lewat Setting → *Planner boleh bertanya* bila Anda ingin planner selalu memutuskan sendiri.
 
+### Merujuk perubahan sebelumnya
+
+Permintaan seperti *"test perubahan ini"*, *"review yang tadi"*, atau *"batalkan yang itu"* merujuk ke perubahan
+sebelumnya tanpa menyebut yang mana. Planner mengartikannya sebagai file di bagian *perubahan di sesi ini* — **bukan
+seluruh `git diff`**, karena sesi Claude Code lain (tab lain) bisa sedang mengubah folder yang sama. Sesi ditentukan dari
+anchor `**AIT** · thread …` di riwayat chat, jadi dua tab = dua sesi yang tidak saling tercampur.
+
+- Satu modul, atau permintaan menyebut modul/file/fitur → langsung dipakai.
+- Lebih dari satu modul → planner [bertanya](#pertanyaan-dari-planner) dulu: satu pilihan per modul (maks 3 terbaru,
+  dengan thread dan jumlah file-nya) plus *semua*. Anda juga boleh menjawab modul lain atau beberapa nomor sekaligus.
+- Tanpa kemungkinan bertanya (Dashboard, Telegram, atau *Planner boleh bertanya* mati) → modul terbaru dipakai dan
+  asumsi itu disebut di ringkasan.
+
 ### Bentuk rencana
 
 ```json
@@ -224,7 +244,11 @@ Batasan:
 - **Kontrak** adalah kunci akurasi: semua nama lintas file ditetapkan sekali, sehingga tugas bisa berjalan paralel
   tanpa saling melihat.
 - `focus` menandai area file target yang besar; `context` melampirkan potongan file lain (read-only) untuk executor.
-- Permintaan tanpa perubahan file → `tasks` kosong dan jawaban di `answer`; tidak ada executor yang berjalan.
+- Permintaan tanpa perubahan file → `tasks` kosong dan jawaban di `answer`; tidak ada executor yang berjalan. Bila
+  developer hanya meminta pengujian, `tasks` kosong disertai `tests.run` dan/atau `test` (lihat
+  [Thread yang hanya menguji](#thread-yang-hanya-menguji)).
+- Dengan katalog unit test aktif, field `tests` berisi keputusan per test terdaftar dan test baru (lihat
+  [Keputusan planner](#keputusan-planner)).
 
 ### Validasi rencana
 
@@ -243,7 +267,8 @@ Rencana ditolak dan dikembalikan ke planner (memakan satu langkah) bila:
   `extract` boleh mengisi file baru yang sama);
 - file yang dihapus atau dipindahkan juga disentuh tugas lain. File hasil `move` atau file baru hasil `extract` boleh
   di-`edit` asal tugas itu bergantung (`dependsOn`) pada tugas `move`/`extract`-nya;
-- `dependsOn` menunjuk tugas yang tidak ada, dirinya sendiri, atau membentuk siklus.
+- `dependsOn` menunjuk tugas yang tidak ada, dirinya sendiri, atau membentuk siklus;
+- bagian `tests` tidak valid (lihat [Keputusan planner](#keputusan-planner)).
 
 Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di log aktivitas thread.
 
@@ -347,7 +372,8 @@ Setelah eksekusi, bila minimal satu tugas berhasil, AIT memeriksa hasilnya (stat
 berjalan bila ada salah satu dari:
 
 - **perintah build**: *Build & verifikasi otomatis* menyala di Setting dan project punya perintah build;
-- **node Reviewer** aktif (yang prioritasnya terkecil dipakai).
+- **node Reviewer** aktif (yang prioritasnya terkecil dipakai);
+- **unit test**: project punya [katalog unit test](#unit-test) aktif dan suite yang dikenali.
 
 Perintah build dipilih dari manifest project, **bukan oleh model** (model hanya boleh memilih manifest lain di dalam
 root lewat `run_build`):
@@ -387,7 +413,9 @@ Satu putaran verifikasi:
    terlewat, nama yang tidak cocok antar file/kontrak, salah ketik, `using`/import yang kurang, dan penyebab error
    build. Gaya, refactor, dan hal di luar permintaan tidak dilaporkan. Reviewer yang gagal dihubungi atau menjawab
    bukan JSON hanya membuat review dilewati.
-3. **Tugas perbaikan**. Masalah dikelompokkan per file menjadi tugas `V<putaran>-<n>` (mis. `V1-1`) yang dikerjakan
+3. **Unit test** (bila build lolos atau tidak ada perintah build): test relevan dijalankan dan dibandingkan dengan
+   hasil sebelum perubahan; kegagalan didiagnosis node Tester (bila ada) — lihat [Setelah build](#setelah-build).
+4. **Tugas perbaikan**. Masalah dikelompokkan per file menjadi tugas `V<putaran>-<n>` (mis. `V1-1`) yang dikerjakan
    executor seperti tugas biasa, dengan instruksi berisi error build (baris, kolom, kode, pesan), temuan reviewer, dan
    instruksi tugas awal file itu sebagai konteks. *Focus* diarahkan ke awal file (tempat `using`/import) dan ke baris
    setiap error atau baris yang dikutip reviewer. Nama yang dikutip pesan error (mis. `OracleEntities` pada
@@ -409,7 +437,8 @@ Satu putaran verifikasi:
 
 Batas dan aturan:
 
-- Maksimal *Putaran perbaikan* putaran (default 2). Nilai `0` = hanya verifikasi dan laporkan.
+- Maksimal *Putaran perbaikan* putaran (default 2). Nilai `0` = hanya verifikasi dan laporkan. Regresi unit test punya
+  batas sendiri: 3 putaran perbaikan (tetap mati bila nilai ini `0`).
 - Error build hanya diperbaiki otomatis di **file yang diubah thread ini** (atau, untuk nama yang tidak ditemukan, di
   file yang menurut rencana harus mendeklarasikannya). Error di file lain (mungkin sudah ada
   sebelum thread), di folder hasil generate, di luar root, atau tanpa file (mis. paket NuGet tidak ditemukan)
@@ -461,12 +490,14 @@ untuk rencana yang mengubah file. Di situ planner menilai **seperti apa perubaha
   yang memakai nama dari kontrak dan `expect` yang bisa dilihat (teks, nilai, status code, field respons).
 - Validator mengembalikan rencana ke planner bila `test` tidak ada, `level` tidak dikenal, `baseUrl` kosong atau bukan
   localhost, tidak ada skenario, atau skenario tanpa `expect`. Tanpa node Tester aktif planner tidak diminta bagian ini,
-  dan bagian `test` yang tetap dikirim diabaikan. Rencana tanpa tugas tidak dites.
+  dan bagian `test` yang tetap dikirim diabaikan. Rencana tanpa tugas hanya dites bila developer memang hanya meminta
+  pengujian (lihat [Thread yang hanya menguji](#thread-yang-hanya-menguji)).
 
 ### Jalannya testing
 
 1. **Dilewati** bila `level` = `none` (progres: *Testing · dilewati* + alasan planner), atau bila build terakhir masih
-   gagal (aplikasi belum bisa memuat perubahan). Tidak berjalan sama sekali bila tidak ada tugas yang berhasil.
+   gagal (aplikasi belum bisa memuat perubahan). Tidak berjalan sama sekali bila tidak ada tugas yang berhasil (kecuali
+   thread yang hanya menguji).
 2. **Cek aplikasi**: sebelum memanggil model, AIT mengirim `GET` ke `baseUrl` (5 detik). Respons apa pun (juga 404 atau
    redirect ke login) berarti aplikasinya berjalan. Tanpa respons, semua skenario *tidak bisa dicek* tanpa token
    terpakai, dengan pesan untuk menjalankan aplikasinya dulu. **AIT tidak menjalankan aplikasi Anda**: jalankan sendiri
@@ -564,11 +595,11 @@ setiap `http_request` (maks 30 request), ada di kartu *Testing* detail thread.
 ## 7. Wrapper
 
 Wrapper menerima permintaan Anda, ringkasan rencana, kontrak, hasil setiap tugas termasuk tugas perbaikan (ringkasan,
-error, maks 60 baris diff per tugas), ringkasan verifikasi per putaran, dan hasil testing, lalu menulis bagian jawaban
+error, maks 60 baris diff per tugas), ringkasan verifikasi per putaran (termasuk unit test), dan hasil testing, lalu menulis bagian jawaban
 yang perlu penjelasan, dalam bahasa permintaan Anda: 1–3 kalimat tentang apa yang dikerjakan, saran untuk tugas gagal atau
 masalah verifikasi yang tersisa, dan langkah lanjutan bila perlu. Fakta lainnya ditulis AIT sendiri dari hasil, bukan
-oleh model: baris status (tugas, build, reviewer, testing) dan daftar *Perlu perhatian* sebelum teks Wrapper, tabel
-*File berubah*, bagian *Testing*, dan footer (durasi, token, memory, wiki, sisa kuota provider, link thread) sesudahnya — lihat
+oleh model: baris status (tugas, build, reviewer, unit test, testing) dan daftar *Perlu perhatian* sebelum teks Wrapper, tabel
+*File berubah*, bagian *Unit test* dan *Testing*, dan footer (durasi, token, memory, wiki, sisa kuota provider, link thread) sesudahnya — lihat
 [Membaca output di Claude Code](04-penggunaan.md#membaca-output-di-claude-code). Teks Wrapper di-stream ke Claude Code.
 
 Jika tidak ada wrapper aktif atau wrapper gagal, Claude Code menampilkan ringkasan rencana sebagai pengganti teksnya;
@@ -582,8 +613,10 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 
 - Status akhir: *Selesai* bila ada tugas yang berhasil (atau jawaban langsung), *Gagal* bila tidak ada. Thread yang
   berhenti pada pertanyaan planner berstatus *Menunggu jawaban* sampai dijawab, dibatalkan, atau kedaluwarsa.
-- Waktu (termasuk verifikasi dan testing; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi
-  cache-nya, executor termasuk tugas perbaikan, reviewer, tester, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
+- Waktu (termasuk verifikasi, unit test, dan testing; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi
+  cache-nya, executor termasuk tugas perbaikan dan pemulihan test, reviewer, tester termasuk triase unit test, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
+- Hasil unit test, test baru, dan keputusan obsolete dicatat ke katalog project — lihat
+  [Saat thread selesai](#saat-thread-selesai).
 - Ekstraksi memory ditunggu sebelum footer jawaban (maks 30 detik, lalu lanjut di belakang) — lihat [Memory](06-memory.md).
 - Thread yang *Selesai* menunggu dirangkum ke wiki bisnis project oleh penulis wiki (berkala, default tiap 6 jam) —
   lihat [Business memory](06-memory.md#business-memory-wiki-bisnis). Gambar yang dilampirkan di prompt disimpan
@@ -591,6 +624,277 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 - Untuk thread dari Claude Code (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
 - Bila ada file yang diubah (juga thread yang dibatalkan/gagal di tengah), Struktur kode project dipindai ulang dan
   function yang diubah dibaca panggilannya (lihat [Panggilan function](#panggilan-function)), keduanya di belakang.
+
+## Unit test
+
+Setiap project punya **katalog unit test** yang dipakai bersama semua developer project itu (scope `ProjectKey`,
+disimpan bersama long memory, jadi ikut pindah ke DB eksternal). Tujuannya: developer yang bekerja di project yang
+asing ikut menjalankan test peninggalan developer sebelumnya, sehingga perubahannya tidak merusak perilaku yang sudah
+dijaga. Katalog dan setting-nya ada di [Project > Detail → Unit test](05-menu.md#unit-test).
+
+Test dijalankan **oleh AIT sendiri, tanpa model**. Model hanya dipakai untuk memberi judul dan tujuan test hasil
+*Scan test* (node murah, seperti label memory), memutuskan nasib test per perubahan (planner), mendiagnosis test yang
+gagal (node Tester), dan menulis atau memperbaiki kode test (executor).
+
+### Runner yang dikenali
+
+Perintahnya tetap per stack dan tidak pernah berasal dari model, sama seperti perintah build. Nama test hanya masuk
+sebagai filter yang di-escape AIT.
+
+| Stack | Suite dikenali dari | Perintah | Hasil |
+|---|---|---|---|
+| .NET | project (`.csproj`/`.fsproj`/`.vbproj`, juga yang tercantum di `.sln`/`.slnx`) yang mereferensikan xUnit, NUnit, MSTest, atau `Microsoft.NET.Test.Sdk` | `dotnet test <project> --logger trx` (+ `--filter`) | per test (TRX) |
+| .NET Framework (csproj format lama) | sama | `vstest.console.exe` dari Visual Studio atas assembly test di `bin` (harus sudah di-build) | per test (TRX) |
+| Node.js | `package.json` dengan jest, vitest, atau mocha (dependency atau script `test`) | runner dari `node_modules` dijalankan lewat `node` dengan reporter JSON (+ filter judul) | per test |
+| Node.js lain | script `test` lain (selain bawaan `npm init`) | `npm test` | hanya exit code: semua test suite itu lolos atau gagal bersama |
+| Python | folder `pyproject.toml`/`setup.py`/`requirements.txt`/`Pipfile` yang berisi `test_*.py`/`*_test.py` | `python -m pytest --junitxml` (virtualenv `.venv`/`venv` dipakai bila ada) | per test (JUnit XML) |
+| PHP | `composer.json` + `phpunit.xml(.dist)` | `vendor/bin/phpunit --log-junit` (+ `--filter`) | per test (JUnit XML) |
+| Java (Maven) | `pom.xml` dengan folder `src/test` | `mvnw`/`mvn -B -q test` (+ `-Dtest=`) | per test (surefire) |
+| JVM (Gradle) | `build.gradle(.kts)` dengan folder `src/test` | `gradlew`/`gradle test` (+ `--tests`) | per test (JUnit XML) |
+| Go | `go.mod` dengan file `*_test.go` | `go test -json -count=1 ./...` (+ `-run`) | per test |
+| Rust | `Cargo.toml` | `cargo test --no-fail-fast` | per test |
+
+- Suite yang tidak bisa jalan di mesin ini ditandai dengan alasannya (mis. *jest tidak ada di node_modules (jalankan
+  npm install dulu)*, *vendor/bin/phpunit tidak ada*, *assembly test belum di-build*). AIT tidak menginstal paket.
+- Satu project menjalankan build atau test satu per satu (keduanya berebut `obj/`/`bin`), dengan batas waktu *Batas
+  waktu run test* (default sama dengan *Timeout build*). Variabel `CI=true` diset agar runner tidak menunggu input.
+- Bila lebih dari 120 test dipilih, filter dibuang dan seluruh suite dijalankan (command line terlalu panjang di
+  Windows); hasilnya tetap dicocokkan per test.
+
+### Isi katalog
+
+Satu baris per test: nomor `UT-0001` (urut per project; nomor test yang dihapus tidak dipakai ulang), judul dan tujuan dalam bahasa
+developer, skenario (*given / when / then* dengan nilai konkret), modul, file yang diuji (target), framework, file dan
+nama test, kebutuhan (`database`, `network`, `config`), status, asal, pembuat dan thread asal, hasil terakhir (kapan,
+oleh siapa, durasi, pesan gagal, alasan dilewati), dan riwayat 20 run terakhir per test.
+
+| Status | Arti |
+|---|---|
+| Aktif | Dijalankan bila relevan. |
+| Karantina | Tidak stabil (lolos saat diulang, atau menurut Tester); tidak dijalankan thread sampai diaktifkan lagi. Masih bisa dijalankan manual. |
+| Obsolete | Fitur yang diuji dihapus oleh sebuah thread. Wajib punya alasan, tidak dijalankan, dan menunggu konfirmasi hapus dari developer. |
+| Dihapus | Sudah dikonfirmasi hapus. Tetap tercatat (nomornya tidak dipakai ulang) dan tidak pernah dipulihkan. |
+
+Asal: *AIT* (dibuat lewat thread), *Scan* (sudah ada di repo), *Ditulis ulang* (dipulihkan dari skenario — lihat
+[Pemulihan](#pemulihan-test-yang-hilang)).
+
+Katalog juga menyimpan **snapshot** isi file test (beserta method test-nya dan file pendukung yang dibutuhkan:
+`.csproj` test, fixture, config runner) untuk pemulihan. Snapshot diambil saat test didaftarkan dan diperbarui setiap
+kali test lolos. Snapshot **tidak pernah tampil** di UI atau dikirim lewat `/api`; satu-satunya jalan keluarnya adalah
+[export memory](06-memory.md#export--import). Matikan *Simpan snapshot test* untuk project yang kodenya tidak boleh
+disimpan di luar repository (snapshot yang ada ikut dihapus).
+
+### Mengisi katalog
+
+- **Otomatis**: thread pertama sebuah project yang punya suite test tetapi katalognya masih kosong memindai kode dulu
+  (tanpa model). Judulnya dibentuk dari nama method (`Save_WithoutName_IsRejected` → *Save without name is rejected*).
+- **Scan test** (Project > Detail): memindai lagi, mendaftarkan test baru, mengikuti test yang pindah file, dan memberi
+  judul, tujuan, skenario, modul, serta target dengan node murah (Tools → Wrapper → Planner, seperti label memory).
+- Deteksi statis: C# lewat Roslyn (`[Fact]`, `[Theory]`, `[Test]`, `[TestCase]`, `[TestMethod]`, …), stack lain lewat
+  pola (`it(`/`test(`, `def test_`, `@Test`/`@ParameterizedTest`, `func TestX`, `#[test]`, method `test*` PHPUnit). Target ditebak dari nama
+  file/class test (`UserServiceTests` → `UserService.*`) dan peta kode.
+- **Lewat thread**: test baru yang dirancang planner (lihat di bawah) masuk katalog saat thread selesai, lengkap dengan
+  skenario dari planner.
+
+### Alur di thread
+
+```text
+0. Pemulihan test yang hilang (AIT, sebelum planner)
+1. Planner  ──┬── baseline test relevan (AIT, paralel, file belum berubah)
+2. Eksekusi   │   (implementasi + file test, paralel)
+3. Build      │
+4. Unit test (AIT) ── gagal? ── triase Tester ── tugas perbaikan ── ulangi 3–4 (maks 3 putaran)
+5. Testing UI/API (Auto Testing), 6. Wrapper + catat hasil ke katalog
+```
+
+Tahap ini berjalan bila project punya `ProjectKey`, mode katalog bukan *Mati*, dan ada suite test yang dikenali.
+Katalog dibaca paling lama 10 detik; store yang tidak bisa dihubungi membuat unit test dilewati, bukan menahan thread.
+
+**Test relevan** = test aktif yang file test-nya, file targetnya, atau modulnya beririsan dengan file yang disentuh.
+Mode *Semua test aktif* mengambil semuanya. Sebelum rencana ada, perkiraannya diambil dari file yang disebut prompt
+dan peta kodenya; setelah rencana jadi, test terkait file tugas dan test yang di-`update` ditambahkan, test yang
+di-`obsolete` dikeluarkan.
+
+**Baseline** (hasil sebelum perubahan) dijalankan **paralel dengan planner**, karena file belum berubah. Eksekusi
+menunggu baseline selesai (progres `🧪 Unit test · baseline · n test terkait`). Hasil dipakai ulang tanpa menjalankan:
+
+- bila isi file test dan file targetnya sama persis dengan saat hasil terakhir dicatat (hash) dan hasil itu belum lewat
+  14 hari — kode yang sama memberi hasil yang sama, siapa pun yang menjalankannya;
+- bila test itu dilewati karena lingkungan di mesin ini kurang dari 24 jam lalu (tanpa menunggu timeout koneksi lagi).
+
+### Keputusan planner
+
+Brief planner mendapat bagian `# Unit tests`: suite, aturan membuat test baru, dan test relevan (maks 30) berisi
+nomor, judul, tujuan, file → target, dan hasil terakhir. `submit_plan` mendapat field `tests`:
+
+```json
+"tests": {
+  "decisions": [
+    { "test": "UT-0012", "decision": "update", "reason": "Request: \"nama boleh kosong untuk user tamu\"" },
+    { "test": "UT-0015", "decision": "obsolete", "reason": "Fitur export PDF dihapus sesuai permintaan." }
+  ],
+  "new": [
+    {
+      "title": "Simpan user tamu tanpa nama diterima",
+      "purpose": "User tamu boleh disimpan tanpa nama.",
+      "scenario": "given user tamu dengan nama \"\", when Save, then tersimpan tanpa error",
+      "file": "tests/Shop.Tests/UserTests.cs",
+      "name": "Save_GuestWithoutName_IsAccepted",
+      "targets": ["src/Shop/UserService.cs"],
+      "requires": []
+    }
+  ]
+}
+```
+
+| Keputusan | Arti | Akibat |
+|---|---|---|
+| `keep` (default) | Perilaku yang diuji tidak berubah | Harus tetap lolos; bila gagal, **kode** yang diperbaiki |
+| `update` | Request **sengaja** mengubah perilaku yang diuji | Wajib ada tugas edit file test-nya di rencana yang sama dan alasan yang mengutip request |
+| `obsolete` | Request menghapus fitur yang diuji | Wajib alasan. Test tidak dijalankan, berstatus *Obsolete* setelah thread selesai, dan menunggu konfirmasi hapus |
+| `new` | Test baru | Judul, skenario, file, nama test persis seperti di kode, target; wajib ada tugas create/edit file test itu |
+
+- Test baru dibuat **hanya bila developer memintanya**, kecuali setting *Buat unit test baru* = *Otomatis untuk
+  perubahan logika bisnis* (layer Logic yang belum punya test) atau *Tidak pernah*. Project tanpa project test tidak
+  dibuatkan diam-diam; planner bertanya dulu bila bisa.
+- Kasus dirancang planner dari request dan aturan bisnis, bukan dari implementasi. Executor file test hanya melihat
+  kontrak dan instruksi (bukan kode implementasinya) dan mengikuti gaya file test lain di suite yang sama.
+- Planner tidak boleh mengubah atau mempensiunkan test developer lain hanya agar perubahannya lolos; bila ragu ia
+  bertanya lewat `ask_user`.
+- Validator menolak rencana bila nomor test tidak ada di katalog, satu test punya dua keputusan, `update`/`obsolete`
+  tanpa alasan, `update` tanpa tugas edit file test-nya, test baru tanpa nama/judul/skenario/file atau tanpa tugas yang
+  menulis file-nya, lebih dari 15 test baru, atau test baru padahal dimatikan.
+
+Tool `run_tests(tests?, file?, all?)` menjalankan test katalog (nomor, satu file test, atau semua) dan mengembalikan
+hasilnya ke planner: lolos, gagal beserta pesannya, atau dilewati beserta alasannya. Dipakai hanya untuk permintaan
+yang memang soal test (*"perbaiki test yang gagal"*, *"kenapa UT-0012 gagal"*). Hasilnya sekaligus menjadi baseline,
+dan dipakai ulang oleh `tests.run` di thread yang sama (test tidak dijalankan dua kali; progres: *n dari run_tests
+planner*). Tool ini tidak bisa didelegasikan ke tools node.
+
+**Menguji sebuah perubahan** (*"test perubahan ini"*, *"jalankan test untuk fitur X"*) hanya memakai test katalog yang
+meng-cover perubahan itu (file test dan targetnya). Test fitur lain tidak dijalankan sebagai pengganti — lolosnya tidak
+membuktikan apa pun tentang perubahan ini. Bila belum ada yang meng-cover, permintaan itu dianggap permintaan test:
+planner merancang test `new` untuk perubahan tersebut (dependensi ke database, API, atau service lain di-mock), atau
+bertanya dulu lewat `ask_user` bila cakupannya tidak jelas. Saat tidak ada test terkait, brief planner menyebut file
+test apa saja yang ada di katalog (maks 10).
+
+### Setelah build
+
+Unit test berjalan di setiap putaran verifikasi **setelah build lolos** (project tanpa perintah build dianggap lolos):
+test relevan, test yang di-`update`, test di file yang disentuh tugas perbaikan, dan test baru (dicari di file-nya
+setelah executor selesai; yang tidak ditemukan dilaporkan *test baru tidak ditemukan*). Test yang gagal **diulang
+sekali**; bila lalu lolos, ia ditandai *tidak stabil* dan tidak dihitung gagal.
+
+| Hasil | Arti | Tindakan |
+|---|---|---|
+| ✅ lolos | | |
+| ✅ diperbaiki | Gagal sebelum perubahan, sekarang lolos | dilaporkan |
+| ❌ regresi | Lolos sebelum perubahan (baseline, atau hasil terakhir katalog), sekarang gagal; atau test `update` yang gagal | diperbaiki |
+| ❌ test baru gagal | Test `new` gagal | diperbaiki |
+| 🟠 sudah gagal sebelumnya | Gagal sebelum dan sesudah perubahan | hanya dilaporkan, bukan kesalahan perubahan ini |
+| 〰️ tidak stabil | Gagal lalu lolos saat diulang, atau menurut Tester | dikarantina saat thread selesai |
+| ⏭️ dilewati | Lihat [Test yang dilewati](#test-yang-dilewati) | dilaporkan dengan alasan |
+
+**Triase Tester.** Bila ada regresi atau test baru yang gagal dan ada node **Tester** aktif, Tester (model kuat)
+menerima request, ringkasan rencana, keputusan planner per test, diff setiap file yang berubah (maks 150 baris per
+file), serta kode, tujuan, dan pesan gagal tiap test, lalu memutuskan per test:
+
+| Verdict | Akibat |
+|---|---|
+| `regression` | Tugas perbaikan ke **kode** yang ditunjuk Tester |
+| `test_wrong` | Tugas perbaikan ke **file test** — hanya untuk test `new` atau `update` thread ini. Untuk test lama milik developer lain, kodenya yang diperbaiki dan catatannya masuk laporan |
+| `plan_wrong` | Perilaku memang sengaja diubah request tetapi planner menandai `keep`: test dijadikan `update`, diperbaiki mengikuti perilaku baru, dan developer diberi tahu di laporan |
+| `environment` | Bukan kesalahan kode: test menjadi *dilewati* dengan alasan dari Tester |
+| `flaky` | Tidak stabil: dikarantina saat thread selesai |
+
+Semua lolos = 0 token Tester. **Tanpa node Tester** (atau bila Tester gagal menjawab) aturannya mekanis: yang
+diperbaiki adalah file target test yang diubah thread, atau satu-satunya file non-test yang diubah; bila tidak bisa
+ditentukan, kegagalan dilaporkan tanpa perbaikan. Progres: `🩺 Triase · n test gagal · model`.
+
+**Perbaikan** memakai tugas `V<putaran>-<n>` yang sama dengan build/reviewer (judul *Fix failing unit tests*, bagian
+*Unit tests that fail after the change* di instruksinya: test, tujuan, pesan gagal, dan arahan *jangan mengubah test*
+untuk perbaikan kode). Putaran perbaikan unit test dibatasi **3** (terpisah dari *Putaran perbaikan* build/reviewer,
+tetapi `0` di sana mematikan keduanya); regresi yang tersisa dilaporkan apa adanya. Setiap putaran membuild ulang lalu
+menjalankan test lagi.
+
+Progres per putaran di fase `🔍 Verifikasi`:
+
+```text
+│  ├─ ✅ Build berhasil (9.8s)
+│  ├─ 🔴 Unit test · 14 test · 12 lolos, 1 regresi, 1 sudah gagal sebelum perubahan (8.2s)
+│  │     UT-0012 Simpan user tanpa nama ditolak — Assert.False() Failure …
+│  ├─ 🩺 Triase · 1 test gagal · cc/claude-opus
+│  ├─ 🔧 Perbaikan 1 · 1 tugas
+```
+
+### Test yang dilewati
+
+Hasil *dilewati* **selalu disertai alasan** dan tidak pernah dihitung regresi:
+
+| Sumber | Contoh alasan |
+|---|---|
+| Gagal karena lingkungan, dikenali dari pesan error (koneksi database ditolak, host tidak dikenal, connection string kosong, file config tidak ada) | *Butuh database yang tidak tersedia di mesin ini: Login failed for user 'app'* |
+| Triase Tester `environment` | *Lingkungan (menurut Tester): service pembayaran tidak berjalan* |
+| Di-skip oleh test-nya sendiri (`[Fact(Skip = "…")]`, `@Disabled`, `pytest.skip`, `it.skip`) | alasan dari kodenya, atau *Di-skip oleh runner tanpa alasan.* |
+| Runner tidak bisa dijalankan | *jest tidak ada di node_modules (jalankan npm install dulu).* |
+| Dilewati karena lingkungan di mesin ini kurang dari 24 jam lalu | alasan sebelumnya + *(tidak dicoba lagi: run terakhir di mesin ini juga dilewati)* |
+
+Kebutuhan yang terdeteksi (`database`, `network`, `config`) dicatat di test itu. Menjalankan test dari Project > Detail
+selalu mencoba lagi. Test yang tidak dilaporkan runner sama sekali (nama atau file-nya berubah) tampil *tidak
+dilaporkan runner*; jalankan *Scan test* untuk mengikuti perubahannya.
+
+### Pemulihan test yang hilang
+
+Test adalah bagian standar project, jadi test katalog (aktif atau karantina) yang file atau method-nya tidak ada di
+repository developer **dipulihkan otomatis sebelum planner berjalan** (progres `🧷 Pemulihan unit test · n test`),
+berhenti di lapis pertama yang berhasil:
+
+1. **Pindah file**: test dengan nama yang sama ditemukan di file lain → katalog mengikuti file barunya.
+2. **Catatan git** (tanpa model): commit tempat snapshot diambil dicek terhadap branch Anda. Belum ada → *UT-0012
+   berasal dari commit `abc12345` (branch feature/x) yang belum ada di branch ini; pull/merge branch itu …*. Sudah ada
+   tetapi file-nya terhapus setelahnya → saran menandai test itu obsolete bila memang sengaja dihapus. Pemulihan tetap
+   lanjut supaya pengamannya ada sekarang juga.
+3. **Snapshot** (tanpa model, persis): file yang hilang ditulis dari snapshot beserta file pendukung yang juga hilang
+   (project test baru didaftarkan dengan `dotnet sln add`). Method yang hilang dari file yang masih ada disisipkan
+   kembali lewat Roslyn untuk C#; stack lain lewat tugas executor kecil (`R1`, …) yang menyalin kode method dari
+   snapshot.
+4. **Tulis ulang dari skenario** (pakai model, cadangan terakhir): executor menulis test baru dari skenario katalog
+   dengan file test lain sebagai contoh gaya. Asalnya menjadi *Ditulis ulang* dan perlu ditinjau developer.
+
+File yang sudah ada **tidak pernah ditimpa**. Pemulihan **tidak ikut rollback** thread (bukan bagian dari request):
+file hasil pulihan muncul sebagai file baru di `git status` untuk Anda commit. Test hasil pulihan yang gagal di
+baseline dilaporkan *sudah gagal sebelum perubahan* (kode Anda mungkin sudah berbeda dari saat test dibuat), bukan
+regresi.
+
+### Thread yang hanya menguji
+
+Permintaan yang hanya meminta pengujian tanpa perubahan kode (*"jalankan semua unit test"*, *"tolong tes fitur
+Homecoming"*) tidak berakhir di jawaban langsung. Planner mengirim rencana tanpa tugas dengan `tests.run` (nomor test,
+atau `["all"]`) dan/atau bagian `test` [Auto Testing](#6-testing-auto-testing); AIT menjalankan unit test dan/atau
+Tester terhadap perilaku yang sudah ada, tanpa eksekusi, build, atau review, lalu Wrapper menjelaskan hasilnya. Baris
+status: `🧪 **Pengujian selesai** · tanpa perubahan kode · unit test lolos (12)` (atau *ada yang gagal*). Test yang
+gagal dicatat di kolom error thread.
+
+### Saat thread selesai
+
+Hasil dicatat ke katalog, juga bila semua tugasnya gagal (thread yang dibatalkan tidak mencatat hasilnya):
+
+- hasil terakhir setiap test yang dijalankan (hasil setelah perubahan menang; yang hanya jalan di baseline menyimpan
+  hasil itu tanpa hash), riwayat run (fase `baseline`, `after`, `manual`, `flaky`), dan snapshot test yang lolos;
+- test baru masuk katalog dengan nomor berikutnya, modul dari peta kode, dan snapshot;
+- keputusan `obsolete` (hanya bila ada tugas yang berhasil) dan karantina test yang tidak stabil.
+
+Jawaban akhir memuat hasilnya di baris status (`unit test lolos (12)`, `unit test: 1 regresi`, …; regresi atau test baru
+yang gagal membuat status *🟡 Selesai sebagian*) dan bagian **🧪 Unit test**: hanya test yang perlu perhatian (maks 10:
+gagal, diperbaiki, sudah gagal sebelumnya, tidak stabil, dilewati beserta alasannya), test yang ditandai obsolete,
+test yang dipulihkan, dan catatan (git, keputusan Tester). Test yang tetap lolos hanya dihitung. Detail lengkap ada di
+kartu *Unit test* detail thread.
+
+**Rollback** thread juga membatalkan perubahannya di katalog: test baru yang ditambahkan thread itu dihapus dari
+katalog dan keputusan `obsolete`-nya dikembalikan ke *Aktif*.
+
+Batasan saat ini: **🔁 Ulangi yang gagal** tidak menjalankan unit test (hanya build/reviewer); jalankan test dari
+Project > Detail setelahnya.
 
 ## Panggilan function
 

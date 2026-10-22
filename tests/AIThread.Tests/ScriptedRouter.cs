@@ -15,6 +15,8 @@ public enum ScriptedAgent
     Executor,
     Reviewer,
     Tester,
+    TesterTriage,
+    UnitTestLabeler,
     Wrapper,
     MemoryExtractor,
     BusinessRouter,
@@ -35,8 +37,8 @@ public sealed record RouterCall(ScriptedAgent Agent, string Model, JsonArray Mes
 }
 
 // Stands in for 9router: answers each agent from a script, recognising the agent by its role prompt. Executor replies
-// are keyed by target file because executors run in parallel. Memory extraction, the code map, relabeling and the
-// duplicate module check answer "nothing" unless scripted.
+// are keyed by target file because executors run in parallel. Memory extraction, the code map, relabeling, the
+// duplicate module check and unit test labels answer "nothing" unless scripted.
 public sealed class ScriptedRouter : INineRouterService
 {
     private readonly ConcurrentDictionary<ScriptedAgent, ConcurrentQueue<Func<RouterCall, ChatCompletionResult>>> _replies = new();
@@ -80,6 +82,7 @@ public sealed class ScriptedRouter : INineRouterService
                         ScriptedAgent.CodeMapper => _ => Text("""{"groups": []}"""),
                         ScriptedAgent.ModuleDuplicates => _ => Text("""{"merges": []}"""),
                         ScriptedAgent.FunctionCalls => _ => Text("""{"functions": []}"""),
+                        ScriptedAgent.UnitTestLabeler => _ => Text("""{"tests": []}"""),
                         _ => throw new InvalidOperationException($"Unscripted {call.Agent} call (model {call.Model}).")
                     };
         var result = reply(call);
@@ -156,6 +159,8 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.Executor, StringComparison.Ordinal)) return ScriptedAgent.Executor;
         if (system.StartsWith(AgentPrompts.Reviewer, StringComparison.Ordinal)) return ScriptedAgent.Reviewer;
         if (system.StartsWith(AgentPrompts.Tester, StringComparison.Ordinal)) return ScriptedAgent.Tester;
+        if (system.StartsWith(AgentPrompts.TesterTriage, StringComparison.Ordinal)) return ScriptedAgent.TesterTriage;
+        if (system.StartsWith(AgentPrompts.UnitTestLabeler, StringComparison.Ordinal)) return ScriptedAgent.UnitTestLabeler;
         if (system.StartsWith(AgentPrompts.Wrapper, StringComparison.Ordinal)) return ScriptedAgent.Wrapper;
         if (system.StartsWith(AgentPrompts.MemoryExtractor, StringComparison.Ordinal)) return ScriptedAgent.MemoryExtractor;
         if (system.StartsWith(AgentPrompts.BusinessRouter, StringComparison.Ordinal)) return ScriptedAgent.BusinessRouter;

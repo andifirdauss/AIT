@@ -133,6 +133,10 @@
                             <input class="form-check-input" type="checkbox" id="presetReviewer" />
                             <label class="form-check-label small" for="presetReviewer"><strong>Reviewer</strong> (model kuat): memeriksa hasil executor terhadap rencana sebelum dilaporkan. Lebih teliti, lebih banyak token.</label>
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="presetTester" />
+                            <label class="form-check-label small" for="presetTester"><strong>Tester</strong> (model kuat): menilai unit test yang gagal setelah perubahan (regresi, test salah, lingkungan, tidak stabil) dan menjalankan Auto Testing ke aplikasi. Wajib bila project memakai katalog unit test atau Auto Testing.</label>
+                        </div>
                     </div>
                     <div class="col-12 d-flex flex-wrap align-items-center gap-3">
                         <button type="submit" class="btn btn-primary" id="btnPreset">Buat node &amp; uji</button>

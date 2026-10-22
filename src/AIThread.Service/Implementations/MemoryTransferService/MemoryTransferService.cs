@@ -14,7 +14,8 @@ namespace AIThread.Service.Implementations;
 // root folder. The rules follow the copy made when switching stores: ids are kept (re-importing never duplicates),
 // a project that is not registered here is dropped from the row but its key stays, and project memory without any
 // key becomes knowledge. A labeled item keeps its label (its module joins the key's module list); an unlabeled one
-// (format v1, or written by an older version) is relabeled later by MemoryRelabelWorker.
+// (format v1, or written by an older version) is relabeled later by MemoryRelabelWorker. Format v3 also carries the unit
+// test catalog of the projects (ExportUnitTestsAsync / ImportUnitTestsAsync).
 public sealed partial class MemoryTransferService(
     IDbContextFactory<AIThreadDbContext> dbFactory,
     IShortMemoryStore shortStore,
@@ -29,6 +30,12 @@ public sealed partial class MemoryTransferService(
     private const int MaxListedWarnings = 5;
 
     private sealed record ExistingLong(Guid Id, string? ProjectKey, Guid? ProjectId, MemoryType Type, string Label, string Description);
+
+    // What importing the unit test catalog of a file did (or, in a dry run, would do).
+    private sealed record UnitTestImport(int Added, int Updated, int Renumbered, int Skipped, IReadOnlyList<string> Warnings)
+    {
+        public static readonly UnitTestImport None = new(0, 0, 0, 0, []);
+    }
 
     private sealed record Prepared(Guid Id, MemoryLevel Level, MemoryType Type, Guid? ProjectId, string? Key, string? Name,
         string Label, string Description, Guid? SourceThreadId, DateTime CreatedAt, DateTime? PromotedAt, int HitCount,

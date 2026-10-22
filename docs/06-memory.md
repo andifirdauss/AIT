@@ -159,6 +159,8 @@ tetap lokal: setelah 24 jam ia pindah ke long memory bersama.
 - **Menghapus project**: memory yang hanya ada di mesin ini ikut terhapus; memory di store bersama tetap disimpan untuk
   developer lain, kecuali Anda mengiyakan *hapus juga untuk SEMUA developer*. Bila clone lain dengan key yang sama
   masih terdaftar di mesin ini, memory pindah ke clone itu.
+- Daftar modul, peta kode, dan [katalog unit test](07-cara-kerja.md#unit-test) project mengikuti aturan yang sama:
+  ikut pindah saat key berubah dari lokal ke key bersama, dan ikut terhapus bersama memory-nya.
 
 ## Penyimpanan memory
 
@@ -181,13 +183,15 @@ berlaku tanpa restart.
 - Saat **disimpan**, AIT menghubungi store baru dan membuat database (bila belum ada dan user punya hak) serta
   tabel `ShortMemories`/`LongMemories`, atau `BusinessPages`/`BusinessPageRevisions`/`BusinessAssets` untuk business
   memory. Daftar modul, peta kode, dan riwayat gabung modul (`ProjectModules`, `CodeMapEntries`, `ModuleMergeLogs`)
-  ikut tinggal di database long memory, jadi store bersama juga berbagi daftar modulnya. Store yang tidak bisa dihubungi
+  ikut tinggal di database long memory, jadi store bersama juga berbagi daftar modulnya. Begitu juga
+  [katalog unit test](07-cara-kerja.md#unit-test) (`UnitTestCases`, `UnitTestRuns`, `UnitTestSettings`): developer yang
+  memakai store bersama menjalankan test yang sama. Store yang tidak bisa dihubungi
   ditolak, jadi setting lama tetap berlaku. Database eksternal tidak memakai migrasi EF; tabel dibuat sendiri pada
   pemakaian pertama, dan tabel dari versi lama otomatis mendapat kolom baru (`ProjectKey`, `ProjectName`, kolom label
   `Module`, `Layers`, `Kind`, `Area`, `Keywords`, `LabelVersion`, `LegacyLabel`, `ReviewReason`, `RelabelAttempts`) —
   user perlu hak `ALTER TABLE` sekali itu.
 - **Salin memory yang ada** (default aktif) menyalin memory dari store lama ke store baru berdasarkan id, jadi aman
-  diulang dan tidak menggandakan. Store lama tidak dihapus atau diubah. Tanpa salinan, memory lama tidak terlihat
+  diulang dan tidak menggandakan. Katalog unit test ikut disalin bersama long memory. Store lama tidak dihapus atau diubah. Tanpa salinan, memory lama tidak terlihat
   sampai provider dikembalikan.
 - Password disimpan terenkripsi (ASP.NET Core Data Protection) dan tidak pernah dikirim balik ke browser.
 - Short, long, dan business memory boleh memakai database yang sama; masing-masing punya tabel sendiri.
@@ -399,12 +403,22 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
 - **Export** mengunduh short dan long memory **sesuai filter** tabel (level, tipe, project, pencarian) sebagai file JSON
   (`"format": "aithread-memory"`). Bila short memory ikut dipilih tetapi store-nya tidak terhubung, export ditolak
   (pilih level *Long* untuk long memory saja), supaya tidak ada yang hilang diam-diam. Business memory tidak termasuk.
+- **Katalog unit test** project yang diekspor (semua project bila tidak difilter) ikut di file, supaya tim tanpa store
+  bersama tetap berbagi katalog: judul, skenario, status, alasan obsolete, hasil terakhir, dan **snapshot** isi file test
+  (kecuali project yang mematikan *Simpan snapshot test*). Tidak ikut bila filter memakai pencarian teks atau tipe
+  *Knowledge*. Riwayat run tidak ikut.
 - Project ditulis dengan **project key**-nya (memory lama tanpa key memakai key project-nya di mesin ini), jadi di
   mesin lain memory masuk ke clone project yang sama walau folder root-nya berbeda.
 - **Import** memeriksa file dulu (*dry run*) dan menampilkan ringkasan: yang ditambahkan, ditimpa, sudah ada, tidak
   valid, serta project di file dan apakah sudah terdaftar di mesin ini. Data baru ditulis setelah tombol *Import*.
 - Format file v2 membawa label berstruktur (modul, layer, jenis, area, keyword, label lama); modulnya masuk daftar modul
-  key-nya di mesin tujuan. Item tanpa label (file v1) masuk sebagai *belum berlabel* dan dimigrasi worker.
+  key-nya di mesin tujuan. Item tanpa label (file v1) masuk sebagai *belum berlabel* dan dimigrasi worker. Format v3
+  (saat ini) menambah bagian `unitTests`; file v1/v2 tetap diterima.
+- **Unit test** dari file dicocokkan per id, lalu per project key + nama test. Yang sudah ada diperbarui hanya bila
+  salinan di file lebih baru (diubah atau dijalankan lebih akhir), terlepas dari pilihan *lewati/timpa*. Test baru
+  mempertahankan nomornya, kecuali nomor itu sudah dipakai test lain di project yang sama — lalu mendapat nomor
+  berikutnya (dilaporkan). Status *Dihapus* ikut terbawa, jadi test yang sudah dihapus tim tidak dipulihkan lagi.
+  Ringkasan dry run menampilkan jumlah unit test baru, diperbarui, bernomor baru, dan dilewati (tanpa isi snapshot).
 - Id memory dipertahankan: memory yang id-nya sudah ada **dilewati** (default) atau **ditimpa** (tipe, project, label,
   deskripsi dari file). Memory dengan isi sama (project, tipe, label, deskripsi — huruf besar/kecil dan spasi
   diabaikan) tapi id lain juga dilewati. Import aman diulang.
@@ -413,8 +427,8 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
 - Project yang belum terdaftar: memory tetap disimpan di bawah key-nya dan muncul begitu project itu ditambahkan.
   Project memory tanpa key dan tanpa project terdaftar menjadi knowledge memory. Key **lokal** (`local:…`) dari mesin
   lain tidak akan cocok dengan project mana pun — beri project key bersama di mesin asal sebelum mengekspor.
-- File berisi teks biasa (deskripsi bisa memuat path, potongan kode, atau info internal). Setting koneksi store dan
-  password tidak pernah ikut. Maksimal 100.000 memory per import.
+- File berisi teks biasa (deskripsi bisa memuat path, potongan kode, atau info internal; snapshot unit test berisi kode
+  test project). Setting koneksi store dan password tidak pernah ikut. Maksimal 100.000 memory per import.
 
 Tips menulis memory manual:
 

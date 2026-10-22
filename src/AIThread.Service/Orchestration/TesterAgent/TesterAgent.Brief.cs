@@ -27,6 +27,8 @@ public sealed partial class TesterAgent
 
         var byId = plan.Tasks.GroupBy(t => t.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
         builder.Append("# Changes\n");
+        if (input.Execution.Results.Count == 0)
+            builder.Append("None: nothing was changed in this thread. The developer asked to test the existing behaviour.\n");
         foreach (var result in input.Execution.Results)
         {
             byId.TryGetValue(result.TaskKey, out var task);

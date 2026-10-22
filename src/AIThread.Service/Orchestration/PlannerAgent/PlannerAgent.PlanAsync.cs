@@ -19,7 +19,7 @@ public sealed partial class PlannerAgent
 
         var run = new PlannerRun
         {
-            Messages = [await SystemMessageAsync(input.Nodes[0], groups, input.AutoTesting, cancellationToken), ChatMessages.User(brief, input.Request.Images)],
+            Messages = [await SystemMessageAsync(input.Nodes[0], groups, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken), ChatMessages.User(brief, input.Request.Images)],
             Node = input.Nodes[0],
             CanBuild = build is not null,
             CanGit = canGit,

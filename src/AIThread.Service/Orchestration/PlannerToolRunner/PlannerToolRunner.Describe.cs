@@ -44,6 +44,9 @@ public sealed partial class PlannerToolRunner
             PlannerTools.GitShow => $"`{Str(args, "commit")}`" + (Path("path") is { } shownIn ? $" `{shownIn}`" : string.Empty) + (Bool(args, "stat") ? " stat" : string.Empty),
             PlannerTools.GitBlame => $"`{Path("path")}`" + (Int(args, "startLine") is { } from ? $" ({from}-{Int(args, "endLine")?.ToString() ?? "…"})" : string.Empty),
             PlannerTools.RunBuild => Path("target") is { } target ? $"`{target}`" : string.Empty,
+            PlannerTools.RunTests => Bool(args, "all") ? "semua"
+                : Path("file") is { } testFile ? $"`{testFile}`"
+                : string.Join(", ", MemoryAi.Strings(args["tests"])),
             PlannerTools.Investigate => Quote(Str(args, "question")),
             PlannerTools.AskUser => Quote(Str(args, "question")),
             _ => string.Empty

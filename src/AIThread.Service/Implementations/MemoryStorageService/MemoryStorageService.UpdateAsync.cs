@@ -49,6 +49,7 @@ public sealed partial class MemoryStorageService
                     {
                         copiedLong = await CopyLongAsync(oldLong, newLong, warnings, cancellationToken);
                         await CopyCatalogAsync(oldLong, newLong, warnings, cancellationToken);
+                        await CopyUnitTestsAsync(oldLong, newLong, warnings, cancellationToken);
                     }
                     if (newBusiness != oldBusiness) copiedBusiness = await CopyBusinessAsync(oldBusiness, newBusiness, warnings, cancellationToken);
                 }

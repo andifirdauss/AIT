@@ -227,7 +227,7 @@ public static partial class BuildCommandResolver
 
     // Old format: no Sdk on <Project> or on any import, plus the MSBuild 2003 namespace, a ToolsVersion or one of
     // the Framework imports.
-    private static bool IsLegacyProject(string project)
+    internal static bool IsLegacyProject(string project)
     {
         try
         {
