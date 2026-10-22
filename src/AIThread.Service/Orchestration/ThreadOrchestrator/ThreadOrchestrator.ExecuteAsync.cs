@@ -40,6 +40,18 @@ public sealed partial class ThreadOrchestrator
             var executors = await nodeService.GetActiveAsync(NodeRole.Executor, cancellationToken);
             var wrapper = (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
             var tester = await AutoTesterAsync(planner, recorder, cancellationToken);
+            var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
+
+            // 0. The project's unit tests: missing ones come back, and the related ones run while the planner plans.
+            var unitTests = await unitTestStage.OpenAsync(project, settings, cancellationToken);
+            var (codeMap, labelsFromSession, promptFiles, previousTurn) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
+            var sessionChanges = await SessionChangesAsync(project, request.Session, thread.Id, cancellationToken);
+            if (unitTests is not null)
+            {
+                await RestoreUnitTestsAsync(unitTests, executors, scope, settings, recorder, progress, cancellationToken);
+                unitTestStage.StartBaseline(unitTests, promptFiles.Concat(codeMap.Select(h => h.Path)).ToList(), codeMap.Select(h => h.Module).Distinct().ToList(),
+                    recorder, cancellationToken);
+            }
 
             // 1. Plan
             await recorder.UpdateThreadAsync(t =>
@@ -47,12 +59,10 @@ public sealed partial class ThreadOrchestrator
                 t.Status = ThreadStatus.Planning;
                 t.PlannerModel = planner.Model;
             });
-            var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
             // A question needs a way back: a session to answer in, and not a dashboard run nobody is watching.
             var canAsk = settings.PlannerCanAsk && request.Source != ThreadSource.Dashboard && !string.IsNullOrEmpty(request.SessionId);
-            var (codeMap, labelsFromSession, promptFiles, previousTurn) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
             var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles,
-                AutoTesting: tester is not null, PreviousTurn: previousTurn);
+                AutoTesting: tester is not null, PreviousTurn: previousTurn, UnitTests: unitTests, SessionChanges: sessionChanges);
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
@@ -89,6 +99,17 @@ public sealed partial class ThreadOrchestrator
 
             if (plan.Tasks.Count == 0)
             {
+                // The developer only wants the existing behaviour tested: unit tests and/or the running app.
+                var testOnly = (unitTests is not null && plan.Tests is { Run.Count: > 0 }) || (tester is not null && plan.Test is { IsRunnable: true });
+                if (testOnly)
+                {
+                    var onlyPipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, wrapper ?? planner, scope, settings,
+                        new FileJournal(dbFactory, thread.Id, scope), total, KeepContext: true, planning.MemoriesUsed, tester, unitTests);
+                    return await TestOnlyAsync(onlyPipeline, plan, cancellationToken);
+                }
+
+                // The baseline may still run; its results reach the catalog when it ends, without holding up the answer.
+                if (unitTests is not null) _ = Task.Run(() => unitTestStage.FinishAsync(unitTests, plan, null, thread.Id, recorder, CancellationToken.None), CancellationToken.None);
                 var answer = string.IsNullOrWhiteSpace(plan.Answer) ? plan.Summary : plan.Answer;
                 await progress.FinalAsync(answer, cancellationToken);
                 recorder.Log(ActivityLevel.Success, "Planner menjawab langsung tanpa tugas eksekusi.");
@@ -103,6 +124,15 @@ public sealed partial class ThreadOrchestrator
 
             await ReportPlanAsync(progress, plan, cancellationToken);
             recorder.Log(ActivityLevel.Info, $"Rencana: {plan.Tasks.Count} tugas, {plan.Contract.Count} item kontrak. {plan.Summary}");
+
+            // The baseline covers every test the plan concerns before a file changes.
+            if (unitTests is not null)
+            {
+                var planFiles = plan.Tasks.SelectMany(t => t.To is null ? [t.File] : new[] { t.File, t.To }).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                var planModules = (await codeMapper.MapQuicklyAsync(project, planFiles, cancellationToken)).Select(h => h.Module)
+                    .Concat(codeMap.Select(h => h.Module)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                await unitTestStage.CompleteBaselineAsync(unitTests, plan, planModules, recorder, progress, cancellationToken);
+            }
 
             // 2. Execute in parallel; every write is journaled so the thread can be undone.
             await recorder.UpdateThreadAsync(t => t.Status = ThreadStatus.Executing);
@@ -119,9 +149,10 @@ public sealed partial class ThreadOrchestrator
             });
             await ReportSpeedAsync(progress, execution, cancellationToken);
 
-            // 3. Verify, 4. test, 5. wrap.
+            // 3. Verify (build, review, unit tests), 4. test, 5. wrap.
+            var triage = unitTests is null ? null : (await nodeService.GetActiveAsync(NodeRole.Tester, cancellationToken)).FirstOrDefault();
             var pipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, wrapper ?? planner, scope, settings, journal, total, KeepContext: true,
-                planning.MemoriesUsed, tester);
+                planning.MemoriesUsed, tester, unitTests, triage);
             return await CompleteAsync(pipeline, plan, execution, plan.Tasks.Count + 1, 1, cancellationToken);
         }, cancellationToken);
     }

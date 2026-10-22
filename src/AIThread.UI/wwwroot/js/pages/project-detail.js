@@ -297,9 +297,13 @@
   refreshCatalog();
 
   const refresh = debounce(() => { loadDetail(); loadThreads(); }, 500);
+  // The page's one event stream; the unit test card (project-unittests.js) listens through a DOM event.
   stream('types=thread.created,thread.updated,memory,project', {
     'thread.created': refresh,
-    'thread.updated': refresh,
+    'thread.updated': payload => {
+      refresh();
+      document.dispatchEvent(new CustomEvent('ait:thread-updated', { detail: payload }));
+    },
     'memory.changed': debounce(() => { loadDetail(); refreshCatalog(); }, 800),
     'project.changed': debounce(loadDetail, 500)
   });

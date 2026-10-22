@@ -365,7 +365,12 @@ public class AutoTestingTests
         var off = Plan(Test());
         Assert.Empty(PlanValidator.Validate(off, scope));
         Assert.Null(off.Test);
-        var answer = new ThreadPlan { Summary = "s", Answer = "a", Test = Test() };
+        // Without tasks a runnable test checks the existing behaviour (the developer only asked for a test); level none
+        // has nothing to check and is dropped.
+        var testOnly = new ThreadPlan { Summary = "s", Answer = "a", Test = Test() };
+        Assert.Empty(PlanValidator.Validate(testOnly, scope, requireTest: true));
+        Assert.Equal(TestPlan.Api, testOnly.Test!.Level);
+        var answer = new ThreadPlan { Summary = "s", Answer = "a", Test = new TestPlan { Level = "none" } };
         Assert.Empty(PlanValidator.Validate(answer, scope, requireTest: true));
         Assert.Null(answer.Test);
     }

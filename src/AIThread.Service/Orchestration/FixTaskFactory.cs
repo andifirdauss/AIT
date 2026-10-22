@@ -20,6 +20,9 @@ public sealed record FixPlan(IReadOnlyList<PlanTask> Tasks, IReadOnlyList<string
 //
 // A missing name (CS0103, CS0117, CS1061) that the plan told another task to declare, in a file that still does not
 // contain it, is fixed in that file: the executor of the calling file can only report that the call matches the plan.
+//
+// Unit tests that fail after the change (testIssues, from UnitTestStage) are handled like review findings: one task per
+// file, the code unless the issue says the test of this change is wrong.
 public static partial class FixTaskFactory
 {
     private const int MaxErrorsPerFile = 25;
@@ -39,7 +42,8 @@ public static partial class FixTaskFactory
         ReviewResult? review,
         IReadOnlyCollection<string> changedFiles,
         IReadOnlyList<PlanTask> earlierTasks,
-        WorkspaceScope scope)
+        WorkspaceScope scope,
+        IReadOnlyList<ReviewIssue>? testIssues = null)
     {
         var work = new SortedDictionary<string, FileWork>(StringComparer.OrdinalIgnoreCase);
         var unfixable = new List<string>();
@@ -82,6 +86,15 @@ public static partial class FixTaskFactory
             else if (!moving.Contains(scope.ToRelative(fullPath))) Work(work, scope.ToRelative(fullPath), fullPath).Issues.Add(issue);
         }
 
+        foreach (var issue in testIssues ?? [])
+        {
+            var label = $"{issue.File}: {issue.Problem}";
+            if (!scope.TryResolve(issue.File, out var fullPath, out _)) unfixable.Add($"{label} — outside the project root");
+            else if (scope.IsIgnoredPath(scope.ToRelative(fullPath))) unfixable.Add($"{label} — generated or third-party file");
+            else if (!File.Exists(fullPath)) unfixable.Add($"{label} — file does not exist");
+            else Work(work, scope.ToRelative(fullPath), fullPath).TestIssues.Add(issue);
+        }
+
         var tasks = new List<PlanTask>();
         foreach (var ((from, to), members) in moves)
         {
@@ -114,7 +127,8 @@ public static partial class FixTaskFactory
                 DependsOn = after.Count > 0 ? after : null,
                 Title = hasErrors && fileWork.Issues.Count > 0 ? "Fix build errors and review findings"
                     : hasErrors ? "Fix build errors"
-                    : "Fix review findings",
+                    : fileWork.Issues.Count > 0 ? "Fix review findings"
+                    : "Fix failing unit tests",
                 File = relative,
                 Action = "edit",
                 Instruction = Instruction(fileWork, original, examples),
@@ -179,6 +193,16 @@ public static partial class FixTaskFactory
             }
         }
 
+        if (work.TestIssues.Count > 0)
+        {
+            builder.Append("\nUnit tests that fail after the change (fix this file so they pass; change a test only when the fix says so):\n");
+            foreach (var issue in work.TestIssues)
+            {
+                builder.Append($"- Problem: {issue.Problem}\n  Fix: {issue.Fix}\n");
+                if (issue.Anchor is not null) builder.Append($"  Near: {issue.Anchor}\n");
+            }
+        }
+
         foreach (var task in original)
         {
             var instruction = task.Instruction.Trim();
@@ -200,7 +224,7 @@ public static partial class FixTaskFactory
         var lines = work.Lines;
         if (work.Missing.Count > 0 && lines.Length > 0) ranges.Add(new LineRange { StartLine = lines.Length, EndLine = lines.Length });
 
-        foreach (var anchor in work.Issues.Select(i => i.Anchor).OfType<string>().Select(a => a.Trim()).Where(a => a.Length >= 3))
+        foreach (var anchor in work.Issues.Concat(work.TestIssues).Select(i => i.Anchor).OfType<string>().Select(a => a.Trim()).Where(a => a.Length >= 3))
         {
             var index = Array.FindIndex(lines, l => l.Trim() == anchor);
             if (index < 0) index = Array.FindIndex(lines, l => l.Contains(anchor, StringComparison.Ordinal));
@@ -418,6 +442,7 @@ public static partial class FixTaskFactory
         public string FullPath { get; } = fullPath;
         public List<BuildDiagnostic> Errors { get; } = [];
         public List<ReviewIssue> Issues { get; } = [];
+        public List<ReviewIssue> TestIssues { get; } = [];
         public List<MissingName> Missing { get; } = [];
 
         public string[] Lines

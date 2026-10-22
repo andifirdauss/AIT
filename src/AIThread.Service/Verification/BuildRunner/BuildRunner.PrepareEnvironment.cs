@@ -4,7 +4,7 @@ public sealed partial class BuildRunner
 {
     // English messages without colours or banners. MSBuild variables inherited from whatever started AIThread (an IDE,
     // dotnet run) could point the build at another SDK, so they are dropped.
-    private static void PrepareEnvironment(IDictionary<string, string?> environment)
+    internal static void PrepareEnvironment(IDictionary<string, string?> environment)
     {
         foreach (var key in environment.Keys.Where(k => k.StartsWith("MSBuild", StringComparison.OrdinalIgnoreCase)).ToList())
             environment.Remove(key);

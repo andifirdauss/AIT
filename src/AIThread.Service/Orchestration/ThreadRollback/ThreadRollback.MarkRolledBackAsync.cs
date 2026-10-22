@@ -19,6 +19,8 @@ public sealed partial class ThreadRollback
         }
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.ThreadUpdated, new { thread.Id, Status = ThreadStatus.RolledBack, thread.PlanSummary, thread.TotalMs, thread.Error }, thread.Id));
+        // The catalog must not restore a test whose file the rollback just deleted.
+        await unitTests.RevertThreadAsync(thread.Id, CancellationToken.None);
         var restored = files.Where(f => f.Action == Restore).Select(f => f.FilePath).ToList();
         var deleted = files.Where(f => f.Action == Delete).Select(f => f.FilePath).ToList();
         var parts = new List<string>();

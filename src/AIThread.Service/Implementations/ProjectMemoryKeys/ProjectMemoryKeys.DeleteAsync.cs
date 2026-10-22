@@ -31,7 +31,7 @@ public sealed partial class ProjectMemoryKeys
                 logger.LogWarning(ex, "Could not delete long memories of project {ProjectId}", projectId);
             }
 
-            // The module list and code map go with the memory they describe.
+            // The module list, code map and unit test catalog go with the memory they describe.
             if (key is not null)
             {
                 try
@@ -44,6 +44,19 @@ public sealed partial class ProjectMemoryKeys
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     logger.LogWarning(ex, "Could not delete the module list and code map of project {ProjectId}", projectId);
+                }
+
+                // The unit test catalog goes with them.
+                try
+                {
+                    await using var unitTests = await longStore.CreateUnitTestsAsync(cancellationToken);
+                    await unitTests.UnitTestRuns.Where(r => r.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
+                    await unitTests.UnitTestCases.Where(t => t.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
+                    await unitTests.UnitTestSettings.Where(s => s.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Could not delete the unit test catalog of project {ProjectId}", projectId);
                 }
             }
         }

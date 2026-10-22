@@ -61,7 +61,9 @@ public record MemoryQuery(
     MemoryLayer? Layer = null,
     MemoryKind? Kind = null,
     bool? Labeled = null,
-    bool? NeedsReview = null);
+    bool? NeedsReview = null,
+    // Export only: the unit test catalog of the projects goes along (project memory, no search text).
+    bool IncludeUnitTests = true);
 
 // Every memory is written with its full label. Module (the main one) and ExtraModules (other modules the same fact
 // concerns, at most 3) are resolved against the project's module list (a new name becomes a module); keywords are

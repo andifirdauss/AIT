@@ -74,6 +74,7 @@ Langkah wajib pertama yang belum selesai terbuka otomatis; begitu selesai, langk
 | `AIT Tools Node` | murah | dicentang | planner mendelegasikan `read_file`, `search_text`, `find_references` ke node ini |
 | `AIT Context Keeper` | murah | dicentang | meringkas percakapan CLI |
 | `AIT Reviewer` | kuat | tidak dicentang | memeriksa hasil executor |
+| `AIT Tester` | kuat | tidak dicentang | menilai unit test yang gagal setelah perubahan ([triase](07-cara-kerja.md#setelah-build)) dan menjalankan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester); temperature 0.1, 4.096 token, 1 paralel. Wajib bila project memakai katalog unit test atau Auto Testing |
 
 Semua node preset berprioritas 10, jadi dipakai lebih dulu daripada node buatan sendiri (default 100). Menjalankan preset lagi
 memperbarui node `AIT …` yang sama (model, aktif); peran yang tidak dicentang menonaktifkan node preset-nya (tidak dihapus),
@@ -92,11 +93,12 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 | Permintaan | Prompt Anda (tanpa blok `<system-reminder>` Claude Code). |
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
-| Verifikasi | Muncul bila build/reviewer berjalan. Hasil akhir (*Lolos* / *Masih ada masalah* / *Tidak dapat dipastikan*), perintah build, model reviewer, lalu per putaran: hasil build dan errornya, temuan reviewer, masalah yang tidak bisa diperbaiki otomatis, dan id tugas perbaikan (`V1-1`, …) yang tampil juga di tabel tugas. |
+| Verifikasi | Muncul bila build/reviewer/unit test berjalan. Hasil akhir (*Lolos* / *Masih ada masalah* / *Tidak dapat dipastikan*), perintah build, model reviewer, lalu per putaran: hasil build dan errornya, temuan reviewer, ringkasan unit test, masalah yang tidak bisa diperbaiki otomatis, dan id tugas perbaikan (`V1-1`, …) yang tampil juga di tabel tugas. |
+| Unit test (katalog project) | Muncul bila unit test katalog dijalankan atau dipulihkan. Hasil (*Lolos* / *Gagal* / *Dilewati*), mode (atau *Hanya pengujian*), baseline (berapa dijalankan, berapa dari hasil sebelumnya, durasi), runner, lalu tabel per test: nomor, judul dan file, keputusan planner, hasil sebelum dan sesudah perubahan (*(cache)* = hasil sebelumnya untuk kode yang sama), verdict, pesan gagal atau alasan dilewati, dan verdict Tester. Di bawahnya test yang dipulihkan otomatis dan catatan. Hasil per putaran ada di kartu Verifikasi. |
 | Testing | Muncul bila Auto Testing berjalan. Hasil (*Lolos* / *Gagal* / *Tidak bisa dicek* / *Dilewati*), level (UI/API), URL aplikasi, browser, model tester, username yang dipakai login, jumlah langkah, alasan bila tidak bisa berjalan, *🔐 Tester butuh login* bila tester berhenti meminta login, ringkasan tester, verdict per skenario, error browser, lalu satu jendela per `http_request` dengan URL, body request, dan body respons (jendela ke-4 dst. dilipat). |
 | Hasil wrapper | Balasan yang diterima Claude Code. |
 | Konteks sesi dari Context Keeper | Ringkasan percakapan sampai thread ini (khusus thread dari Claude Code) — titik awal planner di prompt berikutnya pada chat yang sama. Muncul beberapa detik setelah thread selesai. |
-| Waktu & token | Model planner/reviewer/tester/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / verifikasi / testing / wrapping / total, speedup, token per peran. |
+| Waktu & token | Model planner/reviewer/tester/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / verifikasi / unit test / testing / wrapping / total, speedup, token per peran (token tester termasuk triase unit test). |
 | Aktivitas | Log thread ini, termasuk setiap panggilan tool planner dan penolakan validator. |
 
 ## Project
@@ -150,6 +152,33 @@ Di bawah kedua kolom, selebar halaman:
 - **Modul**: daftar modul project (deskripsi, alias, jumlah memory dan file; klik jumlah file untuk memfilter peta kode). *Atur* mengganti nama (termasuk huruf
   besar/kecil), mengubah deskripsi/alias, atau menggabungkan modul ke modul lain; *Cek modul ganda* mencari modul yang terpisah tidak sengaja. Lihat
   [Daftar modul & gabung modul](06-memory.md#daftar-modul--gabung-modul).
+
+### Unit test
+
+Kartu **Unit test** (di bawah Modul) menampilkan [katalog unit test](07-cara-kerja.md#unit-test) project ini. Katalog
+dan setting-nya dipakai bersama semua developer project (lewat project key) dan disimpan bersama long memory.
+
+- Baris info: mode, aturan test baru, runner yang dikenali beserta masalahnya (mis. *jalankan npm install dulu*),
+  dan peringatan bila belum ada node Tester aktif.
+- Tabel 15 baris per halaman: nomor `UT-…`, judul dan file test (alasan obsolete/karantina di bawahnya), modul,
+  status (*Aktif* / *Obsolete* / *Karantina* / *Dihapus*), hasil terakhir (kapan, oleh siapa, durasi, potongan pesan
+  gagal atau alasan dilewati), dan asal (*Dibuat AIT* / *Scan kode* / *Ditulis ulang*). Cari nomor/judul/file, filter
+  status (termasuk *Gagal terakhir*) dan modul.
+- Klik judul untuk detail: tujuan, skenario, target, kebutuhan, selector, thread asal, dan riwayat run (sebelum/setelah
+  perubahan, manual, tidak stabil; mesin dan developer). Isi file test (snapshot) tidak pernah ditampilkan.
+- **Scan test**: mencari test di kode, mendaftarkan yang baru, mengikuti yang pindah file, dan memberi judul, tujuan,
+  dan skenario dengan model murah. **Jalankan semua** / **Jalankan** per test: menjalankan sekarang (termasuk test
+  karantina yang dipilih) dan mencatat hasilnya ke katalog.
+- Test *Obsolete*: **Kembalikan** (aktif lagi) atau **Konfirmasi hapus** — status menjadi *Dihapus*, snapshot ikut
+  dihapus, test tidak pernah dipulihkan lagi, dan sebuah thread Dashboard menghapus kode test-nya (bisa di-rollback
+  dari halaman thread itu). Test *Karantina*: **Aktifkan**.
+- **Setting**: *Test yang dijalankan tiap thread* (*Relevan saja* — default, *Semua test aktif*, *Mati*), *Buat unit
+  test baru* (*Hanya saat diminta* — default, *Otomatis untuk perubahan logika bisnis*, *Tidak pernah*), *Simpan
+  snapshot test* (default menyala; mematikannya menghapus snapshot yang ada), dan *Batas waktu run test* (10–3600
+  detik; kosong = ikut *Timeout build*).
+- Kartu diperbarui sendiri saat thread project ini selesai.
+
+### Struktur kode
 
 Paling bawah, jendela **Struktur kode** menampilkan isi project tanpa compile dan tanpa dependensi tambahan. Data
 yang sama dipakai planner: tool `code_outline` memberi kerangka file/folder/class sebelum planner membaca file, dan file
@@ -240,6 +269,8 @@ Di modal node Planner, bagian *Delegasi tool ke tools node* berisi satu pilihan 
 sebagai chip. Kolom *Cari sendiri di gudang* membuka dropdown skill yang cocok dengan nama, deskripsi, tag, sumber,
 atau isi skill (potongan isi yang cocok ditampilkan); klik item untuk memasang/melepas. Kolom *Butuh kemampuan apa?* + **Cari skill** meminta Skill Orchestrator mencarikan skill yang cocok
 dari gudang (lihat [Skill pada node](07-cara-kerja.md#skill-pada-node)).
+Bila ada project dengan katalog unit test tetapi belum ada node Tester aktif, status pipeline menampilkan peringatan
+*Ada katalog unit test, tetapi belum ada node Tester aktif* (unit test yang gagal lalu diperbaiki di kode tanpa triase).
 Panel *Panduan* di atas kolom menjelaskan arti angka-angka tersebut; panel bisa dilipat dan keadaannya diingat browser. *Muat ulang model 9router* menyegarkan daftar
 model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-node).
 

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AIThread.Data.Context;
 
-public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb, IMemoryCatalogDb
+public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb, IMemoryCatalogDb, IUnitTestDb
 {
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<AiNode> Nodes => Set<AiNode>();
@@ -32,6 +32,9 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
     public DbSet<ModuleMergeLog> ModuleMergeLogs => Set<ModuleMergeLog>();
     public DbSet<CodeFunctionScan> CodeFunctionScans => Set<CodeFunctionScan>();
     public DbSet<CodeFunctionCall> CodeFunctionCalls => Set<CodeFunctionCall>();
+    public DbSet<UnitTestCase> UnitTestCases => Set<UnitTestCase>();
+    public DbSet<UnitTestRun> UnitTestRuns => Set<UnitTestRun>();
+    public DbSet<UnitTestSettings> UnitTestSettings => Set<UnitTestSettings>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -258,6 +261,9 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
 
         // Same mapping as the catalog next to an external long memory store (MemoryCatalogDbContext).
         MemoryCatalogModel.Configure(modelBuilder);
+
+        // Same mapping as the unit test catalog next to an external long memory store (UnitTestDbContext).
+        UnitTestModel.Configure(modelBuilder);
     }
 
     // Columns ShortMemoryStore_* / LongMemoryStore_* / BusinessMemoryStore_* of SystemSettings.

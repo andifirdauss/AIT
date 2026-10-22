@@ -533,6 +533,11 @@
         <td class="small">${p.registered ? '<span class="text-success">terdaftar</span>' : '<span class="text-warning">belum terdaftar</span>'}</td>
       </tr>`).join('');
     const warnings = r.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('');
+    const unitTests = r.unitTestsAdded + r.unitTestsUpdated + r.unitTestsSkipped > 0
+      ? `<div class="small mb-2"><span class="fw-semibold">Katalog unit test:</span> ${fmt.number(r.unitTestsAdded)} ditambahkan, ${fmt.number(r.unitTestsUpdated)} diperbarui,
+          ${fmt.number(r.unitTestsSkipped)} sudah ada${r.unitTestsRenumbered ? `, ${fmt.number(r.unitTestsRenumbered)} mendapat nomor baru` : ''}.
+          <span class="text-secondary">Snapshot test ikut masuk (tidak ditampilkan) dan dipakai untuk memulihkan test yang hilang.</span></div>`
+      : '';
     return `
       <div class="row g-2 mb-3 text-center">
         <div class="col"><div class="stat-label">Di file</div><div class="fs-5">${fmt.number(r.total)}</div></div>
@@ -541,6 +546,7 @@
         <div class="col"><div class="stat-label">Sudah ada</div><div class="fs-5 text-secondary">${fmt.number(r.skipped + r.duplicates)}</div></div>
         <div class="col"><div class="stat-label">Tidak valid</div><div class="fs-5 ${r.invalid ? 'text-danger' : 'text-secondary'}">${fmt.number(r.invalid)}</div></div>
       </div>
+      ${unitTests}
       ${projectRows ? `<div class="small fw-semibold mb-1">Project di file</div>
         <div class="table-responsive mb-2"><table class="table table-sm mb-0">
           <thead><tr><th>Project key</th><th>Nama</th><th>Memory</th><th>Di mesin ini</th></tr></thead>
@@ -555,7 +561,7 @@
     try {
       const result = await api.post(`/api/memory/import?dryRun=true&mode=${el('importMode').value}`, importDocument);
       el('importPreview').innerHTML = importSummary(result);
-      el('btnImportConfirm').disabled = result.added + result.updated === 0;
+      el('btnImportConfirm').disabled = result.added + result.updated + result.unitTestsAdded + result.unitTestsUpdated === 0;
     } catch (error) {
       el('importPreview').innerHTML = `<div class="text-danger small">${escapeHtml(error.message)}</div>`;
     }
@@ -585,7 +591,8 @@
     try {
       const result = await api.post(`/api/memory/import?mode=${el('importMode').value}`, importDocument);
       importModal.hide();
-      toast(`${result.added} memory ditambahkan, ${result.updated} ditimpa, ${result.skipped + result.duplicates} dilewati.`);
+      toast(`${result.added} memory ditambahkan, ${result.updated} ditimpa, ${result.skipped + result.duplicates} dilewati.`
+        + (result.unitTestsAdded + result.unitTestsUpdated ? ` Unit test: ${result.unitTestsAdded} ditambahkan, ${result.unitTestsUpdated} diperbarui.` : ''));
       refreshAll();
     } catch (error) {
       toast(error.message, 'error');

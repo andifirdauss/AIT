@@ -162,6 +162,23 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 | Reviewer terlalu cerewet atau memicu perubahan yang tidak diminta | Model reviewer melaporkan hal di luar permintaan. | Tambahkan batasan di *Instruksi tambahan* node Reviewer, ganti modelnya, atau nonaktifkan node itu (verifikasi tetap memakai build). |
 | Verifikasi tidak muncul | Tidak ada tugas yang berhasil, *Build & verifikasi otomatis* mati dan tidak ada node Reviewer, atau stack project tidak punya perintah build. | Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
 
+## Unit test
+
+| Gejala | Arti | Solusi |
+|---|---|---|
+| Unit test tidak pernah jalan / kartu Unit test kosong | Project belum punya project key, mode katalog *Mati*, atau tidak ada suite yang dikenali (lihat [Runner yang dikenali](07-cara-kerja.md#runner-yang-dikenali)). Store long memory yang tidak menjawab dalam 10 detik juga membuat unit test dilewati thread itu (tercatat di log aplikasi). | Cek kartu Unit test di Project > Detail; tekan **Scan test**. Pastikan project punya key dan koneksi store long memory sehat. |
+| Suite bertanda ⚠️ `… tidak ada di node_modules (jalankan npm install dulu)` / `vendor/bin/phpunit tidak ada` / `Assembly test belum di-build` / `vstest.console.exe … tidak ditemukan` | Runner-nya belum terpasang di mesin ini; AIT tidak menginstal paket. | Jalankan `npm install` / `composer install` / build solution sekali, atau pasang Visual Studio (Test Platform) untuk project .NET Framework lama. |
+| Semua test di satu suite *Error: Test tidak bisa dijalankan (exit code …)* | Runner gagal sebelum menjalankan test, biasanya project test tidak bisa di-build atau konfigurasinya rusak. Pesan dan akhir output ada di detail test. | Perbaiki build project test (`dotnet test` membuild sendiri), lalu jalankan lagi. |
+| Test *dilewati — Butuh database / koneksi jaringan / konfigurasi …* | Test gagal karena mesin ini tidak punya database, service, atau file config yang dibutuhkannya; tidak dihitung regresi. Selama 24 jam berikutnya test itu langsung dilewati di thread tanpa menunggu timeout. | Normal untuk test integrasi di laptop tanpa DB. Bila kebutuhannya sudah tersedia, tekan **Jalankan** di Project > Detail (selalu mencoba lagi). |
+| Test *tidak dilaporkan runner* | Runner jalan, tetapi tidak menyebut test itu: method/test diganti nama, dipindah, atau filter tidak cocok. | **Scan test** untuk mengikuti perubahan nama/file; test lama yang memang hilang tampil di hasil scan (`missing`) dan bisa ditandai obsolete lewat thread. |
+| `run test melewati batas waktu` | Run lebih lama dari *Batas waktu run test* (default = *Timeout build*). | Naikkan batasnya di Setting unit test project, atau pakai mode *Relevan saja*. |
+| Thread terasa lebih lama sejak ada katalog | Baseline berjalan paralel dengan planner, tetapi eksekusi menunggunya; run setelah build menambah waktu per putaran. Mode *Semua test aktif* menjalankan seluruh suite. | Pakai *Relevan saja*. Hasil untuk kode yang sama dipakai ulang (14 hari) tanpa menjalankan lagi. |
+| Regresi tidak diperbaiki: *the file to fix cannot be told without the tester's triage* | Tanpa node Tester, AIT hanya bisa menebak file yang diperbaiki (file target test yang diubah, atau satu-satunya file non-test yang diubah). | Tambahkan node Tester (model kuat, preset `AIT Tester`), atau perbaiki lewat prompt berikutnya (*"perbaiki UT-0012"*). |
+| `Masih ada regresi unit test setelah 3 putaran perbaikan` | Perbaikan otomatis dibatasi 3 putaran. | Lihat pesan gagal di bagian *🧪 Unit test*; lanjutkan dengan prompt berikutnya atau perbaiki manual. Bila perilakunya memang sengaja berubah, katakan di prompt agar planner memutuskan `update`. |
+| File test baru muncul di `git status` padahal tidak diminta | Test katalog yang belum ada di repository Anda (dibuat developer lain dan belum di-pull, atau terhapus) dipulihkan otomatis sebelum planner. Laporan menyebut commit/branch asalnya. | Commit file itu. Bila Anda kemudian pull branch yang berisi file yang sama, git menolak menimpa file untracked: hapus salinan hasil pemulihan (isinya sama) lalu pull lagi. Bila test memang sengaja dihapus, tandai obsolete lalu konfirmasi hapus. |
+| Test *Ditulis ulang (perlu konfirmasi)* | Tidak ada snapshot untuk test yang hilang (mis. *Simpan snapshot test* mati), jadi executor menulisnya lagi dari skenario katalog. | Tinjau kode test-nya sebelum di-commit; hasilnya bisa berbeda dari aslinya. |
+| Test berpindah ke status *Karantina* | Test gagal lalu lolos saat diulang, atau Tester menilainya tidak stabil (bergantung waktu, urutan, acak). | Perbaiki test-nya, lalu **Aktifkan** di Project > Detail. |
+
 ## Auto Testing
 
 | Gejala | Arti | Solusi |

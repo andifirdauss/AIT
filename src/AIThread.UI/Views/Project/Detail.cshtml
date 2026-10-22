@@ -112,6 +112,33 @@
     <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="modulePager"></div>
 </div>
 
+<div class="card mt-3" id="unitTestCard">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <span class="me-auto">Unit test <span class="small text-secondary fw-normal" id="unitTestCounts"></span></span>
+        <input type="search" class="form-control form-control-sm w-auto" id="unitTestSearch" placeholder="Cari nomor, judul, file…" aria-label="Cari unit test" />
+        <select class="form-select form-select-sm w-auto" id="unitTestStateFilter" aria-label="Filter status unit test">
+            <option value="">Semua kecuali dihapus</option>
+            <option value="Active">Aktif</option>
+            <option value="Obsolete">Obsolete</option>
+            <option value="Quarantined">Karantina</option>
+            <option value="Removed">Dihapus</option>
+            <option value="Failing">Gagal terakhir</option>
+        </select>
+        <select class="form-select form-select-sm w-auto" id="unitTestModuleFilter" aria-label="Filter modul unit test"><option value="">Semua modul</option></select>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnUnitTestSettings">Setting</button>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnUnitTestScan" title="Cari test di kode, daftarkan yang baru, dan beri judul serta tujuan dengan model murah">Scan test</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnUnitTestRunAll" title="Jalankan semua test aktif sekarang">Jalankan semua</button>
+    </div>
+    <div class="card-body small text-secondary border-bottom" id="unitTestInfo">Memuat…</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>No</th><th>Test</th><th>Modul</th><th>Status</th><th>Hasil terakhir</th><th>Asal</th><th></th></tr></thead>
+            <tbody id="unitTestRows"><tr><td colspan="7" class="text-secondary">Memuat…</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="unitTestPager"></div>
+</div>
+
 <div class="card win mt-3" id="structureWindow" data-win-id="project-structure" data-win-persist>
     <div class="card-header win-bar flex-wrap">
         <win-controls disabled="close" />
@@ -203,8 +230,66 @@
     </div>
 </div>
 
+<div class="modal fade" id="unitTestSettingsModal" tabindex="-1" aria-labelledby="unitTestSettingsTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="unitTestSettingsForm" autocomplete="off">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="unitTestSettingsTitle">Setting unit test</h5>
+            </div>
+            <div class="modal-body">
+                <p class="small text-secondary">Berlaku untuk semua developer project ini (disimpan bersama katalog, mengikuti penyimpanan long memory).</p>
+                <div class="mb-3">
+                    <label class="form-label small" for="unitTestMode">Test yang dijalankan tiap thread</label>
+                    <select class="form-select" id="unitTestMode">
+                        <option value="Relevant">Relevan saja: test yang terkait file/modul yang diubah</option>
+                        <option value="All">Semua test aktif</option>
+                        <option value="Off">Mati</option>
+                    </select>
+                    <div class="form-text">Test dijalankan sebelum perubahan (baseline, paralel dengan planner) dan setelah build lolos. Hasil kode yang sama dipakai ulang tanpa menjalankan lagi.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small" for="unitTestAuthoring">Buat unit test baru</label>
+                    <select class="form-select" id="unitTestAuthoring">
+                        <option value="OnRequest">Hanya saat diminta</option>
+                        <option value="AutoLogic">Otomatis untuk perubahan logika bisnis (layer Logic)</option>
+                        <option value="Off">Tidak pernah</option>
+                    </select>
+                </div>
+                <div class="form-check form-switch mb-1">
+                    <input class="form-check-input" type="checkbox" role="switch" id="unitTestKeepSnapshots" />
+                    <label class="form-check-label" for="unitTestKeepSnapshots">Simpan snapshot test</label>
+                </div>
+                <div class="form-text mb-3">Isi file test disimpan di katalog agar test yang hilang dari repository developer lain bisa dipulihkan otomatis. Snapshot tidak pernah ditampilkan. Dimatikan: snapshot yang ada ikut dihapus.</div>
+                <label class="form-label small" for="unitTestTimeout">Batas waktu run test (detik)</label>
+                <input type="number" class="form-control" id="unitTestTimeout" min="10" max="3600" placeholder="Kosong = ikut batas waktu build" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="unitTestDetailModal" tabindex="-1" aria-labelledby="unitTestDetailTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="unitTestDetailTitle">Unit test</h5>
+            </div>
+            <div class="modal-body" id="unitTestDetailBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>window.projectId = '@projectId';</script>
     <script src="~/js/pages/project-detail.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-unittests.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
 }

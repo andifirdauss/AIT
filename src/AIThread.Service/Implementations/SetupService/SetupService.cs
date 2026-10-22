@@ -31,6 +31,7 @@ public sealed partial class SetupService(
         [NodeRole.ToolsNode] = "AIT Tools Node",
         [NodeRole.Executor] = "AIT Executor",
         [NodeRole.Reviewer] = "AIT Reviewer",
+        [NodeRole.Tester] = "AIT Tester",
         [NodeRole.Wrapper] = "AIT Wrapper",
         [NodeRole.ContextKeeper] = "AIT Context Keeper"
     };
@@ -45,6 +46,7 @@ public sealed partial class SetupService(
         [NodeRole.ToolsNode] = new(4096, 4, 0.1),
         [NodeRole.Executor] = new(8192, 6, 0.1),
         [NodeRole.Reviewer] = new(4096, 2, 0.1),
+        [NodeRole.Tester] = new(4096, 1, 0.1),
         [NodeRole.Wrapper] = new(4096, 4, 0.3),
         [NodeRole.ContextKeeper] = new(4096, 2, 0.2)
     };
