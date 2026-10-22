@@ -37,6 +37,7 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
     public DbSet<UnitTestSettings> UnitTestSettings => Set<UnitTestSettings>();
     public DbSet<TestAccount> TestAccounts => Set<TestAccount>();
     public DbSet<TestingSettings> TestingSettings => Set<TestingSettings>();
+    public DbSet<TestingScenario> TestingScenarios => Set<TestingScenario>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

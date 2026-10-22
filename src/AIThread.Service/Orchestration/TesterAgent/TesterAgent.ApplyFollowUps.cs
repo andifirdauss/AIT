@@ -6,6 +6,7 @@ public sealed partial class TesterAgent
 {
     public const int MaxFollowUpsPerRun = 5;
     private const int MaxFollowUpScenarios = 6;
+    private const int MaxFollowUpFields = 12;
 
     // The follow_ups of report_test, numbered from 1. A suggestion without a scenario that says what to expect is dropped.
     public static void ApplyFollowUps(TestingReport report, string? arguments)
@@ -24,7 +25,8 @@ public sealed partial class TesterAgent
                 Title = title,
                 Why = Field(item, "why"),
                 Needs = Field(item, "needs"),
-                Scenarios = scenarios!
+                Scenarios = scenarios!,
+                Fields = Memory.MemoryAi.Strings(item["fields"]).Select(f => f.Trim()).Where(f => f.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Take(MaxFollowUpFields).ToList()
             });
         }
     }
@@ -37,6 +39,7 @@ public sealed partial class TesterAgent
         {
             Title = Field(item, "title") ?? "Skenario",
             Actor = Field(item, "actor"),
+            Action = Field(item, "action"),
             Target = Field(item, "target"),
             Steps = Memory.MemoryAi.Strings(item["steps"]).Select(s => s.Trim()).Where(s => s.Length > 0).ToList(),
             Expect = expect

@@ -64,6 +64,7 @@ public sealed partial class ProjectMemoryKeys
                 {
                     await using var testing = await longStore.CreateTestingAsync(cancellationToken);
                     await testing.TestAccounts.Where(a => a.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
+                    await testing.TestingScenarios.Where(s => s.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
                     await testing.TestingSettings.Where(s => s.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
