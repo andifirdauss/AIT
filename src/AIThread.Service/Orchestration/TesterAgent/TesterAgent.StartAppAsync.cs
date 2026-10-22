@@ -20,7 +20,12 @@ public sealed partial class TesterAgent
         recorder.Log(ActivityLevel.Info, $"Testing: aplikasi belum jalan di {baseUrl}, dijalankan dengan {command.Display}");
         var started = await apps.StartAsync(command, baseUrl, cancellationToken);
         if (started.Error is not null)
-            return $"{unreachable} AIT mencoba menjalankannya, tetapi {started.Error} Jalankan aplikasinya sendiri, lalu ulangi testing.";
+        {
+            // One readable sentence; what the app printed goes in its own block (FinalReport, the thread page).
+            run.Report.AppCommand = command.Display;
+            run.Report.AppOutput = started.Output;
+            return $"Aplikasi belum jalan di {baseUrl} dan AIT gagal menjalankannya: {started.Error}. Jalankan aplikasinya sendiri, lalu ulangi testing.";
+        }
 
         if (started.App is { } app)
         {

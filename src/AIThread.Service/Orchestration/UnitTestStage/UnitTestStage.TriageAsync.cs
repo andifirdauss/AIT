@@ -1,6 +1,7 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Service.UnitTests;
+using AIThread.Service.Verification;
 
 namespace AIThread.Service.Orchestration;
 
@@ -34,6 +35,22 @@ public sealed partial class UnitTestStage
         {
             var isNew = item.Decision == "new";
             var verdict = triage?.Verdicts.FirstOrDefault(v => string.Equals(v.Test, label, StringComparison.OrdinalIgnoreCase));
+            // A test written in this change is a dry-run test: one that reaches a database, the network or a config file
+            // while it runs is not isolated, so it is fixed, not skipped as "the environment" (that would let the thread
+            // pass with no test that ran). A restore or build that cannot run here (a NuGet feed that needs credentials,
+            // a missing SDK) is no fault of the test: that stays a skip.
+            if (isNew && verdict?.Verdict == UnitTestTriageVerdict.Environment && !string.IsNullOrWhiteSpace(test.TestFile)
+                && TestEnvironment.Classify(item.Message) is not null)
+            {
+                verdict = verdict with
+                {
+                    Verdict = UnitTestTriageVerdict.TestWrong,
+                    File = test.TestFile,
+                    Anchor = null,
+                    Fix = $"The test is not isolated: it reaches {verdict.Reason ?? "a database, the network or a config file"}. " +
+                          "Make it a dry-run test: fake or inject every database, network call, config and clock it touches (add the smallest refactor that lets the test pass a fake in), and keep the same scenario and assertions."
+                };
+            }
             item.Triage = verdict?.Verdict;
             item.TriageReason = verdict?.Reason;
             switch (verdict?.Verdict)

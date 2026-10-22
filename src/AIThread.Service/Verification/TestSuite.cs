@@ -49,6 +49,11 @@ public sealed record TestSuite(
     // Legacy .NET Framework projects run through vstest.console on the assembly the verification build produced.
     public bool IsLegacyDotNet { get; init; }
 
+    // An SDK-style test project that references old-format projects (packages.config, Visual Studio targets): dotnet
+    // cannot build those, so AIT builds the test project with Visual Studio's MSBuild into a folder of its own and runs
+    // vstest.console on the result (TestCommand.Prepare).
+    public bool BuildsWithMsBuild { get; init; }
+
     public static bool IsDotNet(string framework) => framework is XUnit or NUnit or MsTest or DotNet;
 
     public static bool IsNode(string framework) => framework is Jest or Vitest or Mocha or Npm;
@@ -57,16 +62,21 @@ public sealed record TestSuite(
 // One catalog test as a runner needs it.
 public sealed record TestTarget(string Selector, string TestFile, string? ClassName, string MethodName);
 
+// A step that runs before the tests, in the suite's folder: the MSBuild build of a test project dotnet cannot build.
+public sealed record TestPrepare(string FileName, IReadOnlyList<string> Arguments, string Display);
+
 // A run AIT may start. Like BuildCommand, the program and the arguments are fixed per framework; a model only picks
 // which catalog tests run, and those become a filter AIT builds itself. ReportPath: the report file, or the folder the
-// runner writes its report files into (only files written during the run are read).
+// runner writes its report files into (only files written during the run are read). Prepare: runs first; when it fails
+// the tests do not run.
 public sealed record TestCommand(
     TestSuite Suite,
     string FileName,
     IReadOnlyList<string> Arguments,
     string Display,
     string? ReportPath,
-    bool Filtered);
+    bool Filtered,
+    TestPrepare? Prepare = null);
 
 // One test as a runner reported it. Name is the test method or title without data-row parameters where the format
 // separates them; File is set when the format names it. Name "*" stands for every test of File or ClassName: the

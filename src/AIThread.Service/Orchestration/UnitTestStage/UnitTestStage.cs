@@ -17,7 +17,8 @@ public sealed class UnitTestSession
 {
     public required ProjectContext Project { get; init; }
     public required UnitTestSettings Settings { get; init; }
-    public required IReadOnlyList<TestSuite> Suites { get; init; }
+    // Empty while the project has no test project yet: the planner may have one created (RefreshSuites finds it).
+    public required IReadOnlyList<TestSuite> Suites { get; set; }
     public required List<UnitTestCase> Tests { get; init; }
     public required TimeSpan Timeout { get; init; }
     public required string Developer { get; init; }

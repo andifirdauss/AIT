@@ -338,6 +338,10 @@
     ].filter(Boolean).join(' · ');
     const parts = [`<div class="small text-secondary">${head}</div>`];
     if (report.error) parts.push(`<div class="alert alert-warning small mt-2 mb-2">${escapeHtml(report.error)}</div>`);
+    if (report.appOutput) {
+      parts.push(winFrame({ id: 'testing-app-output', title: 'Output aplikasi', className: 'mb-2',
+        body: `<pre class="code-block small">${escapeHtml(report.appOutput)}</pre>` }));
+    }
     if (report.loginNeeded) {
       parts.push(`<div class="alert alert-warning small mt-2 mb-2">🔐 Tester butuh login: ${escapeHtml(report.loginNeeded)}${report.loginUrl ? ` (<span class="mono">${escapeHtml(report.loginUrl)}</span>)` : ''}.
         ${report.askedLogin ? 'Balas di chat dengan <span class="mono">login &lt;username&gt; &lt;password&gt;</span>, atau klik' : 'Klik'} <strong>🧪 Ulangi testing</strong> dan isi username &amp; password.</div>`);

@@ -107,7 +107,17 @@ public static partial class FinalReport
         if (report.LoginUser is not null) builder.Append(" · login ").Append(Code(report.LoginUser));
         if (report.AppStarted is not null) builder.Append(" · dijalankan AIT ").Append(Code(report.AppStarted));
         builder.Append('\n');
-        if (report.Error is not null) builder.Append("\n⚠️ ").Append(OneLine(report.Error)).Append('\n');
+        if (report.Error is not null)
+        {
+            // The URL the sentence starts with and the command AIT tried as code; the command holds the URL too, so only
+            // the first occurrence of the URL is replaced.
+            var error = OneLine(report.Error);
+            var at = report.BaseUrl is null ? -1 : error.IndexOf(report.BaseUrl, StringComparison.Ordinal);
+            if (at >= 0) error = error[..at] + Code(report.BaseUrl!) + error[(at + report.BaseUrl!.Length)..];
+            if (report.AppCommand is not null) error = error.Replace(report.AppCommand, Code(report.AppCommand));
+            builder.Append("\n⚠️ ").Append(error).Append('\n');
+        }
+        if (!string.IsNullOrWhiteSpace(report.AppOutput)) builder.Append("\n**Output aplikasi**\n").Append(CodeBlock(report.AppOutput, "text"));
         if (report.Summary is not null) builder.Append('\n').Append(OneLine(report.Summary)).Append('\n');
 
         if (report.Scenarios.Count > 0)

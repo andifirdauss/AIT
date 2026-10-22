@@ -13,6 +13,6 @@ public sealed partial class PlannerAgent
         CancellationToken cancellationToken) =>
         ChatMessages.System(await prompts.BuildAsync(
             AgentPrompts.Planner + (groups.Count == 0 ? string.Empty : AgentPrompts.PlannerDelegation(groups)) + (autoTesting ? AgentPrompts.PlannerTesting : string.Empty)
-            + (unitTests is { } authoring ? AgentPrompts.PlannerUnitTests(authoring) : string.Empty),
+            + (unitTests is { } authoring ? AgentPrompts.PlannerUnitTests(authoring, autoTesting) : string.Empty),
             node, cancellationToken, canReadFiles: true));
 }

@@ -35,15 +35,49 @@ public class AppLauncherTests : IDisposable
         _workspace.Write("src/Admin/Admin.csproj", WebProject);
         _workspace.Write("src/Admin/Properties/launchSettings.json", """{ "profiles": { "http": { "applicationUrl": "http://localhost:5100" } } }""");
         _workspace.Write("src/Web/Web.csproj", WebProject);
-        _workspace.Write("src/Web/Properties/launchSettings.json", """{ "profiles": { "http": { "applicationUrl": "https://localhost:7211;http://localhost:5211" } } }""");
+        _workspace.Write("src/Web/Properties/launchSettings.json", """{ "profiles": { "Web": { "commandName": "Project", "applicationUrl": "https://localhost:7211;http://localhost:5211" } } }""");
 
         var command = AppLaunchResolver.Resolve(_workspace.Root, ["src/Admin/Admin.csproj", "src/Lib/Lib.csproj", "src/Web/Web.csproj"], "http://localhost:5211/app", out var error);
 
         Assert.Null(error);
         Assert.Equal(".NET", command?.Stack);
-        Assert.Equal("dotnet run --project src/Web/Web.csproj --urls http://localhost:5211", command?.Display);
+        Assert.Equal("dotnet run --project src/Web/Web.csproj --launch-profile Web --urls http://localhost:5211", command?.Display);
         Assert.Equal(Path.Combine(_workspace.Root, "src", "Web"), command?.WorkingDirectory);
         Assert.Equal("Development", command?.Environment["ASPNETCORE_ENVIRONMENT"]);
+    }
+
+    [Fact]
+    public void Dotnet_prefers_the_profile_listing_only_the_tested_url()
+    {
+        _workspace.Write("Web/Web.csproj", WebProject);
+        _workspace.Write("Web/Properties/launchSettings.json", """
+            {
+              "profiles": {
+                "https": { "commandName": "Project", "applicationUrl": "https://localhost:7121;http://localhost:5211" },
+                "http": { "commandName": "Project", "applicationUrl": "http://localhost:5211" },
+                "IIS Express": { "commandName": "IISExpress" },
+                "Docker": { "commandName": "Docker", "applicationUrl": "http://localhost:5211" }
+              }
+            }
+            """);
+
+        var http = AppLaunchResolver.Resolve(_workspace.Root, ["Web/Web.csproj"], "http://localhost:5211", out _);
+        var https = AppLaunchResolver.Resolve(_workspace.Root, ["Web/Web.csproj"], "https://localhost:7121", out _);
+
+        Assert.Equal(["run", "--project", Path.Combine(_workspace.Root, "Web", "Web.csproj"), "--launch-profile", "http", "--urls", "http://localhost:5211"], http?.Arguments);
+        Assert.Contains("--launch-profile https", https?.Display);
+    }
+
+    [Fact]
+    public void Dotnet_without_a_profile_on_the_port_runs_the_only_web_project_without_one()
+    {
+        _workspace.Write("Web/Web.csproj", WebProject);
+        _workspace.Write("Web/Properties/launchSettings.json", """{ "profiles": { "http": { "commandName": "Project", "applicationUrl": "http://localhost:5000" } } }""");
+
+        var command = AppLaunchResolver.Resolve(_workspace.Root, ["Web/Web.csproj"], "http://localhost:5211", out _);
+
+        Assert.Equal("dotnet run --project Web/Web.csproj --urls http://localhost:5211", command?.Display);
+        Assert.Contains("--no-launch-profile", command!.Arguments);
     }
 
     [Fact]
@@ -96,16 +130,19 @@ public class AppLauncherTests : IDisposable
     public async Task App_that_exits_before_answering_reports_its_exit_code_and_output()
     {
         var port = FreePort();
+        // Twenty build warnings before the error, as dotnet run prints them; only the error may be left in the message.
+        var warnings = string.Join(OperatingSystem.IsWindows() ? "& " : "; ",
+            Enumerable.Range(1, 20).Select(i => $"echo D:\\app\\Lib.csproj : warning NU1903: Package {i} has a known vulnerability"));
         var (program, arguments) = OperatingSystem.IsWindows()
-            ? ("cmd.exe", (IReadOnlyList<string>)["/d", "/c", "echo port sudah dipakai& exit 3"])
-            : ("/bin/sh", ["-c", "echo port sudah dipakai; exit 3"]);
+            ? ("cmd.exe", (IReadOnlyList<string>)["/d", "/c", $"{warnings}& echo Unhandled exception. System.NullReferenceException& exit 3"])
+            : ("/bin/sh", ["-c", $"{warnings}; echo Unhandled exception. System.NullReferenceException; exit 3"]);
         var command = new AppLaunchCommand("custom", program, arguments, _workspace.Root, "start-app", new Dictionary<string, string>());
 
         var result = await new AppLauncher(NullLogger<AppLauncher>.Instance).StartAsync(command, $"http://localhost:{port}", CancellationToken.None);
 
         Assert.Null(result.App);
-        Assert.Contains("exit code 3", result.Error);
-        Assert.Contains("port sudah dipakai", result.Error);
+        Assert.Equal("start-app berhenti dengan exit code 3 sebelum menjawab", result.Error);
+        Assert.Equal("Unhandled exception. System.NullReferenceException", result.Output?.Trim());
     }
 
     private static int FreePort()

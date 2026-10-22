@@ -76,6 +76,11 @@ public sealed class TestingReport
     // The command AIT started the app with because it was not running (stopped again after the test).
     public string? AppStarted { get; set; }
 
+    // The command AIT tried when it could not start the app (it appears in Error), and the last lines the app printed
+    // (build warnings left out), for the developer.
+    public string? AppCommand { get; set; }
+    public string? AppOutput { get; set; }
+
     // The username the test ran with (never the password).
     public string? LoginUser { get; set; }
 

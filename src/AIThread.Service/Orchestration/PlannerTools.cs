@@ -53,10 +53,11 @@ public static class PlannerTools
     // groups: tools delegated to tools nodes; the planner loses them and gets investigate instead.
     // canTest: Auto Testing is on, so submit_plan asks for the test section.
     // canGit: the project lives in a git repository (GitTools.IsRepository).
-    // unitTests: the project has a unit test catalog AIT can run: run_tests, and the tests section of submit_plan.
-    // The list stays the same for the whole planner run so the provider's prompt cache keeps matching.
+    // unitTests: the project has a unit test catalog: the tests section of submit_plan, and run_tests unless canRunTests
+    // is false (no test project yet). The list stays the same for the whole planner run so the provider's prompt cache
+    // keeps matching.
     public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false,
-        bool unitTests = false)
+        bool unitTests = false, bool canRunTests = true)
     {
         var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
@@ -66,7 +67,7 @@ public static class PlannerTools
             tools.Add(Definition(name));
         }
         foreach (var name in Skeleton) tools.Add(Definition(name));
-        if (unitTests) tools.Add(RunTestsDefinition());
+        if (unitTests && canRunTests) tools.Add(RunTestsDefinition());
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());

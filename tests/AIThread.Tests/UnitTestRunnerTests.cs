@@ -9,6 +9,60 @@ namespace AIThread.Tests;
 // reports of every runner, and matching what a runner reported to the catalog.
 public class UnitTestRunnerTests
 {
+    private const string LegacyLibrary = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+          <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+          <PropertyGroup><TargetFrameworkVersion>v4.5</TargetFrameworkVersion></PropertyGroup>
+          <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+        </Project>
+        """;
+
+    private const string SdkTestProject =
+        """<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net472</TargetFramework></PropertyGroup><ItemGroup><PackageReference Include="xunit" Version="2.6.6" /><ProjectReference Include="..\Lib\Lib.csproj" /></ItemGroup></Project>""";
+
+    [Fact]
+    public void An_sdk_style_test_project_that_references_an_old_format_project_is_built_by_msbuild_and_run_by_vstest()
+    {
+        using var project = new TempWorkspace();
+        project.Write("App.sln", "");
+        project.Write("Lib/Lib.csproj", LegacyLibrary);
+        project.Write("Lib/packages.config", "<packages />");
+        project.Write("Tests/Tests.csproj", SdkTestProject);
+
+        var suite = Assert.Single(TestCommandResolver.Suites(project.Root, ["Lib/Lib.csproj", "Tests/Tests.csproj"]), s => s.Manifest == "Tests/Tests.csproj");
+
+        Assert.True(suite.BuildsWithMsBuild);
+        Assert.False(suite.IsLegacyDotNet);
+        // Visual Studio may not be installed on this machine; then the suite says so instead of running with dotnet.
+        if (!suite.CanRun) Assert.Contains("Visual Studio", suite.Problem + BuildCommandResolver.NoMsBuild);
+
+        var reportFile = Path.Combine(project.Root, "report", "report.json");
+        var command = TestCommandResolver.Command(suite, [new TestTarget("Tests.UserTests.Saves", "Tests/UserTests.cs", "Tests.UserTests", "Saves")], reportFile);
+
+        Assert.NotNull(command.Prepare);
+        Assert.Contains("-restore", command.Prepare.Arguments);
+        Assert.Contains("-p:RestorePackagesConfig=true", command.Prepare.Arguments);
+        var outDir = Path.Combine(project.Root, "report", "bin") + Path.DirectorySeparatorChar;
+        Assert.Contains($"-p:OutDir={outDir}", command.Prepare.Arguments);
+        Assert.Contains($"-p:SolutionDir={project.Root}{Path.DirectorySeparatorChar}", command.Prepare.Arguments);
+        Assert.Equal(Path.Combine(outDir, "Tests.dll"), command.Arguments[0]);
+        Assert.Contains("/TestCaseFilter:FullyQualifiedName=Tests.UserTests.Saves", string.Join(' ', command.Arguments));
+    }
+
+    [Fact]
+    public void An_sdk_style_test_project_without_old_format_references_keeps_dotnet_test()
+    {
+        using var project = new TempWorkspace();
+        project.Write("Lib/Lib.csproj", """<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>""");
+        project.Write("Tests/Tests.csproj", SdkTestProject);
+
+        var suite = Assert.Single(TestCommandResolver.Suites(project.Root, ["Lib/Lib.csproj", "Tests/Tests.csproj"]), s => s.Manifest == "Tests/Tests.csproj");
+
+        Assert.False(suite.BuildsWithMsBuild);
+        Assert.Null(TestCommandResolver.Command(suite, null, Path.Combine(project.Root, "r", "report.json")).Prepare);
+    }
+
     [Fact]
     public void Suites_are_found_per_stack_with_the_reason_a_suite_cannot_run()
     {

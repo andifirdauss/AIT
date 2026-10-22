@@ -110,7 +110,7 @@ public sealed partial class PlannerAgent
         if (input.UnitTests is { } unitTests)
         {
             var files = (input.Files ?? []).Concat(input.CodeMap?.Select(h => h.Path) ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            builder.Append(UnitTestStage.Brief(unitTests, files, focusModules ?? [])).Append('\n');
+            builder.Append(UnitTestStage.Brief(unitTests, files, focusModules ?? [], input.AutoTesting)).Append('\n');
         }
 
         builder.Append("# Developer request\n");

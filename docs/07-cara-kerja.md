@@ -482,7 +482,25 @@ untuk rencana yang mengubah file. Di situ planner menilai **seperti apa perubaha
 
 - `level`: `ui` bila perubahan tampil di halaman (tester mengendalikan browser dan boleh memanggil endpoint juga),
   `api` bila hanya bisa dicapai lewat endpoint HTTP, `none` bila tidak bisa dicoba dari luar (refactor, script build,
-  library, job tanpa endpoint, script database saja) — alasannya di `notes`.
+  library, script database saja) — alasannya di `notes`. Untuk background job dan sistem eksternal lihat di bawah.
+
+#### Background job dan sistem eksternal
+
+Kode yang hanya jalan di background (job Hangfire/Quartz, hosted service, consumer antrian, sync terjadwal) atau yang
+efeknya hanya terlihat di sistem eksternal **tidak dites dengan memicu job-nya**. Bila project punya katalog unit test
+(atau bisa dibuatkan test project, lihat [Keputusan planner](#keputusan-planner)), planner menambah **unit test
+dry-run**:
+
+- test memanggil method yang dijalankan job itu **langsung**, dengan API eksternal, database, antrian, dan jam
+  dipalsukan (mock/fake): tidak ada yang keluar dari proses, tidak ada data yang benar-benar tertulis;
+- input-nya persis kasus yang diubah (record dari API eksternal, field kosong, respons error), lalu hasilnya di-assert;
+- bila method itu tidak bisa dipanggil tanpa framework job-nya (static, membuat `HttpClient`/`DbContext` sendiri),
+  planner menambah refactor kecil agar fake bisa dimasukkan;
+- `level` = `none` (atau tetap `ui`/`api` untuk bagian yang memang tampil di aplikasi) dan `notes` menyebut test-nya.
+  Hasilnya ada di bagian *🧪 Unit test*, bukan langkah manual untuk developer.
+
+Test itu masuk katalog, jadi ikut menjaga regresi di thread berikutnya. Tanpa katalog unit test (mode *Mati* atau
+*Buat unit test baru* = *Tidak pernah*) testing tetap dilewati dengan alasan dari planner.
 - `baseUrl`: dicari planner sendiri dari `Properties/launchSettings.json`, `appsettings*.json` (Kestrel/`urls`), script
   `package.json` dan konfigurasi dev server (vite, next, angular), `.env` (`PORT`), atau port `docker-compose`. Harus
   alamat mesin ini: `localhost`, `*.localhost`, `127.0.0.1`, atau `[::1]`.
@@ -533,7 +551,7 @@ Bila `baseUrl` tidak menjawab, AIT menjalankan aplikasinya sendiri untuk testing
 | Urutan | Kondisi | Perintah |
 |---|---|---|
 | 1 | `.aithread/project.json` punya `"run"`, mis. `{ "key": "eep", "run": "npm run dev:all" }` | perintah itu, lewat `cmd /c` (Windows) atau `sh -c`, di root project |
-| 2 | Project ASP.NET Core (`Microsoft.NET.Sdk.Web`): yang `Properties/launchSettings.json`-nya memakai port `baseUrl`, atau satu-satunya | `dotnet run --project <csproj> --no-launch-profile --urls <origin baseUrl>` di folder project |
+| 2 | Project ASP.NET Core (`Microsoft.NET.Sdk.Web`): yang punya launch profile `Project` di `Properties/launchSettings.json` dengan port `baseUrl`, atau satu-satunya | `dotnet run --project <csproj> --launch-profile <profile> --urls <origin baseUrl>` di folder project. Profile yang hanya berisi alamat itu didahulukan (`http` untuk `http://localhost:5211`, bukan `https` yang juga memuatnya); environment variable profile itu menang atas bawaan AIT. Tanpa profile yang cocok: `--no-launch-profile` |
 | 3 | Laravel (`artisan` di root) | `php artisan serve --host=<host> --port=<port>` |
 | 4 | `package.json` (yang paling dangkal) dengan script `dev`, `start`, atau `serve` | `npm run <script>`; `node_modules` harus sudah ada |
 
@@ -541,8 +559,10 @@ Bila `baseUrl` tidak menjawab, AIT menjalankan aplikasinya sendiri untuk testing
   `Development`, `BROWSER=none`. Dev server yang tidak membaca `PORT` (mis. vite) tetap memakai port dari konfigurasinya;
   planner mengambil `baseUrl` dari konfigurasi yang sama.
 - AIT menunggu sampai `baseUrl` menjawab (dicek tiap detik, maks 3 menit, karena `dotnet run` membuild dulu). Proses
-  yang berhenti sebelum menjawab dilaporkan dengan exit code dan output terakhirnya; yang tidak menjawab dalam 3 menit
-  dihentikan. Bila aplikasi lain sempat menjawab di URL itu (dijalankan developer atau thread lain), aplikasi itu yang
+  yang berhenti sebelum menjawab dilaporkan dengan exit code (kode crash Windows juga dalam hex, mis. `0xC0000005`);
+  yang tidak menjawab dalam 3 menit dihentikan. Satu kalimat penyebabnya tampil di laporan, lalu 15 baris terakhir
+  output aplikasi di blok **Output aplikasi** (jawaban akhir dan detail thread). Warning build (`warning NU1903: …`,
+  `warning CS…`, `npm warn …`) tidak ikut, agar error start-nya (mis. stack trace) tidak tertutup. Bila aplikasi lain sempat menjawab di URL itu (dijalankan developer atau thread lain), aplikasi itu yang
   dipakai.
 - Progres: `🚀 Aplikasi belum jalan, AIT menjalankannya: …` lalu `🟢 Aplikasi menjawab di …`. Laporan testing (jawaban
   akhir dan detail thread) menyebut *dijalankan AIT* beserta perintahnya.
@@ -673,6 +693,7 @@ sebagai filter yang di-escape AIT.
 |---|---|---|---|
 | .NET | project (`.csproj`/`.fsproj`/`.vbproj`, juga yang tercantum di `.sln`/`.slnx`) yang mereferensikan xUnit, NUnit, MSTest, atau `Microsoft.NET.Test.Sdk` | `dotnet test <project> --logger trx` (+ `--filter`) | per test (TRX) |
 | .NET Framework (csproj format lama) | sama | `vstest.console.exe` dari Visual Studio atas assembly test di `bin` (harus sudah di-build) | per test (TRX) |
+| .NET, test project SDK-style yang mereferensikan project format lama (`ProjectReference`, sampai 4 tingkat) | sama | dibuild dulu oleh **MSBuild Visual Studio** (`-restore -p:RestorePackagesConfig=true`, `SolutionDir` = solution terdekat di atasnya, output ke folder milik AIT), lalu `vstest.console.exe` atas assembly hasilnya | per test (TRX) |
 | Node.js | `package.json` dengan jest, vitest, atau mocha (dependency atau script `test`) | runner dari `node_modules` dijalankan lewat `node` dengan reporter JSON (+ filter judul) | per test |
 | Node.js lain | script `test` lain (selain bawaan `npm init`) | `npm test` | hanya exit code: semua test suite itu lolos atau gagal bersama |
 | Python | folder `pyproject.toml`/`setup.py`/`requirements.txt`/`Pipfile` yang berisi `test_*.py`/`*_test.py` | `python -m pytest --junitxml` (virtualenv `.venv`/`venv` dipakai bila ada) | per test (JUnit XML) |
@@ -684,6 +705,12 @@ sebagai filter yang di-escape AIT.
 
 - Suite yang tidak bisa jalan di mesin ini ditandai dengan alasannya (mis. *jest tidak ada di node_modules (jalankan
   npm install dulu)*, *vendor/bin/phpunit tidak ada*, *assembly test belum di-build*). AIT tidak menginstal paket.
+- **Kenapa test project campuran tidak memakai `dotnet test`:** `dotnet` tidak bisa me-restore `packages.config` dan tidak
+  punya target Visual Studio (`Microsoft.WebApplication.targets`, dll.), jadi gagal membuild project .NET Framework lama.
+  MSBuild Visual Studio yang dipakai build solusi (verifikasi) juga dipakai di sini, termasuk restore dan kredensial
+  feed NuGet yang sama, sehingga test project baru tidak butuh login terpisah. Langkah build memakai sebagian dari
+  batas waktu run test; kegagalannya (restore, compile) tampil sebagai *Test tidak bisa dijalankan* dengan akhir
+  output MSBuild. Tanpa Visual Studio/Build Tools suite itu ditandai tidak bisa jalan dengan alasannya.
 - Satu project menjalankan build atau test satu per satu (keduanya berebut `obj/`/`bin`), dengan batas waktu *Batas
   waktu run test* (default sama dengan *Timeout build*). Variabel `CI=true` diset agar runner tidak menunggu input.
 - Bila lebih dari 120 test dipilih, filter dibuang dan seluruh suite dijalankan (command line terlalu panjang di
@@ -783,8 +810,17 @@ nomor, judul, tujuan, file → target, dan hasil terakhir. `submit_plan` mendapa
 | `new` | Test baru | Judul, skenario, file, nama test persis seperti di kode, target; wajib ada tugas create/edit file test itu |
 
 - Test baru dibuat **hanya bila developer memintanya**, kecuali setting *Buat unit test baru* = *Otomatis untuk
-  perubahan logika bisnis* (layer Logic yang belum punya test) atau *Tidak pernah*. Project tanpa project test tidak
-  dibuatkan diam-diam; planner bertanya dulu bila bisa.
+  perubahan logika bisnis* (layer Logic yang belum punya test) atau *Tidak pernah*. Dengan Auto Testing aktif, perubahan
+  yang tidak bisa dicek Tester di aplikasi yang berjalan **selalu** dibuatkan test dry-run (kecuali *Tidak pernah*) —
+  lihat [Background job dan sistem eksternal](#background-job-dan-sistem-eksternal).
+- **Project tanpa test project**: bila test baru dibutuhkan, planner langsung merencanakan test project-nya juga, tanpa
+  bertanya: untuk .NET project xUnit `<Nama>.Tests` di sebelah project yang diuji (`Microsoft.NET.Test.Sdk`, `xunit`,
+  `xunit.runner.visualstudio`, Moq bila perlu fake, `ProjectReference` ke project yang diuji); untuk Node.js runner yang
+  sudah dipakai package, atau Vitest; pytest untuk Python, PHPUnit untuk PHP, JUnit untuk Java. Solution `.slnx` ditambah
+  baris `<Project Path=…>`; `.sln` klasik dibiarkan (`dotnet test` membuild test project sendiri). Brief planner menyebut
+  *No test project yet*, dan `run_tests` tidak ditawarkan. Setelah executor selesai, AIT membaca ulang suite dari
+  manifest di disk (maks 3 folder dalam), lalu test baru dijalankan dan didaftarkan seperti biasa. Rencana yang tidak
+  menambah test tidak menjalankan unit test apa pun.
 - Kasus dirancang planner dari request dan aturan bisnis, bukan dari implementasi. Executor file test hanya melihat
   kontrak dan instruksi (bukan kode implementasinya) dan mengikuti gaya file test lain di suite yang sama.
 - Planner tidak boleh mengubah atau mempensiunkan test developer lain hanya agar perubahannya lolos; bila ragu ia
@@ -866,6 +902,15 @@ Hasil *dilewati* **selalu disertai alasan** dan tidak pernah dihitung regresi:
 | Di-skip oleh test-nya sendiri (`[Fact(Skip = "…")]`, `@Disabled`, `pytest.skip`, `it.skip`) | alasan dari kodenya, atau *Di-skip oleh runner tanpa alasan.* |
 | Runner tidak bisa dijalankan | *jest tidak ada di node_modules (jalankan npm install dulu).* |
 | Dilewati karena lingkungan di mesin ini kurang dari 24 jam lalu | alasan sebelumnya + *(tidak dicoba lagi: run terakhir di mesin ini juga dilewati)* |
+
+**Pengecualian: test baru dari thread yang sama.** Test yang ditulis untuk perubahan ini adalah test dry-run (semua
+database, jaringan, dan config dipalsukan), jadi kegagalan karena database/jaringan/config **tidak pernah dilewati**:
+test itu dianggap tidak terisolasi dan diperbaiki (fix task ke file test-nya, maks 3 putaran) dengan instruksi
+*fake or inject every database, network call, config and clock it touches*. Verdict `environment` dari Tester untuk
+test baru diperlakukan sama **bila pesannya memang error database/jaringan/config saat test berjalan**. Restore atau
+build yang tidak bisa jalan di mesin ini (feed NuGet/npm yang butuh kredensial: `NU1301 401 Unauthorized`, SDK atau
+targeting pack tidak ada) tetap *dilewati* dengan alasannya, karena tidak ada perubahan di kode test yang bisa
+memperbaikinya. Tanpa pengecualian ini sebuah thread bisa selesai *lolos* tanpa satu pun test baru yang pernah jalan.
 
 Kebutuhan yang terdeteksi (`database`, `network`, `config`) dicatat di test itu. Menjalankan test dari Project > Detail
 selalu mencoba lagi. Test yang tidak dilaporkan runner sama sekali (nama atau file-nya berubah) tampil *tidak

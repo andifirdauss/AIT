@@ -9,6 +9,14 @@ public sealed partial class TestRunner
 {
     private async Task<TestRunResult> RunCoreAsync(TestCommand command, TimeSpan timeout, CancellationToken cancellationToken)
     {
+        // The step before the tests (a build) takes its share of the time limit; the tests get what is left.
+        var spent = Stopwatch.StartNew();
+        if (command.Prepare is { } prepare)
+        {
+            if (await PrepareAsync(command, prepare, timeout, cancellationToken) is { } failed) return failed;
+            timeout = timeout > spent.Elapsed ? timeout - spent.Elapsed : TimeSpan.FromSeconds(30);
+        }
+
         var keepOutput = command.Suite.Format is TestReportFormat.GoJson or TestReportFormat.RustText;
         var output = new StringBuilder();
         var tail = new Queue<string>();
