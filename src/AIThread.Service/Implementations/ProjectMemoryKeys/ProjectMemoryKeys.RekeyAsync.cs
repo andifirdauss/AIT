@@ -28,6 +28,7 @@ public sealed partial class ProjectMemoryKeys
         updated += await UpdateShortAsync(r => r.ProjectKey == oldKey, r => r with { ProjectKey = newKey, ProjectName = projectName });
         await RekeyCatalogAsync(oldKey, newKey, cancellationToken);
         await RekeyUnitTestsAsync(oldKey, newKey, cancellationToken);
+        await RekeyTestingAsync(oldKey, newKey, cancellationToken);
         return updated;
     }
 }

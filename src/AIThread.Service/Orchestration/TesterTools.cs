@@ -22,20 +22,25 @@ public static class TesterTools
     // Ends the test to ask the developer for a login; only when the developer can answer in the chat.
     public const string AskLogin = "ask_login";
 
+    // Acts as one of the project's test accounts; only when the project has some.
+    public const string SwitchUser = "switch_user";
+
     public static readonly ImmutableArray<string> Browser =
         [BrowserOpen, BrowserSnapshot, BrowserClick, BrowserFill, BrowserSelect, BrowserPress, BrowserWait];
 
     public static readonly ImmutableArray<string> Methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
-    // ui: the browser and http_request; api: http_request only. canAskLogin adds ask_login.
-    public static IReadOnlyList<string> Available(string level, bool canAskLogin = false) =>
-        (level == TestPlan.Ui ? [.. Browser, HttpRequest] : new[] { HttpRequest }).Concat(canAskLogin ? [AskLogin] : []).ToList();
+    // ui: the browser and http_request; api: http_request only. canAskLogin adds ask_login, canSwitchUser switch_user.
+    public static IReadOnlyList<string> Available(string level, bool canAskLogin = false, bool canSwitchUser = false) =>
+        (level == TestPlan.Ui ? [.. Browser, HttpRequest] : new[] { HttpRequest })
+        .Concat(canSwitchUser ? [SwitchUser] : [])
+        .Concat(canAskLogin ? [AskLogin] : []).ToList();
 
     // The same list for the whole run, so the provider's prompt cache keeps matching.
-    public static JsonArray For(string level, bool canAskLogin = false)
+    public static JsonArray For(string level, bool canAskLogin = false, bool canSwitchUser = false)
     {
         var tools = new JsonArray();
-        foreach (var name in Available(level, canAskLogin)) tools.Add(name == AskLogin ? AskLoginDefinition() : Definition(name));
+        foreach (var name in Available(level, canAskLogin, canSwitchUser)) tools.Add(name == AskLogin ? AskLoginDefinition() : Definition(name));
         tools.Add(ReportDefinition());
         return tools;
     }
@@ -110,6 +115,17 @@ public static class TesterTools
               }
             }
             """)),
+        SwitchUser => ChatMessages.Function(SwitchUser,
+            "Act as one of the project's test accounts (\"# Test accounts\"): the browser window closes and the next browser tool opens that account's own browser profile, http_request uses its own cookies, and {{username}} / {{password}} stand for its login. Switch before a step another user must do (an approver, the requester again).",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "account": { "type": "string", "description": "The username from \"# Test accounts\"." }
+              },
+              "required": ["account"]
+            }
+            """)),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown tester tool.")
     };
 
@@ -139,7 +155,8 @@ public static class TesterTools
               "type": "object",
               "properties": {
                 "reason": { "type": "string", "description": "What needs the login and what you saw, in the developer's language, e.g. \"/User mengalihkan ke halaman login\" or \"login ditolak: Password salah\"." },
-                "loginUrl": { "type": "string", "description": "The login page or endpoint, e.g. \"/Account/Login\"." }
+                "loginUrl": { "type": "string", "description": "The login page or endpoint, e.g. \"/Account/Login\"." },
+                "kind": { "type": "string", "enum": ["login", "dev_password"], "description": "dev_password: a test account's login was refused with the project's development password (the developer gives the right one, AIT keeps it for the project). login (default): any other missing or refused login." }
               },
               "required": ["reason"]
             }
@@ -160,10 +177,21 @@ public static class TesterTools
                     "properties": {
                       "title": { "type": "string", "description": "The scenario title from the plan." },
                       "status": { "type": "string", "enum": ["passed", "failed", "blocked"] },
-                      "details": { "type": "string", "description": "What you saw: for failed what happened instead, for blocked why it could not be checked." }
+                      "details": { "type": "string", "description": "What you saw: for failed what happened instead, for blocked why it could not be checked." },
+                      "actor": { "type": "string", "description": "The test account you checked it as (switch_user), if any." }
                     },
                     "required": ["title", "status", "details"]
                   }
+                },
+                "impersonation": {
+                  "type": "object",
+                  "description": "Only when you saw a \"login as\" / impersonate feature in the app (a button or menu to enter as another user) that the brief does not mention: how to use it, so AIT keeps it for the project.",
+                  "properties": {
+                    "how": { "type": "string", "description": "Menu path, URL or endpoint, with {{target}} for the user to enter as." },
+                    "back": { "type": "string", "description": "How to return to the original account, if shown." },
+                    "roles": { "type": "array", "items": { "type": "string" }, "description": "Roles of the account you saw it with, e.g. [\"Administrator\"]." }
+                  },
+                  "required": ["how"]
                 }
               },
               "required": ["summary", "scenarios"]

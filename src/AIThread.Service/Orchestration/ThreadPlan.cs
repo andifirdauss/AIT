@@ -153,6 +153,9 @@ public sealed class TestScenario
 
     public List<string> Steps { get; set; } = [];
     public string Expect { get; set; } = string.Empty;
+
+    // The test account (username) or the role of one that does the scenario, from "# Test accounts"; null: any login.
+    public string? Actor { get; set; }
 }
 
 // The unit test part of a plan. A registered test the change concerns is kept unless a decision says otherwise.

@@ -112,6 +112,9 @@ public static class DependencyInjection
         services.AddSingleton<IVerificationStage, VerificationStage>();
         services.AddSingleton<ITestBrowserLauncher, TestBrowserLauncher>();
         services.AddSingleton<ITestLoginStore>(_ => new TestLoginStore(TimeProvider.System));
+        services.AddSingleton<ITestAccountStore, TestAccountStore>();
+        services.AddSingleton<ITestAccountService, TestAccountService>();
+        services.AddSingleton<IImpersonationDetector, ImpersonationDetector>();
         services.AddSingleton<ISecretGuard, SecretGuard>();
         services.AddSingleton<ISecurityService, SecurityService>();
         services.AddSingleton<ITesterAgent, TesterAgent>();

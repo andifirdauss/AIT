@@ -6,8 +6,9 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class TesterAgent
 {
-    // What the tester knows about the change: the request, the plan, the diffs and the planner's test section.
-    public static string Brief(TestingInput input)
+    // What the tester knows about the change: the request, the plan, the diffs, the project's test accounts and the
+    // planner's test section.
+    public static string Brief(TestingInput input, TestAccountSet? accounts = null)
     {
         var plan = input.Plan;
         var test = plan.Test!;
@@ -61,12 +62,18 @@ public sealed partial class TesterAgent
             builder.Append($"Password: {TestLogin.PasswordPlaceholder}\n");
             builder.Append("Write these placeholders exactly as shown; AIT replaces them with the developer's login when the tool runs.\n");
         }
+        else if (accounts is { Accounts.Count: > 0 })
+        {
+            builder.Append("No login given here: act as one of the test accounts below with switch_user, then log in with the placeholders.\n");
+        }
         else
         {
             builder.Append(input.CanAskLogin
                 ? "None given here. Use credentials from your additional instructions if they give any; otherwise, when the app asks for a login, call ask_login.\n"
                 : "None given here. Use credentials from your additional instructions if they give any; otherwise mark scenarios that need a login \"blocked\" (the developer cannot be asked now).\n");
         }
+        if (accounts is not null && TestAccountText.Brief(accounts, forTester: true) is { } accountList)
+            builder.Append('\n').Append(accountList);
 
         builder.Append("\n# Test plan\n");
         builder.Append($"Level: {test.Level}").Append(test.Level == TestPlan.Ui
@@ -79,6 +86,7 @@ public sealed partial class TesterAgent
             var scenario = test.Scenarios[i];
             builder.Append($"\n## Scenario {i + 1}: {scenario.Title}\n");
             if (scenario.Target is not null) builder.Append($"Start at: {scenario.Target}\n");
+            if (scenario.Actor is not null) builder.Append($"As: {scenario.Actor}\n");
             if (scenario.Steps.Count > 0)
             {
                 builder.Append("Steps:\n");

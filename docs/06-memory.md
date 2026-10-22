@@ -409,13 +409,18 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
   bersama tetap berbagi katalog: judul, skenario, status, alasan obsolete, hasil terakhir, dan **snapshot** isi file test
   (kecuali project yang mematikan *Simpan snapshot test*). Tidak ikut bila filter memakai pencarian teks atau tipe
   *Knowledge*. Riwayat run tidak ikut.
+- **Akun uji** dan setting testing project (password dev, hasil deteksi *login as*) ikut dengan aturan yang sama
+  (bagian `testing`). Password dev ikut karena isinya hanya password bypass di dev yang terlihat seluruh tim.
 - Project ditulis dengan **project key**-nya (memory lama tanpa key memakai key project-nya di mesin ini), jadi di
   mesin lain memory masuk ke clone project yang sama walau folder root-nya berbeda.
 - **Import** memeriksa file dulu (*dry run*) dan menampilkan ringkasan: yang ditambahkan, ditimpa, sudah ada, tidak
   valid, serta project di file dan apakah sudah terdaftar di mesin ini. Data baru ditulis setelah tombol *Import*.
 - Format file v2 membawa label berstruktur (modul, layer, jenis, area, keyword, label lama); modulnya masuk daftar modul
   key-nya di mesin tujuan. Item tanpa label (file v1) masuk sebagai *belum berlabel* dan dimigrasi worker. Format v3
-  (saat ini) menambah bagian `unitTests`; file v1/v2 tetap diterima.
+  menambah bagian `unitTests`, v4 (saat ini) bagian `testing`; file v1–v3 tetap diterima.
+- **Akun uji** dari file dicocokkan per id, lalu per project key + username (tidak peka huruf besar/kecil), dan
+  setting testing per project key. Yang sudah ada diperbarui hanya bila salinan di file lebih baru. Ringkasan import
+  menampilkan jumlah akun uji baru, diperbarui, dan dilewati.
 - **Unit test** dari file dicocokkan per id, lalu per project key + nama test. Yang sudah ada diperbarui hanya bila
   salinan di file lebih baru (diubah atau dijalankan lebih akhir), terlepas dari pilihan *lewati/timpa*. Test baru
   mempertahankan nomornya, kecuali nomor itu sudah dipakai test lain di project yang sama — lalu mendapat nomor

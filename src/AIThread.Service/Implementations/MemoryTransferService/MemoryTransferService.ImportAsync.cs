@@ -114,10 +114,25 @@ public sealed partial class MemoryTransferService
         warnings.AddRange(unitTests.Warnings.Take(MaxListedWarnings));
         if (unitTests.Renumbered > 0)
             warnings.Add($"{unitTests.Renumbered} unit test mendapat nomor baru karena nomornya sudah dipakai test lain di project yang sama.");
+
+        TestingImport testing;
+        try
+        {
+            testing = await ImportTestingAsync(file.Testing, dryRun, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Test account import stopped.");
+            throw new AppValidationException($"Import akun uji berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Akun yang sudah masuk tidak akan digandakan bila import diulang.");
+        }
+        warnings.AddRange(testing.Warnings.Take(MaxListedWarnings));
+
         var result = new MemoryImportResultDto(dryRun, items.Count, adds.Count, updates.Count, skipped, duplicates, invalid.Count, projectSummary, warnings,
-            unitTests.Added, unitTests.Updated, unitTests.Renumbered, unitTests.Skipped);
+            unitTests.Added, unitTests.Updated, unitTests.Renumbered, unitTests.Skipped, testing.Added, testing.Updated, testing.Skipped);
         if (!dryRun && unitTests.Added + unitTests.Updated > 0)
             activityLog.Info("memory", $"Import unit test: {unitTests.Added} ditambahkan, {unitTests.Updated} diperbarui, {unitTests.Skipped} dilewati.");
+        if (!dryRun && testing.Added + testing.Updated > 0)
+            activityLog.Info("memory", $"Import akun uji: {testing.Added} ditambahkan, {testing.Updated} diperbarui, {testing.Skipped} dilewati.");
         if (dryRun || (adds.Count == 0 && updates.Count == 0)) return result;
 
         try

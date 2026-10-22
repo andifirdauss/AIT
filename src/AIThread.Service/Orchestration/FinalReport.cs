@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using AIThread.Common.DTOs;
+using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 
 namespace AIThread.Service.Orchestration;
@@ -105,8 +106,11 @@ public static partial class FinalReport
         if (report.BaseUrl is not null) builder.Append(" · ").Append(Code(report.BaseUrl));
         if (report.Browser is not null) builder.Append(" · ").Append(report.Browser);
         if (report.LoginUser is not null) builder.Append(" · login ").Append(Code(report.LoginUser));
+        if (report.Accounts.Count > 0) builder.Append(" · akun ").Append(string.Join(", ", report.Accounts.Select(Code)));
         if (report.AppStarted is not null) builder.Append(" · dijalankan AIT ").Append(Code(report.AppStarted));
         builder.Append('\n');
+        if (report.DefaultDevPassword)
+            builder.Append($"\nℹ️ Login akun uji memakai password dev bawaan {Code(TestingSettings.DefaultDevPassword)}. Bila aplikasi memakai password lain di dev, isi di Project > Detail → Akun uji.\n");
         if (report.Error is not null)
         {
             // The URL the sentence starts with and the command AIT tried as code; the command holds the URL too, so only
@@ -127,6 +131,7 @@ public static partial class FinalReport
             {
                 var icon = scenario.Status switch { TestingReport.Passed => "✅", TestingReport.Failed => "❌", _ => "🚫" };
                 builder.Append($"- {icon} **{OneLine(scenario.Title)}**");
+                if (scenario.Actor is not null) builder.Append(" (").Append(Code(scenario.Actor)).Append(')');
                 // A scenario that could not run because of the whole test says so in the line above already.
                 if (!string.IsNullOrWhiteSpace(scenario.Details) && scenario.Details != report.Error) builder.Append(" — ").Append(OneLine(scenario.Details));
                 builder.Append('\n');
@@ -167,7 +172,11 @@ public static partial class FinalReport
         {
             builder.Append("\n🔐 **Tester butuh login** — ").Append(OneLine(report.LoginNeeded));
             if (report.LoginUrl is not null) builder.Append(" (").Append(Code(report.LoginUrl)).Append(')');
-            builder.Append("\n\n").Append(report.AskedLogin
+            builder.Append("\n\n").Append(report.AskedLogin && report.LoginKind == TestingReport.LoginKindDevPassword
+                ? "Password dev project ditolak aplikasi. Balas pesan ini dengan `password dev <nilai>`: AIT menyimpannya sebagai password dev project " +
+                  "(terlihat oleh semua developer project, jadi hanya untuk password bypass di dev) lalu menjalankan testing lagi. " +
+                  "Untuk password asli, balas `login <username> <password>` (hanya untuk sesi ini, tidak disimpan).\n"
+                : report.AskedLogin
                 ? "Balas pesan ini dengan `login <username> <password>` (akun uji) untuk menjalankan testing lagi dengan akun itu. " +
                   "AIT tidak menyimpannya ke disk dan tidak mengirim password ke model (tester hanya melihat `{{password}}`); " +
                   "login diingat selama sesi chat ini agar tidak ditanya ulang. Password tetap tercatat di riwayat chat Anda, jadi pakai akun uji.\n"

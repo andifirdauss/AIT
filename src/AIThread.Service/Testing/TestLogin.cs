@@ -31,6 +31,14 @@ public sealed partial record TestLogin(string Username, string Password)
         return user.Success && password.Success ? Create(user.Groups[1].Value, password.Groups[1].Value) : null;
     }
 
+    // "password dev <value>": the project's development password, the answer to a tester's dev_password question. Null
+    // when the reply is something else.
+    public static string? ParseDevPassword(string? reply)
+    {
+        if (string.IsNullOrWhiteSpace(reply)) return null;
+        return DevPassword().Match(reply.Trim()) is { Success: true } match ? Clean(match.Groups[1].Value) is { Length: > 0 } value ? value : null : null;
+    }
+
     // From the thread page, where both fields are optional.
     public static TestLogin? From(string? username, string? password) => Create(username ?? string.Empty, password ?? string.Empty);
 
@@ -56,6 +64,9 @@ public sealed partial record TestLogin(string Username, string Password)
 
     [GeneratedRegex(@"^\s*login\s+(\S+)\s+(\S+)\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex Inline();
+
+    [GeneratedRegex(@"^\s*password\s+dev\s*[:=]?\s*(\S+)\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex DevPassword();
 
     [GeneratedRegex(@"(?:^|[\s,;])(?:user(?:name)?|e-?mail|akun)\s*[:=]\s*([^\s,;]+)", RegexOptions.IgnoreCase)]
     private static partial Regex LabeledUser();

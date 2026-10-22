@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using AIThread.Common.Entities;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
+using AIThread.Service.Testing;
 using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Orchestration;
@@ -16,6 +17,7 @@ namespace AIThread.Service.Orchestration;
 // UnitTests: the project's unit test catalog for this thread: the brief lists the related tests, and run_tests and the
 // tests section of submit_plan are offered.
 // SessionChanges: what the earlier threads of this chat changed, per module — what "this change" can refer to.
+// TestAccounts: the project's test accounts, with Auto Testing: listed in the brief, and the actors a scenario may name.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -29,7 +31,8 @@ public sealed record PlannerInput(
     bool AutoTesting = false,
     PreviousTurn? PreviousTurn = null,
     UnitTestSession? UnitTests = null,
-    IReadOnlyList<SessionModuleChange>? SessionChanges = null);
+    IReadOnlyList<SessionModuleChange>? SessionChanges = null,
+    TestAccountSet? TestAccounts = null);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.
@@ -59,7 +62,8 @@ public sealed partial class PlannerAgent(
     IToolsNodeAgent toolsNodeAgent,
     INodePromptBuilder prompts,
     ICodeSkeletonTools skeleton,
-    ISecretGuard secrets) : IPlannerAgent
+    ISecretGuard secrets,
+    ITestAccountStore accountStore) : IPlannerAgent
 {
     private const int MaxRequestChars = 40_000;
     private const int MaxAttachedContextChars = 30_000;

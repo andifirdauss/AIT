@@ -262,7 +262,7 @@ public class UnitTestCatalogTests
             Assert.Null((await source.Service<IMemoryTransferService>().ExportAsync(new MemoryQuery(null, null, null, null, IncludeUnitTests: false))).UnitTests);
         }
 
-        Assert.Equal(3, file.Version);
+        Assert.Equal(MemoryExportFile.CurrentVersion, file.Version);
         Assert.Equal(2, file.UnitTests!.Count);
         Assert.All(file.UnitTests, t => Assert.Equal((key, Tests), (t.ProjectKey, t.SourceSnapshot!)));
 

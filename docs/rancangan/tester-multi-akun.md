@@ -1,8 +1,22 @@
 # Rancangan: Tester multi akun, test lanjutan, dan skenario Excel
 
-> Status: **rancangan**, belum diimplementasikan. Dokumen ini catatan keputusan dan tidak tampil di menu Docs. Setelah
-> diimplementasikan, perilaku yang berlaku dipindah ke dokumen pengguna (`07-cara-kerja.md`, `05-menu.md`,
-> `09-referensi-api.md`) dan bagian yang berbeda dicatat di sini, seperti [unit-test.md](unit-test.md).
+> Status: **fase 1 sudah diimplementasikan** (2026-10-23). Perilaku yang berlaku ada di dokumen pengguna:
+> [07-cara-kerja.md → Akun uji](../07-cara-kerja.md#akun-uji-berganti-user), [05-menu.md → Akun uji](../05-menu.md#akun-uji),
+> [09-referensi-api.md](../09-referensi-api.md), [06-memory.md → Export & import](../06-memory.md#export--import).
+> Dokumen ini catatan keputusan dan tidak tampil di menu Docs.
+>
+> Bagian fase 1 yang berbeda di implementasi:
+> - Service dipecah dua: `ITestAccountStore` (per project key, dipakai Tester dan planner) dan `ITestAccountService`
+>   (per project id, untuk API/UI).
+> - Balasan chat untuk password dev yang ditolak: `password dev <nilai>` (juga `password dev: <nilai>`), ditangani
+>   `ThreadOrchestrator.TestWithDevPasswordAsync`.
+> - Profil browser akun: `tester-browser\accounts\<10 hex hash project key>-<username>\<browser>`.
+> - Planner memuat akun sendiri (`PlannerAgent.WithAccountsAsync`) hanya saat Auto Testing aktif; tanpa akun uji, `actor`
+>   apa saja diterima (diteruskan ke tester).
+> - Deteksi *login as* otomatis hanya bila project punya **lebih dari satu** akun dan belum pernah dideteksi. Hasil
+>   `none` dari scan juga dihitung "sudah dideteksi"; ulangi lewat tombol **Deteksi**.
+> - Pengamatan tester tidak menimpa hasil yang dikonfirmasi, diisi developer, atau yang sudah `available`.
+> - Export memakai flag `MemoryQuery.IncludeTestAccounts` (default menyala), terpisah dari unit test.
 
 ## Latar belakang
 
