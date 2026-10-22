@@ -138,6 +138,13 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `POST` | `/api/projects/{id}/unit-tests/run` | `{ "ids": ["..."], "all": false }` (`all` = semua test aktif; `ids` boleh berisi test karantina/obsolete) → `ran`, `passed`, `failed`, `skipped`, `durationMs`, `tests[]` (`id`, `displayNumber`, `title`, `result`, `durationMs`, `message`, `skipReason`), `warnings[]`. Hasil dan snapshot test yang lolos dicatat ke katalog |
 | `GET` | `/api/projects/{id}/unit-tests/{testId}/history` | riwayat run (maks 20): `phase` (`baseline`/`after`/`manual`/`flaky`), `result`, `durationMs`, `message`, `skipReason`, `machine`, `runBy`, `threadId`, `runAt` |
 | `POST` | `/api/projects/{id}/unit-tests/{testId}/reactivate` | — → test. Test obsolete atau karantina kembali aktif; `400` untuk status lain |
+| `GET` | `/api/projects/{id}/test-accounts` | — → `projectKey`, `canSave`, `problem` (alasan bila tanpa project key), `accounts[]` (`id`, `username`, `role`, `attributes` objek string, `notes`, `createdBy`, `updatedBy`, `createdAt`, `updatedAt`), `settings` (`devPassword` yang dipakai, `devPasswordIsDefault`, `devPasswordSource` = `default`/`developer`/`chat`, `impersonation`, `sideEffectsAcknowledgedBy`, `sideEffectsAcknowledgedAt`, `updatedBy`, `updatedAt`), `attributeKeys[]` |
+| `POST` | `/api/projects/{id}/test-accounts` | `{ "username": "atasan01", "role": "Atasan", "attributes": { "Unit": "Sales" }, "notes": null }` → akun. Username unik per project (tidak peka huruf besar/kecil), tanpa spasi; maks 30 atribut, 200 akun |
+| `PUT` | `/api/projects/{id}/test-accounts/{accountId}` | sama dengan `POST` → akun |
+| `DELETE` | `/api/projects/{id}/test-accounts/{accountId}` | — → `true` |
+| `PUT` | `/api/projects/{id}/testing-settings` | `{ "devPassword": "123" }` — kosong/`null` = kembali ke bawaan `Test@1234` → `settings` |
+| `PUT` | `/api/projects/{id}/testing-settings/impersonation` | `{ "status": "available", "how": "GET /Account/LoginAs?username={{target}}", "back": null, "roles": ["Administrator"], "confirmed": true }` — `status` `available`/`none`/`unknown`; `available` wajib `how` dan `roles` → `settings` |
+| `POST` | `/api/projects/{id}/testing-settings/impersonation/detect` | — → `settings`. Scan kode + model murah; hasilnya belum dikonfirmasi (`impersonation.source` = `scan`) |
 | `POST` | `/api/projects/{id}/unit-tests/{testId}/confirm-removal` | `{ "removeCode": true }` → `test`, `threadId`. Hanya test obsolete: status `Removed`, snapshot dihapus, dan bila `removeCode` serta file test-nya ada, thread Dashboard dimulai untuk menghapus kode test itu (`threadId`) |
 
 ### Memory

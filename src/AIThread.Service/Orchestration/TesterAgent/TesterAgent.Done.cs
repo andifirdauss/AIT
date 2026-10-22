@@ -12,7 +12,8 @@ public sealed partial class TesterAgent
             : report.Count(TestingReport.Passed) > 0 ? TestingReport.Passed
             : TestingReport.Blocked;
         report.TesterModel = node.Model;
-        if (run.Browser is { } browser) report.BrowserErrors = browser.Problems.Select(run.Mask).ToList();
+        // The windows switch_user closed first, then the one still open.
+        report.BrowserErrors = [.. run.BrowserProblems, .. run.Browser?.Problems.Select(run.Mask) ?? []];
         return new TestingResult(report, tokens, ForModels(report), node);
     }
 }

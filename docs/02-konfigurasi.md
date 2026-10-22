@@ -281,6 +281,10 @@ Yang perlu disiapkan:
   `login <username> <password>` (akun uji) dan testing dijalankan lagi. Password tidak disimpan ke disk, tidak dikirim ke
   model, dan diingat selama sesi chat itu. Untuk thread dari Dashboard/Telegram, isi di modal **🧪 Ulangi testing**.
   Lihat [Login](07-cara-kerja.md#login).
+- **Akun uji** (opsional, untuk alur multi-user seperti approval berjenjang): isi di Project > Detail → *Akun uji*
+  (username, peran, atribut; tanpa password per akun) dan, bila perlu, *Password dev* (bawaan `Test@1234`). Tester
+  berganti akun dengan `switch_user` dan memakai fitur *login as* project bila terdeteksi. Lihat
+  [Akun uji](07-cara-kerja.md#akun-uji-berganti-user).
 - Hanya alamat `localhost`/`127.0.0.1`/`[::1]` yang boleh dites. Arahkan aplikasinya ke database pengembangan.
 
 Detail alur, tool tester, dan batasannya: [Testing (Auto Testing)](07-cara-kerja.md#6-testing-auto-testing).

@@ -290,6 +290,238 @@ public class AutoTestingTests
         Assert.DoesNotContain(router.Calls, c => c.Messages.ToJsonString().Contains(password));
     }
 
+    [Fact]
+    public async Task Tester_acts_as_the_projects_test_accounts_with_the_development_password()
+    {
+        await using var app = LocalApp.Start(request => (200, "application/json", request.HttpMethod == "POST" ? ReadBody(request) : """{"text":"Halo"}"""));
+        await using var harness = await CreateTestingHarnessAsync();
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        var accounts = harness.Service<ITestAccountService>();
+        await accounts.AddAsync(harness.ProjectId, new SaveTestAccountRequest("pengaju01", "Pengaju", new() { ["NIK"] = "12345", ["Atasan"] = "atasan01" }, null));
+        await accounts.AddAsync(harness.ProjectId, new SaveTestAccountRequest("atasan01", "Atasan", new() { ["Level approval"] = "1" }, null));
+        var plan = PlanWithTest(TestPlan.Api, app.BaseUrl);
+        plan.Test!.Scenarios = [new TestScenario { Title = "Submit", Target = "POST /api/leave", Steps = ["Submit."], Expect = "200", Actor = "Pengaju" },
+            new TestScenario { Title = "Approve", Target = "POST /api/approve", Steps = ["Approve."], Expect = "200", Actor = "atasan01" }];
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, call =>
+            {
+                Assert.Contains("# Test accounts", call.LastUser);
+                Assert.Contains("- atasan01 · Atasan · Level approval 1", call.LastUser);
+                return router.SubmitPlan(plan);
+            })
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, call =>
+            {
+                Assert.Contains(TesterTools.SwitchUser, call.ToolNames!);
+                Assert.Contains("- pengaju01 · Pengaju · NIK 12345, Atasan atasan01", call.LastUser);
+                Assert.Contains("As: Pengaju", call.LastUser);
+                Assert.DoesNotContain(TestingSettings.DefaultDevPassword, call.LastUser);
+                return router.Tool(TesterTools.SwitchUser, new { account = "PENGAJU01" });
+            })
+            .On(ScriptedAgent.Tester, call =>
+            {
+                Assert.Contains("You now act as pengaju01 (Pengaju)", ToolOutputs(call)[^1]);
+                return router.Tool(TesterTools.HttpRequest, new { method = "POST", url = "/api/leave", body = new { user = "{{username}}", password = "{{password}}" } });
+            })
+            .On(ScriptedAgent.Tester, call =>
+            {
+                // The model sees the placeholder again, never the password.
+                Assert.Contains("\"password\": \"{{password}}\"", ToolOutputs(call)[^1]);
+                return router.Tool(TesterTools.SwitchUser, new { account = "atasan01" });
+            })
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.HttpRequest, new { method = "POST", url = "/api/approve", body = new { user = "{{username}}" } }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new
+            {
+                summary = "Alur jalan.",
+                scenarios = new[] { new { title = "Submit", status = "passed", details = "Tersimpan.", actor = "pengaju01" }, new { title = "Approve", status = "passed", details = "Disetujui.", actor = "atasan01" } }
+            }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, observer) = await harness.RunAsync("Sapaan jadi Halo");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Contains(app.Bodies, b => b.Contains("\"user\":\"pengaju01\"") && b.Contains($"\"password\":\"{TestingSettings.DefaultDevPassword}\""));
+        Assert.Contains(app.Bodies, b => b.Contains("\"user\":\"atasan01\""));
+        Assert.Contains("· akun `pengaju01`, `atasan01`", observer.Final);
+        Assert.Contains($"password dev bawaan `{TestingSettings.DefaultDevPassword}`", observer.Final);
+        Assert.Contains("✅ **Approve** (`atasan01`) — Disetujui.", observer.Final);
+        Assert.Contains(observer.Lines, l => l.Contains("👤 PENGAJU01"));
+        var report = JsonNode.Parse((await harness.LoadThreadAsync(result.ThreadId)).TestingJson!)!;
+        Assert.Equal(["pengaju01", "atasan01"], report["accounts"]!.AsArray().Select(a => a!.GetValue<string>()));
+        Assert.DoesNotContain(TestingSettings.DefaultDevPassword, report.ToJsonString());
+    }
+
+    [Fact]
+    public async Task Each_test_account_gets_its_own_browser_profile()
+    {
+        await using var app = LocalApp.Start(_ => (200, "text/html", "<html>Halo</html>"));
+        var browser = new FakeBrowser();
+        var launcher = new FakeLauncher(browser);
+        await using var harness = await CreateTestingHarnessAsync(services => services.AddSingleton<ITestBrowserLauncher>(launcher));
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        await harness.Service<ITestAccountService>().AddAsync(harness.ProjectId, new SaveTestAccountRequest("pengaju01", "Pengaju", null, null));
+        await harness.Service<ITestAccountService>().AddAsync(harness.ProjectId, new SaveTestAccountRequest("atasan01", "Atasan", null, null));
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Ui, app.BaseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.SwitchUser, new { account = "pengaju01" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.BrowserOpen, new { url = "/" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.SwitchUser, new { account = "atasan01" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.BrowserOpen, new { url = "/" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new { summary = "Oke.", scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Halo.", actor = "atasan01" } } }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync("Sapaan jadi Halo");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Equal(2, launcher.Profiles.Count);
+        Assert.EndsWith("-pengaju01", launcher.Profiles[0]);
+        Assert.EndsWith("-atasan01", launcher.Profiles[1]);
+        Assert.Equal(launcher.Profiles[0]![..^"pengaju01".Length], launcher.Profiles[1]![..^"atasan01".Length]);
+        // The browser problems of the window switch_user closed are kept too.
+        var report = JsonNode.Parse((await harness.LoadThreadAsync(result.ThreadId)).TestingJson!)!;
+        Assert.Equal(2, report["browserErrors"]!.AsArray().Count);
+        Assert.NotEqual(TestBrowserLauncher.ProfileDirectory("msedge", launcher.Profiles[0]), TestBrowserLauncher.ProfileDirectory("msedge", null));
+    }
+
+    [Fact]
+    public async Task A_refused_development_password_is_asked_in_the_chat_and_kept_for_the_project()
+    {
+        await using var app = LocalApp.Start(request => (200, "application/json", request.HttpMethod == "POST" ? ReadBody(request) : """{"text":"Halo"}"""));
+        await using var harness = await CreateTestingHarnessAsync();
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        await harness.Service<ITestAccountService>().AddAsync(harness.ProjectId, new SaveTestAccountRequest("pengaju01", "Pengaju", null, null));
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, app.BaseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.SwitchUser, new { account = "pengaju01" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.AskLogin, new { reason = "password dev ditolak", loginUrl = "/login", kind = "dev_password" }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Menunggu password dev."));
+
+        var (first, firstObserver) = await harness.RunAsync("Sapaan jadi Halo", ThreadSource.ClaudeCode, "chat-1");
+
+        Assert.Contains("`password dev <nilai>`", firstObserver.Final);
+        Assert.Equal(TestingReport.LoginKindDevPassword, JsonNode.Parse((await harness.LoadThreadAsync(first.ThreadId)).TestingJson!)!["loginKind"]!.GetValue<string>());
+
+        router
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.SwitchUser, new { account = "pengaju01" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.HttpRequest, new { method = "POST", url = "/login", body = new { password = "{{password}}" } }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new { summary = "Login berhasil.", scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Halo." } } }));
+
+        var (second, secondObserver) = await harness.RunAsync("password dev Rahasia#1", ThreadSource.ClaudeCode, "chat-1");
+
+        Assert.Equal(first.ThreadId, second.ThreadId);
+        Assert.Contains(app.Bodies, b => b.Contains("\"password\":\"Rahasia#1\""));
+        Assert.Contains(secondObserver.Lines, l => l.Contains("Password dev project disimpan"));
+        Assert.DoesNotContain("password dev bawaan", secondObserver.Final);
+        var settings = (await harness.Service<ITestAccountService>().GetAsync(harness.ProjectId)).Settings;
+        Assert.Equal(("Rahasia#1", false, TestingSettings.SourceChat), (settings.DevPassword, settings.DevPasswordIsDefault, settings.DevPasswordSource));
+    }
+
+    [Fact]
+    public async Task Switching_to_an_account_suggests_login_as_through_an_allowed_admin()
+    {
+        await using var app = LocalApp.Start(_ => (200, "application/json", """{"text":"Halo"}"""));
+        await using var harness = await CreateTestingHarnessAsync();
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        var accounts = harness.Service<ITestAccountService>();
+        await accounts.AddAsync(harness.ProjectId, new SaveTestAccountRequest("admin01", "Administrator", null, null));
+        await accounts.AddAsync(harness.ProjectId, new SaveTestAccountRequest("pengaju01", "Pengaju", null, null));
+        await accounts.SaveImpersonationAsync(harness.ProjectId, new SaveImpersonationRequest("available", "GET /Account/LoginAs?username={{target}}", "GET /Account/StopImpersonation", ["administrator"], true));
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, app.BaseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, call =>
+            {
+                Assert.Contains("Login as: GET /Account/LoginAs?username={{target}}", call.LastUser);
+                return router.Tool(TesterTools.SwitchUser, new { account = "pengaju01" });
+            })
+            .On(ScriptedAgent.Tester, call =>
+            {
+                var output = ToolOutputs(call)[^1];
+                Assert.Contains("log in here as admin01", output);
+                Assert.Contains("GET /Account/LoginAs?username=pengaju01", output);
+                Assert.Contains("back to the admin: GET /Account/StopImpersonation", output);
+                return router.Tool(TesterTools.SwitchUser, new { account = "admin01" });
+            })
+            .On(ScriptedAgent.Tester, call =>
+            {
+                // The admin itself logs in normally.
+                Assert.DoesNotContain("use login as", ToolOutputs(call)[^1]);
+                return router.Tool(TesterTools.ReportTest, new { summary = "Oke.", scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Halo." } } });
+            })
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync("Sapaan jadi Halo");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        // A confirmed result is not detected again.
+        Assert.Empty(router.CallsTo(ScriptedAgent.ImpersonationDetector));
+    }
+
+    [Fact]
+    public async Task The_first_test_with_several_accounts_detects_login_as_once_and_keeps_what_the_tester_saw()
+    {
+        await using var app = LocalApp.Start(_ => (200, "application/json", """{"text":"Halo"}"""));
+        await using var harness = await CreateTestingHarnessAsync();
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        var accounts = harness.Service<ITestAccountService>();
+        await accounts.AddAsync(harness.ProjectId, new SaveTestAccountRequest("admin01", "Administrator", null, null));
+        await accounts.AddAsync(harness.ProjectId, new SaveTestAccountRequest("pengaju01", "Pengaju", null, null));
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, app.BaseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new
+            {
+                summary = "Oke.",
+                scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Halo." } },
+                impersonation = new { how = "Admin › Users › cari {{target}} › Login as", roles = new[] { "Administrator" } }
+            }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, observer) = await harness.RunAsync("Sapaan jadi Halo");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Contains(observer.Lines, l => l.Contains("Mencari fitur login as"));
+        // No hit in the code: no model was asked; the tester's observation is kept, unconfirmed.
+        Assert.Empty(router.CallsTo(ScriptedAgent.ImpersonationDetector));
+        var info = (await accounts.GetAsync(harness.ProjectId)).Settings.Impersonation!;
+        Assert.Equal((ImpersonationInfo.Available, ImpersonationInfo.FromTester, false), (info.Status, info.Source, info.Confirmed));
+        Assert.Equal("Admin › Users › cari {{target}} › Login as", info.How);
+    }
+
+    [Fact]
+    public void A_scenario_actor_must_be_a_test_account_or_its_role()
+    {
+        using var workspace = new TempWorkspace();
+        workspace.Write(GreeterFile, Greeter);
+        var plan = PlanWithTest(TestPlan.Api, "http://localhost:5000");
+        plan.Test!.Scenarios[0].Actor = "  hrd ";
+
+        var errors = PlanValidator.Validate(plan, new WorkspaceScope(workspace.Root), requireTest: true, actors: ["pengaju01", "Pengaju", "Atasan"]);
+
+        Assert.Contains(errors, e => e.Contains("actor 'hrd'") && e.Contains("pengaju01, Pengaju, Atasan"));
+        plan.Test.Scenarios[0].Actor = "atasan";
+        Assert.Empty(PlanValidator.Validate(plan, new WorkspaceScope(workspace.Root), requireTest: true, actors: ["pengaju01", "Pengaju", "Atasan"]));
+        // Without test accounts any actor text is kept for the tester.
+        plan.Test.Scenarios[0].Actor = "atasan pengaju";
+        Assert.Empty(PlanValidator.Validate(plan, new WorkspaceScope(workspace.Root), requireTest: true));
+    }
+
+    [Theory]
+    [InlineData("password dev 123", "123")]
+    [InlineData("  Password Dev: `P@ss w0rd`", null)]
+    [InlineData("PASSWORD DEV=Rahasia#1", "Rahasia#1")]
+    [InlineData("password dev", null)]
+    [InlineData("ganti password dev jadi 1", null)]
+    public void Development_password_replies_are_recognised(string reply, string? expected) =>
+        Assert.Equal(expected, TestLogin.ParseDevPassword(reply));
+
     [Theory]
     [InlineData("login admin rahasia123", "admin", "rahasia123")]
     [InlineData("  LOGIN `budi@kantor.id` \"p@ss:w0rd\"  ", "budi@kantor.id", "p@ss:w0rd")]
@@ -673,9 +905,16 @@ public class AutoTestingTests
         }
     }
 
+    // Hands out the same fake browser every time and records the profile each launch asked for (null: the shared one).
     private sealed class FakeLauncher(FakeBrowser browser) : ITestBrowserLauncher
     {
-        public Task<ITestBrowser> LaunchAsync(Func<string, Task> notice, CancellationToken cancellationToken) => Task.FromResult<ITestBrowser>(browser);
+        public List<string?> Profiles { get; } = [];
+
+        public Task<ITestBrowser> LaunchAsync(Func<string, Task> notice, CancellationToken cancellationToken, string? profile = null)
+        {
+            Profiles.Add(profile);
+            return Task.FromResult<ITestBrowser>(browser);
+        }
     }
 
     private sealed class FakeBrowser : ITestBrowser

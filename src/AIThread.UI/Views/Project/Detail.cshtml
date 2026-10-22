@@ -139,6 +139,46 @@
     <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="unitTestPager"></div>
 </div>
 
+<div class="card mt-3" id="testAccountCard">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <span class="me-auto">Akun uji <span class="small text-secondary fw-normal" id="testAccountCount"></span></span>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnTestAccountAdd">Tambah akun</button>
+    </div>
+    <div class="card-body small text-secondary border-bottom" id="testAccountInfo">
+        Akun yang dipakai node Tester untuk berganti user saat testing (pengaju, atasan, approver per level, admin). Dibagi ke semua developer
+        project lewat project key. Tidak ada password per akun: Tester login dengan <strong>password dev</strong> project di bawah.
+        Pakai akun uji, bukan akun karyawan sungguhan.
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Username</th><th>Peran</th><th>Atribut</th><th>Catatan</th><th></th></tr></thead>
+            <tbody id="testAccountRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-body border-top">
+        <div class="row g-3">
+            <div class="col-lg-5">
+                <label class="form-label small fw-semibold" for="devPassword">Password dev</label>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control mono" id="devPassword" maxlength="200" autocomplete="off" />
+                    <button class="btn btn-outline-primary" type="button" id="btnSaveDevPassword">Simpan</button>
+                </div>
+                <div class="form-text" id="devPasswordHint"></div>
+                <div class="form-text text-warning">Jangan isi password asli: nilai ini terlihat oleh semua developer project. Untuk password asli, balas
+                    <span class="mono">login &lt;user&gt; &lt;password&gt;</span> di chat (tidak disimpan).</div>
+            </div>
+            <div class="col-lg-7">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="small fw-semibold me-auto">Login as / impersonate</span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDetectImpersonation" title="Cari fitur login sebagai user lain di kode project">Deteksi</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnEditImpersonation">Ubah</button>
+                </div>
+                <div class="small" id="impersonationInfo">–</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card win mt-3" id="structureWindow" data-win-id="project-structure" data-win-persist>
     <div class="card-header win-bar flex-wrap">
         <win-controls disabled="close" />
@@ -287,9 +327,85 @@
     </div>
 </div>
 
+<div class="modal fade" id="testAccountModal" tabindex="-1" aria-labelledby="testAccountModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" id="testAccountForm" autocomplete="off">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="testAccountModalTitle">Akun uji</h5>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="testAccountUsername">Username</label>
+                        <input type="text" class="form-control mono" id="testAccountUsername" maxlength="200" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="testAccountRole">Peran</label>
+                        <input type="text" class="form-control" id="testAccountRole" maxlength="100" list="testAccountRoleList" placeholder="mis. Pengaju, Atasan, HR, Administrator" />
+                        <datalist id="testAccountRoleList"></datalist>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="d-flex align-items-center mb-1">
+                        <span class="form-label mb-0 me-auto">Atribut</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestAccountAttribute">Tambah atribut</button>
+                    </div>
+                    <div class="form-text mb-2">Bebas per project, mis. NIK, Unit, Level approval, Atasan (username atasannya). Tester memakainya untuk memilih akun.</div>
+                    <datalist id="testAccountKeyList"></datalist>
+                    <div id="testAccountAttributes"></div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label" for="testAccountNotes">Catatan</label>
+                    <textarea class="form-control" id="testAccountNotes" rows="2" maxlength="1000" placeholder="mis. dipakai untuk flow cuti saja"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="impersonationModal" tabindex="-1" aria-labelledby="impersonationModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" id="impersonationForm" autocomplete="off">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="impersonationModalTitle">Login as / impersonate</h5>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="impersonationStatus">Status</label>
+                <select class="form-select" id="impersonationStatus">
+                    <option value="available">Tersedia</option>
+                    <option value="none">Tidak ada</option>
+                    <option value="unknown">Belum diketahui</option>
+                </select>
+                <label class="form-label mt-3" for="impersonationHow">Cara memakai</label>
+                <textarea class="form-control" id="impersonationHow" rows="2" maxlength="2000" placeholder="mis. Admin › Users › cari username › tombol Login as, atau GET /Account/LoginAs?username={{target}}"></textarea>
+                <label class="form-label mt-3" for="impersonationBack">Cara kembali ke admin</label>
+                <input type="text" class="form-control" id="impersonationBack" maxlength="1000" placeholder="mis. tombol Kembali ke admin di header (kosongkan bila tidak ada)" />
+                <label class="form-label mt-3" for="impersonationRoles">Peran yang boleh memakai</label>
+                <input type="text" class="form-control" id="impersonationRoles" maxlength="500" placeholder="pisahkan dengan koma, mis. Administrator, HR" />
+                <div class="form-text">Dicocokkan dengan peran akun uji (tidak peka huruf besar/kecil).</div>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="impersonationConfirmed" />
+                    <label class="form-check-label" for="impersonationConfirmed">Sudah saya cek, cara ini benar</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @section Scripts {
     <script>window.projectId = '@projectId';</script>
     <script src="~/js/pages/project-detail.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-unittests.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-testaccounts.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
 }

@@ -58,7 +58,7 @@ public sealed partial class PlannerAgent
                 // Some models ignore tool calling and print the plan as JSON.
                 if (ThreadPlan.TryParseFromText(result.Content, out var textPlan) && textPlan is not null)
                 {
-                    var errors = PlanValidator.Validate(textPlan, input.Scope, input.AutoTesting, input.UnitTests?.Rules);
+                    var errors = PlanValidator.Validate(textPlan, input.Scope, input.AutoTesting, input.UnitTests?.Rules, Actors(input));
                     if (errors.Count == 0) return Finished(textPlan, run, node);
                     messages.Add(ChatMessages.User($"The plan is invalid:\n- {string.Join("\n- ", errors)}\nFix it and call submit_plan."));
                     continue;

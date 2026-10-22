@@ -16,6 +16,7 @@ public sealed partial class PlannerAgent
     {
         if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
 
+        input = await WithAccountsAsync(input, recorder, cancellationToken);
         // The planner that asked, when it is still active; otherwise the preferred one takes the conversation over.
         var node = input.Nodes.FirstOrDefault(n => n.Id == conversation.NodeId) ?? input.Nodes[0];
         var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, conversation.CanGit, cancellationToken);

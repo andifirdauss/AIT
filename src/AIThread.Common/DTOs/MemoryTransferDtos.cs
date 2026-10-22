@@ -10,14 +10,43 @@ public record MemoryExportFile(
     DateTime ExportedAt,
     string? AppVersion,
     IReadOnlyList<MemoryExportItem> Items,
-    IReadOnlyList<UnitTestExportItem>? UnitTests = null)
+    IReadOnlyList<UnitTestExportItem>? UnitTests = null,
+    TestingExport? Testing = null)
 {
     public const string FormatName = "aithread-memory";
 
     // v2 adds the structured label; a v1 item (or a v2 item without Module/Kind) is imported unlabeled and relabeled
-    // by MemoryRelabelWorker. v3 adds the unit test catalog of the projects (UnitTests), snapshots included.
-    public const int CurrentVersion = 3;
+    // by MemoryRelabelWorker. v3 adds the unit test catalog of the projects (UnitTests), snapshots included. v4 adds the
+    // test accounts and testing settings of the projects (Testing).
+    public const int CurrentVersion = 4;
 }
+
+// The test accounts and testing settings of the exported projects, by ProjectKey. The development password goes along:
+// it is a development bypass the whole team sees, never a real password.
+public record TestingExport(IReadOnlyList<TestAccountExportItem> Accounts, IReadOnlyList<TestingSettingsExportItem> Settings);
+
+public record TestAccountExportItem(
+    Guid Id,
+    string ProjectKey,
+    string Username,
+    string? Role,
+    IReadOnlyDictionary<string, string>? Attributes,
+    string? Notes,
+    string? CreatedBy,
+    string? UpdatedBy,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
+
+public record TestingSettingsExportItem(
+    string ProjectKey,
+    string? DevPassword,
+    string? DevPasswordSource,
+    ImpersonationInfo? Impersonation,
+    string? SideEffectsAcknowledgedBy,
+    DateTime? SideEffectsAcknowledgedAt,
+    string? UpdatedBy,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
 
 // A test of a project's unit test catalog, with its source snapshot so another machine can restore it. Projects are
 // named by ProjectKey like memory.
@@ -100,7 +129,7 @@ public enum MemoryImportMode
 }
 
 // UnitTests*: the unit test catalog of the file; Renumbered = tests that got the next free number because theirs was
-// taken by another test here.
+// taken by another test here. TestAccounts*: the test accounts of the file (settings follow the same newer-wins rule).
 public record MemoryImportResultDto(
     bool DryRun,
     int Total,
@@ -114,7 +143,10 @@ public record MemoryImportResultDto(
     int UnitTestsAdded = 0,
     int UnitTestsUpdated = 0,
     int UnitTestsRenumbered = 0,
-    int UnitTestsSkipped = 0);
+    int UnitTestsSkipped = 0,
+    int TestAccountsAdded = 0,
+    int TestAccountsUpdated = 0,
+    int TestAccountsSkipped = 0);
 
 // A project the file refers to. Registered = a clone of it is registered on this machine; otherwise the memory is
 // kept under its key and shows up once that project is added.

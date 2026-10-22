@@ -49,6 +49,7 @@ public sealed partial class MemoryTransferService
         // The file leaves this machine: a secret that slipped into a memory (written by an older version) stays masked.
         return new MemoryExportFile(MemoryExportFile.FormatName, MemoryExportFile.CurrentVersion, DateTime.UtcNow, AppVersion(),
             items.OrderBy(i => i.CreatedAt).Select(i => i with { Description = secrets.Redact(i.Description) }).ToList(),
-            await ExportUnitTestsAsync(filter, scope, cancellationToken));
+            await ExportUnitTestsAsync(filter, scope, cancellationToken),
+            await ExportTestingAsync(filter, scope, cancellationToken));
     }
 }

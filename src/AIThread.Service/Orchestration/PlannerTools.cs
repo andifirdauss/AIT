@@ -491,7 +491,8 @@ public static class PlannerTools
                   "title": { "type": "string", "description": "Short name, in the developer's language." },
                   "target": { "type": "string", "description": "Page path or endpoint the scenario starts at, e.g. \"/User\" or \"POST /api/users\"." },
                   "steps": { "type": "array", "items": { "type": "string" }, "description": "What to do, with the exact element ids, field values and request bodies from the contract." },
-                  "expect": { "type": "string", "description": "What must be seen when it works: text, value, status code, response field." }
+                  "expect": { "type": "string", "description": "What must be seen when it works: text, value, status code, response field." },
+                  "actor": { "type": "string", "description": "Who does the scenario: a username or a role from \"# Test accounts\" (an approver, the requester). Leave out when any login will do." }
                 },
                 "required": ["title", "steps", "expect"]
               }
