@@ -39,6 +39,13 @@ public sealed partial class TesterAgent
         }
         if (report.BrowserErrors.Count > 0)
             builder.Append("Browser errors:\n").Append(string.Concat(report.BrowserErrors.Take(MaxRequestsForModels).Select(e => $"- {e}\n")));
+        if (report.FollowUps.Count > 0)
+        {
+            builder.Append("Follow-up tests the tester suggests (already listed for the developer, who runs one by replying \"jalankan test lanjutan <number>\"):\n");
+            foreach (var followUp in report.FollowUps)
+                builder.Append($"- {followUp.Number}. {followUp.Title}").Append(followUp.Needs is null ? string.Empty : $" (needs: {followUp.Needs})")
+                    .Append(followUp.LastRun is { } run ? $" — last run: {run.Outcome}" : string.Empty).Append('\n');
+        }
         return builder.ToString();
     }
 }

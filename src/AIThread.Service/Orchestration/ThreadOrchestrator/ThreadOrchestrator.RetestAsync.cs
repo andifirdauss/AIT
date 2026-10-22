@@ -30,8 +30,12 @@ public sealed partial class ThreadOrchestrator
             });
             await progress.PhaseAsync("🧪", $"Testing ulang · {(test.Level == TestPlan.Ui ? "UI" : "API")} · {test.BaseUrl} · {tester.Model}" +
                                            (login is null ? string.Empty : $" · login {login.Username}"), cancellationToken);
-            var result = AskForLogin(await testerAgent.RunAsync(new TestingInput(tester, request, plan, execution, project, login, canAskLogin),
+            // Values remembered by earlier runs (a document number) carry over; so do the suggestions when this run makes
+            // none.
+            var previous = TestingReport.FromJson(thread.TestingJson);
+            var result = AskForLogin(await testerAgent.RunAsync(new TestingInput(tester, request, plan, execution, project, login, canAskLogin, previous?.Values),
                 recorder, progress, cancellationToken), thread.SessionId, project.ProjectId, thread.Id);
+            if (result.Report.FollowUps.Count == 0 && previous is { FollowUps.Count: > 0 }) result.Report.FollowUps = previous.FollowUps;
             await recorder.UpdateThreadAsync(t =>
             {
                 t.Status = ThreadStatus.Completed;

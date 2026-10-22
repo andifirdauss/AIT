@@ -367,8 +367,51 @@
       minimized: i >= 3,
       body: requestHtml(r)
     })));
+    if (report.values && Object.keys(report.values).length) {
+      parts.push(`<div class="small mt-2"><span class="text-secondary">Nilai yang diingat Tester:</span> ${Object.entries(report.values)
+        .map(([k, v]) => `<span class="badge text-bg-light border mono">${escapeHtml(k)} = ${escapeHtml(v)}</span>`).join(' ')}</div>`);
+    }
+    if (report.followUps?.length) {
+      parts.push(winFrame({ id: 'testing-follow-ups', title: `Test lanjutan yang disarankan (${report.followUps.length})`, className: 'mt-2 mb-2', body: followUpsHtml(report) }));
+    }
     el('testingBody').innerHTML = parts.join('');
   }
+
+  // The tester's suggestions with the result of their latest run and a button to run one (creates real data like any test).
+  function followUpsHtml(report) {
+    const busy = isActiveStatus(detail.summary.status);
+    return `<ol class="small mb-0 ps-3">${report.followUps.map(f => {
+      const actors = [...new Set((f.scenarios || []).map(s => s.actor).filter(Boolean))];
+      const [lastColor, lastLabel] = f.lastRun ? testingOutcomes[f.lastRun.outcome] || ['secondary', f.lastRun.outcome] : [];
+      const last = f.lastRun
+        ? `<div class="mt-1"><span class="badge text-bg-${lastColor}">${escapeHtml(lastLabel)}</span>
+            ${f.lastRunAt ? `<span class="text-secondary">${fmt.relative(f.lastRunAt)}</span>` : ''}
+            ${list((f.lastRun.scenarios || []).map(s => `<li>${scenarioIcons[s.status] || '•'} ${escapeHtml(s.title)}${s.actor ? ` <span class="mono text-secondary">(${escapeHtml(s.actor)})</span>` : ''}${s.details ? ` — ${escapeHtml(s.details)}` : ''}</li>`))}</div>`
+        : '';
+      return `<li class="mb-2">
+        <div class="d-flex flex-wrap gap-2 align-items-start">
+          <div class="me-auto"><strong>${escapeHtml(f.title)}</strong>${f.why ? ` — ${escapeHtml(f.why)}` : ''}
+            ${actors.length ? `<div class="text-secondary">Aktor: ${actors.map(a => `<span class="mono">${escapeHtml(a)}</span>`).join(', ')}</div>` : ''}
+            ${f.needs ? `<div class="text-warning">Perlu: ${escapeHtml(f.needs)}</div>` : ''}</div>
+          <button type="button" class="btn btn-sm btn-outline-primary" data-follow-up="${f.number}" ${busy ? 'disabled' : ''}>${f.lastRun ? 'Jalankan lagi' : 'Jalankan'}</button>
+        </div>${last}</li>`;
+    }).join('')}</ol>`;
+  }
+
+  el('testingBody').addEventListener('click', async event => {
+    const button = event.target.closest('[data-follow-up]');
+    if (!button) return;
+    const number = button.dataset.followUp;
+    if (!confirm(`Jalankan test lanjutan ${number}? Seperti testing biasa, ini memakai aplikasi yang berjalan dan bisa membuat data sungguhan (mis. dokumen dan approval).`)) return;
+    button.disabled = true;
+    try {
+      await api.post(`/api/threads/${threadId}/follow-ups/${number}/run`);
+      toast(`Test lanjutan ${number} dijalankan.`, 'info');
+    } catch (error) {
+      toast(error.message, 'error');
+      button.disabled = false;
+    }
+  });
 
   function renderFinal() {
     if (detail.finalResponse) el('finalResponse').innerHTML = md(detail.finalResponse);

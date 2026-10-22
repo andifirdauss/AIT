@@ -25,6 +25,12 @@ public static class TesterTools
     // Acts as one of the project's test accounts; only when the project has some.
     public const string SwitchUser = "switch_user";
 
+    // Keeps a value (a document number) for later steps and follow-up tests, used as {{name}}.
+    public const string Remember = "remember";
+
+    // Placeholders AIT fills itself; remember may not take these names.
+    public static readonly ImmutableArray<string> ReservedNames = ["username", "password", "target"];
+
     public static readonly ImmutableArray<string> Browser =
         [BrowserOpen, BrowserSnapshot, BrowserClick, BrowserFill, BrowserSelect, BrowserPress, BrowserWait];
 
@@ -33,6 +39,7 @@ public static class TesterTools
     // ui: the browser and http_request; api: http_request only. canAskLogin adds ask_login, canSwitchUser switch_user.
     public static IReadOnlyList<string> Available(string level, bool canAskLogin = false, bool canSwitchUser = false) =>
         (level == TestPlan.Ui ? [.. Browser, HttpRequest] : new[] { HttpRequest })
+        .Concat([Remember])
         .Concat(canSwitchUser ? [SwitchUser] : [])
         .Concat(canAskLogin ? [AskLogin] : []).ToList();
 
@@ -115,6 +122,18 @@ public static class TesterTools
               }
             }
             """)),
+        Remember => ChatMessages.Function(Remember,
+            "Keep a value the app showed (the number of a document you created, an id) for later steps and follow-up tests: write {{name}} in a later tool call and AIT puts the value in. Values stay with the thread, so a follow-up test can approve the document this run submitted.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string", "description": "Letters, digits and _, starting with a letter, e.g. \"requestNo\"." },
+                "value": { "type": "string", "description": "The value as the app shows it, e.g. \"REQ-0123\"." }
+              },
+              "required": ["name", "value"]
+            }
+            """)),
         SwitchUser => ChatMessages.Function(SwitchUser,
             "Act as one of the project's test accounts (\"# Test accounts\"): the browser window closes and the next browser tool opens that account's own browser profile, http_request uses its own cookies, and {{username}} / {{password}} stand for its login. Switch before a step another user must do (an approver, the requester again).",
             Schema("""
@@ -181,6 +200,33 @@ public static class TesterTools
                       "actor": { "type": "string", "description": "The test account you checked it as (switch_user), if any." }
                     },
                     "required": ["title", "status", "details"]
+                  }
+                },
+                "follow_ups": {
+                  "type": "array",
+                  "description": "0-5 further tests worth running next, when what you checked starts a flow that goes on (an approval per level, edit or cancel before approval, reject and resubmit, the notification or report that follows). Not for what the scenarios already covered.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "title": { "type": "string", "description": "Short name in the developer's language, e.g. \"Approve level 1 oleh atasan\"." },
+                      "why": { "type": "string", "description": "Why it matters, one sentence." },
+                      "needs": { "type": "string", "description": "What the developer must provide first (an account with a role, data), if anything." },
+                      "scenarios": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "title": { "type": "string" },
+                            "actor": { "type": "string", "description": "Username or role from \"# Test accounts\" that does it." },
+                            "target": { "type": "string" },
+                            "steps": { "type": "array", "items": { "type": "string" }, "description": "May use {{name}} values you remembered." },
+                            "expect": { "type": "string" }
+                          },
+                          "required": ["title", "steps", "expect"]
+                        }
+                      }
+                    },
+                    "required": ["title", "scenarios"]
                   }
                 },
                 "impersonation": {

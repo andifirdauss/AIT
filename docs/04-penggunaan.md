@@ -229,6 +229,13 @@ Berguna bila aplikasinya belum jalan saat testing pertama atau perlu di-restart 
 field **username & password** opsional untuk aplikasi yang butuh login (dipakai sekali, tidak disimpan). Kemajuannya
 tampil di kartu *Testing* dan aktivitas thread (tidak di Claude Code).
 
+## Test lanjutan
+
+Bila Tester menyarankan **test lanjutan** (mis. approve level 1, edit sebelum approve), jawaban akhir menampilkannya
+bernomor. Jalankan dengan membalas `jalankan test lanjutan <nomor>` di chat yang sama, atau tombol **Jalankan** di kartu
+*Testing* halaman thread. Tester memakai akun uji project dan nilai yang ia ingat dari langkah sebelumnya (mis. nomor
+dokumen), lalu bisa menyarankan langkah berikutnya lagi. Detail: [Test lanjutan](07-cara-kerja.md#test-lanjutan-dan-nilai-antar-langkah).
+
 ## Unit test project
 
 Bila project punya test (xUnit/NUnit/MSTest, jest/vitest/mocha, pytest, PHPUnit, JUnit, Go, Rust), thread pertama
