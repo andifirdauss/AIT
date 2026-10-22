@@ -211,6 +211,7 @@ public static class TesterTools
                       "title": { "type": "string", "description": "Short name in the developer's language, e.g. \"Approve level 1 oleh atasan\"." },
                       "why": { "type": "string", "description": "Why it matters, one sentence." },
                       "needs": { "type": "string", "description": "What the developer must provide first (an account with a role, data), if anything." },
+                      "fields": { "type": "array", "items": { "type": "string" }, "description": "Form inputs whose values the developer should choose for a real run (e.g. [\"Jenis cuti\", \"Tanggal mulai\"]); they become columns of the scenario sheet." },
                       "scenarios": {
                         "type": "array",
                         "items": {
@@ -218,6 +219,7 @@ public static class TesterTools
                           "properties": {
                             "title": { "type": "string" },
                             "actor": { "type": "string", "description": "Username or role from \"# Test accounts\" that does it." },
+                            "action": { "type": "string", "description": "submit, approve, reject, edit, revise, cancel, view or another verb." },
                             "target": { "type": "string" },
                             "steps": { "type": "array", "items": { "type": "string" }, "description": "May use {{name}} values you remembered." },
                             "expect": { "type": "string" }

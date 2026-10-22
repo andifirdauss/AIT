@@ -393,12 +393,29 @@
           <div class="me-auto"><strong>${escapeHtml(f.title)}</strong>${f.why ? ` — ${escapeHtml(f.why)}` : ''}
             ${actors.length ? `<div class="text-secondary">Aktor: ${actors.map(a => `<span class="mono">${escapeHtml(a)}</span>`).join(', ')}</div>` : ''}
             ${f.needs ? `<div class="text-warning">Perlu: ${escapeHtml(f.needs)}</div>` : ''}</div>
-          <button type="button" class="btn btn-sm btn-outline-primary" data-follow-up="${f.number}" ${busy ? 'disabled' : ''}>${f.lastRun ? 'Jalankan lagi' : 'Jalankan'}</button>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-follow-up-sheet="${f.number}" title="Buat skenario multi-langkah dan unduh file Excel untuk diisi (akun per peran, nilai form)">${f.scenarioId ? 'Excel skenario' : 'Buat skenario Excel'}</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" data-follow-up="${f.number}" ${busy ? 'disabled' : ''}>${f.lastRun ? 'Jalankan lagi' : 'Jalankan'}</button>
+          </div>
         </div>${last}</li>`;
     }).join('')}</ol>`;
   }
 
   el('testingBody').addEventListener('click', async event => {
+    const sheet = event.target.closest('[data-follow-up-sheet]');
+    if (sheet) {
+      sheet.disabled = true;
+      try {
+        const scenario = await api.post(`/api/threads/${threadId}/follow-ups/${sheet.dataset.followUpSheet}/scenario`);
+        toast(`Skenario "${scenario.title}" dibuat. Isi file Excel-nya, lalu unggah di Project › Skenario test.`, 'info');
+        window.location.href = `/api/projects/${detail.summary.projectId}/test-scenarios/${scenario.id}/excel`;
+      } catch (error) {
+        toast(error.message, 'error');
+      } finally {
+        sheet.disabled = false;
+      }
+      return;
+    }
     const button = event.target.closest('[data-follow-up]');
     if (!button) return;
     const number = button.dataset.followUp;

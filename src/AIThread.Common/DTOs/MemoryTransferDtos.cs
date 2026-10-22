@@ -23,7 +23,29 @@ public record MemoryExportFile(
 
 // The test accounts and testing settings of the exported projects, by ProjectKey. The development password goes along:
 // it is a development bypass the whole team sees, never a real password.
-public record TestingExport(IReadOnlyList<TestAccountExportItem> Accounts, IReadOnlyList<TestingSettingsExportItem> Settings);
+public record TestingExport(
+    IReadOnlyList<TestAccountExportItem> Accounts,
+    IReadOnlyList<TestingSettingsExportItem> Settings,
+    IReadOnlyList<TestingScenarioExportItem>? Scenarios = null);
+
+// A multi-step test scenario, its steps, roles and form columns as the JSON its table keeps. The last run stays local.
+public record TestingScenarioExportItem(
+    Guid Id,
+    string ProjectKey,
+    string Slug,
+    string Title,
+    string? Description,
+    int Version,
+    string Level,
+    string? BaseUrl,
+    string? Notes,
+    string Steps,
+    string Roles,
+    string Fields,
+    string? CreatedBy,
+    string? UpdatedBy,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt);
 
 public record TestAccountExportItem(
     Guid Id,

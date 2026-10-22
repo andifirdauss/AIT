@@ -165,6 +165,9 @@ public sealed class TestFollowUp
     public string? Why { get; set; }
     public string? Needs { get; set; }
     public List<TestScenario> Scenarios { get; set; } = [];
+
+    // Form inputs the developer chooses values for (Jenis cuti, Tanggal mulai): the columns of its scenario sheet.
+    public List<string> Fields { get; set; } = [];
     public TestingReport? LastRun { get; set; }
     public DateTime? LastRunAt { get; set; }
 

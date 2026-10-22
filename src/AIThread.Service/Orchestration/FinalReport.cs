@@ -115,7 +115,9 @@ public static partial class FinalReport
             if (followUp.Needs is not null) builder.Append("   Perlu: ").Append(OneLine(followUp.Needs)).Append('\n');
         }
         builder.Append($"\nJalankan dengan membalas `jalankan test lanjutan <nomor>` (mis. `jalankan test lanjutan {report.FollowUps[0].Number}`), " +
-                       "atau tombol di halaman thread. Test lanjutan membuat data sungguhan seperti testing biasa.\n");
+                       "atau tombol di halaman thread. Untuk menentukan sendiri akun tiap peran dan nilai form, balas " +
+                       $"`buat skenario test lanjutan {report.FollowUps[0].Number}`: AIT membuat file Excel di `.aithread/testing/` untuk diisi. " +
+                       "Test lanjutan membuat data sungguhan seperti testing biasa.\n");
         return builder.ToString();
     }
 

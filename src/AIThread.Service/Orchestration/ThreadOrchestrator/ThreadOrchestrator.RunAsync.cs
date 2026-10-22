@@ -20,6 +20,13 @@ public sealed partial class ThreadOrchestrator
         if (TestFollowUpReply.Parse(request.Prompt) is { } number && await FollowUpThreadAsync(request, number, cancellationToken) is { } suggested)
             return await FollowUpFromChatAsync(suggested, number, request, observer, cancellationToken);
 
+        // "buat skenario test lanjutan <n>" writes that suggestion's sheet into the project; "jalankan skenario <slug>"
+        // reads it back and runs it.
+        if (TestScenarioReply.ParseCreate(request.Prompt) is { } sheetOf && await FollowUpThreadAsync(request, sheetOf, cancellationToken) is { } source)
+            return await ScenarioFromChatAsync(source, sheetOf, request, observer, cancellationToken);
+        if (TestScenarioReply.ParseRun(request.Prompt) is { } run && await RunScenarioFromChatAsync(run.Slug, run.Agreed, request, observer, cancellationToken) is { } ran)
+            return ran;
+
         var prepared = await PrepareOrResumeAsync(Redacted(request), cancellationToken);
         return await ExecuteAsync(prepared, observer, cancellationToken);
     }

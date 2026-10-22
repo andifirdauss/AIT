@@ -4,7 +4,10 @@
 
   async function api(method, url, body) {
     const options = { method, headers: { Accept: 'application/json' } };
-    if (body !== undefined) {
+    if (body instanceof FormData) {
+      // A file upload: the browser sets the multipart boundary itself.
+      options.body = body;
+    } else if (body !== undefined) {
       options.headers['Content-Type'] = 'application/json';
       options.body = JSON.stringify(body);
     }

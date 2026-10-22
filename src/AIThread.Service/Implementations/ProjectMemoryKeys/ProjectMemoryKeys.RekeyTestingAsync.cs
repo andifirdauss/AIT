@@ -20,6 +20,14 @@ public sealed partial class ProjectMemoryKeys
                 else account.ProjectKey = newKey;
             }
 
+            var slugs = (await db.TestingScenarios.AsNoTracking().Where(s => s.ProjectKey == newKey).Select(s => s.Slug).ToListAsync(cancellationToken))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var scenario in await db.TestingScenarios.Where(s => s.ProjectKey == oldKey).ToListAsync(cancellationToken))
+            {
+                if (!slugs.Add(scenario.Slug)) db.TestingScenarios.Remove(scenario);
+                else scenario.ProjectKey = newKey;
+            }
+
             var settings = await db.TestingSettings.FirstOrDefaultAsync(s => s.ProjectKey == oldKey, cancellationToken);
             if (settings is not null)
             {

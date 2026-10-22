@@ -12,7 +12,7 @@ public sealed partial class MemoryTransferService
     // case) and the same project's settings are updated only when the file's copy is newer.
     private async Task<TestingImport> ImportTestingAsync(TestingExport? testing, bool dryRun, CancellationToken cancellationToken)
     {
-        if (testing is null || (testing.Accounts?.Count ?? 0) + (testing.Settings?.Count ?? 0) == 0) return TestingImport.None;
+        if (testing is null || (testing.Accounts?.Count ?? 0) + (testing.Settings?.Count ?? 0) + (testing.Scenarios?.Count ?? 0) == 0) return TestingImport.None;
 
         var warnings = new List<string>();
         var accounts = new List<(TestAccountExportItem Item, string Key, (string Username, string? Role, string? Attributes, string? Notes) Values)>();
@@ -94,6 +94,39 @@ public sealed partial class MemoryTransferService
             local.SideEffectsAcknowledgedAt = item.SideEffectsAcknowledgedAt;
             local.UpdatedBy = item.UpdatedBy;
             local.UpdatedAt = item.UpdatedAt;
+        }
+
+        // Scenarios: by id, else by project and slug; the newer copy wins. They refer to a thread of the exporting machine,
+        // so an imported one runs only after it is made again from a thread here (its sheet keeps the steps).
+        var scenarioItems = (testing.Scenarios ?? []).Where(s => !string.IsNullOrWhiteSpace(s.ProjectKey) && !string.IsNullOrWhiteSpace(s.Slug)).ToList();
+        if (scenarioItems.Count > 0)
+        {
+            var scenarioKeys = scenarioItems.Select(s => s.ProjectKey.Trim()).Distinct(StringComparer.Ordinal).ToList();
+            var local = await db.TestingScenarios.Where(s => scenarioKeys.Contains(s.ProjectKey)).ToListAsync(cancellationToken);
+            foreach (var item in scenarioItems)
+            {
+                var key = item.ProjectKey.Trim();
+                var scenarioRow = local.FirstOrDefault(s => s.Id == item.Id) ?? local.FirstOrDefault(s => s.ProjectKey == key && string.Equals(s.Slug, item.Slug, StringComparison.OrdinalIgnoreCase));
+                if (scenarioRow is not null && (scenarioRow.ProjectKey != key || (item.UpdatedAt ?? item.CreatedAt) <= (scenarioRow.UpdatedAt ?? scenarioRow.CreatedAt))) continue;
+                if (dryRun) continue;
+                if (scenarioRow is null)
+                {
+                    scenarioRow = new TestingScenario { Id = item.Id, ProjectKey = key, Slug = item.Slug.Trim(), CreatedAt = item.CreatedAt, CreatedBy = item.CreatedBy };
+                    db.TestingScenarios.Add(scenarioRow);
+                    local.Add(scenarioRow);
+                }
+                scenarioRow.Title = item.Title.Length > TestingScenario.MaxTitleLength ? item.Title[..TestingScenario.MaxTitleLength] : item.Title;
+                scenarioRow.Description = item.Description;
+                scenarioRow.Version = item.Version;
+                scenarioRow.Level = item.Level;
+                scenarioRow.BaseUrl = item.BaseUrl;
+                scenarioRow.Notes = item.Notes;
+                scenarioRow.Steps = item.Steps;
+                scenarioRow.Roles = item.Roles;
+                scenarioRow.Fields = item.Fields;
+                scenarioRow.UpdatedBy = item.UpdatedBy;
+                scenarioRow.UpdatedAt = item.UpdatedAt;
+            }
         }
 
         if (!dryRun) await db.SaveChangesAsync(cancellationToken);

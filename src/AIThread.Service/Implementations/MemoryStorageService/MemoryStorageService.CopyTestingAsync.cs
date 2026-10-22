@@ -16,7 +16,8 @@ public sealed partial class MemoryStorageService
             await using var source = await longStore.OpenTestingAsync(from, cancellationToken);
             var accounts = await source.TestAccounts.AsNoTracking().ToListAsync(cancellationToken);
             var settings = await source.TestingSettings.AsNoTracking().ToListAsync(cancellationToken);
-            if (accounts.Count + settings.Count == 0) return;
+            var scenarios = await source.TestingScenarios.AsNoTracking().ToListAsync(cancellationToken);
+            if (accounts.Count + settings.Count + scenarios.Count == 0) return;
 
             await using var target = await longStore.OpenTestingAsync(to, cancellationToken);
             var existing = await target.TestAccounts.AsNoTracking().Select(a => new { a.Id, a.ProjectKey, a.Username }).ToListAsync(cancellationToken);
@@ -26,6 +27,9 @@ public sealed partial class MemoryStorageService
 
             target.TestAccounts.AddRange(accounts.Where(a => !ids.Contains(a.Id) && names.Add(a.ProjectKey + "|" + a.Username.ToLowerInvariant())));
             target.TestingSettings.AddRange(settings.Where(s => settingKeys.Add(s.ProjectKey)));
+            var scenarioNames = (await target.TestingScenarios.AsNoTracking().Select(s => new { s.Id, s.ProjectKey, s.Slug }).ToListAsync(cancellationToken))
+                .SelectMany(s => new[] { s.Id.ToString(), s.ProjectKey + "|" + s.Slug.ToLowerInvariant() }).ToHashSet(StringComparer.Ordinal);
+            target.TestingScenarios.AddRange(scenarios.Where(s => !scenarioNames.Contains(s.Id.ToString()) && scenarioNames.Add(s.ProjectKey + "|" + s.Slug.ToLowerInvariant())));
             await target.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

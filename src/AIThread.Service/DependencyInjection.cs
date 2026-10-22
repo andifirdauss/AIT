@@ -115,6 +115,7 @@ public static class DependencyInjection
         services.AddSingleton<ITestAccountStore, TestAccountStore>();
         services.AddSingleton<ITestAccountService, TestAccountService>();
         services.AddSingleton<IImpersonationDetector, ImpersonationDetector>();
+        services.AddSingleton<ITestScenarioService, TestScenarioService>();
         services.AddSingleton<ISecretGuard, SecretGuard>();
         services.AddSingleton<ISecurityService, SecurityService>();
         services.AddSingleton<ITesterAgent, TesterAgent>();

@@ -156,6 +156,9 @@ public sealed class TestScenario
 
     // The test account (username) or the role of one that does the scenario, from "# Test accounts"; null: any login.
     public string? Actor { get; set; }
+
+    // What the step does in a flow (submit, approve, reject, edit, ...); set by the tester's follow-up suggestions.
+    public string? Action { get; set; }
 }
 
 // The unit test part of a plan. A registered test the change concerns is kept unless a decision says otherwise.

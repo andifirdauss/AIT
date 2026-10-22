@@ -236,6 +236,10 @@ bernomor. Jalankan dengan membalas `jalankan test lanjutan <nomor>` di chat yang
 *Testing* halaman thread. Tester memakai akun uji project dan nilai yang ia ingat dari langkah sebelumnya (mis. nomor
 dokumen), lalu bisa menyarankan langkah berikutnya lagi. Detail: [Test lanjutan](07-cara-kerja.md#test-lanjutan-dan-nilai-antar-langkah).
 
+Untuk menentukan sendiri akun tiap peran dan nilai form, balas `buat skenario test lanjutan <nomor>`: AIT menulis file
+Excel di `.aithread/testing/`. Isi sel kuningnya, simpan, lalu balas `jalankan skenario <nama>` (pertama kali per project:
+`jalankan skenario <nama> setuju`). Detail: [Skenario multi-langkah](07-cara-kerja.md#skenario-multi-langkah-excel).
+
 ## Unit test project
 
 Bila project punya test (xUnit/NUnit/MSTest, jest/vitest/mocha, pytest, PHPUnit, JUnit, Go, Rust), thread pertama

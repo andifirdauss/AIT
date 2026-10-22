@@ -699,6 +699,41 @@ membuat data sungguhan.
   Testing, dan dibawa ke *Ulangi testing* serta test lanjutan.
 - Thread yang hanya menguji (tanpa tugas) sekarang juga bisa diulang testing-nya dan dijalankan test lanjutannya.
 
+### Skenario multi-langkah (Excel)
+
+Bila test lanjutan butuh data yang hanya developer tahu (siapa approver tiap level, nilai form yang mau dites), saran itu
+dijadikan **skenario** yang diisi lewat file Excel. Model menyusun strukturnya (langkah, aktor per peran, `fields` = input
+form yang perlu dipilih nilainya), dan **file Excel-nya ditulis AIT** (ClosedXML), bukan model, jadi formatnya selalu bisa
+dibaca balik.
+
+1. **Buat**: balas `buat skenario test lanjutan <nomor>` di chat. AIT menulis `.aithread/testing/<nama>.xlsx` di project
+   dan menyebut path-nya beserta yang masih perlu diisi. Atau di halaman thread: **Buat skenario Excel** pada saran
+   (file langsung terunduh).
+2. **Isi** file itu:
+   - **Panduan**: cara mengisi dan peringatan efek samping;
+   - **Akun**: satu baris per peran (*Pengaju*, *Atasan*, …) dengan username-nya dan kolom atribut project. Sel kuning =
+     perlu diisi. Username yang belum ada **otomatis ditambahkan** sebagai akun uji project saat file dibaca;
+   - **Langkah**: satu baris per langkah: aktor (dropdown peran dari sheet Akun), aksi (dropdown *submit/approve/reject/
+     edit/revisi/batal/lihat/lainnya*), target, langkah, satu kolom per field form (sel kuning), dan hasil yang
+     diharapkan. Baris boleh ditambah, dihapus, atau diurutkan ulang (maks 30 langkah);
+   - sheet tersembunyi `_AIT` berisi id dan versi skenario. Jangan ubah nama sheet.
+3. **Jalankan**: balas `jalankan skenario <nama>`. AIT membaca file `.aithread/testing/<nama>.xlsx` dulu (versi naik bila
+   isinya berubah), lalu menjalankan skenario di thread asalnya. Dari Web UI: Project > Detail → *Skenario test* →
+   **Unggah Excel**, lalu **Jalankan**.
+4. **Pertama kali per project** AIT meminta konfirmasi efek samping: submit dan approve sungguhan membuat data dan bisa
+   mengirim email/notifikasi bila database dev berisi salinan data production. Balas `jalankan skenario <nama> setuju`
+   (atau konfirmasi dialog di Web UI). Persetujuan dicatat dengan nama developer dan tidak ditanya lagi.
+
+Saat dijalankan, **tiap langkah satu sesi Tester** (batas 40 langkah tool per sesi), dengan aktor = username peran itu,
+instruksi + `Isi <field>: <nilai>` per kolom form, dan nilai yang diingat langkah sebelumnya (`{{requestNo}}`). Teks bebas
+yang diketik tester diawali `[AIT TEST]` supaya data uji mudah dicari dan dibersihkan. Skenario **berhenti di langkah
+pertama yang tidak lolos**; langkah sesudahnya ditandai *tidak bisa dicek — Langkah sebelumnya tidak lolos*. Hasil
+gabungannya (`n dari m langkah lolos`) disimpan di skenario, di saran asalnya, dan nilai yang diingat ikut ke thread.
+
+Skenario disimpan per project key di store long memory (dibagi ke tim, ikut export/import memory), sehingga developer lain
+bisa menjalankannya tanpa mengisi ulang. Skenario hasil import dari mesin lain menunjuk thread di mesin itu; buat ulang
+dari thread di mesin ini bila ingin menjalankannya.
+
 ### Hasil
 
 *Lolos* (tidak ada skenario gagal dan minimal satu lolos), *Gagal* (ada skenario gagal), *Tidak bisa dicek* (tidak ada

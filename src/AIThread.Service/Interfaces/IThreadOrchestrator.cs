@@ -26,4 +26,9 @@ public interface IThreadOrchestrator
     // Runs one of the tester's suggested follow-up tests of a completed thread in the background. Throws
     // AppValidationException when the thread or the suggestion cannot run. Returns the thread id.
     Task<Guid> FollowUpInBackgroundAsync(Guid threadId, int number, CancellationToken cancellationToken);
+
+    // Runs a project's test scenario in the background on the thread it came from. acknowledge: the developer accepts
+    // that it creates real data (asked once per project). Throws AppValidationException with what is missing. Returns
+    // that thread's id.
+    Task<Guid> ScenarioInBackgroundAsync(Guid projectId, Guid scenarioId, bool acknowledge, CancellationToken cancellationToken);
 }
