@@ -179,6 +179,26 @@
     </div>
 </div>
 
+<div class="card mt-3" id="testScenarioCard">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <span class="me-auto">Skenario test <span class="small text-secondary fw-normal" id="testScenarioCount"></span></span>
+        <label class="btn btn-outline-primary btn-sm mb-0" for="testScenarioFile" title="Unggah file skenario (.xlsx) yang sudah diisi">Unggah Excel</label>
+        <input type="file" class="d-none" id="testScenarioFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+    </div>
+    <div class="card-body small text-secondary border-bottom">
+        Alur multi-langkah (submit → approve per level → …) yang dijalankan Tester langkah demi langkah dengan akun uji. Dibuat dari
+        <em>test lanjutan</em> yang disarankan Tester (halaman thread → <strong>Buat skenario Excel</strong>, atau balas
+        <span class="mono">buat skenario test lanjutan &lt;nomor&gt;</span> di chat). Isi file Excel-nya, unggah di sini atau simpan di
+        <span class="mono">.aithread/testing/</span> lalu balas <span class="mono">jalankan skenario &lt;nama&gt;</span>.
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Skenario</th><th>Langkah</th><th>Peran</th><th>Hasil terakhir</th><th></th></tr></thead>
+            <tbody id="testScenarioRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
 <div class="card win mt-3" id="structureWindow" data-win-id="project-structure" data-win-persist>
     <div class="card-header win-bar flex-wrap">
         <win-controls disabled="close" />
@@ -407,5 +427,6 @@
     <script src="~/js/pages/project-detail.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-unittests.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-testaccounts.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-scenarios.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
 }

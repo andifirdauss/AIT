@@ -582,6 +582,130 @@ public class AutoTestingTests
         Assert.Null(TestFollowUpReply.Find(report.ToJson(), 9));
     }
 
+    [Fact]
+    public async Task A_suggestion_becomes_an_excel_scenario_the_developer_fills_and_runs_from_the_chat()
+    {
+        await using var app = LocalApp.Start(request => (200, "application/json", request.HttpMethod == "POST" ? ReadBody(request) : """{"no":"REQ-0123"}"""));
+        await using var harness = await CreateTestingHarnessAsync();
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        await harness.Service<ITestAccountService>().AddAsync(harness.ProjectId, new SaveTestAccountRequest("pengaju01", "Pengaju", null, null));
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, app.BaseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.Remember, new { name = "requestNo", value = "REQ-0123" }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new
+            {
+                summary = "Submit berhasil.",
+                scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Tersimpan." } },
+                follow_ups = new[]
+                {
+                    new
+                    {
+                        title = "Approve level 1 oleh atasan",
+                        fields = new[] { "Catatan" },
+                        scenarios = new[] { new { title = "Approve", actor = "Atasan", action = "approve", target = "POST /api/approve", steps = new[] { "Approve {{requestNo}}." }, expect = "200" } }
+                    }
+                }
+            }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+        var (first, firstObserver) = await harness.RunAsync("Sapaan jadi Halo", ThreadSource.ClaudeCode, "chat-1");
+        Assert.Contains("`buat skenario test lanjutan 1`", firstObserver.Final);
+
+        // 1. The sheet is written into the project.
+        var (_, made) = await harness.RunAsync("buat skenario test lanjutan 1", ThreadSource.ClaudeCode, "chat-1");
+        const string path = ".aithread/testing/approve-level-1-oleh-atasan.xlsx";
+        Assert.Contains($"`{path}`", made.Final);
+        Assert.Contains("kolom form: Catatan", made.Final);
+        Assert.Contains("Peran Atasan belum punya akun uji", made.Final);
+
+        // 2. The developer fills it in Excel.
+        var file = Path.Combine(harness.Project.Root, path.Replace('/', Path.DirectorySeparatorChar));
+        using (var workbook = new ClosedXML.Excel.XLWorkbook(file))
+        {
+            workbook.Worksheet("Akun").Cell(2, 2).Value = "atasan01";
+            workbook.Worksheet("Langkah").Cell(2, 6).Value = "OK dari test";
+            workbook.Save();
+        }
+
+        // 3. The first run asks to accept the side effects; the sheet is read already (the new account exists).
+        var (_, asked) = await harness.RunAsync("jalankan skenario approve-level-1-oleh-atasan", ThreadSource.ClaudeCode, "chat-1");
+        Assert.Contains("membuat data dan bisa mengirim email", asked.Final);
+        Assert.Contains("`jalankan skenario approve-level-1-oleh-atasan setuju`", asked.Final);
+        Assert.NotNull((await harness.Service<ITestAccountStore>().GetAsync("github.com/org/greeter")).Find("atasan01"));
+
+        // 4. Accepted: the step runs as the account with the form value and the remembered number.
+        router
+            .On(ScriptedAgent.Tester, call =>
+            {
+                Assert.Contains("Step 1 of 1 of the scenario \"Approve level 1 oleh atasan\"", call.LastUser);
+                Assert.Contains("As: atasan01", call.LastUser);
+                Assert.Contains("Isi Catatan: OK dari test", call.LastUser);
+                Assert.Contains("[AIT TEST]", call.LastUser);
+                Assert.Contains("- {{requestNo}} = REQ-0123", call.LastUser);
+                return router.Tool(TesterTools.SwitchUser, new { account = "atasan01" });
+            })
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.HttpRequest, new { method = "POST", url = "/api/approve", body = new { no = "{{requestNo}}" } }))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new { summary = "Oke.", scenarios = new[] { new { title = "Approve", status = "passed", details = "Menunggu HR.", actor = "atasan01" } } }));
+
+        var (run, ranObserver) = await harness.RunAsync("jalankan skenario approve-level-1-oleh-atasan setuju", ThreadSource.ClaudeCode, "chat-1");
+
+        Assert.Equal(first.ThreadId, run.ThreadId);
+        Assert.Contains(app.Bodies, b => b.Contains("\"no\":\"REQ-0123\""));
+        Assert.Contains(ranObserver.Lines, l => l.Contains("Skenario approve-level-1-oleh-atasan · langkah 1/1 · approve · atasan01"));
+        Assert.Contains("✅ **1. approve oleh Atasan** (`atasan01`) — Menunggu HR.", ranObserver.Final);
+        Assert.Contains("1 dari 1 langkah lolos", ranObserver.Final);
+        var scenario = Assert.Single(await harness.Service<ITestScenarioService>().ListAsync(harness.ProjectId));
+        Assert.Equal((TestingReport.Passed, 2), (scenario.LastOutcome, scenario.Version));
+        var report = TestingReport.FromJson((await harness.LoadThreadAsync(first.ThreadId)).TestingJson)!;
+        Assert.Equal(TestingReport.Passed, report.FollowUps[0].LastRun!.Outcome);
+        Assert.Equal(scenario.Id, report.FollowUps[0].ScenarioId);
+    }
+
+    [Fact]
+    public async Task A_scenario_stops_at_the_first_step_that_does_not_pass()
+    {
+        await using var app = LocalApp.Start(_ => (200, "application/json", """{"ok":true}"""));
+        await using var harness = await CreateTestingHarnessAsync();
+        await harness.Service<IProjectService>().SetKeyAsync(harness.ProjectId, "github.com/org/greeter");
+        await harness.Service<ITestAccountService>().AddAsync(harness.ProjectId, new SaveTestAccountRequest("pengaju01", "Pengaju", null, null));
+        await harness.Service<ITestAccountStore>().AcknowledgeSideEffectsAsync("github.com/org/greeter", "andi");
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(PlanWithTest(TestPlan.Api, app.BaseUrl)))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new
+            {
+                summary = "Oke.",
+                scenarios = new[] { new { title = "Sapaan", status = "passed", details = "Halo." } },
+                follow_ups = new[]
+                {
+                    new
+                    {
+                        title = "Edit lalu submit ulang",
+                        scenarios = new[]
+                        {
+                            new { title = "Edit", actor = "pengaju01", action = "edit", steps = new[] { "Ubah tanggal." }, expect = "Tersimpan" },
+                            new { title = "Submit ulang", actor = "pengaju01", action = "submit", steps = new[] { "Kirim." }, expect = "Menunggu atasan" }
+                        }
+                    }
+                }
+            }))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+        var (first, _) = await harness.RunAsync("Sapaan jadi Halo", ThreadSource.ClaudeCode, "chat-1");
+        var scenario = await harness.Service<ITestScenarioService>().CreateFromFollowUpAsync(first.ThreadId, 1);
+        Assert.Empty(scenario.Missing);
+
+        router.On(ScriptedAgent.Tester, router.Tool(TesterTools.ReportTest, new { summary = "Gagal.", scenarios = new[] { new { title = "Edit", status = "failed", details = "Tombol simpan tidak ada." } } }));
+
+        var (_, observer) = await harness.RunAsync($"jalankan skenario {scenario.Slug}", ThreadSource.ClaudeCode, "chat-1");
+
+        Assert.Single(router.CallsTo(ScriptedAgent.Tester).Where(c => c.LastUser.Contains("of the scenario")).GroupBy(c => c.LastUser));
+        Assert.Contains("❌ **1. edit oleh Pengaju** (`pengaju01`) — Tombol simpan tidak ada.", observer.Final);
+        Assert.Contains("🚫 **2. submit oleh Pengaju** (`pengaju01`) — Langkah sebelumnya tidak lolos", observer.Final);
+        Assert.Equal(TestingReport.Failed, Assert.Single(await harness.Service<ITestScenarioService>().ListAsync(harness.ProjectId)).LastOutcome);
+    }
+
     [Theory]
     [InlineData("jalankan test lanjutan 2", 2)]
     [InlineData("Test lanjutan #1", 1)]

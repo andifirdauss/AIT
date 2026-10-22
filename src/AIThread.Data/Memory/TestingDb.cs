@@ -9,6 +9,7 @@ public interface ITestingDb : IAsyncDisposable
 {
     DbSet<TestAccount> TestAccounts { get; }
     DbSet<TestingSettings> TestingSettings { get; }
+    DbSet<TestingScenario> TestingScenarios { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
@@ -45,6 +46,23 @@ public static class TestingModel
             e.Ignore(x => x.EffectiveDevPassword);
             e.HasIndex(x => x.ProjectKey).IsUnique();
         });
+
+        modelBuilder.Entity<TestingScenario>(e =>
+        {
+            e.ToTable("TestingScenarios");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength).IsRequired();
+            e.Property(x => x.Slug).HasMaxLength(TestingScenario.MaxSlugLength).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(TestingScenario.MaxTitleLength).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.Level).HasMaxLength(10).IsRequired();
+            e.Property(x => x.BaseUrl).HasMaxLength(500);
+            e.Property(x => x.Notes).HasMaxLength(2000);
+            e.Property(x => x.LastRunBy).HasMaxLength(200);
+            e.Property(x => x.CreatedBy).HasMaxLength(200);
+            e.Property(x => x.UpdatedBy).HasMaxLength(200);
+            e.HasIndex(x => new { x.ProjectKey, x.Slug }).IsUnique();
+        });
     }
 }
 
@@ -53,6 +71,7 @@ public sealed class TestingDbContext(DbContextOptions<TestingDbContext> options)
 {
     public DbSet<TestAccount> TestAccounts => Set<TestAccount>();
     public DbSet<TestingSettings> TestingSettings => Set<TestingSettings>();
+    public DbSet<TestingScenario> TestingScenarios => Set<TestingScenario>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.Properties<DateTime>().HaveConversion<MemoryUtcDateTimeConverter>();

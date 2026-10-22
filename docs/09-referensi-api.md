@@ -145,6 +145,12 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `PUT` | `/api/projects/{id}/testing-settings` | `{ "devPassword": "123" }` — kosong/`null` = kembali ke bawaan `Test@1234` → `settings` |
 | `PUT` | `/api/projects/{id}/testing-settings/impersonation` | `{ "status": "available", "how": "GET /Account/LoginAs?username={{target}}", "back": null, "roles": ["Administrator"], "confirmed": true }` — `status` `available`/`none`/`unknown`; `available` wajib `how` dan `roles` → `settings` |
 | `POST` | `/api/projects/{id}/testing-settings/impersonation/detect` | — → `settings`. Scan kode + model murah; hasilnya belum dikonfirmasi (`impersonation.source` = `scan`) |
+| `GET` | `/api/projects/{id}/test-scenarios` | — → skenario[]: `id`, `slug`, `title`, `description`, `version`, `level`, `baseUrl`, `steps[]` (`order`, `role`, `action`, `target`, `instruction`, `values` objek field → nilai, `expect`), `roles[]` (`role`, `username`), `fields[]`, `sourceThreadId`, `sourceFollowUp`, `missing[]`, `lastOutcome`, `lastRunAt`, `lastRunBy`, `createdBy`, `updatedBy`, `createdAt`, `updatedAt` |
+| `POST` | `/api/threads/{id}/follow-ups/{number}/scenario` | — → skenario. Membuat skenario dari saran test lanjutan (sama lagi bila sudah pernah dibuat) |
+| `GET` | `/api/projects/{id}/test-scenarios/{scenarioId}/excel` | — → file `.xlsx` (`<slug>.xlsx`) untuk diisi |
+| `POST` | `/api/projects/{id}/test-scenarios/import` | multipart `file` (.xlsx, maks 5 MB) → `scenario`, `accountsAdded[]`, `warnings[]`. 400 dengan daftar baris yang salah |
+| `POST` | `/api/projects/{id}/test-scenarios/{scenarioId}/run` | `{ "acknowledge": true }` → id thread asal (kemajuan lewat SSE di thread itu). 400 bila peran belum punya akun, tanpa thread asal, atau efek samping belum dikonfirmasi (`acknowledge` false) |
+| `DELETE` | `/api/projects/{id}/test-scenarios/{scenarioId}` | — → `true` |
 | `POST` | `/api/projects/{id}/unit-tests/{testId}/confirm-removal` | `{ "removeCode": true }` → `test`, `threadId`. Hanya test obsolete: status `Removed`, snapshot dihapus, dan bila `removeCode` serta file test-nya ada, thread Dashboard dimulai untuk menghapus kode test itu (`threadId`) |
 
 ### Memory
