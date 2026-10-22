@@ -8,6 +8,24 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.6
+
+- **Background job dan function dicek dengan unit test dry-run**: perubahan di scheduler, job Hangfire/Quartz, hosted
+  service, atau kode yang efeknya hanya di sistem eksternal tidak lagi berakhir "testing dilewati, cek sendiri". Planner
+  menulis unit test yang memanggil fungsinya langsung dengan database, API eksternal, dan jam dipalsukan, jadi tidak
+  ada data nyata yang terkirim atau tertulis. Berlaku juga bila Anda hanya minta testing tanpa perubahan kode (kode
+  yang diuji tidak diubah, hanya file test yang ditambah).
+- **Project tanpa test project** dibuatkan test project-nya sekalian (xUnit untuk .NET, Vitest/runner yang ada untuk
+  Node.js, pytest, PHPUnit, JUnit), tanpa bertanya dulu.
+- **Test project untuk project .NET Framework lama** (format lama, `packages.config`) dibuild dengan MSBuild Visual
+  Studio lalu dijalankan `vstest.console`, bukan `dotnet test` yang tidak bisa membuild project seperti itu. Restore
+  memakai kredensial feed NuGet yang sama dengan build solusi.
+- **Test baru tidak lagi "dilewati" karena database/jaringan**: test yang ditulis untuk perubahan itu harus dry-run,
+  jadi bila menyentuh database ia diperbaiki. Restore/build yang memang tidak bisa jalan (feed NuGet 401, SDK tidak
+  ada) tetap dilewati dengan alasannya.
+- Auto Testing: `dotnet run` memakai launch profile yang port-nya cocok, warning build disaring dari pesan gagal start,
+  dan output aplikasi tampil di blok tersendiri.
+
 ## Yang baru di 1.7.5
 
 - **Auto Testing menjalankan aplikasinya sendiri**: bila aplikasi belum jalan di alamat yang dites, AIT menjalankannya
