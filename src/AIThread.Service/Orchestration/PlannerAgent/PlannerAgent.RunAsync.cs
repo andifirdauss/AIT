@@ -19,7 +19,8 @@ public sealed partial class PlannerAgent
 
         // The same tool list on every step: changing it invalidates the provider's prompt cache for the whole
         // conversation. Only a planner that ignored the "submit now" message gets a submit-only extra step.
-        var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit, input.UnitTests is not null);
+        var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit, input.UnitTests is not null,
+            canRunTests: input.UnitTests is { Suites.Count: > 0 });
 
         while (run.Step < run.MaxSteps + 1)
         {

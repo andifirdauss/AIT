@@ -86,8 +86,9 @@ public static partial class AppLaunchResolver
         return null;
     }
 
-    // The ASP.NET Core project the base URL belongs to: the one whose launchSettings.json uses its port, else the only
-    // one. Old-format projects run in IIS Express, which AIT does not start.
+    // The ASP.NET Core project the base URL belongs to: the one with a launch profile on its port, else the only one.
+    // That profile runs it the way developers do (its environment variables win over AIT's defaults); --urls keeps
+    // only the tested address. Old-format projects run in IIS Express, which AIT does not start.
     private static AppLaunchCommand? ForDotnet(string root, List<string> modules, Uri url, string origin, IReadOnlyDictionary<string, string> environment, out string? error)
     {
         error = null;
@@ -98,8 +99,10 @@ public static partial class AppLaunchResolver
             .ToList();
         if (web.Count == 0) return null;
 
-        var matching = web.Where(p => UsesPort(p, url.Port)).ToList();
-        var project = matching.Count >= 1 ? matching[0] : web.Count == 1 ? web[0] : null;
+        var matching = web.Select(p => (Project: p, Profile: LaunchProfile(p, url))).Where(m => m.Profile is not null).ToList();
+        string? project = null, profile = null;
+        if (matching.Count >= 1) (project, profile) = matching[0];
+        else if (web.Count == 1) project = web[0];
         if (project is null)
         {
             error = $"Ada {web.Count} project web .NET dan tidak satu pun memakai port {url.Port} di Properties/launchSettings.json, jadi AIT tidak tahu mana yang dijalankan. " +
@@ -109,8 +112,9 @@ public static partial class AppLaunchResolver
 
         var directory = Path.GetDirectoryName(project)!;
         var relative = Path.GetRelativePath(root, project).Replace('\\', '/');
-        return new AppLaunchCommand(".NET", "dotnet", ["run", "--project", project, "--no-launch-profile", "--urls", origin], directory,
-            $"dotnet run --project {relative} --urls {origin}", environment);
+        string[] launch = profile is null ? ["--no-launch-profile"] : ["--launch-profile", profile];
+        return new AppLaunchCommand(".NET", "dotnet", ["run", "--project", project, .. launch, "--urls", origin], directory,
+            $"dotnet run --project {relative}{(profile is null ? string.Empty : $" --launch-profile {Quote(profile)}")} --urls {origin}", environment);
     }
 
     private static bool IsWebProject(string project)
@@ -125,18 +129,44 @@ public static partial class AppLaunchResolver
         }
     }
 
-    private static bool UsesPort(string project, int port)
+    // The "Project" launch profile (the one dotnet run can use) whose applicationUrl has the port; one listing only the
+    // tested address first ("http" for http://localhost:5211 rather than "https" that also lists it).
+    private static string? LaunchProfile(string project, Uri url)
     {
         var settings = Path.Combine(Path.GetDirectoryName(project)!, "Properties", "launchSettings.json");
         try
         {
-            return File.Exists(settings) && Regex.IsMatch(File.ReadAllText(settings), $@"://[^""/;:]+:{port}\b");
+            if (!File.Exists(settings)) return null;
+            using var document = JsonDocument.Parse(File.ReadAllText(settings), JsonOptions);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("profiles", out var profiles)
+                || profiles.ValueKind != JsonValueKind.Object) return null;
+
+            var candidates = new List<(string Name, bool OnlyThisUrl)>();
+            foreach (var profile in profiles.EnumerateObject())
+            {
+                if (profile.Value.ValueKind != JsonValueKind.Object
+                    || !profile.Value.TryGetProperty("commandName", out var command)
+                    || !string.Equals(command.GetString(), "Project", StringComparison.OrdinalIgnoreCase)
+                    || !profile.Value.TryGetProperty("applicationUrl", out var urls)
+                    || urls.ValueKind != JsonValueKind.String) continue;
+
+                var listed = urls.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(u => Uri.TryCreate(u.Replace("*", "localhost").Replace("+", "localhost"), UriKind.Absolute, out var parsed) ? parsed : null)
+                    .OfType<Uri>()
+                    .ToList();
+                if (listed.Any(u => u.Port == url.Port))
+                    candidates.Add((profile.Name, listed.All(u => u.Port == url.Port && u.Scheme == url.Scheme)));
+            }
+            return candidates.OrderByDescending(c => c.OnlyThisUrl).Select(c => c.Name).FirstOrDefault();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            return false;
+            return null;
         }
     }
+
+    private static string Quote(string value) => value.Contains(' ') ? $"\"{value}\"" : value;
 
     private static string? NodeScript(string packageJson)
     {

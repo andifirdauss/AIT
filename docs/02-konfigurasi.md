@@ -279,6 +279,10 @@ memakai [katalog unit test](07-cara-kerja.md#unit-test): thread pertama mendafta
 menjalankan test yang terkait sebelum dan sesudah perubahan. Tidak ada switch global; setting-nya per project di
 [Project > Detail → Unit test](05-menu.md#unit-test) dan berlaku untuk semua developer project itu (lewat project
 key, jadi project butuh key — lihat [Project key](06-memory.md#berbagi-memory-antar-developer-project-key)).
+Project yang **belum punya test project** juga ikut: bila sebuah perubahan butuh test baru, planner membuatkan test
+project-nya sekalian (lihat [Keputusan planner](07-cara-kerja.md#keputusan-planner)). Dengan Auto Testing aktif,
+perubahan di background job atau yang efeknya di sistem eksternal selalu dicek dengan unit test dry-run (lihat
+[Background job dan sistem eksternal](07-cara-kerja.md#background-job-dan-sistem-eksternal)).
 
 Yang perlu disiapkan:
 
