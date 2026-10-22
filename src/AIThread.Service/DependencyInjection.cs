@@ -109,6 +109,7 @@ public static class DependencyInjection
         services.AddSingleton<ITestBrowserLauncher, TestBrowserLauncher>();
         services.AddSingleton<ITestLoginStore>(_ => new TestLoginStore(TimeProvider.System));
         services.AddSingleton<ITesterAgent, TesterAgent>();
+        services.AddSingleton<IAppLauncher, AppLauncher>();
         services.AddSingleton<IWrapperAgent, WrapperAgent>();
         services.AddSingleton<IMemoryExtractor, MemoryExtractor>();
         services.AddSingleton<IContextKeeper, ContextKeeper>();

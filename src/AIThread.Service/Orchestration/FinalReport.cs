@@ -105,6 +105,7 @@ public static partial class FinalReport
         if (report.BaseUrl is not null) builder.Append(" · ").Append(Code(report.BaseUrl));
         if (report.Browser is not null) builder.Append(" · ").Append(report.Browser);
         if (report.LoginUser is not null) builder.Append(" · login ").Append(Code(report.LoginUser));
+        if (report.AppStarted is not null) builder.Append(" · dijalankan AIT ").Append(Code(report.AppStarted));
         builder.Append('\n');
         if (report.Error is not null) builder.Append("\n⚠️ ").Append(OneLine(report.Error)).Append('\n');
         if (report.Summary is not null) builder.Append('\n').Append(OneLine(report.Summary)).Append('\n');

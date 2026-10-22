@@ -22,8 +22,10 @@ public sealed partial class TesterAgent
         var run = new TestRun(input, report, http);
         try
         {
-            // An app that is not running fails every scenario the same way; no model call for that.
-            if (await ProbeAsync(http, test.BaseUrl!, cancellationToken) is { } unreachable)
+            // An app that is not running is started first; one that still does not answer fails every scenario the same
+            // way, with no model call for that.
+            if (await ProbeAsync(http, test.BaseUrl!, cancellationToken) is { } reason
+                && await StartAppAsync(run, reason, recorder, progress, cancellationToken) is { } unreachable)
             {
                 report.Error = unreachable;
                 foreach (var scenario in report.Scenarios) scenario.Details = unreachable;
@@ -40,6 +42,7 @@ public sealed partial class TesterAgent
                 if (!cancellationToken.IsCancellationRequested) await Task.Delay(Linger, CancellationToken.None);
                 await browser.DisposeAsync();
             }
+            if (run.App is { } app) await app.DisposeAsync();
         }
     }
 

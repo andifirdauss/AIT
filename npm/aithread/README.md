@@ -8,6 +8,14 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.5
+
+- **Auto Testing menjalankan aplikasinya sendiri**: bila aplikasi belum jalan di alamat yang dites, AIT menjalankannya
+  untuk testing itu, menunggu sampai menjawab (maksimal 3 menit), lalu menghentikannya lagi beserta proses turunannya.
+  Yang dikenali: project ASP.NET Core (`dotnet run --urls`), Laravel (`php artisan serve`), dan script
+  `dev`/`start`/`serve` di `package.json`. Untuk stack lain, tulis perintahnya di `.aithread/project.json`, mis.
+  `{ "run": "docker compose up web" }`. Aplikasi yang sudah Anda jalankan sendiri tetap dipakai dan tidak dihentikan.
+
 ## Yang baru di 1.7.4
 
 - **Node Tester lebih stabil dalam membuat dan menjalankan unit test**: katalog unit test per project (scan, jalankan,

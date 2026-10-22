@@ -137,7 +137,9 @@ thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
 Folder root project berbeda di tiap mesin (`D:\a\eep` di laptop Andi, `C:\src\eep` di laptop Budi), jadi memory
 tidak diikat ke folder, melainkan ke **project key** yang sama untuk semua clone sebuah repository:
 
-1. file `.aithread/project.json` di root repository, mis. `{ "key": "eep" }` — di-commit tim, selalu menang;
+1. file `.aithread/project.json` di root repository, mis. `{ "key": "eep" }` — di-commit tim, selalu menang (file yang
+   sama bisa memuat `"run"`, perintah menjalankan aplikasi untuk testing; lihat
+   [Menjalankan aplikasi](07-cara-kerja.md#menjalankan-aplikasi));
 2. **key manual** di menu Project → detail project (untuk repository tanpa remote);
 3. **git remote** `origin` (atau remote pertama), dinormalisasi: `https://user:token@gitlab.com/Org/EEP.git`,
    `git@gitlab.com:org/eep.git`, dan `ssh://git@gitlab.com:22/org/eep` semuanya menjadi `gitlab.com/org/eep`
