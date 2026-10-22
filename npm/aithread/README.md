@@ -8,6 +8,13 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.4
+
+- **Node Tester lebih stabil dalam membuat dan menjalankan unit test**: katalog unit test per project (scan, jalankan,
+  karantina, setting) di Project > Detail. Baseline berjalan paralel dengan planner; regresi dinilai node Tester lalu
+  diperbaiki otomatis (maksimal 3 putaran), dan test yang hilang dipulihkan sebelum planner.
+- Katalog unit test ikut export/import memory (file `aithread-memory` v3).
+
 ## Yang baru di 1.7.3
 
 - **Auto Testing dengan node Tester**: setelah build dan review lolos, node Tester mencoba perubahan di aplikasi yang

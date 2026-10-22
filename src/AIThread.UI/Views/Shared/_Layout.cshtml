@@ -78,20 +78,9 @@
                 <win-controls for="alert" />
                 <div class="update-notes">
                     <div class="update-note">
-                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Auto Testing</strong>: node Tester baru mencoba perubahan di aplikasi yang berjalan (HTTP dan browser ke localhost), hasilnya di akhir jawaban dan di detail thread. <strong>Planner membaca riwayat git</strong> (status, diff, log, show, blame), dan <strong>mengingat analisa prompt sebelumnya</strong>, jadi pertanyaan lanjutan tidak mencari ulang dari awal. Logo baru.
+                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Node Tester lebih stabil membuat dan menjalankan unit test</strong>: katalog unit test per project (scan, jalankan, karantina, setting) di Project &gt; Detail, baseline berjalan paralel dengan planner, regresi dinilai Tester lalu diperbaiki otomatis (maksimal 3 putaran), dan test yang hilang dipulihkan sebelum planner. Katalog ikut export/import memory.
                         <a href="~/Docs/07-cara-kerja" class="alert-link ms-2">Detail →</a>
                     </div>
-                    <div class="update-more" id="updateMore" hidden>
-                        <div class="update-note">
-                            <strong>🚀 AIT versi 1.7.2</strong> — <strong>Sisa kuota kembali tampil di akhir jawaban</strong> walaupun <em>Require login</em> 9router aktif (bawaan 9router). Untuk 9router di komputer yang sama, AIT kini masuk dengan token CLI lokal, cara yang sama dipakai CLI 9router sendiri, jadi setting 9router tidak perlu diubah.
-                            <a href="~/Docs/08-troubleshooting" class="alert-link ms-2">Detail →</a>
-                        </div>
-                        <div class="update-note">
-                            <strong>🚀 AIT versi 1.7.1</strong> — <strong>Sidebar dikelompokkan</strong> (Ruang kerja, Konfigurasi, Bantuan), <strong>kartu menu CLI</strong> memakai logo masing-masing tool, dan <strong>log konsol lebih ringkas</strong>.
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-link alert-link update-toggle" aria-expanded="false" aria-controls="updateMore"
-                            data-more="2 versi lain hari ini ▾" data-less="Sembunyikan ▴">2 versi lain hari ini ▾</button>
                 </div>
             </div>
             @if (!string.Equals(controller, "Setup", StringComparison.OrdinalIgnoreCase))
