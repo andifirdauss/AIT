@@ -8,6 +8,24 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.7
+
+- **Akun uji per project**: Project > Detail → *Akun uji* berisi akun yang dipakai Tester (username, peran, atribut bebas
+  seperti NIK, unit, atasan), dibagi ke tim lewat project key. Tidak ada password per akun: Tester login dengan
+  *password dev* project (bawaan `Test@1234`); bila ditolak, ia bertanya dan jawaban `password dev <nilai>` disimpan.
+- **Tester berganti user** (`switch_user`): tiap akun punya profil browser dan cookie sendiri, jadi alur multi-user seperti
+  submit lalu approve per level bisa dites dalam satu run. Planner menulis skenario dengan aktor per langkah.
+- **Login as / impersonate dideteksi per project**: scan kode + model murah mencari fitur admin "login sebagai user
+  lain", cara memakainya, dan peran yang boleh. Bisa dikoreksi dan dikonfirmasi di kartu *Akun uji*.
+- **Test lanjutan yang disarankan**: setelah testing, Tester menyarankan langkah berikutnya (approve level 1, edit
+  sebelum approve, reject). Jalankan dengan `jalankan test lanjutan <nomor>` atau tombol di halaman thread. Nilai seperti
+  nomor dokumen diingat antar langkah (`{{requestNo}}`).
+- **Skenario multi-langkah dengan Excel**: `buat skenario test lanjutan <nomor>` menulis file Excel di
+  `.aithread/testing/` (akun per peran, langkah, kolom form) untuk diisi. `jalankan skenario <nama>` membacanya lalu
+  menjalankan langkah demi langkah, dan berhenti di langkah yang gagal. Konfirmasi efek samping diminta sekali per
+  project.
+- Logo baru.
+
 ## Yang baru di 1.7.6
 
 - **Background job dan function dicek dengan unit test dry-run**: perubahan di scheduler, job Hangfire/Quartz, hosted
