@@ -113,6 +113,9 @@ public sealed partial class PlannerAgent
             builder.Append(UnitTestStage.Brief(unitTests, files, focusModules ?? [], input.AutoTesting)).Append('\n');
         }
 
+        if (input.TestAccounts is { } accounts && Testing.TestAccountText.Brief(accounts, forTester: false) is { } accountList)
+            builder.Append(accountList).Append('\n');
+
         builder.Append("# Developer request\n");
         builder.Append(PlannerToolRunner.Limit(request.Prompt, MaxRequestChars)).Append('\n');
 

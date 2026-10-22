@@ -5,11 +5,11 @@ namespace AIThread.Service.Testing;
 public sealed partial class TestBrowserLauncher
 {
     // Null when this browser is not installed or does not start; the reason goes to failures.
-    private static async Task<IBrowserContext?> TryLaunchAsync(IPlaywright playwright, string? channel, List<string> failures)
+    private static async Task<IBrowserContext?> TryLaunchAsync(IPlaywright playwright, string? channel, string? profile, List<string> failures)
     {
         try
         {
-            return await playwright.Chromium.LaunchPersistentContextAsync(Path.Combine(ProfileRoot, channel ?? "chromium"),
+            return await playwright.Chromium.LaunchPersistentContextAsync(ProfileDirectory(channel, profile),
                 new BrowserTypeLaunchPersistentContextOptions
                 {
                     Headless = false,

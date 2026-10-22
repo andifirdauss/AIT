@@ -11,6 +11,11 @@ public sealed partial class ThreadOrchestrator
         if (TestLogin.Parse(request.Prompt) is { } login && testLogins.TakeAsk(request.SessionId, request.ProjectId) is { } waiting)
             return await TestWithLoginAsync(waiting, login, request, observer, cancellationToken);
 
+        // "password dev <value>" after a tester found the project's development password refused: kept for the project,
+        // and that thread's test runs again with the test accounts.
+        if (TestLogin.ParseDevPassword(request.Prompt) is { } devPassword && testLogins.TakeAsk(request.SessionId, request.ProjectId) is { } refused)
+            return await TestWithDevPasswordAsync(refused, devPassword, request, observer, cancellationToken);
+
         var prepared = await PrepareOrResumeAsync(Redacted(request), cancellationToken);
         return await ExecuteAsync(prepared, observer, cancellationToken);
     }

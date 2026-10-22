@@ -19,7 +19,8 @@ public sealed partial class TesterAgent
             Scenarios = test.Scenarios.Select(s => new TestScenarioResult { Title = s.Title }).ToList()
         };
         using var http = CreateClient();
-        var run = new TestRun(input, report, http, secrets);
+        using var run = new TestRun(input, report, http, secrets);
+        run.Accounts = await AccountsAsync(input.Project, cancellationToken);
         try
         {
             // An app that is not running is started first; one that still does not answer fails every scenario the same
@@ -33,6 +34,7 @@ public sealed partial class TesterAgent
                 recorder.Log(ActivityLevel.Warning, $"Testing: {unreachable}");
                 return Done(run, 0, input.Tester);
             }
+            await EnsureImpersonationAsync(run, recorder, progress, cancellationToken);
             return await LoopAsync(run, recorder, progress, cancellationToken);
         }
         finally
@@ -49,8 +51,8 @@ public sealed partial class TesterAgent
     private async Task<TestingResult> LoopAsync(TestRun run, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
         var node = run.Input.Tester;
-        var tools = TesterTools.For(run.Test.Level, run.Input.CanAskLogin);
-        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(run.Input)) };
+        var tools = TesterTools.For(run.Test.Level, run.Input.CanAskLogin, CanSwitchUser(run));
+        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(run.Input, run.Accounts)) };
         var tokens = 0;
 
         for (var step = 1; ; step++)
@@ -82,6 +84,7 @@ public sealed partial class TesterAgent
             if (result.ToolCalls.FirstOrDefault(c => c.Name == TesterTools.ReportTest) is { } verdict)
             {
                 ApplyVerdict(run.Report, verdict.Arguments);
+                await ObserveImpersonationAsync(verdict.Arguments, run, recorder, cancellationToken);
                 return Done(run, tokens, node);
             }
             if (run.Input.CanAskLogin && result.ToolCalls.FirstOrDefault(c => c.Name == TesterTools.AskLogin) is { } ask)
@@ -89,6 +92,10 @@ public sealed partial class TesterAgent
                 var args = PlannerToolRunner.ParseArguments(ask.Arguments, out _);
                 run.Report.LoginNeeded = (args is null ? null : PlannerToolRunner.Str(args, "reason"))?.Trim() ?? "Aplikasi meminta login.";
                 run.Report.LoginUrl = args is null ? null : PlannerToolRunner.Str(args, "loginUrl")?.Trim();
+                // The development password can only be refused when the tester logged in with it.
+                run.Report.LoginKind = args is not null && PlannerToolRunner.Str(args, "kind")?.Trim() == TestingReport.LoginKindDevPassword && run.Account is not null
+                    ? TestingReport.LoginKindDevPassword
+                    : TestingReport.LoginKindLogin;
                 recorder.Log(ActivityLevel.Info, $"Tester meminta login: {run.Report.LoginNeeded}");
                 await progress.StepAsync($"🔐 Butuh login: {run.Report.LoginNeeded}", cancellationToken, hang: 3);
                 ApplyVerdict(run.Report, null);

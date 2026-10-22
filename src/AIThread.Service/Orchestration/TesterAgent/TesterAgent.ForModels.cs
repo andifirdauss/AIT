@@ -17,13 +17,20 @@ public sealed partial class TesterAgent
         if (!string.IsNullOrWhiteSpace(report.AppOutput)) builder.Append($"Last output of the app AIT tried to start (already shown to the developer):\n{report.AppOutput}\n");
         if (report.AppStarted is not null) builder.Append($"The app was not running; AIT started it for the test with `{report.AppStarted}` and stopped it afterwards.\n");
         if (report.LoginUser is not null) builder.Append($"Logged in as {report.LoginUser} (login given by the developer).\n");
+        if (report.Accounts.Count > 0)
+            builder.Append($"Acted as the project's test accounts: {string.Join(", ", report.Accounts)}")
+                .Append(report.DefaultDevPassword ? " (with the default development password; the project has none set)" : string.Empty).Append(".\n");
         if (report.LoginNeeded is not null)
             builder.Append($"Stopped to ask for a login: {report.LoginNeeded}")
                 .Append(report.LoginUrl is null ? string.Empty : $" ({report.LoginUrl})")
-                .Append(report.AskedLogin ? ". AIT asks the developer to reply in the chat with \"login <username> <password>\"; the test then runs again.\n" : ".\n");
+                .Append(!report.AskedLogin ? ".\n"
+                    : report.LoginKind == TestingReport.LoginKindDevPassword
+                        ? ". The project's development password was refused: AIT asks the developer to reply with \"password dev <value>\" (kept for the project) or \"login <username> <password>\" (this session only); the test then runs again.\n"
+                        : ". AIT asks the developer to reply in the chat with \"login <username> <password>\"; the test then runs again.\n");
         if (report.Summary is not null) builder.Append($"Tester summary: {report.Summary}\n");
         foreach (var scenario in report.Scenarios)
-            builder.Append($"- [{scenario.Status}] {scenario.Title}").Append(string.IsNullOrWhiteSpace(scenario.Details) ? string.Empty : $": {scenario.Details}").Append('\n');
+            builder.Append($"- [{scenario.Status}] {scenario.Title}").Append(scenario.Actor is null ? string.Empty : $" (as {scenario.Actor})")
+                .Append(string.IsNullOrWhiteSpace(scenario.Details) ? string.Empty : $": {scenario.Details}").Append('\n');
         if (report.Requests.Count > 0)
         {
             builder.Append("Requests:\n");

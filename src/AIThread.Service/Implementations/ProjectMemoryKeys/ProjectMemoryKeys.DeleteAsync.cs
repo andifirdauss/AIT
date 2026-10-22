@@ -58,6 +58,18 @@ public sealed partial class ProjectMemoryKeys
                 {
                     logger.LogWarning(ex, "Could not delete the unit test catalog of project {ProjectId}", projectId);
                 }
+
+                // And the test accounts with the testing settings.
+                try
+                {
+                    await using var testing = await longStore.CreateTestingAsync(cancellationToken);
+                    await testing.TestAccounts.Where(a => a.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
+                    await testing.TestingSettings.Where(s => s.ProjectKey == key).ExecuteDeleteAsync(cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Could not delete the test accounts of project {ProjectId}", projectId);
+                }
             }
         }
         return deleted;
