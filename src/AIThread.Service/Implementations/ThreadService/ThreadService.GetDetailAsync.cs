@@ -44,6 +44,8 @@ public sealed partial class ThreadService
             thread.TesterModel,
             thread.TesterTokens,
             thread.TestingMs,
-            thread.TestingJson);
+            thread.TestingJson,
+            thread.UnitTestMs,
+            thread.UnitTestJson);
     }
 }

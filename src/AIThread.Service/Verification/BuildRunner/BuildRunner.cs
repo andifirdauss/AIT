@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -25,8 +24,8 @@ public sealed record BuildResult(
     public string? InUseOutput { get; init; }
 }
 
-// Runs a BuildCommand: one build per project root at a time (two builds would fight over obj/), stopped together
-// with its child processes on timeout or cancellation. Diagnostics are parsed while the output streams, so a long
+// Runs a BuildCommand: one build or test run per project root at a time (RootGates: two would fight over obj/), stopped
+// together with its child processes on timeout or cancellation. Diagnostics are parsed while the output streams, so a long
 // log cannot push the errors out of memory.
 public sealed partial class BuildRunner(ILogger<BuildRunner> logger) : IBuildRunner
 {
@@ -41,6 +40,4 @@ public sealed partial class BuildRunner(ILogger<BuildRunner> logger) : IBuildRun
     // them open after the build exits; whatever the build wrote is read by then.
     private static readonly TimeSpan DrainGrace = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan KillWait = TimeSpan.FromSeconds(10);
-
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _gates = new(StringComparer.OrdinalIgnoreCase);
 }

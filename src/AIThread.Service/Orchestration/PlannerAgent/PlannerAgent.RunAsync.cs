@@ -19,7 +19,7 @@ public sealed partial class PlannerAgent
 
         // The same tool list on every step: changing it invalidates the provider's prompt cache for the whole
         // conversation. Only a planner that ignored the "submit now" message gets a submit-only extra step.
-        var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit);
+        var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit, input.UnitTests is not null);
 
         while (run.Step < run.MaxSteps + 1)
         {
@@ -34,12 +34,12 @@ public sealed partial class PlannerAgent
             var current = node;
             var reply = await caller.ChatAsync(current, async candidate =>
             {
-                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, run.Groups, input.AutoTesting, cancellationToken);
+                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, run.Groups, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
                 return new ChatCompletionRequest
                 {
                     Model = candidate.Model,
                     Messages = messages,
-                    Tools = forcedStep ? PlannerTools.SubmitOnly(input.AutoTesting) : allTools,
+                    Tools = forcedStep ? PlannerTools.SubmitOnly(input.AutoTesting, input.UnitTests is not null) : allTools,
                     Temperature = candidate.Temperature ?? 0.2,
                     MaxTokens = candidate.MaxTokens,
                     PromptCacheKey = ChatCompletionRequest.CacheKey(recorder.Thread.Id, "planner")
@@ -57,7 +57,7 @@ public sealed partial class PlannerAgent
                 // Some models ignore tool calling and print the plan as JSON.
                 if (ThreadPlan.TryParseFromText(result.Content, out var textPlan) && textPlan is not null)
                 {
-                    var errors = PlanValidator.Validate(textPlan, input.Scope, input.AutoTesting);
+                    var errors = PlanValidator.Validate(textPlan, input.Scope, input.AutoTesting, input.UnitTests?.Rules);
                     if (errors.Count == 0) return Finished(textPlan, run, node);
                     messages.Add(ChatMessages.User($"The plan is invalid:\n- {string.Join("\n- ", errors)}\nFix it and call submit_plan."));
                     continue;

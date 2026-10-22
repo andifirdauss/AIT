@@ -1,16 +1,26 @@
 using AIThread.Service.Testing;
+using AIThread.Service.UnitTests;
+using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Orchestration;
+
+// What the unit test part of a plan is checked against: the catalog's active test numbers ("UT-0012") with their test
+// file, and whether new tests may be added.
+public sealed record UnitTestRules(IReadOnlyDictionary<string, string> Known, bool AllowNew);
 
 // Normalizes the plan in place and returns problems phrased for the planner to fix.
 public static class PlanValidator
 {
     public const int MaxTasks = 40;
     public const int MaxTestScenarios = 6;
+    public const int MaxNewTests = 15;
 
-    // requireTest: Auto Testing is on, so a plan that changes files must say how to test it.
-    public static IReadOnlyList<string> Validate(ThreadPlan plan, WorkspaceScope scope, bool requireTest = false)
+    private static readonly string[] Requirements = [TestEnvironment.Database, TestEnvironment.Network, TestEnvironment.Config];
+
+    // requireTest: Auto Testing is on, so a plan that changes files must say how to test it. unitTests: the project has
+    // a unit test catalog; null drops the plan's tests section.
+    public static IReadOnlyList<string> Validate(ThreadPlan plan, WorkspaceScope scope, bool requireTest = false, UnitTestRules? unitTests = null)
     {
         var errors = new List<string>();
         plan.Summary = plan.Summary?.Trim() ?? string.Empty;
@@ -18,8 +28,13 @@ public static class PlanValidator
 
         if (plan.Tasks.Count == 0)
         {
-            // Nothing changes, so there is nothing to test.
-            plan.Test = null;
+            // Nothing changes. The developer may still want the existing behaviour tested: on the running app (a
+            // runnable test section) and/or by unit tests (tests.run).
+            if (requireTest && plan.Test is { } wanted && !string.Equals(wanted.Level?.Trim(), TestPlan.None, StringComparison.OrdinalIgnoreCase))
+                ValidateTest(plan, requireTest, errors);
+            else
+                plan.Test = null;
+            ValidateTestRun(plan, unitTests, errors);
             if (string.IsNullOrWhiteSpace(plan.Answer) && string.IsNullOrWhiteSpace(plan.Summary))
                 errors.Add("The plan has no tasks and no answer. Add tasks, or put the full answer in \"answer\".");
             return errors;
@@ -120,7 +135,92 @@ public static class PlanValidator
         }
 
         if (errors.Count == 0 && HasCycle(plan.Tasks)) errors.Add("dependsOn contains a cycle.");
+        ValidateUnitTests(plan, unitTests, errors);
         return errors;
+    }
+
+    // Decisions about registered tests and the new tests of a plan that changes files.
+    private static void ValidateUnitTests(ThreadPlan plan, UnitTestRules? rules, List<string> errors)
+    {
+        if (rules is null || plan.Tests is not { } tests)
+        {
+            plan.Tests = null;
+            return;
+        }
+
+        tests.Run = [];
+        var edited = plan.Tasks.Where(t => t.Action is PlanTask.Edit or PlanTask.Create).Select(t => t.File).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        tests.Decisions = (tests.Decisions ?? []).Where(d => d is not null).ToList();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var decision in tests.Decisions)
+        {
+            decision.Decision = decision.Decision?.Trim().ToLowerInvariant() ?? PlanTests.Keep;
+            decision.Reason = string.IsNullOrWhiteSpace(decision.Reason) ? null : decision.Reason.Trim();
+            if (UnitTestText.ParseNumber(decision.Test) is not { } number || !rules.Known.TryGetValue(number, out var testFile))
+            {
+                errors.Add($"tests: '{decision.Test}' is not an active test of the catalog; use the numbers from \"# Unit tests\".");
+                continue;
+            }
+            decision.Test = number;
+            if (!seen.Add(number)) errors.Add($"tests: {number} has more than one decision.");
+            if (decision.Decision is not (PlanTests.Keep or PlanTests.Update or PlanTests.Obsolete))
+                errors.Add($"tests: the decision for {number} must be \"keep\", \"update\" or \"obsolete\", not \"{decision.Decision}\".");
+            else if (decision.Decision != PlanTests.Keep && decision.Reason is null)
+                errors.Add($"tests: {decision.Decision} of {number} needs \"reason\": why, quoting the request.");
+            if (decision.Decision == PlanTests.Update && !edited.Contains(testFile))
+                errors.Add($"tests: {number} is updated, so the plan needs an edit task for its test file '{testFile}'.");
+        }
+
+        tests.New = (tests.New ?? []).Where(n => n is not null).ToList();
+        if (tests.New.Count > 0 && !rules.AllowNew)
+            errors.Add("tests: new tests are turned off for this project; drop \"new\" and say so in the summary.");
+        if (tests.New.Count > MaxNewTests)
+            errors.Add($"tests: {tests.New.Count} new tests; the maximum is {MaxNewTests}. Keep the cases that guard the request best.");
+        foreach (var test in tests.New)
+        {
+            test.Title = test.Title?.Trim() ?? string.Empty;
+            test.Name = test.Name?.Trim() ?? string.Empty;
+            test.File = (test.File ?? string.Empty).Trim().Replace('\\', '/').TrimStart('.', '/');
+            test.Scenario = test.Scenario?.Trim() ?? string.Empty;
+            test.Purpose = string.IsNullOrWhiteSpace(test.Purpose) ? null : test.Purpose.Trim();
+            test.Targets = test.Targets?.Where(t => !string.IsNullOrWhiteSpace(t)).Select(t => t.Trim().Replace('\\', '/')).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            test.Requires = test.Requires?.Select(r => r.Trim().ToLowerInvariant()).Where(Requirements.Contains).Distinct().ToList();
+
+            var label = test.Name.Length > 0 ? $"new test \"{test.Name}\"" : "a new test";
+            if (test.Name.Length == 0) errors.Add("tests: every new test needs \"name\", the method name or it()/test() title as it will appear in the code.");
+            if (test.Title.Length == 0) errors.Add($"tests: {label} needs \"title\".");
+            if (test.Scenario.Length == 0) errors.Add($"tests: {label} needs \"scenario\" (given / when / then with concrete values).");
+            if (test.File.Length == 0) errors.Add($"tests: {label} needs \"file\".");
+            else if (!edited.Contains(test.File))
+                errors.Add($"tests: {label} lives in '{test.File}', but no create or edit task targets that file. Add the task that writes the test.");
+        }
+
+        if (tests.Decisions.All(d => d.Decision == PlanTests.Keep) && tests.New.Count == 0) plan.Tests = null;
+    }
+
+    // A plan without tasks may only ask for tests to run.
+    private static void ValidateTestRun(ThreadPlan plan, UnitTestRules? rules, List<string> errors)
+    {
+        if (rules is null || plan.Tests is not { } tests)
+        {
+            plan.Tests = null;
+            return;
+        }
+        tests.Decisions = [];
+        tests.New = [];
+        var run = new List<string>();
+        foreach (var item in (tests.Run ?? []).Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()))
+        {
+            if (string.Equals(item, PlanTests.All, StringComparison.OrdinalIgnoreCase))
+            {
+                run = [PlanTests.All];
+                break;
+            }
+            if (UnitTestText.ParseNumber(item) is { } number && rules.Known.ContainsKey(number)) run.Add(number);
+            else errors.Add($"tests.run: '{item}' is not an active test of the catalog; give numbers from \"# Unit tests\" or [\"all\"].");
+        }
+        tests.Run = run.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (tests.Run.Count == 0) plan.Tests = null;
     }
 
     // Full path of a file a task may change, or null after adding the reason it may not.

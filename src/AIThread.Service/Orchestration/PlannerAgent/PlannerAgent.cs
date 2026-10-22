@@ -13,6 +13,9 @@ namespace AIThread.Service.Orchestration;
 // Files: the project files behind CodeMap, also those whose module is not known yet; the brief outlines them.
 // AutoTesting: the planner node has Auto Testing on and a Tester node is active, so the plan must say how to test it.
 // PreviousTurn: what the planner of the session's last thread went through, so a follow-up does not search again.
+// UnitTests: the project's unit test catalog for this thread: the brief lists the related tests, and run_tests and the
+// tests section of submit_plan are offered.
+// SessionChanges: what the earlier threads of this chat changed, per module — what "this change" can refer to.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -24,7 +27,9 @@ public sealed record PlannerInput(
     SessionLabelSource? LabelsFromSession = null,
     IReadOnlyList<string>? Files = null,
     bool AutoTesting = false,
-    PreviousTurn? PreviousTurn = null);
+    PreviousTurn? PreviousTurn = null,
+    UnitTestSession? UnitTests = null,
+    IReadOnlyList<SessionModuleChange>? SessionChanges = null);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.

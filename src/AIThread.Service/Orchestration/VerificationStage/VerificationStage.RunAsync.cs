@@ -14,7 +14,7 @@ public sealed partial class VerificationStage
         var forModels = new StringBuilder();
         var order = input.NextTaskOrder;
         var buildCommand = input.Build;
-        int executorTokens = 0, reviewerTokens = 0;
+        int executorTokens = 0, reviewerTokens = 0, testerTokens = 0, testFixRounds = 0;
         long fixWallMs = 0, fixSumMs = 0;
 
         for (var fixRound = 1; ; fixRound++)
@@ -51,31 +51,55 @@ public sealed partial class VerificationStage
             var buildUsable = build is { TimedOut: false, StartError: null };
             var reviewUsable = review is { Error: null };
 
-            // A build that timed out or cannot start would do the same in the next round.
-            if (build is not null && !buildUsable) buildCommand = null;
-            var problems = (buildUsable && !build!.Passed) || (reviewUsable && review!.Issues.Count > 0);
-            if (!problems)
-            {
-                report.Outcome = buildUsable || reviewUsable ? VerificationReport.Passed : VerificationReport.Unverified;
-                break;
-            }
-
             // A move or an extract also changes its destination.
             var byId = tasks.GroupBy(t => t.Id, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
             var changedFiles = results.Where(r => r.Status == ThreadTaskStatus.Succeeded)
                 .SelectMany(r => byId.TryGetValue(r.TaskKey, out var t) && t.To is not null ? [r.File, t.To] : new[] { r.File })
                 .ToList();
-            var fix = FixTaskFactory.Create(round, buildUsable ? build : null, reviewUsable ? review : null, changedFiles, tasks, input.Scope);
-            current.Unfixable = fix.Unfixable.ToList();
-            if (fix.Unfixable.Count > 0)
-                forModels.Append("Not fixable automatically:\n").Append(string.Concat(fix.Unfixable.Select(u => $"- {u}\n")));
+
+            // Unit tests run on a build that passes (a project without a build step AIT can run counts as passing).
+            UnitTestCheck? unit = null;
+            if (input.UnitTests is { } session && (build is null || build.Passed))
+            {
+                unit = await unitTestStage.CheckAsync(session,
+                    new UnitTestCheckInput(input.Request, input.Plan, tasks, results, changedFiles, round, input.Tester, recorder.Thread.Id),
+                    recorder, progress, cancellationToken);
+                current.UnitTests = unit.Round;
+                testerTokens += unit.TesterTokens;
+                forModels.Append(unit.ForModels);
+            }
+
+            // A build that timed out or cannot start would do the same in the next round.
+            if (build is not null && !buildUsable) buildCommand = null;
+            var buildReviewProblems = (buildUsable && !build!.Passed) || (reviewUsable && review!.Issues.Count > 0);
+            var testProblems = unit is { Issues.Count: > 0 };
+            if (!buildReviewProblems && !testProblems)
+            {
+                current.Unfixable = unit?.Unfixable.ToList() ?? [];
+                report.Outcome = unit is { Problems: > 0 } ? VerificationReport.Failed
+                    : buildUsable || reviewUsable || unit is not null ? VerificationReport.Passed
+                    : VerificationReport.Unverified;
+                if (current.Unfixable.Count > 0)
+                    forModels.Append("Not fixable automatically:\n").Append(string.Concat(current.Unfixable.Select(u => $"- {u}\n")));
+                break;
+            }
+
+            var canFixBuildReview = buildReviewProblems && fixRound <= input.Settings.MaxFixRounds;
+            var canFixTests = testProblems && input.Settings.MaxFixRounds > 0 && testFixRounds < UnitTestStage.MaxFixRounds;
+            var fix = FixTaskFactory.Create(round, canFixBuildReview && buildUsable ? build : null, canFixBuildReview && reviewUsable ? review : null, changedFiles, tasks,
+                input.Scope, canFixTests ? unit!.Issues : null);
+            current.Unfixable = fix.Unfixable.Concat(unit?.Unfixable ?? []).ToList();
+            if (current.Unfixable.Count > 0)
+                forModels.Append("Not fixable automatically:\n").Append(string.Concat(current.Unfixable.Select(u => $"- {u}\n")));
 
             report.Outcome = VerificationReport.Failed;
-            if (fixRound > input.Settings.MaxFixRounds)
+            if (!canFixBuildReview && !canFixTests)
             {
                 var note = input.Settings.MaxFixRounds == 0
                     ? "Perbaikan otomatis dimatikan (putaran perbaikan = 0); masalah dilaporkan apa adanya."
-                    : $"Masih ada masalah setelah {input.Settings.MaxFixRounds} putaran perbaikan.";
+                    : buildReviewProblems
+                        ? $"Masih ada masalah setelah {input.Settings.MaxFixRounds} putaran perbaikan."
+                        : $"Masih ada regresi unit test setelah {UnitTestStage.MaxFixRounds} putaran perbaikan.";
                 await progress.StepAsync($"🟡 {note}", cancellationToken, hang: 3);
                 recorder.Log(ActivityLevel.Warning, $"Verifikasi: {note}");
                 break;
@@ -83,9 +107,10 @@ public sealed partial class VerificationStage
             if (fix.Tasks.Count == 0)
             {
                 await progress.StepAsync("🟡 Masalah yang tersisa tidak bisa diperbaiki otomatis (lihat ringkasan).", cancellationToken, hang: 3);
-                recorder.Log(ActivityLevel.Warning, $"Verifikasi: {fix.Unfixable.Count} masalah tidak bisa diperbaiki otomatis.");
+                recorder.Log(ActivityLevel.Warning, $"Verifikasi: {current.Unfixable.Count} masalah tidak bisa diperbaiki otomatis.");
                 break;
             }
+            if (canFixTests) testFixRounds++;
 
             await progress.StepAsync($"🔧 Perbaikan {round} · {fix.Tasks.Count} tugas", cancellationToken, hang: 3);
             recorder.Log(ActivityLevel.Info, $"Verifikasi putaran {round}: {fix.Tasks.Count} tugas perbaikan.");
@@ -115,10 +140,11 @@ public sealed partial class VerificationStage
 
         forModels.Insert(0, $"Outcome: {report.Outcome}" +
                             (input.Build is null ? " (no build command; reviewer only)" : $" — build command `{input.Build.Display}`") +
-                            (input.Reviewer is null ? ", no reviewer node" : string.Empty) + "\n");
+                            (input.Reviewer is null ? ", no reviewer node" : string.Empty) +
+                            (input.UnitTests is null ? string.Empty : ", with the project's unit tests") + "\n");
 
-        var plan = new ThreadPlan { Summary = input.Plan.Summary, Answer = input.Plan.Answer, Contract = input.Plan.Contract, Tasks = tasks };
+        var plan = new ThreadPlan { Summary = input.Plan.Summary, Answer = input.Plan.Answer, Contract = input.Plan.Contract, Tasks = tasks, Test = input.Plan.Test, Tests = input.Plan.Tests };
         var summary = new ExecutionSummary(results, input.Execution.WallMs + fixWallMs, input.Execution.SumMs + fixSumMs, input.Execution.Tokens + executorTokens);
-        return new VerificationResult(report, plan, summary, executorTokens, reviewerTokens, forModels.ToString());
+        return new VerificationResult(report, plan, summary, executorTokens, reviewerTokens, forModels.ToString(), testerTokens);
     }
 }

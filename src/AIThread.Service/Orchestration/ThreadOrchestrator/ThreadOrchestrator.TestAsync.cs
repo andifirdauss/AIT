@@ -7,16 +7,18 @@ namespace AIThread.Service.Orchestration;
 public sealed partial class ThreadOrchestrator
 {
     // Auto Testing: after verification the tester node checks the change on the running app the way the plan's test
-    // section says. Null when it does not run (off, no Tester node, nothing changed). A crash in here only costs the test.
+    // section says. Null when it does not run (off, no Tester node, nothing changed). testOnly: nothing was meant to
+    // change; the tester checks the existing behaviour. A crash in here only costs the test.
     private async Task<TestingResult?> TestAsync(
         Pipeline pipeline,
         ThreadPlan plan,
         ExecutionSummary execution,
         VerificationResult? verification,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool testOnly = false)
     {
         if (pipeline.Tester is not { } tester || plan.Test is not { } test) return null;
-        if (!execution.Results.Any(r => r.Status == ThreadTaskStatus.Succeeded)) return null;
+        if (!testOnly && !execution.Results.Any(r => r.Status == ThreadTaskStatus.Succeeded)) return null;
 
         var (recorder, progress) = (pipeline.Recorder, pipeline.Progress);
         var lastBuild = verification?.Report.Rounds.LastOrDefault(r => r.Build is not null)?.Build;

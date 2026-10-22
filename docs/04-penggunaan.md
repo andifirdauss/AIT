@@ -102,9 +102,11 @@ Output terdiri dari tiga bagian:
 | Fase / baris | Arti |
 |---|---|
 | `🧠 Planner` | Planner membaca kode. Entri pertama `🔖 Label` adalah hasil pencarian label sebelum model dipanggil: file yang disebut prompt beserta modul·layer-nya (maks. 4 ditampilkan), lalu jumlah memory yang ditemukan pencarian dua lapis untuk brief planner (lihat [Planner](07-cara-kerja.md#3-planner)). `dari sesi (thread …)` berarti prompt tidak menyebut file, jadi labelnya diambil dari thread AIT sebelumnya di chat ini. Entri berikutnya masing-masing satu panggilan tool (read-only); nama tool rata kiri agar argumennya sejajar. `run_build` tampil dua baris: perintahnya, lalu hasilnya di bawahnya. Saat thread dilanjutkan setelah pertanyaan planner, baris label tidak muncul lagi. |
+| `🧷 Pemulihan unit test` | Hanya bila test katalog project tidak ada di repository Anda: satu baris per test yang dipulihkan (dari snapshot, disisipkan kembali, atau ditulis ulang executor) dan catatan git. Lihat [Pemulihan](07-cara-kerja.md#pemulihan-test-yang-hilang). |
 | `📋 Rencana` | Ringkasan rencana, lalu satu entri per tugas: id, path relatif penuh, dependensi (`← T3` = menunggu T3), dan judul tugas di baris bawahnya. |
 | `🚀 Eksekusi` | Satu baris per tugas yang selesai, dalam kolom: status, id, durasi, executor, ringkasan. `✅` berhasil, `❌` gagal (dengan alasan), `⏩` dilewati karena tugas yang ditunggunya gagal, `🟡` node dialihkan ke cadangannya. Penutupnya menyebut waktu nyata dan, bila paralel memang menghemat waktu, berapa kali lebih cepat dari sekuensial. |
-| `🔍 Verifikasi` | AIT membuild project dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). `🔨` build gagal (error maks 5 baris), `🔎` temuan reviewer, `🔧 Perbaikan` = putaran tugas perbaikan `V1-1`, …, `🟡` peringatan. |
+| `🧪 Unit test · baseline` | Hanya dengan [katalog unit test](07-cara-kerja.md#unit-test): hasil test terkait sebelum perubahan (dijalankan paralel dengan planner, atau diambil dari hasil sebelumnya untuk kode yang sama). |
+| `🔍 Verifikasi` | AIT membuild project, menjalankan unit test terkait, dan/atau node Reviewer memeriksa hasil (lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer)). `🔨` build gagal (error maks 5 baris), `🔎` temuan reviewer, `✅`/`🔴 Unit test · 14 test · 12 lolos, 1 regresi` hasil unit test (test yang gagal di bawahnya), `🩺 Triase` node Tester mendiagnosis test yang gagal, `🔧 Perbaikan` = putaran tugas perbaikan `V1-1`, …, `🟡` peringatan. |
 | `🧪 Testing` | Hanya dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester): node Tester mencoba perubahan di aplikasi yang berjalan. Satu baris per tool (`browser_open`, `browser_fill  Deskripsi ← "AIT test"`, `http_request  POST /api/users`, …); di bawah `http_request` tampil status, durasi, dan awal body respons. `🌐` = browser tester dibuka (jendelanya muncul di layar), `🟡` = aplikasi tidak bisa dihubungi, `🔐` = tester butuh login. Penutupnya: `lolos 2/2 skenario`, `1 dari 3 skenario gagal`, atau *dilewati* beserta alasannya. |
 | `📦 Rangkuman` | Node Wrapper sedang menulis jawaban akhir. Tidak muncul bila tidak ada Wrapper aktif. |
 
@@ -112,10 +114,11 @@ Jawaban akhir disusun sebagian oleh AIT sendiri (dari hasil, bukan dari model) d
 
 | Bagian | Dibuat oleh | Isi |
 |---|---|---|
-| Baris status | AIT | `✅ Selesai` / `🟡 Selesai sebagian` / `❌ Gagal`, jumlah tugas rencana yang berhasil (tugas perbaikan `V` tidak dihitung), hasil build dan reviewer terakhir, dan hasil testing (`testing lolos`, `testing: 1 gagal`, …). Skenario testing yang gagal membuat status *Selesai sebagian*. |
-| **Perlu perhatian** | AIT | Hanya bila ada tugas gagal/dilewati atau error build/temuan reviewer yang tersisa. |
+| Baris status | AIT | `✅ Selesai` / `🟡 Selesai sebagian` / `❌ Gagal`, jumlah tugas rencana yang berhasil (tugas perbaikan `V` tidak dihitung), hasil build dan reviewer terakhir, hasil unit test (`unit test lolos (12)`, `unit test: 1 regresi`, …), dan hasil testing (`testing lolos`, `testing: 1 gagal`, …). Skenario testing yang gagal, regresi unit test, atau test baru yang gagal membuat status *Selesai sebagian*. Thread yang hanya menguji memakai `🧪 Pengujian selesai · tanpa perubahan kode`. |
+| **Perlu perhatian** | AIT | Hanya bila ada tugas gagal/dilewati, error build/temuan reviewer, atau unit test yang masih gagal. |
 | Teks | Wrapper | 1–3 kalimat tentang apa yang dikerjakan, saran untuk masalah yang tersisa, dan langkah lanjutan bila perlu. Tanpa node Wrapper (atau bila Wrapper gagal), ringkasan rencana yang tampil. |
 | **File berubah** | AIT | Satu baris per file dari diff: aksi (`baru`/`ubah`/`hapus`/`pindah`), baris `+`/`−`, dan tugas yang menyentuhnya. |
+| **🧪 Unit test** | AIT | Hanya bila unit test katalog dijalankan atau dipulihkan: ringkasan, lalu test yang perlu perhatian (maks 10) — `❌` regresi/gagal beserta pesannya, `✅` gagal sebelum perubahan dan sekarang lolos, `🟠` sudah gagal sebelum perubahan, `〰️` tidak stabil, `⏭️` dilewati beserta alasannya — test yang ditandai obsolete (`🗃️`, menunggu konfirmasi hapus), test yang dipulihkan (`♻️`), dan catatan. Test yang tetap lolos hanya dihitung. |
 | **🧪 Testing** | AIT | Hanya dengan Auto Testing: level, URL aplikasi, browser, ringkasan tester, `✅`/`❌`/`🚫` per skenario dengan penjelasannya, *Error di browser* (maks 5), lalu **Output API**: tiap request (maks 5) dengan status, durasi, dan body respons dalam blok kode (maks 30 baris / 2.000 karakter; selengkapnya di detail thread). Bila tester butuh login, ditutup dengan pertanyaan **🔐 Tester butuh login** — lihat [Login untuk testing](#login-untuk-testing). |
 | Footer | AIT | Durasi total, total token (planner + executor + reviewer + wrapper + ekstraksi memory), memory yang dipakai planner dan memory baru, antrian wiki bisnis (bila *Business memory* aktif), *Sisa kuota* provider, dan link ke halaman thread untuk detail & rollback. |
 
@@ -150,10 +153,13 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 
 ## Yang tidak dilakukan AIT
 
-- Tidak menjalankan unit test, migrasi, git yang mengubah repository (commit, checkout, merge, push), instalasi paket,
-  atau perintah shell lain. Satu-satunya perintah selain git read-only (status, diff, log, show, blame) adalah
-  **build** project (bila *Build & verifikasi otomatis* menyala): Anda bisa meminta "build lalu perbaiki errornya",
-  dan setelah tiap perubahan AIT membuild ulang sendiri. Langkah lain disebutkan di ringkasan.
+- Tidak menjalankan migrasi, git yang mengubah repository (commit, checkout, merge, push), instalasi paket (`npm
+  install`, `composer install`, restore manual), atau perintah shell lain. Perintah selain git read-only (status,
+  diff, log, show, blame) hanya **build** project (bila *Build & verifikasi otomatis* menyala) dan **unit test**
+  [katalog project](07-cara-kerja.md#unit-test) dengan runner yang dikenali (`dotnet test`, jest/vitest/mocha,
+  pytest, PHPUnit, Maven/Gradle, `go test`, `cargo test`). Anda bisa meminta "build lalu perbaiki errornya" atau
+  "jalankan unit test modul order", dan setelah tiap perubahan AIT membuild ulang dan menjalankan test terkait
+  sendiri. Langkah lain disebutkan di ringkasan.
 - Tidak menjalankan aplikasi Anda. Dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester), AIT hanya
   mencoba aplikasi yang **sudah berjalan** di localhost (browser dan request HTTP), dan tidak memperbaiki kode
   berdasarkan hasil testing.
@@ -222,6 +228,31 @@ Berguna bila aplikasinya belum jalan saat testing pertama atau perlu di-restart 
 field **username & password** opsional untuk aplikasi yang butuh login (dipakai sekali, tidak disimpan). Kemajuannya
 tampil di kartu *Testing* dan aktivitas thread (tidak di Claude Code).
 
+## Unit test project
+
+Bila project punya test (xUnit/NUnit/MSTest, jest/vitest/mocha, pytest, PHPUnit, JUnit, Go, Rust), thread pertama
+mendaftarkannya ke **katalog unit test** project, dan sejak itu setiap thread menjalankan test yang terkait dengan
+perubahannya sebelum dan sesudah mengubah kode. Test yang lolos sebelumnya lalu gagal (regresi) diperbaiki di
+**kode**, bukan dengan melemahkan test. Katalognya dipakai bersama semua developer project itu (lihat
+[Unit test](07-cara-kerja.md#unit-test)).
+
+Contoh prompt:
+
+| Prompt | Yang terjadi |
+|---|---|
+| *"Tambahkan diskon member di OrderService, buatkan unit test-nya"* | Planner merancang kasus test (judul, skenario, nilai), executor menulis kode dan file test paralel, AIT menjalankan test baru setelah build, dan test baru masuk katalog dengan nomor `UT-…`. Tanpa kata "unit test", test baru hanya dibuat bila setting project *Otomatis untuk perubahan logika bisnis*. |
+| *"Jalankan semua unit test"*, *"jalankan test modul order"* | Tanpa perubahan kode: AIT menjalankan test lalu Wrapper menjelaskan hasilnya. |
+| *"Kenapa UT-0012 gagal? perbaiki"* | Planner menjalankan test itu lewat `run_tests`, membaca kodenya, lalu merencanakan perbaikan. |
+| *"Hapus fitur export PDF"* | Test yang menguji fitur itu ditandai *obsolete* beserta alasannya dan tidak dijalankan lagi. Konfirmasi hapusnya di Project > Detail → Unit test. |
+
+- Test katalog yang belum ada di repository Anda (dibuat developer lain dan belum Anda pull, atau terhapus) dipulihkan
+  otomatis sebelum planner berjalan dan muncul sebagai file baru di `git status`. Commit file itu, atau bila memang
+  sengaja dihapus, tandai test-nya obsolete.
+- Test yang butuh database, jaringan, atau config yang tidak ada di mesin Anda tampil *dilewati* dengan alasannya,
+  tidak dianggap gagal.
+- Dengan node **Tester** aktif, test yang gagal didiagnosis dulu (kode yang salah, test baru yang salah, atau
+  lingkungan) sebelum diperbaiki. Tanpa Tester, AIT langsung memperbaiki kode yang diuji test itu.
+
 ## Membatalkan perubahan file (rollback)
 
 Detail thread → **↩ Batalkan perubahan file** mengembalikan semua file yang diubah thread ini ke keadaan sebelum
@@ -245,11 +276,15 @@ Cara kerjanya:
    file yang disentuh**. Kembalikan file itu secara manual (mis. lewat git), atau batalkan dulu thread yang lebih baru,
    lalu coba lagi.
 5. Setelah berhasil, status thread menjadi *Perubahan dibatalkan*. Thread itu tidak bisa diulang atau dibatalkan lagi.
+   Di [katalog unit test](07-cara-kerja.md#unit-test), test baru yang ditambahkan thread itu dihapus dan test yang
+   ditandai obsolete olehnya kembali aktif.
 
 Batasan:
 
 - Hanya bisa saat thread tidak sedang berjalan.
-- Hanya mencakup file yang ditulis, dihapus, atau dipindahkan AIT, bukan perubahan lain (mis. output build).
+- Hanya mencakup file yang ditulis, dihapus, atau dipindahkan AIT, bukan perubahan lain (mis. output build). Test yang
+  [dipulihkan otomatis](07-cara-kerja.md#pemulihan-test-yang-hilang) sebelum planner juga tidak ikut dibatalkan: itu
+  bukan bagian dari permintaan.
 - Folder yang menjadi kosong setelah file buatan thread dihapus ikut dihapus.
 - Thread yang berjalan sebelum fitur ini ada tidak punya catatan, jadi tidak bisa dibatalkan.
 
@@ -302,6 +337,11 @@ menjelaskannya di jawaban dan tidak membuat tugas. Untuk mengerjakan project lai
 
 Setiap giliran, AIT mengirim ke planner hingga 12 pesan terakhir percakapan (dipotong bila panjang) dan indeks
 memory project. Jadi "sekarang tambahkan juga di halaman detail" bisa dipahami tanpa mengulang konteks.
+
+Planner juga melihat file yang sudah diubah thread-thread sebelumnya di chat ini, per modul. *"Test perubahan ini"* atau
+*"review yang tadi"* mengacu ke perubahan itu, bukan ke perubahan dari tab Claude Code lain di folder yang sama. Bila
+chat ini sudah mengubah beberapa modul, planner menanyakan modul mana (atau semua) — lihat
+[Merujuk perubahan sebelumnya](07-cara-kerja.md#merujuk-perubahan-sebelumnya).
 
 Sesekali planner balik bertanya, misalnya bila permintaan bisa ditafsirkan dua cara yang hasilnya berbeda jauh.
 Balasan AIT lalu berupa pertanyaan bernomor (status thread *Menunggu jawaban*); ketik nomor pilihan atau jawaban
