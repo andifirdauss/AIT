@@ -96,6 +96,29 @@ public static partial class FinalReport
     //   - ✅ **Tambah user** — tersimpan, status 201
     //   **Output API**
     //   `POST /api/users` → **201 Created** · 35 ms  + the body in a code block
+    // The tester's suggestions, with the result of the ones already run:
+    //   **🧭 Test lanjutan yang disarankan**
+    //   1. **Approve level 1 oleh atasan** — status harus Menunggu HR · `atasan01` · ✅ lolos
+    // and how to run one. Null when there are none.
+    public static string? FollowUps(TestingReport report)
+    {
+        if (report.FollowUps.Count == 0) return null;
+        var builder = new StringBuilder("\n**🧭 Test lanjutan yang disarankan**\n\n");
+        foreach (var followUp in report.FollowUps)
+        {
+            builder.Append($"{followUp.Number}. **{OneLine(followUp.Title)}**");
+            if (followUp.Why is not null) builder.Append(" — ").Append(OneLine(followUp.Why));
+            var actors = followUp.Scenarios.Select(s => s.Actor).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (actors.Count > 0) builder.Append(" · ").Append(string.Join(", ", actors.Select(Code)));
+            if (followUp.LastRun is { } run) builder.Append(" · ").Append(TestingLabel(run));
+            builder.Append('\n');
+            if (followUp.Needs is not null) builder.Append("   Perlu: ").Append(OneLine(followUp.Needs)).Append('\n');
+        }
+        builder.Append($"\nJalankan dengan membalas `jalankan test lanjutan <nomor>` (mis. `jalankan test lanjutan {report.FollowUps[0].Number}`), " +
+                       "atau tombol di halaman thread. Test lanjutan membuat data sungguhan seperti testing biasa.\n");
+        return builder.ToString();
+    }
+
     public static string Testing(TestingReport report)
     {
         var builder = new StringBuilder("\n\n**🧪 Testing**");
@@ -166,6 +189,8 @@ public static partial class FinalReport
             if (report.Requests.Count > MaxReportedRequests)
                 builder.Append($"\n… {report.Requests.Count - MaxReportedRequests} request lain ada di halaman thread.\n");
         }
+
+        if (FollowUps(report) is { } followUps) builder.Append(followUps);
 
         // Last, so the question is what the developer reads at the end of the answer.
         if (report.LoginNeeded is not null)

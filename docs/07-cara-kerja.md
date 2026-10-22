@@ -677,6 +677,28 @@ akun uji ber-peran admin (password dev), lalu pakai *cara* login as untuk masuk 
 dan login biasa. Peran dicocokkan tanpa peka huruf besar/kecil. SSO (Microsoft/Google) di luar cakupan: skenario yang
 membutuhkannya ditandai *tidak bisa dicek* dengan alasan.
 
+### Test lanjutan dan nilai antar langkah
+
+Setelah testing, Tester bisa **menyarankan test lanjutan** untuk alur yang belum selesai: approve per level, edit atau
+batal sebelum approve, reject lalu ajukan ulang, notifikasi yang mengikuti. Saran tidak dijalankan otomatis, karena bisa
+membuat data sungguhan.
+
+- `report_test` mendapat `follow_ups` (maks 5 per run): judul, alasan, `needs` (yang harus disiapkan developer, mis.
+  *akun dengan peran HR*), dan skenario dengan aktor. Jawaban akhir menampilkan **🧭 Test lanjutan yang disarankan**
+  bernomor, beserta aktor, kebutuhan, dan hasil run terakhirnya.
+- **Menjalankan**: balas `jalankan test lanjutan <nomor>` (juga `test lanjutan #1`, `lanjut test 2`, `run follow-up 3`)
+  di chat yang sama. AIT mencari thread terbaru sesi itu yang punya saran bernomor itu. Atau pakai tombol
+  **Jalankan** di kartu Testing halaman thread (`POST /api/threads/{id}/follow-ups/{number}/run`).
+- Run test lanjutan = testing ulang thread itu dengan skenario dari saran, tanpa planner dan tanpa mengubah kode, memakai
+  akun uji project. Hasilnya disimpan **di saran itu** (laporan utama thread tetap), dan saran baru dari run itu
+  ditambahkan dengan nomor berikutnya (maks 20 per thread). Jadi alur bisa berlanjut langkah demi langkah: submit →
+  approve level 1 → approve level 2.
+- **Nilai antar langkah**: tool tester `remember(name, value)` menyimpan nilai yang ditampilkan aplikasi (mis. nomor
+  dokumen `REQ-0123` sebagai `requestNo`). Langkah berikutnya dan test lanjutan menulis `{{requestNo}}`, dan AIT mengisi
+  nilainya. Nilai ikut tersimpan di thread (maks 30, `username`/`password`/`target` dicadangkan), tampil di kartu
+  Testing, dan dibawa ke *Ulangi testing* serta test lanjutan.
+- Thread yang hanya menguji (tanpa tugas) sekarang juga bisa diulang testing-nya dan dijalankan test lanjutannya.
+
 ### Hasil
 
 *Lolos* (tidak ada skenario gagal dan minimal satu lolos), *Gagal* (ada skenario gagal), *Tidak bisa dicek* (tidak ada

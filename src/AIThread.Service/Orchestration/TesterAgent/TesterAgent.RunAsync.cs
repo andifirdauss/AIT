@@ -19,6 +19,7 @@ public sealed partial class TesterAgent
             Scenarios = test.Scenarios.Select(s => new TestScenarioResult { Title = s.Title }).ToList()
         };
         using var http = CreateClient();
+        foreach (var (name, value) in input.Values ?? new Dictionary<string, string>()) report.Values[name] = value;
         using var run = new TestRun(input, report, http, secrets);
         run.Accounts = await AccountsAsync(input.Project, cancellationToken);
         try
@@ -84,6 +85,7 @@ public sealed partial class TesterAgent
             if (result.ToolCalls.FirstOrDefault(c => c.Name == TesterTools.ReportTest) is { } verdict)
             {
                 ApplyVerdict(run.Report, verdict.Arguments);
+                ApplyFollowUps(run.Report, verdict.Arguments);
                 await ObserveImpersonationAsync(verdict.Arguments, run, recorder, cancellationToken);
                 return Done(run, tokens, node);
             }

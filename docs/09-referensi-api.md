@@ -210,6 +210,7 @@ disimpan per project key.
 | `POST` | `/api/threads/{id}/cancel` | — |
 | `POST` | `/api/threads/{id}/retry` | — → id thread. Menjalankan ulang tugas rencana yang belum berhasil di belakang (tanpa planner). 400 bila thread sedang berjalan, sudah di-rollback, atau tidak ada yang perlu diulang. |
 | `POST` | `/api/threads/{id}/test` | `{ "username"?: "...", "password"?: "..." }` (opsional; login untuk testing ini, tidak disimpan) → id thread. Menjalankan ulang Auto Testing dari rencana testing tersimpan di belakang (kode tidak diubah). 400 bila hanya satu dari username/password diisi, thread sedang berjalan, belum *Selesai*, sudah di-rollback, tidak punya rencana testing UI/API, atau tidak ada node Tester aktif. |
+| `POST` | `/api/threads/{id}/follow-ups/{number}/run` | — → id thread. Menjalankan satu test lanjutan yang disarankan Tester (bagian `followUps` di `testingJson`) di belakang: skenario saran itu, akun uji project, nilai yang diingat (`values`). Hasilnya di `followUps[].lastRun`; saran baru dari run itu ditambahkan. 400 dengan alasan yang sama seperti `/test`, atau bila nomor saran tidak ada. |
 | `GET` | `/api/threads/{id}/rollback` | — → pratinjau `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Tidak mengubah apa pun. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. Semua atau tidak sama sekali: 400 tanpa menyentuh file bila ada `conflict`. |
 | `GET` | `/api/dashboard/summary` | — |
