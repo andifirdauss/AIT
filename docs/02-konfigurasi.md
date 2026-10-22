@@ -258,9 +258,12 @@ Yang perlu disiapkan:
 - Tambah node ber-role **Tester** (model yang mendukung *tool calling*; default max paralel 1) lalu nyalakan
   *Auto Testing* di node Planner. Tanpa node Tester aktif, banner pipeline memberi catatan dan testing dilewati. Node
   yang sama menilai unit test yang gagal, jadi pakai model kuat (preset `AIT Tester` di Setup).
-- **Jalankan aplikasinya** sebelum prompt (mis. `dotnet watch`, `npm run dev`): AIT tidak menjalankan aplikasi Anda.
-  Bila aplikasi tidak menjawab, testing berakhir *tidak bisa dicek* dan bisa diulang lewat **🧪 Ulangi testing** di detail
-  thread.
+- **Aplikasi yang belum jalan dijalankan AIT** untuk testing itu, lalu dihentikan lagi setelahnya: project ASP.NET Core
+  (`dotnet run --urls <baseUrl>`), Laravel (`php artisan serve`), atau script `dev`/`start`/`serve` di `package.json`.
+  Untuk stack lain, atau bila perintahnya khusus, tulis di `.aithread/project.json` (di-commit tim):
+  `{ "run": "docker compose up web" }`. Aplikasi yang sudah Anda jalankan sendiri (mis. `dotnet watch`) dipakai apa
+  adanya dan tidak dihentikan. Bila aplikasi tetap tidak menjawab, testing berakhir *tidak bisa dicek* dan bisa diulang
+  lewat **🧪 Ulangi testing** di detail thread. Lihat [Menjalankan aplikasi](07-cara-kerja.md#menjalankan-aplikasi).
 - Login: tidak perlu disiapkan. Bila aplikasi meminta login, tester **bertanya di chat**; balas
   `login <username> <password>` (akun uji) dan testing dijalankan lagi. Password tidak disimpan ke disk, tidak dikirim ke
   model, dan diingat selama sesi chat itu. Untuk thread dari Dashboard/Telegram, isi di modal **🧪 Ulangi testing**.

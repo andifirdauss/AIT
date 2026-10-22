@@ -499,9 +499,10 @@ untuk rencana yang mengubah file. Di situ planner menilai **seperti apa perubaha
    gagal (aplikasi belum bisa memuat perubahan). Tidak berjalan sama sekali bila tidak ada tugas yang berhasil (kecuali
    thread yang hanya menguji).
 2. **Cek aplikasi**: sebelum memanggil model, AIT mengirim `GET` ke `baseUrl` (5 detik). Respons apa pun (juga 404 atau
-   redirect ke login) berarti aplikasinya berjalan. Tanpa respons, semua skenario *tidak bisa dicek* tanpa token
-   terpakai, dengan pesan untuk menjalankan aplikasinya dulu. **AIT tidak menjalankan aplikasi Anda**: jalankan sendiri
-   (mis. `dotnet watch`, `npm run dev`); hot reload membuat perubahan executor langsung termuat.
+   redirect ke login) berarti aplikasinya berjalan. Tanpa respons, **AIT menjalankan aplikasinya** (lihat
+   [Menjalankan aplikasi](#menjalankan-aplikasi)) dan menunggu sampai `baseUrl` menjawab. Bila tetap tidak menjawab,
+   semua skenario *tidak bisa dicek* tanpa token terpakai, dengan alasannya (perintah tidak dikenali, exit code dan
+   output terakhir, atau batas waktu).
 3. **Tester** bekerja dalam loop tool-nya sendiri (maks 40 langkah). Ia melihat permintaan, ringkasan rencana, kontrak,
    diff tiap tugas yang berhasil (maks 80 baris per tugas), dan rencana testing — bukan kode lain. Tool-nya:
 
@@ -523,6 +524,33 @@ untuk rencana yang mengubah file. Di situ planner menilai **seperti apa perubaha
 4. **Progres** di CLI: fase `🧪 Testing · UI · http://localhost:5000 · model`, satu baris per tool (mis.
    `browser_fill  Deskripsi ← "AIT test"`), dan untuk `http_request` status, durasi, content type, serta 8 baris pertama
    body respons di bawahnya.
+
+### Menjalankan aplikasi
+
+Bila `baseUrl` tidak menjawab, AIT menjalankan aplikasinya sendiri untuk testing itu (`Testing/AppLaunchResolver` +
+`AppLauncher`). Perintahnya tetap per stack dan tidak pernah dari model:
+
+| Urutan | Kondisi | Perintah |
+|---|---|---|
+| 1 | `.aithread/project.json` punya `"run"`, mis. `{ "key": "eep", "run": "npm run dev:all" }` | perintah itu, lewat `cmd /c` (Windows) atau `sh -c`, di root project |
+| 2 | Project ASP.NET Core (`Microsoft.NET.Sdk.Web`): yang `Properties/launchSettings.json`-nya memakai port `baseUrl`, atau satu-satunya | `dotnet run --project <csproj> --no-launch-profile --urls <origin baseUrl>` di folder project |
+| 3 | Laravel (`artisan` di root) | `php artisan serve --host=<host> --port=<port>` |
+| 4 | `package.json` (yang paling dangkal) dengan script `dev`, `start`, atau `serve` | `npm run <script>`; `node_modules` harus sudah ada |
+
+- Environment tambahan: `PORT`, `ASPNETCORE_URLS` (origin `baseUrl`), `ASPNETCORE_ENVIRONMENT`/`DOTNET_ENVIRONMENT` =
+  `Development`, `BROWSER=none`. Dev server yang tidak membaca `PORT` (mis. vite) tetap memakai port dari konfigurasinya;
+  planner mengambil `baseUrl` dari konfigurasi yang sama.
+- AIT menunggu sampai `baseUrl` menjawab (dicek tiap detik, maks 3 menit, karena `dotnet run` membuild dulu). Proses
+  yang berhenti sebelum menjawab dilaporkan dengan exit code dan output terakhirnya; yang tidak menjawab dalam 3 menit
+  dihentikan. Bila aplikasi lain sempat menjawab di URL itu (dijalankan developer atau thread lain), aplikasi itu yang
+  dipakai.
+- Progres: `🚀 Aplikasi belum jalan, AIT menjalankannya: …` lalu `🟢 Aplikasi menjawab di …`. Laporan testing (jawaban
+  akhir dan detail thread) menyebut *dijalankan AIT* beserta perintahnya.
+- Setelah testing (juga bila dibatalkan) proses itu dihentikan beserta semua proses turunannya. Aplikasi yang sudah
+  berjalan sebelum testing tidak pernah dihentikan.
+- Tidak didukung otomatis: project .NET Framework lama (IIS Express), beberapa project web .NET tanpa port yang cocok,
+  dan stack lain (Python, Go, Java, Docker, …). Pakai `"run"` di `.aithread/project.json` atau jalankan sendiri. Untuk
+  perubahan yang langsung termuat, `dotnet watch`/dev server yang Anda jalankan sendiri tetap paling cepat.
 
 ### Browser tester
 
