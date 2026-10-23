@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using AIThread.Common.Options;
 using AIThread.Service.Interfaces;
@@ -27,6 +29,9 @@ public sealed partial class SecretGuard(IDataProtectionProvider dataProtection, 
 {
     private const int MaxVaultEntries = 50_000;
     private const int MaxDistinctive = 5_000;
+
+    // Re-serialized tool call arguments read like the model wrote them (no < for "<").
+    private static readonly JsonSerializerOptions ArgumentsJson = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private readonly ConcurrentDictionary<string, string> _values = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, string> _distinctive = new(StringComparer.Ordinal);

@@ -8,6 +8,21 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.8
+
+- **Secret tidak lagi sampai ke model**: password, API key, token, JWT, private key, serta password di connection string
+  dan URL diganti placeholder `{{AIT_SECRET:<label>:<id>}}` sebelum dikirim ke model, termasuk request passthrough CLI
+  lain. Prompt, riwayat chat, log aktivitas, memory, wiki bisnis, dan file export memory juga disamarkan sebelum
+  disimpan. Nilai aslinya hanya ada di memori AIT dan dipasang kembali saat executor menulis file, Tester memanggil
+  aplikasi, atau Claude Code menjalankan Edit/Write/Bash (lewat hook).
+- **File kredensial diblokir**: kunci, sertifikat, kunci SSH, file token, dan folder kredensial di profil Windows tidak
+  dibaca atau diubah agen AIT. Aturan tambahan per project (`deny`, `allow`, `keys`) ada di bagian `"secrets"` pada
+  `.aithread/project.json`.
+- Setting → *Keamanan & privasi* untuk menyalakan/mematikan penyamaran beserta hitungannya, dan popup penjelasan saat AIT
+  pertama kali dibuka.
+- Perbaikan: error 9router `tool_use.input: Input should be an object` saat tool call menulis file yang berisi
+  connection string (argumen tool call kini disamarkan per nilai, jadi JSON-nya tetap utuh).
+
 ## Yang baru di 1.7.6
 
 - **Background job dan function dicek dengan unit test dry-run**: perubahan di scheduler, job Hangfire/Quartz, hosted

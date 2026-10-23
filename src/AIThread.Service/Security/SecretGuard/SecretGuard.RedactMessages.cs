@@ -26,7 +26,7 @@ public sealed partial class SecretGuard
             if (message["tool_calls"] is not JsonArray calls) continue;
             foreach (var function in calls.OfType<JsonObject>().Select(c => c["function"]).OfType<JsonObject>())
                 if (function["arguments"] is JsonValue arguments && arguments.TryGetValue<string>(out var json))
-                    function["arguments"] = Redact(json);
+                    function["arguments"] = RedactArguments(json);
         }
     }
 }
