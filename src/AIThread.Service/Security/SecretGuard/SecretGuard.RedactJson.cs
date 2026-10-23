@@ -30,7 +30,8 @@ public sealed partial class SecretGuard
                     foreach (var key in obj.Select(p => p.Key).ToList())
                     {
                         if (UntouchedFields.Contains(key)) continue;
-                        if (obj[key] is JsonValue value && value.TryGetValue<string>(out var text)) obj[key] = Masked(text);
+                        if (obj[key] is JsonValue value && value.TryGetValue<string>(out var text))
+                            obj[key] = key == "arguments" ? Masked(text, RedactArguments) : Masked(text);
                         else if (obj[key] is { } child) Walk(child);
                     }
                     break;
@@ -44,9 +45,10 @@ public sealed partial class SecretGuard
             }
         }
 
-        JsonNode Masked(string text)
+        // "arguments" of an OpenAI tool call is JSON text and has to stay JSON.
+        JsonNode Masked(string text, Func<string, string>? redact = null)
         {
-            var masked = Redact(text);
+            var masked = (redact ?? Redact)(text);
             if (!string.Equals(masked, text, StringComparison.Ordinal)) changed++;
             return JsonValue.Create(masked);
         }
