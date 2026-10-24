@@ -125,6 +125,30 @@ public class NineRouterServiceTests
         Assert.DoesNotContain("{", ex.Message);
     }
 
+    [Theory]
+    [InlineData("stop", "tanpa teks dan tanpa tool call")]
+    [InlineData("length", "max tokens")]
+    public async Task Empty_reply_is_a_provider_failure_without_retrying_that_allows_fail_over(string finish, string reason)
+    {
+        var calls = 0;
+        var handler = new StubHandler(_ =>
+        {
+            calls++;
+            return Json(HttpStatusCode.OK, $"{{\"choices\":[{{\"message\":{{\"content\":\"\"}},\"finish_reason\":\"{finish}\"}}]}}");
+        });
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance);
+
+        var ex = await Assert.ThrowsAsync<NineRouterException>(() =>
+            router.ChatAsync(new ChatCompletionRequest { Model = "csi/empty-model", Messages = [ChatMessages.User("hi")] }));
+
+        Assert.Equal(1, calls);
+        Assert.True(ex.IsEmptyReply);
+        Assert.False(ex.IsTransient);
+        Assert.True(ex.IsModelUnavailable);
+        Assert.Contains("'csi/empty-model' mengembalikan jawaban kosong", ex.Message);
+        Assert.Contains(reason, ex.Message);
+    }
+
     [Fact]
     public async Task Prompt_cache_key_is_sent_and_dropped_for_a_model_whose_provider_rejects_it()
     {

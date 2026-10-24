@@ -8,6 +8,20 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.9
+
+- **Ulangi tugas yang gagal dari chat**: bila provider gangguan (mis. `upstream_503`), balas `ulangi` (juga `coba lagi`,
+  `retry`). AIT menjalankan lagi tugas yang belum berhasil dari thread terakhir di chat itu dengan rencana yang sama,
+  tanpa memanggil planner, dan jawaban yang masih punya tugas gagal menuliskan petunjuknya. Pesan yang diketik saat
+  giliran sebelumnya masih berjalan kini dibaca sebagai teks aslinya.
+- **Jawaban kosong dari model = error provider**: model yang menjawab tanpa teks dan tanpa tool call dilaporkan dengan
+  jelas dan langsung beralih ke node cadangan, bukan berakhir sebagai `No valid SEARCH/REPLACE block`. *Test* di menu
+  Node juga menandainya gagal.
+- **Planner lebih cepat**: tools node mendapat peta folder project, pertanyaan investigasi dikirim paralel per area
+  dengan temuan yang lebih ringkas, dan progres menampilkan waktu tiap giliran model serta pembagian waktu planner
+  (model, tool, antre).
+- Dokumentasi integrasi kini berlaku untuk semua CLI (Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, oh-my-pi).
+
 ## Yang baru di 1.7.8
 
 - **Secret tidak lagi sampai ke model**: password, API key, token, JWT, private key, serta password di connection string

@@ -1,17 +1,19 @@
 # AIT
 
-Proxy untuk Claude Code yang memecah satu permintaan menjadi tugas-tugas sangat kecil:
+Proxy lokal untuk CLI coding (Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, oh-my-pi, …) yang memecah satu
+permintaan menjadi tugas-tugas sangat kecil:
 **planner** (model paling cerdas) merencanakan, banyak **executor** (model murah) mengerjakan secara paralel,
 AIT membuild project, menjalankan **unit test** project yang terkait (katalog bersama per project; regresi diperbaiki
 di kode) dan (opsional) **reviewer** memeriksa hasilnya sampai lolos, (opsional) **tester** mencoba perubahannya di
 aplikasi yang berjalan — UI lewat browser Playwright yang tampil, API lewat request HTTP — lalu **wrapper** merangkum
 hasilnya untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
 
-> **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** — instalasi, konfigurasi, integrasi Claude Code,
+> **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** — instalasi, konfigurasi, integrasi CLI,
 > penggunaan sehari-hari, memory, cara kerja, troubleshooting, dan referensi API.
 
 ```
-Claude Code ──(ANTHROPIC_BASE_URL)──► AIT /v1/messages
+CLI (Claude Code, Codex, Gemini CLI, …) ──(base URL)──► AIT /v1/messages · /v1/chat/completions
+                                                           /v1/responses · /v1beta/models/*
                                           │
                   ┌───────────────────────┴───────────────────────┐
                   │ Planner (tool loop read-only + run_build/tests)│
@@ -32,7 +34,7 @@ Claude Code ──(ANTHROPIC_BASE_URL)──► AIT /v1/messages
                   Testing (Auto Testing, opsional): Tester → localhost
                      UI: browser Playwright non-headless · API: http_request + output
                                           ▼
-                               Wrapper → balasan ke Claude Code (streaming)
+                               Wrapper → balasan ke CLI (streaming, format CLI itu)
                                           ▼
                           Memory extractor → short memory (Garnet)
 ```
@@ -96,7 +98,10 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    - Reviewer (opsional): model yang teliti; memeriksa hasil executor terhadap rencana, kontrak, dan hasil build.
    - Tester (wajib bila project punya unit test atau memakai Auto Testing): model kuat dengan *tool calling*; menilai unit test yang gagal setelah perubahan (regresi, test salah, lingkungan, tidak stabil) — lihat [docs/07-cara-kerja.md](docs/07-cara-kerja.md#unit-test) — dan, dengan *Auto Testing* di Edit node Planner, mencoba perubahan di aplikasi yang sedang berjalan (UI lewat browser non-headless, API lewat HTTP) — lihat [docs/02-konfigurasi.md](docs/02-konfigurasi.md#auto-testing-node-tester).
    - Tools Node (opsional): model murah dengan *tool calling*; di Edit node Planner, tool yang boros (mis. `read_file`, `search_text`) bisa didelegasikan ke sini agar output mentahnya tidak membebani token planner — lihat [docs/02-konfigurasi.md](docs/02-konfigurasi.md#tools-node-planner).
-3. Menu **CLI** → kartu *Claude Code* → nyalakan switch *Per project* (disarankan) atau *Global*. Untuk Claude Code, ini menulis blok `env` ke `.claude/settings.local.json` (atau `~/.claude/settings.json`):
+3. Menu **CLI** → pilih kartu CLI Anda (Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, oh-my-pi) → nyalakan
+   switch *Per project* (bila tersedia) atau *Global*. Tiap kartu menulis entri AIT ke file konfigurasi CLI itu —
+   lihat [Integrasi CLI](docs/03-integrasi-cli.md). Contoh untuk Claude Code, blok `env` di
+   `.claude/settings.local.json` (atau `~/.claude/settings.json`):
 
    ```json
    {
@@ -109,13 +114,13 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    }
    ```
 
-   Backup file asli disimpan sekali sebagai `*.aithread-backup`; tombol *Kembalikan* menghapus kunci-kunci di atas.
-   CLI lain punya kartunya sendiri di menu yang sama: oh-my-pi, Codex CLI (`codex --profile aithread`), Gemini CLI,
-   opencode, dan Qwen Code — lihat [Klien lain](docs/03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll).
-4. Buka sesi Claude Code baru di project tersebut dan beri perintah seperti biasa. Progres (tool planner, rencana,
-   status tiap tugas) tampil di Claude Code; detail lengkap ada di Dashboard → thread.
+   Backup file asli disimpan sekali sebagai `*.aithread-backup`; mematikan switch menghapus entri AIT saja.
+   Codex dipakai lewat `codex --profile aithread`; oh-my-pi, opencode, dan Qwen Code lewat pilihan model AIT.
+4. Buka sesi CLI baru di project tersebut dan beri perintah seperti biasa. Progres (tool planner, rencana,
+   status tiap tugas) tampil di CLI; detail lengkap ada di Dashboard → thread.
 
-Gunakan URL **http** untuk proxy: Claude Code (Node) tidak mempercayai sertifikat development ASP.NET Core.
+Gunakan URL **http** untuk proxy: CLI berbasis Node (mis. Claude Code) tidak mempercayai sertifikat development
+ASP.NET Core.
 
 ## Menu
 
@@ -143,17 +148,17 @@ ditarik ke gudang lokal (offline). Di modal **Node**, tulis kebutuhan ("aku butu
 handal") lalu klik *Cari skill*. Skill yang cocok dicentang dan ditempel ke node, dan isinya ikut masuk ke system
 prompt node setiap kali node dipanggil. Detail: [docs/07-cara-kerja.md](docs/07-cara-kerja.md#skill-pada-node).
 
-## Cara request Claude Code diperlakukan
+## Cara request CLI diperlakukan
 
-`POST /v1/messages` diorkestrasi bila request punya `tools`, system prompt Claude Code, pesan terakhir adalah
-teks user (bukan `tool_result`), **dan sesinya berasal dari sebuah project (folder dengan `.git` atau file build)**. Request pendukung lain (judul
-sesi, compact, cek kuota) dan semua prompt dari sesi di luar project diteruskan apa adanya ke `/v1/messages` 9router
-memakai *model passthrough* (default: model node Wrapper). Mematikan *Orkestrasi aktif* membuat AIT menjadi
-proxy biasa.
+Request dari CLI mana pun (format Anthropic, OpenAI, atau Gemini) diorkestrasi bila punya `tools`, pesan terakhir
+adalah teks user (bukan hasil tool), **dan sesinya berasal dari sebuah project (folder dengan `.git` atau file
+build)**. Request pendukung lain (judul sesi, compact, cek kuota) dan semua prompt dari sesi di luar project
+diteruskan apa adanya ke endpoint 9router yang sama memakai *model passthrough* (default: model node Wrapper).
+Mematikan *Orkestrasi aktif* membuat AIT menjadi proxy biasa.
 
-Pengecekan dilakukan per sesi Claude Code (keputusan diingat 30 menit). Project = folder root yang berisi `.git`
+Pengecekan dilakukan per sesi CLI (keputusan diingat 30 menit). Project = folder root yang berisi `.git`
 atau file build (`.sln`, `pom.xml`, `package.json`, `go.mod`, …), dicari dari working directory sesi (header
-`X-AIThread-Cwd` atau baris `Primary working directory:`) naik ke folder induknya hingga 6 tingkat, tidak pernah ke
+`X-AIThread-Cwd` atau baris working directory yang dikirim CLI, mis. `Primary working directory:`) naik ke folder induknya hingga 6 tingkat, tidak pernah ke
 sub-folder; header `X-AIThread-Project` bisa menunjuk folder rootnya langsung. Ditemukan → project didaftarkan otomatis
 pada prompt pertama. Tidak ada marker (mis. folder kosong) atau folder induk berisi beberapa project → sesi
 diabaikan: tanpa orkestrasi, tanpa memory.
@@ -180,7 +185,9 @@ diabaikan: tanpa orkestrasi, tanpa memory.
 
 ## API & SSE
 
-- Proxy Anthropic: `POST /v1/messages`, `POST /v1/messages/count_tokens`, `GET /v1/models`
+- Proxy CLI: Anthropic `POST /v1/messages`, `POST /v1/messages/count_tokens`, `GET /v1/models`; OpenAI
+  `POST /v1/chat/completions`, `POST /v1/responses`; Gemini `POST /v1beta/models/{model}:generateContent` /
+  `:streamGenerateContent`
 - SSE: `GET /api/stream?types=log,router,thread` (prefix tipe event) atau `GET /api/stream?threadId={id}`.
   Event: `log`, `router.status`, `thread.created|updated|output`, `task.updated|output`, `memory.changed`, `project.changed`, `node.changed`, `telegram.changed`, `skill.changed`, `business.changed`, `ping`.
 - REST: `/api/settings`, `/api/router`, `/api/nodes`, `/api/projects`, `/api/memory`, `/api/business`, `/api/threads`, `/api/dashboard`, `/api/telegram`, `/api/skills`.
