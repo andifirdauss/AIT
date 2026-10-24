@@ -86,6 +86,7 @@ public sealed partial class TesterAgent
         if (exchange.ContentType is not null) answer.Append($"Content-Type: {exchange.ContentType}\n");
         if (exchange.Location is not null) answer.Append($"Location: {exchange.Location}\n");
         answer.Append('\n').Append(string.IsNullOrEmpty(responseText) ? "(empty body)" : Clip(responseText, MaxResponseChars));
+        if (ResponseHint(method, url.AbsolutePath, exchange.Status, responseText, run.Routes) is { } hint) answer.Append("\n\n").Append(hint);
         return answer.ToString();
     }
 

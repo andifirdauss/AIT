@@ -80,8 +80,8 @@
                 <win-controls for="alert" />
                 <div class="update-notes">
                     <div class="update-note">
-                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Akun uji, Tester multi-user, test lanjutan, dan skenario Excel (1.7.7) kini ada bersama</strong> <code>ulangi</code> dari chat, penanganan jawaban kosong model, dan penyamaran secret (1.7.8–1.7.9) dalam satu versi.
-                        <a href="~/Docs/07-cara-kerja#akun-uji-berganti-user" class="alert-link ms-2">Detail →</a>
+                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Tester tidak lagi menebak URL API</strong>: path endpoint dibaca dari atribut route di kode (<code>[controller]</code> = nama class tanpa <em>Controller</em>, jadi <code>OutletUnionApiController</code> → <code>/OutletUnionApi</code>), target skenario yang salah eja dikoreksi otomatis, dan setelah 404 Tester diberi route terdekat atau dokumen OpenAPI dari Swagger UI, bukan berakhir <em>blocked</em>. Akun uji, Tester multi-user, test lanjutan, dan skenario Excel (1.7.7) kini juga ada bersama <code>ulangi</code> dari chat dan penyamaran secret (1.7.8–1.7.9).
+                        <a href="~/Docs/07-cara-kerja#endpoint-dari-kode" class="alert-link ms-2">Detail →</a>
                     </div>
                     <div class="update-more" id="updateMore" hidden>
                         <div class="update-note">
