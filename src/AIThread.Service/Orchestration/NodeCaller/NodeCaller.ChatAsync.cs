@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Service.Models;
 
@@ -18,6 +19,8 @@ public sealed partial class NodeCaller
         var visited = new HashSet<Guid>();
         var current = node;
         var streamed = false;
+        var clock = Stopwatch.StartNew();
+        var queued = TimeSpan.Zero;
         Func<string, Task>? relay = onDelta is null ? null : delta =>
         {
             streamed = true;
@@ -30,9 +33,13 @@ public sealed partial class NodeCaller
             try
             {
                 var request = await build(current);
-                if (slotHeld && current.Id == node.Id) return new NodeReply(await router.ChatAsync(request, relay, cancellationToken), current);
+                if (slotHeld && current.Id == node.Id) return Reply(await router.ChatAsync(request, relay, cancellationToken));
+                var waiting = Stopwatch.StartNew();
                 using (await limiter.AcquireAsync(current, cancellationToken))
-                    return new NodeReply(await router.ChatAsync(request, relay, cancellationToken), current);
+                {
+                    queued += waiting.Elapsed;
+                    return Reply(await router.ChatAsync(request, relay, cancellationToken));
+                }
             }
             catch (NineRouterException ex) when (ex.IsModelUnavailable && !streamed && !cancellationToken.IsCancellationRequested
                                                  && current.FallbackNodeId is { } nextId && !visited.Contains(nextId))
@@ -43,5 +50,7 @@ public sealed partial class NodeCaller
                 current = next;
             }
         }
+
+        NodeReply Reply(ChatCompletionResult result) => new(result, current, clock.Elapsed - queued, queued);
     }
 }

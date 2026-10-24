@@ -9,7 +9,9 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ThreadOrchestrator
 {
-    private async Task<ThreadResult> ExecuteRetryAsync(PreparedRetry prepared, IThreadObserver observer)
+    // chat is the chat turn that asked for the retry ("ulangi"): the answer then links the dashboard and the context
+    // pack of the chat is updated, as after a normal turn.
+    private async Task<ThreadResult> ExecuteRetryAsync(PreparedRetry prepared, IThreadObserver observer, ThreadRequest? chat = null)
     {
         var thread = prepared.Thread;
         var plan = prepared.Plan;
@@ -17,7 +19,9 @@ public sealed partial class ThreadOrchestrator
         var recorder = new ThreadRecorder(dbFactory, eventBus, activityLog, thread);
         var total = Stopwatch.StartNew();
         using var secretTally = secrets.BeginTally();
-        var request = new ThreadRequest(thread.Source, thread.Prompt, null, null, thread.WorkingDirectory, prepared.Project.ProjectId, thread.SessionId);
+        var request = new ThreadRequest(thread.Source, thread.Prompt, null, chat?.ConversationContext, thread.WorkingDirectory, prepared.Project.ProjectId,
+            thread.SessionId, chat?.Session, DashboardUrl: chat?.DashboardUrl);
+        var keepContext = chat is not null;
 
         RuntimeSettings settings;
         try
@@ -31,9 +35,10 @@ public sealed partial class ThreadOrchestrator
         }
 
         var progress = new ClientProgress(observer, settings.StreamProgressToClient);
-        return await GuardAsync(recorder, progress, total, request, keepContext: false, async () =>
+        return await GuardAsync(recorder, progress, total, request, keepContext, async () =>
         {
             var project = prepared.Project;
+            await progress.AnchorAsync(ThreadAnchor.Line(project.Name, thread.Id), cancellationToken);
             var executors = await nodeService.GetActiveAsync(NodeRole.Executor, cancellationToken);
             if (executors.Count == 0) throw new OrchestrationException("Belum ada node Executor aktif. Tambahkan di menu Node.");
             var wrapper = (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
@@ -127,7 +132,7 @@ public sealed partial class ThreadOrchestrator
             var combined = new ExecutionSummary(results, execution.WallMs, execution.SumMs, execution.Tokens);
             var fullPlan = new ThreadPlan { Summary = plan.Summary, Answer = plan.Answer, Contract = plan.Contract, Tasks = tasks, Test = plan.Test };
 
-            var pipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, memoryNode, scope, settings, journal, total, KeepContext: false,
+            var pipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, memoryNode, scope, settings, journal, total, keepContext,
                 Tester: tester);
             return await CompleteAsync(pipeline, fullPlan, combined, nextOrder, PreviousRounds(thread.VerificationJson) + 1, cancellationToken);
         }, cancellationToken);

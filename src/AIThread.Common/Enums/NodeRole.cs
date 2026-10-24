@@ -6,7 +6,7 @@ public enum NodeRole
     Executor = 2,
     Wrapper = 3,
 
-    // Optional: keeps the running summary of a Claude Code conversation that every planner run starts from.
+    // Optional: keeps the running summary of a CLI conversation that every planner run starts from.
     ContextKeeper = 4,
 
     // Optional: checks the executors' changes against the plan (and the build result) before the wrapper reports.
