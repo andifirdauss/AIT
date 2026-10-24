@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json.Nodes;
 using AIThread.Common.Enums;
 using AIThread.Service.Models;
@@ -24,9 +25,12 @@ public sealed partial class ToolsNodeAgent
         var prefix = $"{label} › ";
         var actor = $"Tools node '{node.Name}' {label}";
         var toolList = PlannerTools.ForToolsNode(group.Tools);
-        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(input, question)) };
+        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(input, tools, question)) };
         var tokens = 0;
         var cached = 0;
+        var clock = Stopwatch.StartNew();
+        var modelTime = TimeSpan.Zero;
+        var queueTime = TimeSpan.Zero;
 
         for (var step = 1; ; step++)
         {
@@ -54,6 +58,8 @@ public sealed partial class ToolsNodeAgent
             var result = reply.Result;
             tokens += result.TotalTokens;
             cached += result.CachedTokens;
+            modelTime += reply.Elapsed;
+            queueTime += reply.Queued;
 
             // A plain reply is the answer too; so is anything after the forced step.
             if (result.ToolCalls.Count == 0 || forced)
@@ -64,15 +70,16 @@ public sealed partial class ToolsNodeAgent
             messages.Add(ChatMessages.Assistant(string.IsNullOrWhiteSpace(result.Content) ? null : result.Content, result.ToolCalls));
             // Token counts exist per model turn, not per tool: the turn's badge goes on its first tool line.
             var badgeHolder = result.ToolCalls.FirstOrDefault(c => c.Name != PlannerTools.SubmitPlan && c.Name != PlannerTools.RunBuild);
-            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens);
+            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens, reply.Elapsed);
             var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, group, input, tools, memoriesRead, prefix, actor, recorder, progress, ReferenceEquals(call, badgeHolder) ? badge : null, cancellationToken)));
             for (var i = 0; i < result.ToolCalls.Count; i++) messages.Add(ChatMessages.Tool(result.ToolCalls[i].Id, outcomes[i].Output));
 
             ToolsNodeInvestigation Done(string text)
             {
                 var answer = string.IsNullOrWhiteSpace(text) ? "The sub agent found nothing to report." : PlannerToolRunner.Limit(text.Trim(), MaxFindingsChars);
-                recorder.Log(ActivityLevel.Debug, $"{actor} selesai: {step} langkah, {tokens} token, {answer.Length} karakter temuan.");
-                return new ToolsNodeInvestigation(answer, step, tokens, cached, node);
+                recorder.Log(ActivityLevel.Debug, $"{actor} selesai: {step} langkah, {tokens} token, {answer.Length} karakter temuan, "
+                                                  + $"{FinalReport.Duration(clock.Elapsed)} (model {FinalReport.Duration(modelTime)}, laporan {FinalReport.Duration(reply.Elapsed)}, antre {FinalReport.Duration(queueTime)}).");
+                return new ToolsNodeInvestigation(answer, step, tokens, cached, node, clock.Elapsed, modelTime, queueTime, reply.Elapsed);
             }
         }
     }

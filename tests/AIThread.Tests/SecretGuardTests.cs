@@ -1,3 +1,5 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using AIThread.API.Controllers;
@@ -187,6 +189,39 @@ public sealed class SecretGuardTests : IDisposable
         Assert.DoesNotContain("msgSecret33", messages.ToJsonString());
         Assert.DoesNotContain("argSecret-44x", messages.ToJsonString());
         Assert.Equal(0, guard.TallyCount);
+    }
+
+    [Theory]
+    [InlineData("Server=.;Database=App;Password=connSecret77", true)]
+    [InlineData("Server=.;Database=App;Password=connSecret77", false)]
+    [InlineData("Server=.;Password=connSecret77;Encrypt=False", true)]
+    public void Tool_call_arguments_stay_a_json_object_after_masking(string connection, bool relaxed)
+    {
+        // A written appsettings.json is JSON inside the arguments' JSON: its quotes arrive escaped (\" or "), and a
+        // value that ends the string must not take the escape with it.
+        var guard = Guard();
+        var file = new JsonObject { ["ConnectionStrings"] = new JsonObject { ["Db"] = connection } }.ToJsonString();
+        var arguments = new JsonObject { ["path"] = "appsettings.json", ["content"] = file }
+            .ToJsonString(relaxed ? new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping } : null);
+        var messages = new JsonArray
+        {
+            new JsonObject { ["role"] = "assistant", ["content"] = null, ["tool_calls"] = new JsonArray
+                { new JsonObject { ["id"] = "c1", ["type"] = "function", ["function"] = new JsonObject { ["name"] = "write_file", ["arguments"] = arguments } } } }
+        };
+
+        var passthrough = new JsonObject { ["model"] = "m", ["messages"] = messages.DeepClone() };
+
+        guard.RedactMessages(messages);
+        guard.RedactJson(passthrough);
+
+        foreach (var message in new[] { messages[0]!, passthrough["messages"]![0]! })
+        {
+            var masked = message["tool_calls"]![0]!["function"]!["arguments"]!.GetValue<string>();
+            var parsed = Assert.IsType<JsonObject>(JsonNode.Parse(masked));
+            Assert.Equal("appsettings.json", parsed["path"]!.GetValue<string>());
+            Assert.DoesNotContain("connSecret77", masked);
+            Assert.Equal(file, guard.Restore(parsed["content"]!.GetValue<string>()).Text);
+        }
     }
 
     [Fact]

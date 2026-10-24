@@ -4,7 +4,7 @@ namespace AIThread.Service.Telegram;
 
 public sealed partial class TelegramBot
 {
-    // No argument: this chat's running thread. With an id prefix: any running thread, e.g. one from Claude Code.
+    // No argument: this chat's running thread. With an id prefix: any running thread, e.g. one from a CLI.
     private async Task CancelAsync(TelegramChat chat, string argument, CancellationToken cancellationToken)
     {
         if (argument.Length == 0)

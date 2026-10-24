@@ -29,7 +29,8 @@ public sealed class WorkspaceTools(WorkspaceScope scope, ISecretGuard? secrets =
 
     public WorkspaceScope Scope => scope;
 
-    public string ListDirectory(string? path, int depth = 2, int maxEntries = 300)
+    // directoriesOnly: a folder map without files, so a deeper listing stays short.
+    public string ListDirectory(string? path, int depth = 2, int maxEntries = 300, bool directoriesOnly = false)
     {
         if (!scope.TryResolveForRead(string.IsNullOrWhiteSpace(path) ? "." : path, out var fullPath, out var error)) return $"Error: {error}";
         if (!Directory.Exists(fullPath)) return $"Error: directory '{path}' does not exist.";
@@ -74,6 +75,7 @@ public sealed class WorkspaceTools(WorkspaceScope scope, ISecretGuard? secrets =
                 if (truncated) return;
             }
 
+            if (directoriesOnly) return;
             foreach (var file in files)
             {
                 if (++count > maxEntries)

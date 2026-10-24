@@ -10,10 +10,10 @@ public class SystemSetting : BaseEntity
     // Encrypted with ASP.NET Core Data Protection; never exposed through the API.
     public string? NineRouterApiKeyProtected { get; set; }
 
-    // Key Claude Code must send (ANTHROPIC_AUTH_TOKEN). Empty = accept any caller.
+    // Key every CLI must send as bearer token (Claude Code: ANTHROPIC_AUTH_TOKEN). Empty = accept any caller.
     public string? ProxyApiKey { get; set; }
 
-    // 9router model used for Claude Code requests that are not orchestrated (title generation, compact, etc.).
+    // 9router model used for CLI requests that are not orchestrated (title generation, compact, etc.).
     public string? PassthroughModel { get; set; }
 
     public bool OrchestrationEnabled { get; set; } = true;

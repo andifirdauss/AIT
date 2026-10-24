@@ -13,7 +13,7 @@ namespace AIThread.UI.Hosting;
 public static class Cli
 {
     private const string Help = """
-        AIThread - proxy, planner, dan orkestrasi multi-agent untuk Claude Code
+        AIThread - proxy, planner, dan orkestrasi multi-agent untuk CLI coding (Claude Code, Codex, Gemini CLI, ...)
 
         Pemakaian: AIThread.exe [perintah] [opsi]
 

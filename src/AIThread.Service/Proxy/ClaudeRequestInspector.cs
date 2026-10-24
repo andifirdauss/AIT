@@ -15,7 +15,7 @@ public sealed record ClaudeRequestInfo(
     string? WorkingDirectory,
     string? ProjectHint,
     string? SessionId,
-    // Latest user turn without <system-reminder> blocks.
+    // Latest user turn without <system-reminder> and <system-notice> blocks.
     string Prompt,
     // Latest user turn as sent (includes injected context such as CLAUDE.md).
     string PromptContext,
@@ -297,7 +297,8 @@ public static partial class ClaudeRequestInspector
     private static string? Str(JsonNode? node) =>
         node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 
-    [GeneratedRegex(@"<system-reminder>[\s\S]*?</system-reminder>", RegexOptions.IgnoreCase)]
+    // <system-notice> wraps a message the developer typed while the previous turn was still running.
+    [GeneratedRegex(@"<(system-reminder|system-notice)>[\s\S]*?</\1>", RegexOptions.IgnoreCase)]
     private static partial Regex ReminderBlock();
 
     // Claude Code asks the main model, with the full tool list, to name the session (<title-request>) and to recap it
