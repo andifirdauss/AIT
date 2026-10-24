@@ -84,7 +84,7 @@ sendiri yang bertindak:
   placeholder di input tool dengan nilai aslinya. Claude Code tetap meminta konfirmasi Anda, kecuali sesi memakai mode
   `acceptEdits` (untuk edit file) atau `bypassPermissions`. Placeholder yang tidak dikenali menghentikan tool dengan
   pesan ke model, sehingga tidak tertulis ke file apa adanya. Endpoint hook ini hanya menjawab request dari komputer
-  ini (loopback). Pasang hook di menu **CLI → Claude Code** ([Integrasi Claude Code](03-integrasi-claude-code.md)).
+  ini (loopback). Pasang hook di menu **CLI → Claude Code** ([Integrasi CLI](03-integrasi-cli.md#context-keeper-untuk-clear)).
 
 > CLI lain (Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi) belum punya hook seperti ini. Dalam mode passthrough,
 > model bisa menulis placeholder ke file. Bila CLI tersebut sering mengedit file berisi secret, matikan

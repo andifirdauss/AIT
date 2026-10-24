@@ -361,7 +361,7 @@ public static class PlannerTools
 
         return ChatMessages.Function(Investigate,
             "Delegate a read-only investigation to a cheaper sub agent. It runs the tools itself, as many steps as needed, and returns only its findings (path:line ranges and short exact excerpts), so raw tool output never fills your context. " +
-            $"You do not have these tools yourself; use investigate for them. {holders} Several investigate calls run in parallel.",
+            $"You do not have these tools yourself; use investigate for them. {holders} Several investigate calls in one turn run in parallel; give each its own area and files so they do not read the same code.",
             new JsonObject { ["type"] = "object", ["properties"] = properties, ["required"] = required });
     }
 
@@ -387,7 +387,7 @@ public static class PlannerTools
             {
               "type": "object",
               "properties": {
-                "findings": { "type": "string", "description": "The answer: facts with path:startLine-endLine, exact excerpts only where the question needs them, and what could not be found." }
+                "findings": { "type": "string", "description": "The answer, short (usually under 1,500 characters, never over 4,000): one fact per line with path:startLine-endLine, exact excerpts only where the question needs them, and what could not be found." }
               },
               "required": ["findings"]
             }

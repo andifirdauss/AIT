@@ -79,7 +79,7 @@
   const threadPager = pager('threadPager', rows => {
     el('threadRows').innerHTML = rows.length
       ? rows.map(threadRow).join('')
-      : '<tr><td colspan="8" class="empty-state">Belum ada thread. Arahkan Claude Code ke AIT (menu Setting) atau jalankan prompt di atas.</td></tr>';
+      : '<tr><td colspan="8" class="empty-state">Belum ada thread. Arahkan CLI Anda ke AIT lewat menu CLI, lalu beri perintah dari folder project.</td></tr>';
   });
 
   async function loadThreads() {

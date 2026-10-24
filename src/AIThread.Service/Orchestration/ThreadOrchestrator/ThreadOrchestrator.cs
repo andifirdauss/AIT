@@ -76,7 +76,7 @@ public sealed partial class ThreadOrchestrator(
         CancellationTokenSource Cancellation);
 
     // What verification and wrapping of a run need. MemoryNode extracts memories afterwards (null = skip);
-    // KeepContext updates the Claude Code context pack (not for retries, which no chat turn started); MemoriesUsed is
+    // KeepContext updates the CLI context pack (not for retries from the thread page, which no chat turn started); MemoriesUsed is
     // how many memories the planner read, for the footer. Tester is set when the planner has Auto Testing on.
     // UnitTests: the project's unit test catalog for this thread (null: none run); Triage: the Tester node that triages
     // failing unit tests, whether Auto Testing is on or not.

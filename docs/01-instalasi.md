@@ -81,7 +81,7 @@ dotnet run --project src/AIThread.UI --launch-profile http
 ```
 
 Buka http://localhost:5225. Dari Visual Studio, profil `https` juga membuka `http://localhost:5225` — **pakai alamat
-http** untuk Claude Code, karena Claude Code (Node.js) tidak mempercayai sertifikat development ASP.NET Core.
+http** untuk CLI, karena CLI berbasis Node.js (mis. Claude Code) tidak mempercayai sertifikat development ASP.NET Core.
 
 Mengganti port:
 
@@ -90,12 +90,12 @@ dotnet run --project src/AIThread.UI --no-launch-profile --urls http://localhost
 ```
 
 Setelah port berubah, matikan lalu nyalakan lagi switch CLI yang aktif di menu **CLI** agar URL baru tertulis
-(lihat [Integrasi Claude Code](03-integrasi-claude-code.md)).
+(lihat [Integrasi CLI](03-integrasi-cli.md)).
 
 ## 5. Menjalankan di background
 
 `dotnet run` dan Visual Studio hanya menjalankan AIT selama terminal/debugger-nya terbuka. Di Visual Studio,
-menutup browser yang dibuka debugger juga menghentikan aplikasi. Untuk pemakaian sehari-hari (Claude Code, Telegram),
+menutup browser yang dibuka debugger juga menghentikan aplikasi. Untuk pemakaian sehari-hari (CLI, Telegram),
 jalankan AIT di background agar tetap hidup walau browser, terminal, dan Visual Studio ditutup:
 
 ```powershell
@@ -118,7 +118,7 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 | Lokasi aplikasi | `%LOCALAPPDATA%\AIThread\app` (hasil `dotnet publish -c Release`). Build memakai folder sendiri (`%LOCALAPPDATA%\AIThread\build`), jadi tidak bentrok dengan `bin/` yang sedang dikunci Visual Studio. Bila publish gagal, versi lama tetap dipakai. |
 | Log | `%LOCALAPPDATA%\AIThread\logs\aithread-<waktu>.log` (dan `.err.log`); 10 run terakhir disimpan. Log aktivitas thread tetap ada di Dashboard. Satu baris per entri (`jam level kategori: pesan`); warning hanya menampilkan pesan error (`→ Tipe: pesan`) tanpa stack trace, dan warning yang sama persis dalam 5 menit dicetak sekali lalu diberi catatan *Nx serupa disembunyikan*. Error tetap dengan stack trace lengkap. |
 | Konfigurasi | `appsettings.json` ikut ter-publish: ubah `src/AIThread.UI/appsettings.json` lalu `restart`. Environment `Production`. Setting dari UI (database) tetap sama dengan saat development. |
-| Port lain | `-Port 6000` — pakai `-Port` yang sama untuk semua perintah, lalu terapkan ulang integrasi Claude Code. |
+| Port lain | `-Port 6000` — pakai `-Port` yang sama untuk semua perintah, lalu terapkan ulang integrasi CLI di menu CLI. |
 | Autostart | Task Scheduler `AIThread`, 30 detik setelah login, berjalan sebagai akun Anda sendiri (tanpa admin). Karena itu LocalDB dan API key 9router yang terenkripsi tetap berlaku. Memakai hasil publish terakhir tanpa build ulang. |
 | Stop | Lewat `POST /api/system/shutdown`: thread yang sedang berjalan dibatalkan dan dicatat (maks. ±15 detik), lalu proses keluar. Bila tidak berhenti dalam 45 detik, proses dihentikan paksa. |
 | Mati mendadak | Logoff, crash, atau dihentikan paksa: saat start berikutnya, thread yang tertinggal ditandai *Cancelled* dengan pesan *AIT berhenti saat thread ini berjalan.* |
@@ -145,7 +145,7 @@ Jalankan `AIThread.exe` tanpa argumen untuk **menu interaktif**; server berjalan
 | 2 Sembunyikan ke Tray | Pindahkan ke background dengan ikon di system tray; jendela terminal boleh ditutup. Thread yang sedang berjalan dibatalkan dan dicatat, karena server dijalankan ulang sebagai proses tanpa jendela (±10 detik). |
 | 3 Log langsung | Ikuti log server; tombol apa pun kembali ke menu. |
 | 4 Restart server | Terapkan `appsettings.json` yang baru diubah. |
-| 5 Ganti port | Disimpan di `%LOCALAPPDATA%\AIThread\cli.json`. Terapkan ulang integrasi Claude Code karena alamatnya berubah. |
+| 5 Ganti port | Disimpan di `%LOCALAPPDATA%\AIThread\cli.json`. Terapkan ulang integrasi CLI (menu CLI) karena alamatnya berubah. |
 | 6 Autostart | Jalankan tray otomatis saat login Windows (kunci `Run` milik pengguna, tanpa admin). |
 | 0 Keluar | Matikan server dengan rapi. |
 

@@ -3,7 +3,7 @@
 Semua endpoint berada di host AIT (default `http://localhost:5225`). Enum dikirim sebagai string
 (`"Planner"`, `"Short"`, `"Completed"`, …) dan properti JSON memakai camelCase.
 
-## Proxy agen coding (Claude Code, Codex, Gemini CLI, …)
+## Proxy CLI coding (Claude Code, Codex, Gemini CLI, …)
 
 | Method | Path | Keterangan |
 |---|---|---|
@@ -20,15 +20,15 @@ diisi): `Authorization: Bearer <key>`, `x-api-key: <key>`, `x-goog-api-key: <key
 Header opsional: `X-AIThread-Project` (folder root project; `X-AIThread-Solution` dengan path `.sln`/`.slnx` dari versi
 lama masih diterima), `X-AIThread-Cwd` (working directory), `X-AIThread-Session` (id sesi).
 
-Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar: `message_start`,
+Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar format masing-masing; untuk Anthropic: `message_start`,
 `content_block_start`, `ping` (tiap 10 detik selama bekerja), `content_block_delta` (`text_delta`),
-`content_block_stop`, `message_delta` (`stop_reason: end_turn`), `message_stop`. Error mengikuti format
+`content_block_stop`, `message_delta` (`stop_reason: end_turn`), `message_stop`. Error Anthropic mengikuti format
 `{ "type": "error", "error": { "type": "...", "message": "..." } }`.
 
 ## Hook Claude Code
 
 Dipanggil oleh HTTP hook yang dipasang dari Setting (lihat
-[Context Keeper untuk /clear](03-integrasi-claude-code.md#context-keeper-untuk-clear)). Body = input hook Claude Code
+[Context Keeper untuk /clear](03-integrasi-cli.md#context-keeper-untuk-clear)). Body = input hook Claude Code
 (JSON); respons **tidak** dibungkus `ApiResponse`. Tidak dialihkan ke HTTPS.
 
 | Method | Path | Keterangan |

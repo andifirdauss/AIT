@@ -41,7 +41,7 @@ grup *Bantuan* sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Pa
 **Statistik**: thread hari ini (dan total), thread yang sedang berjalan, success rate 100 thread terakhir,
 rata-rata speedup paralel, token hari ini (planner + executor + wrapper), jumlah project dan memory.
 
-**Thread terbaru**: 25 thread terakhir — waktu & sumber (*Claude Code*, *Dashboard*, *Telegram*), project, prompt,
+**Thread terbaru**: 25 thread terakhir — waktu & sumber (*CLI*, *Dashboard*, *Telegram*), project, prompt,
 status, tugas berhasil/total, durasi, speedup, token. Klik baris untuk detail.
 
 **Log langsung**: log terbaru di atas. Filter level (*Info+* default, *Semua (debug)*, *Warning+*, *Error*) dan
@@ -89,15 +89,15 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 
 | Bagian | Isi |
 |---|---|
-| Header | Status, project, sumber, sesi Claude Code, waktu, working directory. Tombol *Batalkan thread* saat berjalan (juga saat testing); setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)), serta *🧪 Ulangi testing* untuk thread yang punya rencana testing UI/API, dengan username & password opsional (lihat [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
-| Permintaan | Prompt Anda (tanpa blok `<system-reminder>` Claude Code). |
+| Header | Status, project, sumber, sesi CLI, waktu, working directory. Tombol *Batalkan thread* saat berjalan (juga saat testing); setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)), serta *🧪 Ulangi testing* untuk thread yang punya rencana testing UI/API, dengan username & password opsional (lihat [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
+| Permintaan | Prompt Anda (tanpa konteks yang disisipkan CLI, mis. blok `<system-reminder>` Claude Code). |
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
 | Verifikasi | Muncul bila build/reviewer/unit test berjalan. Hasil akhir (*Lolos* / *Masih ada masalah* / *Tidak dapat dipastikan*), perintah build, model reviewer, lalu per putaran: hasil build dan errornya, temuan reviewer, ringkasan unit test, masalah yang tidak bisa diperbaiki otomatis, dan id tugas perbaikan (`V1-1`, …) yang tampil juga di tabel tugas. |
 | Unit test (katalog project) | Muncul bila unit test katalog dijalankan atau dipulihkan. Hasil (*Lolos* / *Gagal* / *Dilewati*), mode (atau *Hanya pengujian*), baseline (berapa dijalankan, berapa dari hasil sebelumnya, durasi), runner, lalu tabel per test: nomor, judul dan file, keputusan planner, hasil sebelum dan sesudah perubahan (*(cache)* = hasil sebelumnya untuk kode yang sama), verdict, pesan gagal atau alasan dilewati, dan verdict Tester. Di bawahnya test yang dipulihkan otomatis dan catatan. Hasil per putaran ada di kartu Verifikasi. |
 | Testing | Muncul bila Auto Testing berjalan. Hasil (*Lolos* / *Gagal* / *Tidak bisa dicek* / *Dilewati*), level (UI/API), URL aplikasi, browser, model tester, username yang dipakai login, jumlah langkah, alasan bila tidak bisa berjalan, *🔐 Tester butuh login* bila tester berhenti meminta login, ringkasan tester, verdict per skenario, error browser, lalu satu jendela per `http_request` dengan URL, body request, dan body respons (jendela ke-4 dst. dilipat). |
-| Hasil wrapper | Balasan yang diterima Claude Code. |
-| Konteks sesi dari Context Keeper | Ringkasan percakapan sampai thread ini (khusus thread dari Claude Code) — titik awal planner di prompt berikutnya pada chat yang sama. Muncul beberapa detik setelah thread selesai. |
+| Hasil wrapper | Balasan yang diterima CLI. |
+| Konteks sesi dari Context Keeper | Ringkasan percakapan sampai thread ini (khusus thread dari CLI) — titik awal planner di prompt berikutnya pada chat yang sama. Muncul beberapa detik setelah thread selesai. |
 | Waktu & token | Model planner/reviewer/tester/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / verifikasi / unit test / testing / wrapping / total, speedup, token per peran (token tester termasuk triase unit test). |
 | Aktivitas | Log thread ini, termasuk setiap panggilan tool planner dan penolakan validator. |
 
@@ -123,7 +123,7 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
   dalamnya lalu diorkestrasi dan punya memory). Drive, folder Home, dan folder sistem ditolak. Path file juga diterima
   (foldernya yang dipakai).
 - Registrasi diperlukan sebelum menerapkan integrasi CLI per project.
-- Kolom: nama & root (beserta **project key** 🔑), **AIT**, stack, jumlah thread, sesi Claude Code, memory,
+- Kolom: nama & root (beserta **project key** 🔑), **AIT**, stack, jumlah thread, sesi CLI, memory,
   terakhir dipakai. Badge *folder hilang* muncul bila folder project sudah tidak ada; badge *key lokal — belum dibagi*
   berarti memory project ini belum bisa dibagi dengan developer lain (lihat [Project key](06-memory.md#berbagi-memory-antar-developer-project-key)).
 - **Switch AIT**: menyala = `<project>/.claude/settings.local.json` mengarahkan Claude Code ke proxy ini. Menyalakan
@@ -136,7 +136,7 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
   clone itu.
 
 **Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), daftar file
-solution/build yang ditemukan di dalam project, sesi Claude Code (id sesi, jumlah thread, terakhir aktif), thread
+solution/build yang ditemukan di dalam project, sesi CLI (id sesi, jumlah thread, terakhir aktif), thread
 project ini, dan tautan ke memory-nya. Tabel sesi, thread, modul, peta kode, dan riwayat gabung modul tampil
 10 baris per halaman (*‹ Sebelumnya* / *Berikutnya ›*; navigasi hanya muncul bila isinya lebih dari 10). Halaman yang
 sedang dibuka tetap saat data diperbarui otomatis; mengganti pencarian atau filter peta kode kembali ke halaman 1.
@@ -323,11 +323,10 @@ global dan tidak mengalihkan sesi lain: CLI itu mendapat pilihan `aithread` di s
   sebagai `*.aithread-backup`. AIT menolak menulis (dengan pesan) bila file sudah berisi entri bernama sama buatan
   Anda, atau JSON opencode/Qwen Code berisi komentar.
 - Kartu Claude Code juga memuat **Context Keeper untuk /clear** (*Pasang hook* / *Lepas hook*; lihat
-  [Integrasi Claude Code](03-integrasi-claude-code.md#context-keeper-untuk-clear)).
+  [Integrasi CLI](03-integrasi-cli.md#context-keeper-untuk-clear)).
 - Bila *Proxy API key* di Setting diubah, matikan lalu nyalakan lagi agar key baru ikut tertulis.
 
-Detail tiap CLI: [Integrasi Claude Code](03-integrasi-claude-code.md) dan
-[Klien lain](03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll).
+Detail tiap CLI: [Integrasi CLI](03-integrasi-cli.md).
 
 ## Setting
 
@@ -336,7 +335,7 @@ refresh dan bisa ditautkan langsung.
 
 - **Koneksi 9router** (`#router`) — URL, API key, *Test koneksi* (tidak menyimpan); baris status menunjukkan apakah key tersimpan dan diterima.
 - **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, model passthrough, proxy API key (beserta tautan ke
-  menu [CLI](#cli), tempat integrasi Claude Code, omp, Codex, Gemini CLI, opencode, Qwen Code dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
+  menu [CLI](#cli), tempat integrasi CLI (Claude Code, omp, Codex, Gemini CLI, opencode, Qwen Code) dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
 - **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
 - **Penyimpanan memory** (`#memory`) — provider short, long, dan business memory (bawaan, Redis untuk short saja,
   SQL Server, PostgreSQL, MySQL, Oracle, SQLite) beserta host/port/database/username/password, *Test koneksi* per kartu,

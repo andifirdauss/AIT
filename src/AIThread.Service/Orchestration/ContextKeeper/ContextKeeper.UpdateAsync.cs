@@ -9,7 +9,7 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ContextKeeper
 {
-    // Runs after a Claude Code thread finished (or failed). Never throws: a missing pack only means the next planner
+    // Runs after a CLI thread finished (or failed). Never throws: a missing pack only means the next planner
     // run falls back to the recent conversation.
     public async Task UpdateAsync(ThreadRun thread, ThreadRequest request, CancellationToken cancellationToken)
     {

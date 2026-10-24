@@ -3,14 +3,14 @@
 ## Alur kerja
 
 1. Pastikan 9router dan AIT berjalan (pill *9router* di sidebar AIT berwarna hijau).
-2. Buka Claude Code di folder project yang sudah diarahkan ke AIT.
+2. Buka CLI Anda (Claude Code, Codex, Gemini CLI, …) di folder project yang sudah diarahkan ke AIT.
 3. Ketik permintaan seperti biasa.
-4. Pantau progres di Claude Code, atau buka Dashboard → thread untuk detailnya.
+4. Pantau progres di CLI, atau buka Dashboard → thread untuk detailnya.
 5. Tinjau perubahan dengan `git diff`.
 6. Jalankan sendiri langkah lanjutan yang disebut ringkasan (build, script SQL/migrasi, restart).
 7. Lanjutkan dengan prompt berikutnya — percakapan sebelumnya dan memory ikut dibaca planner.
 
-## Membaca output di Claude Code
+## Membaca output di CLI
 
 Contoh untuk prompt *"Tambahkan kolom deskripsi di form user: field di UI, logic di JS, validasi di service, dan DDL database."*:
 
@@ -25,7 +25,7 @@ Contoh untuk prompt *"Tambahkan kolom deskripsi di form user: field di UI, logic
 │  ├─ read_file       src/Web/Views/User/Index.cshtml
 │  ├─ read_file       src/Web/wwwroot/js/user.js
 │  ├─ read_file       src/Service/UserService.cs
-│  └─ selesai dalam 12.3s
+│  └─ selesai dalam 12.3s (model 9.8s · tool 2.4s)
 │
 📋 Rencana · 4 tugas
 │  Menambah field Deskripsi pada form User: input di view, pengiriman nilai di JS, validasi
@@ -135,7 +135,7 @@ per model (mis. Antigravity) hanya model yang dipakai node yang tampil. Akun API
 tidak bisa dibaca 9router tidak tampil. Hasil di-cache 60 detik; bila 9router tidak menjawab dalam 10 detik atau
 dashboard-nya mewajibkan login, bagian ini dilewati — lihat [Troubleshooting](08-troubleshooting.md#9router).
 
-Progres bisa disembunyikan lewat Setting → *Tampilkan progres di Claude Code*; anchor dan jawaban akhir tetap tampil.
+Progres bisa disembunyikan lewat Setting → *Tampilkan progres di CLI*; anchor dan jawaban akhir tetap tampil.
 
 ## Menulis prompt yang efektif
 
@@ -164,8 +164,8 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
   mencoba aplikasi di localhost (browser dan request HTTP); yang belum jalan dijalankan lalu dihentikan lagi setelah
   testing ([Menjalankan aplikasi](07-cara-kerja.md#menjalankan-aplikasi)). AIT tidak memperbaiki kode berdasarkan hasil
   testing.
-- Tidak memakai tool bawaan Claude Code: saat orkestrasi aktif, Claude Code berfungsi sebagai tampilan percakapan.
-  Untuk pekerjaan yang butuh menjalankan perintah selain build, matikan *Orkestrasi aktif* sementara (Claude Code
+- Tidak memakai tool bawaan CLI: saat orkestrasi aktif, CLI berfungsi sebagai tampilan percakapan.
+  Untuk pekerjaan yang butuh menjalankan perintah selain build, matikan *Orkestrasi aktif* sementara (CLI
   menjadi agen biasa lewat 9router) atau kembalikan integrasi.
 - Tidak meminta izin per edit — executor menulis langsung ke file. Kerjakan di repo git.
 
@@ -174,21 +174,23 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 - `git diff` / `git status` untuk melihat semua perubahan.
 - Dashboard → klik thread → klik baris tugas untuk melihat instruksi, ringkasan, **diff**, error, dan output
   model (output live hanya terlihat bila halaman sudah terbuka saat tugas berjalan).
-- Tugas gagal: baca alasan di baris `❌` atau di detail tugas. Ulangi dengan prompt yang lebih spesifik untuk bagian
-  itu saja, mis. "lanjutkan validasi deskripsi di UserService yang tadi gagal".
+- Tugas gagal: baca alasan di baris `❌` atau di detail tugas. Gagal karena provider/model (503, rate limit): balas
+  `ulangi` (lihat [Mengulang tugas yang gagal](#mengulang-tugas-yang-gagal)). Gagal karena isinya: ulangi dengan prompt
+  yang lebih spesifik untuk bagian itu saja, mis. "lanjutkan validasi deskripsi di UserService yang tadi gagal".
 
 Status thread:
 
 | Status | Arti |
 |---|---|
 | Selesai | Planner menjawab langsung, atau minimal satu tugas berhasil (tugas lain yang gagal, error build/temuan reviewer yang tersisa setelah verifikasi, dan skenario testing yang gagal, dicatat di kolom error). |
-| Gagal | Tidak ada tugas berhasil, atau planner/9router gagal. Pesan penyebab tampil di Claude Code dan di detail thread. |
+| Gagal | Tidak ada tugas berhasil, atau planner/9router gagal. Pesan penyebab tampil di CLI dan di detail thread. |
 | Dibatalkan | Dihentikan oleh Anda. |
 | Perubahan dibatalkan | Perubahan file thread ini sudah dikembalikan lewat **Batalkan perubahan file** (lihat di bawah). |
 
 ## Membatalkan
 
-- Tekan **Esc** di Claude Code saat thread berjalan — request terputus dan thread dibatalkan.
+- Hentikan request di CLI saat thread berjalan (mis. **Esc** di Claude Code) — request terputus dan thread
+  dibatalkan.
 - Atau buka detail thread → **Batalkan thread**.
 
 Tugas yang belum selesai dihentikan dan tidak menulis apa pun. Tugas yang **sudah** selesai sebelum pembatalan tetap
@@ -197,7 +199,14 @@ tersimpan di file. Untuk mengembalikannya, pakai **Batalkan perubahan file** (di
 ## Mengulang tugas yang gagal
 
 Detail thread → **🔁 Ulangi yang gagal** (muncul bila thread sudah selesai, gagal, atau dibatalkan dan masih ada tugas
-rencana yang belum berhasil).
+rencana yang belum berhasil), atau langsung dari chat CLI: balas **`ulangi`** (juga `ulangi yang gagal`,
+`coba lagi`, `retry`). Jawaban yang masih punya tugas gagal menuliskan petunjuk ini di bawah *Perlu perhatian*.
+
+- Dari chat, yang diulang adalah thread AIT terakhir di chat itu (dan project yang sama), dengan progres dan
+  jawaban tampil di chat seperti thread biasa; **Esc** membatalkannya. Hanya balasan pendek itu sendiri yang
+  dikenali — "ulangi validasi di UserService" tetap jadi prompt biasa. Bila thread terakhir tidak punya tugas yang
+  bisa diulang (planner yang gagal sebelum membuat rencana, atau semua tugas sudah berhasil), `ulangi` juga
+  dijalankan sebagai prompt biasa: planner membacanya bersama percakapan sebelumnya.
 
 - Rencana yang tersimpan dipakai lagi; **planner tidak dipanggil**, jadi tidak ada biaya planner.
 - Yang dijalankan ulang hanya tugas rencana yang gagal, dilewati, atau dibatalkan. Tugas yang sudah berhasil tidak
@@ -227,7 +236,7 @@ Detail thread → **🧪 Ulangi testing** (thread *Selesai* yang dibuat dengan A
 menjalankan lagi skenario rencana testing ke aplikasi yang sedang berjalan, tanpa planner dan tanpa mengubah kode.
 Berguna bila aplikasinya belum jalan saat testing pertama atau perlu di-restart agar perubahan termuat. Modalnya punya
 field **username & password** opsional untuk aplikasi yang butuh login (dipakai sekali, tidak disimpan). Kemajuannya
-tampil di kartu *Testing* dan aktivitas thread (tidak di Claude Code).
+tampil di kartu *Testing* dan aktivitas thread (tidak di CLI).
 
 ## Test lanjutan
 
@@ -300,9 +309,9 @@ Batasan:
 - Folder yang menjadi kosong setelah file buatan thread dihapus ikut dihapus.
 - Thread yang berjalan sebelum fitur ini ada tidak punya catatan, jadi tidak bisa dibatalkan.
 
-## Menjalankan prompt tanpa Claude Code
+## Menjalankan prompt tanpa CLI
 
-Kartu *Jalankan prompt* di Dashboard sedang disembunyikan. Untuk menguji konfigurasi node tanpa Claude Code, kirim
+Kartu *Jalankan prompt* di Dashboard sedang disembunyikan. Untuk menguji konfigurasi node tanpa CLI, kirim
 `POST /api/threads` dengan body `{ "projectId": <id project>, "prompt": "…" }`; balasannya id thread yang bisa
 dipantau di `/Thread/Detail/<id>`.
 
@@ -320,13 +329,13 @@ AIT hanya mengorkestrasi sesi yang dibuka di dalam sebuah project: folder yang b
 Pada prompt pertama sebuah sesi, AIT memeriksa working directory-nya:
 
 - **ada marker project** → project didaftarkan (bila belum) dan semua prompt sesi itu diorkestrasi;
-- **tidak ada marker** → sesi **diabaikan**: prompt diteruskan langsung ke 9router, Claude Code bekerja sebagai agen
+- **tidak ada marker** → sesi **diabaikan**: prompt diteruskan langsung ke 9router, CLI bekerja sebagai agen
   biasa, dan tidak ada thread, project, maupun memory yang tercatat. Contohnya folder kosong tempat Anda hanya meminta
   dibuatkan sebuah file teks. Log dashboard menampilkan
   `Sesi xxxxxxxx (…) bukan bagian project (alasannya) — prompt diabaikan orkestrasi dan diteruskan langsung.`
 
 Folder induk yang hanya berisi beberapa project (mis. 4 repo berdampingan) juga diabaikan karena ambigu; log menyebut
-nama project di dalamnya. Buka sesi Claude Code di dalam salah satunya. Ingin folder tanpa marker tetap diorkestrasi
+nama project di dalamnya. Buka sesi CLI di dalam salah satunya. Ingin folder tanpa marker tetap diorkestrasi
 dan punya memory? Daftarkan manual lewat menu Project (*Daftarkan manual*).
 
 Keputusan untuk sesi yang diabaikan dicek ulang setelah sekitar 5 detik, jadi begitu Anda menambahkan `.git` atau file
@@ -334,7 +343,7 @@ build, prompt berikutnya langsung dikenali.
 
 ## Beberapa project sekaligus
 
-Sesi dari project berbeda boleh berjalan bersamaan (mis. 4 sesi Claude Code di 4 project, atau campuran Java, Node,
+Sesi dari project berbeda boleh berjalan bersamaan (mis. 4 sesi CLI di 4 project, atau campuran Java, Node,
 dan .NET). Tiap thread terikat ke root project-nya sendiri, memory project terpisah, dan batas *Max paralel* tiap
 node dibagi di antara semua thread.
 
@@ -351,7 +360,7 @@ Setiap giliran, AIT mengirim ke planner hingga 12 pesan terakhir percakapan (dip
 memory project. Jadi "sekarang tambahkan juga di halaman detail" bisa dipahami tanpa mengulang konteks.
 
 Planner juga melihat file yang sudah diubah thread-thread sebelumnya di chat ini, per modul. *"Test perubahan ini"* atau
-*"review yang tadi"* mengacu ke perubahan itu, bukan ke perubahan dari tab Claude Code lain di folder yang sama. Bila
+*"review yang tadi"* mengacu ke perubahan itu, bukan ke perubahan dari sesi CLI lain di folder yang sama. Bila
 chat ini sudah mengubah beberapa modul, planner menanyakan modul mana (atau semua) — lihat
 [Merujuk perubahan sebelumnya](07-cara-kerja.md#merujuk-perubahan-sebelumnya).
 

@@ -6,7 +6,7 @@
   const sessionPager = pager('sessionPager', rows => {
     el('sessionRows').innerHTML = rows.length
       ? rows.map(s => `<tr><td class="mono" title="${escapeHtml(s.sessionId)}">${escapeHtml(s.sessionId.substring(0, 8))}</td><td>${s.threadCount}</td><td>${fmt.relative(s.lastSeenAt)}</td></tr>`).join('')
-      : '<tr><td colspan="3" class="text-secondary">Belum ada sesi Claude Code.</td></tr>';
+      : '<tr><td colspan="3" class="text-secondary">Belum ada sesi CLI.</td></tr>';
   });
 
   const threadPager = pager('threadPager', rows => {

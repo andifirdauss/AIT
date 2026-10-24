@@ -38,7 +38,8 @@ public sealed partial class ThreadOrchestrator
         });
 
         if (wrapper is not null) await progress.PhaseAsync("📦", $"Rangkuman · {wrapper.Model}", cancellationToken);
-        await progress.FinalAsync(FinalReport.Status(execution, verification?.Report, testing?.Report, unitReport), cancellationToken);
+        await progress.FinalAsync(FinalReport.Status(execution, verification?.Report, testing?.Report, unitReport,
+            retryHint: request.Source == ThreadSource.ClaudeCode), cancellationToken);
 
         // Without the wrapper's text the developer still gets the plan summary between the status and the files.
         var wrapClock = Stopwatch.StartNew();

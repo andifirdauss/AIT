@@ -5,9 +5,9 @@ konfigurasi dengan tepat.
 
 ## 1. Klasifikasi request
 
-Agen coding mengirim banyak request, tidak hanya prompt Anda: Claude Code ke `POST /v1/messages`, dan klien lain ke
-`/v1/chat/completions`, `/v1/responses` (Codex), atau `/v1beta/models/…` (Gemini CLI) — lihat
-[Klien lain](03-integrasi-claude-code.md#klien-lain-codex-gemini-cli-oh-my-pi-dll). Semuanya lebih dulu diubah ke satu
+CLI coding mengirim banyak request, tidak hanya prompt Anda, ke salah satu endpoint proxy: `POST /v1/messages`
+(Claude Code, oh-my-pi, opencode), `/v1/chat/completions` (Qwen Code, dll.), `/v1/responses` (Codex), atau
+`/v1beta/models/…` (Gemini CLI) — lihat [Integrasi CLI](03-integrasi-cli.md). Semuanya lebih dulu diubah ke satu
 bentuk internal (`ProtocolAdapter`), jadi aturan di bawah sama untuk semua format. AIT **mengorkestrasi**
 sebuah request hanya bila semua syarat terpenuhi:
 
@@ -54,7 +54,7 @@ Sebelum planner dipanggil, AIT memeriksa **sesi** asal prompt:
    **Root workspace** = folder root project, sehingga sesi yang dibuka di `repo/services/api` tetap bekerja pada
    `repo`; planner diberi tahu bahwa sesi dibuka di `services/api`.
 4. **Tidak ada marker** (atau working directory tidak ada/tidak diketahui) → sesi **diabaikan**: setiap prompt-nya
-   diteruskan langsung ke 9router dengan model passthrough, sehingga Claude Code tetap bekerja sebagai agen biasa. Tidak
+   diteruskan langsung ke 9router dengan model passthrough, sehingga CLI tetap bekerja sebagai agen biasa. Tidak
    ada thread, project, maupun memory yang dibuat, misalnya untuk folder kosong tempat Anda hanya meminta dibuatkan
    sebuah file teks. Folder induk yang hanya berisi beberapa project (mis. `a`, `b`, `c`) juga diabaikan karena
    ambigu, dan log menyebut nama project di dalamnya agar Anda membuka sesi di salah satunya.
@@ -79,7 +79,7 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
    AIT (lihat [Verifikasi](#5-verifikasi-build-dan-reviewer));
 2. struktur folder 2 tingkat (maks 200 entri), lalu folder tempat sesi dibuka (bila di bawah root). Folder sesi
    sengaja di bawah struktur: ia berbeda per sesi, sehingga bila di atas, struktur tidak ikut ter-cache antar sesi;
-3. konteks yang disisipkan Claude Code (isi `CLAUDE.md`, reminder, file yang dilampirkan), maks 30.000 karakter;
+3. konteks yang disisipkan CLI (di Claude Code: isi `CLAUDE.md`, reminder, file yang dilampirkan), maks 30.000 karakter;
 4. **konteks sesi** dari Context Keeper bila chat ini sudah punya thread AIT sebelumnya (lihat
    [Konteks sesi](#konteks-sesi-context-keeper)), maks 12.000 karakter;
 5. percakapan sebelumnya: tanpa konteks sesi, 12 pesan terakhir; dengan konteks sesi, hanya pesan setelah thread yang
@@ -132,7 +132,7 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `git_blame(path, startLine?, endLine?)` | commit, author, dan tanggal terakhir per baris (baris yang belum di-commit: `Not Committed Yet`); maks 200 baris per panggilan, file ≤ 2 MB |
 | `run_build(target?)` | build project, hasilnya status + setiap error `file(baris,kolom): kode: pesan` (maks 40). `target` = solution/project/manifest lain di dalam root. Dipakai bila Anda minta build atau memperbaiki error build |
 | `run_tests(tests?, file?, all?)` | hanya bila project punya [katalog unit test](#unit-test) aktif: menjalankan test katalog (nomor `UT-0012`, satu file test, atau semua) dan mengembalikan hasil per test (lolos, gagal + pesan, dilewati + alasan). Dipakai bila permintaan memang soal test |
-| `investigate(question, agent?)` | hanya ada bila node planner [mendelegasikan tool ke tools node](02-konfigurasi.md#tools-node-planner); tools node menjalankan tool yang didelegasikan (yang hilang dari daftar ini) dalam loop sendiri, maks 12 langkah, lalu mengembalikan temuan ringkas maks 12.000 karakter. Di progres: `investigate  #1 "…"`, lalu baris `#1 › read_file …` per tool tools node, dan `#1 › complete  n langkah · token · model` (sejajar dengan kolom tool; bila gagal `#1 › failed  …`). Di progres CLI, path panjang diringkas menjadi `folder-awal/…/folder/file` (maks 48 karakter) dan query pencarian dipotong di 60 karakter agar satu tool tetap satu baris; log aktivitas menyimpan versi lengkap |
+| `investigate(question, agent?)` | hanya ada bila node planner [mendelegasikan tool ke tools node](02-konfigurasi.md#tools-node-planner); tools node menjalankan tool yang didelegasikan (yang hilang dari daftar ini) dalam loop sendiri, maks 12 langkah, lalu mengembalikan temuan ringkas (biasanya di bawah 1.500 karakter, dipotong di 6.000). Di progres: `investigate  #1 "…"`, lalu baris `#1 › read_file …` per tool tools node, dan `#1 › complete  n langkah · 8.4s (model 6.1s, laporan 2.0s, antre 1.2s) · token · model` (sejajar dengan kolom tool; bila gagal `#1 › failed  …`). Waktu pertama = seluruh investigasi, *model* = total waktu tools node menjawab, *laporan* = bagian dari *model* untuk giliran terakhir yang menulis temuan (tidak punya baris tool sendiri), *antre* (hanya muncul bila ada) = menunggu slot *paralel* tools node. Badge `[↑ prompt ↓ completion cache% waktu]` di baris tool pertama tiap giliran (planner, tools node, tester) menunjukkan token dan lama model menjawab giliran itu. Baris akhir planner `selesai dalam 45.2s (model 30.1s · tool 12.0s · antre 2.0s)` memisahkan waktu model planner, waktu tool (termasuk investigate; giliran yang memanggil beberapa investigate sekaligus menunggu yang paling lambat), dan antre slot planner. Di progres CLI, path panjang diringkas menjadi `folder-awal/…/folder/file` (maks 48 karakter) dan query pencarian dipotong di 60 karakter agar satu tool tetap satu baris; log aktivitas menyimpan versi lengkap |
 | `ask_user(question, options?)` | menghentikan thread dengan satu pertanyaan ke developer (lihat [Pertanyaan dari planner](#pertanyaan-dari-planner)); hanya ditawarkan bila *Planner boleh bertanya* menyala dan prompt berasal dari sesi yang bisa menjawab |
 | `submit_plan(plan)` | mengakhiri planning |
 
@@ -198,7 +198,7 @@ Batasan:
 
 Permintaan seperti *"test perubahan ini"*, *"review yang tadi"*, atau *"batalkan yang itu"* merujuk ke perubahan
 sebelumnya tanpa menyebut yang mana. Planner mengartikannya sebagai file di bagian *perubahan di sesi ini* — **bukan
-seluruh `git diff`**, karena sesi Claude Code lain (tab lain) bisa sedang mengubah folder yang sama. Sesi ditentukan dari
+seluruh `git diff`**, karena sesi CLI lain (tab lain) bisa sedang mengubah folder yang sama. Sesi ditentukan dari
 anchor `**AIT** · thread …` di riwayat chat, jadi dua tab = dua sesi yang tidak saling tercampur.
 
 - Satu modul, atau permintaan menyebut modul/file/fitur → langsung dipakai.
@@ -616,7 +616,7 @@ Penanganan password:
   AIT di-restart.
 - Riwayat chat berisi balasan `login …` ikut terkirim bersama setiap prompt berikutnya; AIT menyamarkan password itu
   sebelum riwayat sampai ke planner atau model lain.
-- Balasan Anda tetap tercatat di riwayat chat klien (mis. transcript Claude Code). Pakai **akun uji**, bukan akun pribadi.
+- Balasan Anda tetap tercatat di riwayat chat CLI (mis. transcript Claude Code). Pakai **akun uji**, bukan akun pribadi.
 - Pertanyaan menunggu 2 jam. Thread dari Dashboard atau Telegram tidak bisa ditanya; isi username & password di modal
   **🧪 Ulangi testing** detail thread (juga tidak disimpan).
 - **Captcha**: di lingkungan pengembangan captcha biasanya tidak diperiksa asal terisi, jadi tester mengisi field captcha
@@ -741,7 +741,7 @@ skenario yang bisa diperiksa: aplikasi mati, browser tidak terbuka, butuh login)
 membuat baris status *🟡 Selesai sebagian* dan dicatat di kolom error thread (`Testing: n skenario gagal.`), tetapi
 **tidak** memicu tugas perbaikan; status thread tetap *Selesai*. Wrapper menerima hasilnya dan menyarankan langkah
 berikutnya. Jawaban akhir memuat bagian **🧪 Testing** (verdict per skenario, error browser, dan **Output API**) — lihat
-[Membaca output](04-penggunaan.md#membaca-output-di-claude-code). Detail lengkap, termasuk body request dan respons
+[Membaca output](04-penggunaan.md#membaca-output-di-cli). Detail lengkap, termasuk body request dan respons
 setiap `http_request` (maks 30 request), ada di kartu *Testing* detail thread.
 
 - **Data**: tester diminta memakai data yang ada, menandai data buatannya (mis. awalan `AIT test`), menghapusnya bila
@@ -759,9 +759,9 @@ yang perlu penjelasan, dalam bahasa permintaan Anda: 1–3 kalimat tentang apa y
 masalah verifikasi yang tersisa, dan langkah lanjutan bila perlu. Fakta lainnya ditulis AIT sendiri dari hasil, bukan
 oleh model: baris status (tugas, build, reviewer, unit test, testing) dan daftar *Perlu perhatian* sebelum teks Wrapper, tabel
 *File berubah*, bagian *Unit test* dan *Testing*, dan footer (durasi, token, memory, wiki, sisa kuota provider, link thread) sesudahnya — lihat
-[Membaca output di Claude Code](04-penggunaan.md#membaca-output-di-claude-code). Teks Wrapper di-stream ke Claude Code.
+[Membaca output di CLI](04-penggunaan.md#membaca-output-di-cli). Teks Wrapper di-stream ke CLI.
 
-Jika tidak ada wrapper aktif atau wrapper gagal, Claude Code menampilkan ringkasan rencana sebagai pengganti teksnya;
+Jika tidak ada wrapper aktif atau wrapper gagal, CLI menampilkan ringkasan rencana sebagai pengganti teksnya;
 yang disimpan sebagai jawaban thread (Dashboard, Telegram) adalah ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
 verifikasi).
 
@@ -780,7 +780,7 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 - Thread yang *Selesai* menunggu dirangkum ke wiki bisnis project oleh penulis wiki (berkala, default tiap 6 jam) —
   lihat [Business memory](06-memory.md#business-memory-wiki-bisnis). Gambar yang dilampirkan di prompt disimpan
   sampai saat itu, agar screenshot bisa masuk ke halaman modulnya.
-- Untuk thread dari Claude Code (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
+- Untuk thread dari CLI (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
 - Bila ada file yang diubah (juga thread yang dibatalkan/gagal di tengah), Struktur kode project dipindai ulang dan
   function yang diubah dibaca panggilannya (lihat [Panggilan function](#panggilan-function)), keduanya di belakang.
 
@@ -1122,11 +1122,11 @@ Planner tidak membawa ingatan antar prompt: setiap prompt memulai planner baru. 
 nyambung tanpa mengirim seluruh percakapan, AIT menyimpan **ringkasan sesi** per thread:
 
 1. Baris pertama setiap balasan orkestrasi adalah penanda ``**AIT** · `NamaProject` · thread `3f2a1b9c` `` (selalu
-   dikirim, juga saat progres dimatikan). Penanda ini ikut tersimpan di chat Claude Code. Penanda lama
+   dikirim, juga saat progres dimatikan). Penanda ini ikut tersimpan di chat CLI. Penanda lama
    ``**AIThread** · …`` dari balasan sebelum rename tetap dikenali.
 2. Setelah thread selesai, Context Keeper menulis ringkasan sesi (tujuan, keputusan & batasan, log kerja per thread,
    fakta penting berupa penunjuk file, hal yang belum selesai) dan menyimpannya pada thread itu.
-3. Di prompt berikutnya, proxy mencari penanda di history yang dikirim Claude Code, mengambil ringkasan dari thread
+3. Di prompt berikutnya, proxy mencari penanda di history yang dikirim CLI, mengambil ringkasan dari thread
    terbaru yang punya ringkasan, dan memberikannya ke planner beserta pesan setelah thread itu saja.
 
 Karena yang dipakai selalu penanda yang masih ada di chat, konteks otomatis mengikuti chat: setelah *rewind* atau
@@ -1151,7 +1151,7 @@ lama memulihkan ringkasannya. Pencarian dibatasi ke project yang sama dan thread
 - Ringkasan terbaru bisa dilihat di detail thread (panel *Konteks sesi dari Context Keeper*).
 
 Untuk sesi Claude Code biasa (termasuk yang tidak lewat proxy), Context Keeper juga bisa menjembatani `/clear`
-lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integrasi-claude-code.md#context-keeper-untuk-clear).
+lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integrasi-cli.md#context-keeper-untuk-clear).
 
 ## Skill pada node
 

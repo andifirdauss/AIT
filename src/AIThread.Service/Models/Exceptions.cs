@@ -19,7 +19,11 @@ public class NineRouterException(string message, int? statusCode = null, Excepti
     // key). Retrying does not help until someone logs in again; another model (a fallback node) may.
     public bool IsProviderLoginRequired { get; init; }
 
-    public bool IsTransient => !IsProviderLoginRequired && StatusCode is null or 408 or 429 or >= 500;
+    // The model answered without any text or tool call. It usually does so every time (the provider sends its output
+    // elsewhere, or spends it all on reasoning), so it is not retried; a fallback node may still work.
+    public bool IsEmptyReply { get; init; }
+
+    public bool IsTransient => !IsProviderLoginRequired && !IsEmptyReply && StatusCode is null or 408 or 429 or >= 500;
 
     public bool IsRateLimited => StatusCode == 429;
 

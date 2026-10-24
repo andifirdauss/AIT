@@ -52,6 +52,25 @@ public class ClaudeRequestInspectorTests
     }
 
     [Fact]
+    public void Message_typed_while_the_previous_turn_ran_is_the_prompt_without_its_notice()
+    {
+        var body = MainAgentRequest(
+        [
+            new JsonObject
+            {
+                ["role"] = "user",
+                ["content"] = "<system-notice>\nUser interjection during work: priority; supersedes conflicting prior instructions.\n</system-notice>\nulangi"
+            }
+        ]);
+
+        var info = ClaudeRequestInspector.Inspect(body, NoHeaders, 1000);
+
+        Assert.True(info.IsOrchestratable);
+        Assert.Equal("ulangi", info.Prompt);
+        Assert.True(RetryReply.IsMatch(info.Prompt));
+    }
+
+    [Fact]
     public void Request_without_tools_is_passed_through()
     {
         var body = new JsonObject

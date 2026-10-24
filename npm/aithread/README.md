@@ -8,6 +8,35 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.9
+
+- **Ulangi tugas yang gagal dari chat**: bila provider gangguan (mis. `upstream_503`), balas `ulangi` (juga `coba lagi`,
+  `retry`). AIT menjalankan lagi tugas yang belum berhasil dari thread terakhir di chat itu dengan rencana yang sama,
+  tanpa memanggil planner, dan jawaban yang masih punya tugas gagal menuliskan petunjuknya. Pesan yang diketik saat
+  giliran sebelumnya masih berjalan kini dibaca sebagai teks aslinya.
+- **Jawaban kosong dari model = error provider**: model yang menjawab tanpa teks dan tanpa tool call dilaporkan dengan
+  jelas dan langsung beralih ke node cadangan, bukan berakhir sebagai `No valid SEARCH/REPLACE block`. *Test* di menu
+  Node juga menandainya gagal.
+- **Planner lebih cepat**: tools node mendapat peta folder project, pertanyaan investigasi dikirim paralel per area
+  dengan temuan yang lebih ringkas, dan progres menampilkan waktu tiap giliran model serta pembagian waktu planner
+  (model, tool, antre).
+- Dokumentasi integrasi kini berlaku untuk semua CLI (Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, oh-my-pi).
+
+## Yang baru di 1.7.8
+
+- **Secret tidak lagi sampai ke model**: password, API key, token, JWT, private key, serta password di connection string
+  dan URL diganti placeholder `{{AIT_SECRET:<label>:<id>}}` sebelum dikirim ke model, termasuk request passthrough CLI
+  lain. Prompt, riwayat chat, log aktivitas, memory, wiki bisnis, dan file export memory juga disamarkan sebelum
+  disimpan. Nilai aslinya hanya ada di memori AIT dan dipasang kembali saat executor menulis file, Tester memanggil
+  aplikasi, atau Claude Code menjalankan Edit/Write/Bash (lewat hook).
+- **File kredensial diblokir**: kunci, sertifikat, kunci SSH, file token, dan folder kredensial di profil Windows tidak
+  dibaca atau diubah agen AIT. Aturan tambahan per project (`deny`, `allow`, `keys`) ada di bagian `"secrets"` pada
+  `.aithread/project.json`.
+- Setting → *Keamanan & privasi* untuk menyalakan/mematikan penyamaran beserta hitungannya, dan popup penjelasan saat AIT
+  pertama kali dibuka.
+- Perbaikan: error 9router `tool_use.input: Input should be an object` saat tool call menulis file yang berisi
+  connection string (argumen tool call kini disamarkan per nilai, jadi JSON-nya tetap utuh).
+
 ## Yang baru di 1.7.7
 
 - **Akun uji per project**: Project > Detail → *Akun uji* berisi akun yang dipakai Tester (username, peran, atribut bebas

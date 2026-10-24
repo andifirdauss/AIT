@@ -4,7 +4,7 @@ using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
 
-// What the client (Claude Code) sees: the thread anchor, then the progress as a vertical stepper inside a ````text
+// What the client (the coding CLI) sees: the thread anchor, then the progress as a vertical stepper inside a ````text
 // block (phases, their steps and a closing line per phase), then a separator and the final answer.
 //
 //   🧠 Planner · model
@@ -101,17 +101,18 @@ public sealed partial class ClientProgress(IThreadObserver observer, bool showPr
 
     public static string PadLeft(string text, int columns) => new string(' ', Math.Max(0, columns - DisplayWidth(text))) + text;
 
-    // "[↑ 12.2k ↓  424  0%]": prompt and completion tokens of one model turn plus the cache hit share of the prompt
-    // (cached tokens are part of the prompt). Every slot is left-padded to fixed columns (↑ 6, ↓ 5, % 3) so every badge
-    // is BadgeWidth columns wide; the share is floored and capped at 99 to keep that width.
-    public static string TokenBadge(int prompt, int completion, int cached)
+    // "[↑ 12.2k ↓  424  0%   3.4s]": prompt and completion tokens of one model turn, the cache hit share of the prompt
+    // (cached tokens are part of the prompt) and how long the model took to answer (without the wait for a slot). Every
+    // slot is left-padded to fixed columns (↑ 6, ↓ 5, % 3, time 6) so every badge is BadgeWidth columns wide; the share
+    // is floored and capped at 99 to keep that width.
+    public static string TokenBadge(int prompt, int completion, int cached, TimeSpan elapsed)
     {
         var pct = prompt > 0 ? Math.Min(99, (int)((long)cached * 100 / prompt)) : 0;
         return "[↑" + PadLeft(FinalReport.Tokens(prompt), 6) + " ↓" + PadLeft(FinalReport.Tokens(completion), 5)
-            + " " + PadLeft(pct + "%", 3) + "]";
+            + " " + PadLeft(pct + "%", 3) + " " + PadLeft(FinalReport.Duration(elapsed), 6) + "]";
     }
 
-    public static int BadgeWidth => DisplayWidth(TokenBadge(0, 0, 0));
+    public static int BadgeWidth => DisplayWidth(TokenBadge(0, 0, 0, TimeSpan.Zero));
 
     // The column between a tool name and its arguments: ". " + the badge, or blanks of the same width so the arguments
     // of every tool line start at the same column.
