@@ -278,7 +278,7 @@
     return `<span class="badge text-bg-${color}">${spinner}${escapeHtml(label)}</span>`;
   }
 
-  const sourceLabels = { ClaudeCode: 'Claude Code', Dashboard: 'Dashboard', Telegram: 'Telegram' };
+  const sourceLabels = { ClaudeCode: 'CLI', Dashboard: 'Dashboard', Telegram: 'Telegram' };
 
   function sourceLabel(source) {
     return sourceLabels[source] || source;

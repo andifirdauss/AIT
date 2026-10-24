@@ -17,7 +17,7 @@ public sealed record ThreadRequest(
     // Resolved before the thread starts; prompts outside a project (no .git or build manifest) never become threads.
     Guid ProjectId,
     string? SessionId,
-    // Claude Code only: what the context keeper knows about the earlier turns of this chat.
+    // CLI chats only: what the context keeper knows about the earlier turns of this chat.
     SessionContext? Session = null,
     // Images attached to the active user turn, given to the planner alongside the brief.
     IReadOnlyList<ImageAttachment>? Images = null,
@@ -30,7 +30,7 @@ public sealed record SessionContext(Guid? PackThreadId, string? Pack, IReadOnlyL
 
 public sealed record ThreadResult(Guid ThreadId, ThreadStatus Status, string FinalText, int TotalTokens);
 
-// Receives what the client (Claude Code) should see while a thread runs.
+// Receives what the client (the coding CLI) should see while a thread runs.
 public interface IThreadObserver
 {
     Task OnProgressAsync(string line, CancellationToken cancellationToken);

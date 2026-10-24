@@ -136,6 +136,84 @@ public class ThreadRecoveryTests
     }
 
     [Fact]
+    public async Task Ulangi_in_the_chat_retries_the_last_thread_without_planning_again()
+    {
+        await using var harness = await CreateAsync();
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan
+            {
+                Summary = "Dua file.",
+                Tasks =
+                [
+                    Step("T1", GreeterFile, "Return \"Halo\"."),
+                    Step("T2", FarewellFile, "Create Farewell.", "create")
+                ]
+            }))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "Sapaan diganti."))
+            .OnExecutor(FarewellFile, _ => throw new NineRouterException("Model sedang gangguan", 503))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Sebagian."));
+        var (first, firstObserver) = await harness.RunAsync("Dua file", ThreadSource.ClaudeCode, "chat-1");
+        Assert.Contains("Balas `ulangi`", firstObserver.Final);
+
+        router
+            .OnExecutor(FarewellFile, ScriptedRouter.Create("public class Farewell { }", "Farewell dibuat."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Lengkap."));
+        var (retried, observer) = await RunInChatAsync(harness, "Ulangi yang gagal", first.ThreadId);
+
+        Assert.Equal(first.ThreadId, retried.ThreadId);
+        Assert.Equal(ThreadStatus.Completed, retried.Status);
+        Assert.Single(router.CallsTo(ScriptedAgent.Planner));
+        Assert.Contains("public class Farewell", harness.ReadFile(FarewellFile));
+        // The reply carries the thread's anchor, so the chat still knows the thread.
+        Assert.Equal([ThreadAnchor.ShortId(first.ThreadId)], ThreadAnchor.Find(retried.FinalText));
+        Assert.Contains(observer.Lines, l => l.Contains("Percobaan ulang · 1 tugas"));
+        Assert.DoesNotContain("Balas `ulangi`", observer.Final);
+        Assert.Equal(1, (await harness.LoadThreadAsync(first.ThreadId)).RetryCount);
+    }
+
+    [Fact]
+    public async Task Ulangi_without_unfinished_tasks_in_the_chat_is_a_normal_prompt()
+    {
+        await using var harness = await CreateAsync();
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "x", Tasks = [Step("T1", GreeterFile, "Return \"Halo\".")] }))
+            .OnExecutor(GreeterFile, ScriptedRouter.Edit(HelloLine, HalloLine, "ok"))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("ok"))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "y", Answer = "Tidak ada yang perlu diulang." }));
+        var (done, doneObserver) = await harness.RunAsync("Sapaan jadi Halo", ThreadSource.ClaudeCode, "chat-1");
+        Assert.DoesNotContain("Balas `ulangi`", doneObserver.Final);
+
+        var (next, _) = await RunInChatAsync(harness, "ulangi", done.ThreadId);
+
+        Assert.NotEqual(done.ThreadId, next.ThreadId);
+        Assert.Equal(2, router.CallsTo(ScriptedAgent.Planner).Count);
+    }
+
+    [Theory]
+    [InlineData("ulangi", true)]
+    [InlineData("Ulangi yang gagal.", true)]
+    [InlineData("coba lagi", true)]
+    [InlineData("retry!", true)]
+    [InlineData("ulangi tugas yang gagal", true)]
+    [InlineData("ulangi validasi di UserService", false)]
+    [InlineData("coba lagi dengan cara lain", false)]
+    [InlineData("", false)]
+    public void Retry_reply_is_only_a_short_reply_of_its_own(string reply, bool expected) =>
+        Assert.Equal(expected, RetryReply.IsMatch(reply));
+
+    // A chat turn whose history holds the anchor of threadId, like Claude Code sends it.
+    private static async Task<(ThreadResult Result, RecordingObserver Observer)> RunInChatAsync(OrchestrationHarness harness, string prompt, Guid threadId)
+    {
+        var observer = new RecordingObserver();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var request = new ThreadRequest(ThreadSource.ClaudeCode, prompt, prompt, null, harness.Project.Root, harness.ProjectId, "chat-1",
+            new SessionContext(null, null, [threadId]));
+        return (await harness.Orchestrator.RunAsync(request, observer, timeout.Token), observer);
+    }
+
+    [Fact]
     public async Task Rollback_restores_edited_files_and_deletes_created_ones()
     {
         await using var harness = await CreateAsync();

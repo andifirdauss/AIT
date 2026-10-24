@@ -42,7 +42,9 @@ public sealed record PreviousTurn(Guid ThreadId, string Investigation);
 // on a question instead (Pause). Steps and tokens are totals for the thread, including the run before a pause.
 // MemoriesUsed counts the memories (and wiki pages) the planner read in this run.
 // ToolsNodeTokens: spent by the tools nodes the planner delegated tools to (not part of Tokens).
-public sealed record PlanningResult(ThreadPlan? Plan, int Steps, int Tokens, int CachedTokens, AiNode Node, PlannerPause? Pause = null, int MemoriesUsed = 0, int ToolsNodeTokens = 0);
+// ModelTime: the planner model answering; ToolTime: its tool calls (investigate included); QueueTime: the wait for a planner slot.
+public sealed record PlanningResult(ThreadPlan? Plan, int Steps, int Tokens, int CachedTokens, AiNode Node, PlannerPause? Pause = null, int MemoriesUsed = 0, int ToolsNodeTokens = 0,
+    TimeSpan ModelTime = default, TimeSpan ToolTime = default, TimeSpan QueueTime = default);
 
 public sealed record PlannerPause(PlannerQuestion Question, PlannerConversation Conversation);
 
@@ -92,6 +94,9 @@ public sealed partial class PlannerAgent(
         public int Tokens { get; set; }
         public int CachedTokens { get; set; }
         public int QuestionsAsked { get; set; }
+        public TimeSpan ModelTime { get; set; }
+        public TimeSpan ToolTime { get; set; }
+        public TimeSpan QueueTime { get; set; }
         public bool CanBuild { get; init; }
         public bool CanGit { get; init; }
         public int MaxSteps { get; init; }
