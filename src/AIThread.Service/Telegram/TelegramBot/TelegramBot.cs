@@ -26,7 +26,7 @@ public sealed partial class TelegramBot(
     private static readonly TimeSpan DeniedReplyInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan PendingPromptLifetime = TimeSpan.FromMinutes(10);
 
-    // Earlier conversation sent to the planner: the same budget as for Claude Code (12 messages = 6 exchanges).
+    // Earlier conversation sent to the planner: the same budget as for CLI chats (12 messages = 6 exchanges).
     private const int HistoryThreads = 6;
     private const int HistoryMessageChars = 1_500;
     private const int HistoryChars = 12_000;

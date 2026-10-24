@@ -76,10 +76,10 @@ public sealed partial class NineRouterService
 
             var mediaType = response.Content.Headers.ContentType?.MediaType;
             if (string.Equals(mediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase))
-                return await ReadStreamAsync(response, onDelta, timeout.Token);
+                return EnsureReply(request.Model, await ReadStreamAsync(response, onDelta, timeout.Token));
 
             var json = await response.Content.ReadAsStringAsync(timeout.Token);
-            var result = ParseCompletion(json);
+            var result = EnsureReply(request.Model, ParseCompletion(json));
             if (onDelta is not null && result.Content.Length > 0) await onDelta(result.Content);
             return result;
         }

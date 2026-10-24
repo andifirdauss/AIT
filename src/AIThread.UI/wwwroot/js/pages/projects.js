@@ -29,7 +29,7 @@
   const projectPager = pager('projectPager', rows => {
     el('projectRows').innerHTML = rows.length
       ? rows.map(row).join('')
-      : '<tr><td colspan="7" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari folder project, atau buka Claude Code di folder project (berisi .git atau file build) melalui AIT.</td></tr>';
+      : '<tr><td colspan="7" class="empty-state">Belum ada project. Klik <strong>Telusuri…</strong> untuk mencari folder project, atau buka CLI Anda di folder project (berisi .git atau file build) melalui AIT.</td></tr>';
   });
 
   async function load() {

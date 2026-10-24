@@ -23,7 +23,8 @@ public sealed record NodeSwitch(AiNode From, AiNode To, NineRouterException Erro
     }
 }
 
-public sealed record NodeReply(ChatCompletionResult Result, AiNode Node);
+// Elapsed: the model's answer time; Queued: the wait for a MaxConcurrency slot. Both cover the whole fallback chain.
+public sealed record NodeReply(ChatCompletionResult Result, AiNode Node, TimeSpan Elapsed = default, TimeSpan Queued = default);
 
 // One model call for an agent, with the node's fallback chain (AiNode.FallbackNodeId): when the node stays unavailable
 // after 9router's own retries (429, 408, 5xx), the same call goes to its fallback, then to that one's fallback, and so

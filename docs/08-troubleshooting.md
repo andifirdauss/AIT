@@ -38,7 +38,9 @@ tersebut, lalu **Ulangi yang gagal** di detail thread.
 Model tidak tersedia atau provider-nya bermasalah. Klik *Test* pada node terkait; pilih model/combo lain bila perlu.
 Error sementara (429, 5xx, koneksi) sudah dicoba ulang otomatis 2 kali sebelum dilaporkan. Untuk 429, header
 `Retry-After` dari 9router dihormati (maks. 30 detik; bila lebih lama tidak ditunggu), tanpa header jedanya ±5 dan ±10
-detik.
+detik. Bila tugas executor tetap gagal (mis. `upstream_503` *Model sedang gangguan*), tunggu sebentar lalu balas
+`ulangi` di chat (atau **Ulangi yang gagal** di detail thread): hanya tugas yang gagal dijalankan lagi, tanpa planner.
+Supaya tidak perlu diulang manual, pasang [node cadangan](02-konfigurasi.md#node-cadangan) untuk executor.
 
 **Planner kena 429 / rate limit**
 Biasanya karena akun provider (mis. langganan Claude di 9router) kehabisan kuota per menit — tiap langkah planner
@@ -50,7 +52,8 @@ token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya bes
   planner utama. AIT beralih ke node itu dan melanjutkan investigasi; baris `⚠️ Planner … beralih ke …` muncul di
   progres. Cara yang sama berlaku untuk executor, reviewer, dan wrapper (lihat
   [Node cadangan](02-konfigurasi.md#node-cadangan)).
-- Thread yang sudah terlanjur gagal tidak perlu diulang dari awal: buka detail thread → **Ulangi yang gagal**.
+- Thread yang sudah terlanjur gagal tidak perlu diulang dari awal: balas `ulangi` di chat, atau buka detail thread →
+  **Ulangi yang gagal**.
 - Atau jadikan model planner sebuah **combo** 9router (mis. Claude → model lain) supaya fallback terjadi di 9router.
 - Kurangi slot node planner bila beberapa thread berjalan bersamaan, atau turunkan Setting → *Langkah planner*.
 
@@ -66,32 +69,38 @@ token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya bes
 **"Model '…' tidak merespons dalam N detik"**
 Naikkan Setting → *Timeout (detik)*, atau pakai model yang lebih cepat.
 
-## Claude Code tidak melewati AIT
+## CLI tidak melewati AIT
 
 Jawaban muncul tanpa baris `**AIT** · …` dan tidak ada thread baru di Dashboard:
 
-1. Buka **sesi Claude Code baru** — env hanya dibaca saat sesi dimulai.
-2. Menu CLI → kartu Claude Code: switch harus menyala dengan lencana *Aktif* (bukan *Mengarah ke alamat lain*).
-3. Untuk cakupan per project, pastikan Claude Code dijalankan di folder yang berisi `.claude/settings.local.json`
-   (lihat path di kotak status). Jika berbeda, salin blok `env` ke folder tempat Anda menjalankan `claude`.
-4. Pastikan tidak ada environment variable Windows `ANTHROPIC_BASE_URL` yang menimpa.
-5. Setting → *Orkestrasi aktif* harus menyala. Jika mati, request tetap lewat AIT tetapi diteruskan tanpa orkestrasi
+1. Buka **sesi CLI baru** — konfigurasi hanya dibaca saat sesi dimulai.
+2. Menu CLI → kartu CLI Anda: switch harus menyala dengan lencana *Aktif* (bukan *Mengarah ke alamat lain*).
+3. Pastikan sesi memakai provider/model AIT: Codex dijalankan dengan `codex --profile aithread`; di oh-my-pi,
+   opencode, dan Qwen Code model AIT dipilih lewat `/model`/`/models`; Gemini CLI memakai *Use Gemini API Key* di
+   `/auth`. Lihat [Integrasi CLI](03-integrasi-cli.md).
+4. Untuk cakupan per project, pastikan CLI dijalankan di folder project itu. Claude Code membaca
+   `.claude/settings.local.json` dari folder tempat ia dijalankan (lihat path di kotak status); jika berbeda, salin
+   blok `env` ke folder tempat Anda menjalankan `claude`. Gemini CLI hanya membaca satu `.env` — `.env` milik project
+   bisa menutupi switch global.
+5. Pastikan tidak ada environment variable Windows yang menimpa (mis. `ANTHROPIC_BASE_URL` untuk Claude Code,
+   `GOOGLE_GEMINI_BASE_URL`/`GEMINI_API_KEY` untuk Gemini CLI).
+6. Setting → *Orkestrasi aktif* harus menyala. Jika mati, request tetap lewat AIT tetapi diteruskan tanpa orkestrasi
    (terlihat sebagai log debug `Passthrough (orchestration disabled)`).
-6. Cari di log baris `Sesi xxxxxxxx (…) bukan bagian project (…)`. Artinya sesi **sengaja diabaikan** karena
+7. Cari di log baris `Sesi xxxxxxxx (…) bukan bagian project (…)`. Artinya sesi **sengaja diabaikan** karena
    working directory-nya bukan bagian sebuah project — lihat [Project](#project).
 
 Log debug `Passthrough (auxiliary request without tools)` untuk request judul sesi/compact adalah hal normal.
 
-## Error yang tampil di Claude Code
+## Error yang tampil di CLI
 
 | Pesan | Penyebab | Solusi |
 |---|---|---|
-| `authentication_error: Invalid AIT proxy key` | `ANTHROPIC_AUTH_TOKEN` berbeda dengan Proxy API key. | Terapkan ulang integrasi setelah mengganti key, lalu buka sesi baru. |
+| `authentication_error: Invalid AIT proxy key` | Key yang dikirim CLI (mis. `ANTHROPIC_AUTH_TOKEN` di Claude Code) berbeda dengan Proxy API key. | Terapkan ulang integrasi setelah mengganti key, lalu buka sesi baru. |
 | `AIT: passthrough model belum diatur…` (503) | Tidak ada model passthrough dan tidak ada node Wrapper/Executor aktif. | Isi *Model passthrough* atau aktifkan node. |
 | `❌ AIT gagal: Belum ada node Planner aktif…` | Pipeline belum lengkap. | Tambahkan/aktifkan node di menu Node. |
 | `❌ AIT gagal: Planner tidak menghasilkan rencana yang valid dalam N langkah.` | Planner kehabisan langkah atau terus mengirim rencana yang ditolak validator. | Lihat alasan penolakan di *Aktivitas* thread. Naikkan *Langkah planner*, pakai model planner yang lebih kuat, atau perjelas prompt. |
 | `❌ AIT gagal memulai thread: …` | Masalah sebelum thread dibuat, biasanya database atau project dihapus saat sesi berjalan. | Periksa kartu Database di Dashboard; daftarkan ulang project bila perlu. |
-| Claude Code timeout | Thread lebih lama dari `API_TIMEOUT_MS`. | Naikkan `API_TIMEOUT_MS` di settings Claude Code, atau pecah prompt. |
+| CLI timeout | Thread lebih lama dari batas waktu CLI. | Naikkan batasnya (Claude Code: `API_TIMEOUT_MS`; Codex: `stream_idle_timeout_ms`; Qwen Code: `QWEN_STREAM_MAX_LIFETIME_MS`), atau pecah prompt. |
 
 ## Project
 
@@ -106,7 +115,7 @@ kurung menunjukkan penyebabnya:
 - *folder ini terlalu luas*: working directory adalah drive, folder Home, atau folder sistem;
 - *working directory tidak diketahui*: klien tidak mengirimnya; set header `X-AIThread-Cwd`.
 
-Solusi: jalankan Claude Code di folder project, tambahkan `.git` (`git init`) atau file build ke folder itu, atau
+Solusi: jalankan CLI di folder project, tambahkan `.git` (`git init`) atau file build ke folder itu, atau
 daftarkan foldernya lewat *Daftarkan manual* di menu Project (folder tanpa marker pun bisa). Bisa juga menerapkan
 integrasi *per project* (mengirim header `X-AIThread-Project`). Sesi yang diabaikan dicek ulang setelah sekitar 5 detik.
 
@@ -144,6 +153,7 @@ folder yang sama menjadi satu project (yang terakhir dipakai), lengkap dengan th
 | `the SEARCH text occurs N times…` / `match several places` | Potongan SEARCH terlalu pendek sehingga ambigu. | Biasanya selesai di retry; bila tidak, sama seperti di atas. |
 | `Output was cut off (max tokens)…` | Output melebihi *Max tokens* node. | Naikkan *Max tokens* executor (terutama untuk tugas `create`). |
 | `No valid SEARCH/REPLACE block in the output.` | Model menjawab di luar format. | Ganti model executor; tambahkan instruksi di *Instruksi tambahan* node. |
+| `Model '…' mengembalikan jawaban kosong lewat 9router` | Provider di balik model itu menjawab tanpa teks dan tanpa tool call (output masuk ke *reasoning*, akun bermasalah, atau max tokens habis untuk reasoning). Tidak dicoba ulang otomatis karena biasanya berulang; *Test* di menu Node juga gagal dengan pesan yang sama. | Pilih model lain atau pasang [node cadangan](02-konfigurasi.md#node-cadangan) (langsung dipakai), cek provider-nya di 9router, lalu `ulangi`. |
 | `Dependency tidak berhasil: T3` | Tugas dilewati karena tugas yang ditunggu gagal. | Perbaiki tugas yang gagal, lalu ulangi bagian ini dengan prompt baru. |
 
 Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
@@ -279,7 +289,7 @@ selama program itu terbuka. Jalankan di background: `.\scripts\aithread.ps1 star
 [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background).
 
 **Port 5225 sudah dipakai**
-Jalankan dengan `--urls http://localhost:<port lain>` lalu terapkan ulang integrasi Claude Code.
+Jalankan dengan `--urls http://localhost:<port lain>` lalu terapkan ulang integrasi CLI di menu CLI.
 
 **`aithread.ps1 start`: "Port 5225 sudah dipakai proses lain (PID …)"**
 Biasanya instance dari Visual Studio / `dotnet run` masih hidup. Hentikan program itu, lalu `start` lagi. Bila yang
@@ -309,8 +319,8 @@ planner tetap bisa membaca pertanyaan tadi dari riwayat chat.
 Jawaban dikenali dari id sesi klien. Pastikan Anda menjawab di sesi (chat) yang sama, belum `/clear` atau membuka sesi
 baru, dan klien Anda mengirim id sesi (Claude Code dan Telegram selalu; klien tanpa id sesi tidak pernah ditanya).
 
-**Base URL https gagal dari Claude Code**
-Claude Code tidak mempercayai sertifikat development. Pakai alamat `http://localhost:5225`.
+**Base URL https gagal dari CLI**
+CLI berbasis Node.js (mis. Claude Code) tidak mempercayai sertifikat development. Pakai alamat `http://localhost:5225`.
 
 **Halaman tidak update live**
 Browser memutus koneksi SSE (mis. terlalu banyak tab AIT terbuka). Tutup tab lain atau refresh halaman.

@@ -268,6 +268,23 @@ public class WorkspaceTests : IDisposable
     }
 
     [Fact]
+    public void Folder_map_lists_directories_only()
+    {
+        _workspace.Write("proj/src/Web/Controllers/HomeController.cs", "class HomeController {}");
+        _workspace.Write("proj/src/Web/bin/Debug/Web.dll", "x");
+        _workspace.Write("proj/README.md", "readme");
+        var tools = new WorkspaceTools(new WorkspaceScope(At("proj")));
+
+        var map = tools.ListDirectory(".", 4, directoriesOnly: true);
+
+        Assert.Contains("      Controllers/", map);
+        Assert.DoesNotContain("HomeController.cs", map);
+        Assert.DoesNotContain("README.md", map);
+        Assert.DoesNotContain("bin/", map);
+        Assert.Contains("README.md", tools.ListDirectory("."));
+    }
+
+    [Fact]
     public async Task Read_tools_can_look_outside_the_project_root()
     {
         _workspace.Write("proj/a.txt", "mine");

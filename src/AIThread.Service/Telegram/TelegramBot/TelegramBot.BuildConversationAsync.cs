@@ -6,7 +6,7 @@ namespace AIThread.Service.Telegram;
 
 public sealed partial class TelegramBot
 {
-    // Earlier prompts and answers of this chat in this project since the last /new, formatted like the Claude Code
+    // Earlier prompts and answers of this chat in this project since the last /new, formatted like the CLI
     // history the planner already knows. Model-facing text is English.
     private async Task<string?> BuildConversationAsync(TelegramChat chat, Guid projectId, CancellationToken cancellationToken)
     {

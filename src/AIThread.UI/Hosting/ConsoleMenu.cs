@@ -270,7 +270,7 @@ public sealed class ConsoleMenu(int port)
         }
 
         new CliSettings { Port = _port }.Save();
-        Out.WriteLine($"Port disimpan: {_port}. Terapkan ulang integrasi Claude Code (menu Setting) karena alamatnya berubah.");
+        Out.WriteLine($"Port disimpan: {_port}. Terapkan ulang integrasi CLI (menu CLI) karena alamatnya berubah.");
         await PauseAsync();
     }
 
