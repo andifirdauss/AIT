@@ -8,6 +8,13 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.7.10
+
+- **Fitur 1.7.7 kini ada bersama perbaikan 1.7.8 dan 1.7.9**: akun uji per project, Tester berganti user
+  (`switch_user`), deteksi *login as*, test lanjutan yang disarankan, dan skenario multi-langkah dengan Excel ikut di
+  versi yang sama dengan `ulangi` dari chat, penanganan jawaban kosong, dan penyamaran secret. Versi 1.7.8 dan 1.7.9 di
+  npm belum memuat fitur 1.7.7.
+
 ## Yang baru di 1.7.9
 
 - **Ulangi tugas yang gagal dari chat**: bila provider gangguan (mis. `upstream_503`), balas `ulangi` (juga `coba lagi`,
