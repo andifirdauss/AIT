@@ -104,7 +104,7 @@ public sealed partial class TesterAgent
             messages.Add(ChatMessages.Assistant(string.IsNullOrWhiteSpace(result.Content) ? null : result.Content, result.ToolCalls));
             // Browser actions build on each other, so the calls of a turn run in the order written. The turn's token
             // badge goes on its first tool line.
-            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens);
+            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens, reply.Elapsed);
             for (var i = 0; i < result.ToolCalls.Count; i++)
             {
                 var call = result.ToolCalls[i];

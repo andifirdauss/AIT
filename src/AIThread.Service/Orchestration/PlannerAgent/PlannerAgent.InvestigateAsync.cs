@@ -38,7 +38,9 @@ public sealed partial class PlannerAgent
             var result = await toolsNodeAgent.InvestigateAsync(group, question, input, tools, run.MemoriesRead, label, recorder, progress, cancellationToken);
             Interlocked.Add(ref run.ToolsNodeTokens, result.Tokens);
             recorder.Investigation.Finding(question, result.Findings);
-            await progress.StepAsync(nodePrefix + ClientProgress.Pad("complete", PlannerTools.NameColumn) + $"{result.Steps} langkah · {FinalReport.Tokens(result.Tokens)} token{(result.CachedTokens > 0 ? $" · c{FinalReport.Tokens(result.CachedTokens)}" : string.Empty)} · {result.Node.Model}", cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
+            // The wait for a tools node slot shows only when there was one: MaxConcurrency too low for the parallel calls.
+            var queued = result.QueueTime.TotalMilliseconds >= 100 ? $", antre {FinalReport.Duration(result.QueueTime)}" : string.Empty;
+            await progress.StepAsync(nodePrefix + ClientProgress.Pad("complete", PlannerTools.NameColumn) + $"{result.Steps} langkah · {FinalReport.Duration(result.Elapsed)} (model {FinalReport.Duration(result.ModelTime)}, laporan {FinalReport.Duration(result.ReportTime)}{queued}) · {FinalReport.Tokens(result.Tokens)} token{(result.CachedTokens > 0 ? $" · c{FinalReport.Tokens(result.CachedTokens)}" : string.Empty)} · {result.Node.Model}", cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
             return new PlannerToolOutcome(result.Findings, null);
         }
         catch (NineRouterException ex) when (!cancellationToken.IsCancellationRequested)

@@ -30,7 +30,9 @@ public static partial class FinalReport
     // "✅ **Selesai** · 8/8 tugas · build lolos · reviewer setuju · unit test lolos (12) · testing lolos", then "Perlu
     // perhatian" when something failed. Fix tasks (V<round>-<n>) do not count as tasks of the plan; their failures are
     // listed like the others. A failed test makes the thread "Selesai sebagian": the change does not work yet.
-    public static string Status(ExecutionSummary execution, VerificationReport? verification, TestingReport? testing = null, UnitTestReport? unitTests = null)
+    // retryHint (chat threads) tells how to run planned tasks that did not succeed again with "ulangi" (RetryReply).
+    public static string Status(ExecutionSummary execution, VerificationReport? verification, TestingReport? testing = null, UnitTestReport? unitTests = null,
+        bool retryHint = false)
     {
         var planned = execution.Results.Where(r => !IsFixTask(r.TaskKey)).ToList();
         var succeeded = planned.Count(r => r.Status == ThreadTaskStatus.Succeeded);
@@ -57,6 +59,8 @@ public static partial class FinalReport
             foreach (var line in attention) builder.Append("- ").Append(line).Append('\n');
             builder.Append('\n');
         }
+        if (retryHint && succeeded < planned.Count)
+            builder.Append("🔁 Balas `ulangi` untuk menjalankan lagi tugas yang belum berhasil dengan rencana yang sama (planner tidak dipanggil).\n\n");
         return builder.ToString();
     }
 

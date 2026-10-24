@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -50,6 +51,8 @@ public sealed partial class PlannerAgent
             var result = reply.Result;
             run.Tokens += result.TotalTokens;
             run.CachedTokens += result.CachedTokens;
+            run.ModelTime += reply.Elapsed;
+            run.QueueTime += reply.Queued;
 
             if (result.ToolCalls.Count == 0)
             {
@@ -75,8 +78,11 @@ public sealed partial class PlannerAgent
 
             // Token counts exist per model turn, not per tool: the turn's badge goes on its first tool line.
             var badgeHolder = result.ToolCalls.FirstOrDefault(c => c.Name is not (PlannerTools.SubmitPlan or PlannerTools.RunBuild));
-            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens);
+            var badge = ClientProgress.TokenBadge(result.PromptTokens, result.CompletionTokens, result.CachedTokens, reply.Elapsed);
+            // The turn's tools run in parallel, so the turn takes as long as its slowest tool (often one investigate).
+            var toolClock = Stopwatch.StartNew();
             var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, input, run, tools, recorder, progress, ReferenceEquals(call, badgeHolder) ? badge : null, cancellationToken)));
+            run.ToolTime += toolClock.Elapsed;
 
             ThreadPlan? accepted = null;
             (ToolCall Call, PlannerQuestion Question)? ask = null;
@@ -103,7 +109,8 @@ public sealed partial class PlannerAgent
             {
                 run.QuestionsAsked++;
                 var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild, run.ToolsNodeTokens, run.CanGit);
-                return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count, run.ToolsNodeTokens);
+                return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count, run.ToolsNodeTokens,
+                    run.ModelTime, run.ToolTime, run.QueueTime);
             }
         }
 

@@ -2,7 +2,7 @@ namespace AIThread.Service.Implementations;
 
 public sealed partial class DocsService
 {
-    // "03-integrasi-claude-code.md#cara-b--manual" -> "/Docs/03-integrasi-claude-code#cara-b--manual".
+    // "03-integrasi-cli.md#manual" -> "/Docs/03-integrasi-cli#manual".
     // Absolute URLs, anchors and paths outside the docs folder are left untouched.
     public static string RewriteLink(string url)
     {

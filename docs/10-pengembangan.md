@@ -104,10 +104,10 @@ connection string LocalDB default.
 | `Orchestration/UnitTestStage/` | Unit test di thread: `OpenAsync` (setting, suite, scan otomatis katalog kosong, batas 10 detik), `RestoreAsync`, baseline paralel planner + cache hash (`StartBaseline`/`CompleteBaselineAsync`), `Brief` (`# Unit tests` di brief planner), `CheckAsync` per putaran verifikasi (klasifikasi, triase `TesterAgent.TriageAsync`, aturan mekanis, `ReviewIssue` → `FixTaskFactory`), `RunOnlyAsync`/`RunForPlannerAsync`, `FinishAsync` (hasil, test baru, obsolete, karantina, `UnitTestReport` di `ThreadRun.UnitTestJson`). Batas 3 putaran perbaikan di `VerificationStage`. |
 | `Implementations/UnitTestService/`, `API/Controllers/UnitTestsController.cs` | API katalog untuk Project > Detail (`pages/project-unittests.js`): setting, scan, run manual, riwayat, aktifkan lagi, konfirmasi hapus (thread Dashboard menghapus kode test). Export/import katalog ada di `MemoryTransferService` (format v3). |
 | `Orchestration/WrapperAgent/`, `MemoryExtractor/` | Ringkasan akhir dan ekstraksi memory. |
-| `Orchestration/ContextKeeper/`, `ContextPackBuilder.cs`, `ThreadAnchor.cs` | Konteks sesi Claude Code: penanda thread di balasan, pencarian ringkasan dari history, pembaruan ringkasan setelah thread, tool `read_thread`. |
+| `Orchestration/ContextKeeper/`, `ContextPackBuilder.cs`, `ThreadAnchor.cs` | Konteks sesi chat CLI: penanda thread di balasan, pencarian ringkasan dari history, pembaruan ringkasan setelah thread, tool `read_thread`. |
 | `Orchestration/SessionHandoff/`, `TranscriptDigest.cs`, `Implementations/ClaudeHookConfig.cs`, `API/Controllers/ClaudeHooksController.cs` | Context Keeper untuk `/clear`: hook `SessionEnd`/`SessionStart`, ringkasan transcript, penulisan blok `hooks` di settings Claude Code. |
 | `Orchestration/AgentPrompts.cs` | **Semua prompt peran** (planner + bagian *Auto Testing* dan *Unit tests*, executor, reviewer, tester + triase unit test, label unit test, wrapper, memory, context keeper). |
-| `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; progres untuk Claude Code sebagai *vertical stepper* di blok ```` ````text ```` (wrap 90 kolom). |
+| `Orchestration/ThreadRecorder.cs`, `ClientProgress.cs` | Persistensi + event SSE; progres untuk CLI sebagai *vertical stepper* di blok ```` ````text ```` (wrap 90 kolom). |
 | `Orchestration/FinalReport.cs` | Bagian jawaban akhir yang ditulis AIT dari hasil: baris status + *Perlu perhatian*, tabel *File berubah* (dari diff), bagian *Unit test*, bagian *Testing* + *Output API*, footer (durasi, token, memory, wiki, *Sisa kuota*, link thread). |
 | `Implementations/RouterQuotas.cs` | Bagian murni kuota provider: model node/combo → provider 9router (peta alias `cc`→`claude`, `ag`→`antigravity`, …), parsing `/api/combos`, `/api/providers/client`, `/api/usage/{id}`, dan pemilihan batas yang ditampilkan. HTTP-nya di `NineRouterService.GetQuotasAsync` (cache 60 detik, timeout 10 detik). |
 | `Implementations/RouterCliToken.cs` | Token CLI 9router (`x-9r-cli-token` = 16 hex pertama sha256(`machine-id` + `9r-cli-auth` + `auth/cli-secret`) dari folder data 9router), dikirim `GetDashboardJsonAsync` hanya ke 9router di localhost agar kuota terbaca walau *Require login* aktif. |
@@ -163,7 +163,7 @@ di `AIThread.stream(...)` pada halaman terkait.
 Pipeline bisa diuji dengan server tiruan 9router yang mengimplementasikan `GET /api/health`, `GET /v1/models`, dan
 `POST /v1/chat/completions` (stream SSE OpenAI, termasuk `tool_calls`), dengan jawaban berbeda berdasarkan isi system
 prompt (`You are the PLANNER`, `You are an EXECUTOR`, `You are the WRAPPER`, `maintain the memory`). Arahkan
-Setting → Base URL ke server tiruan tersebut, lalu kirim request berformat Claude Code ke `/v1/messages` atau
+Setting → Base URL ke server tiruan tersebut, lalu kirim request CLI (mis. format Anthropic ke `/v1/messages`) atau
 `POST /api/threads` (`{ "projectId", "prompt" }`). Gunakan database terpisah (ubah `ConnectionStrings:Default`) agar data uji
 tidak bercampur.
 

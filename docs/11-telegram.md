@@ -37,7 +37,7 @@ Setelah itu laptop boleh ditinggal.
 
 ## Mengirim prompt
 
-Kirim pesan teks biasa, seperti mengetik di Claude Code. Bot membalas pesan Anda dengan **pesan status** yang
+Kirim pesan teks biasa, seperti mengetik di CLI. Bot membalas pesan Anda dengan **pesan status** yang
 diperbarui terus (pembaruan tidak memunculkan notifikasi):
 
 ```
@@ -71,8 +71,8 @@ halaman Project, dan memory diekstrak seperti biasa.
 | *(teks biasa)* | Menjalankan prompt di project aktif. Bila belum ada project aktif, bot menampilkan pilihan project lalu menjalankan prompt setelah Anda memilih. |
 | `/projects` | Daftar project terdaftar dengan tombol untuk memilih. |
 | `/project <nomor atau nama>` | Memilih project tanpa tombol. Nama boleh sebagian selama hanya cocok dengan satu project. |
-| `/status` | Project aktif, thread chat ini yang sedang berjalan, dan 5 thread terakhir dari **semua** sumber (termasuk Claude Code). |
-| `/cancel` | Membatalkan thread chat ini. `/cancel <id>` membatalkan thread lain yang sedang berjalan — id 8 karakter dari `/status`, misalnya thread Claude Code yang tertinggal di laptop. |
+| `/status` | Project aktif, thread chat ini yang sedang berjalan, dan 5 thread terakhir dari **semua** sumber (termasuk CLI). |
+| `/cancel` | Membatalkan thread chat ini. `/cancel <id>` membatalkan thread lain yang sedang berjalan — id 8 karakter dari `/status`, misalnya thread dari CLI yang tertinggal di laptop. |
 | `/diff` | Diff perubahan file thread terakhir chat ini. `/diff <id>` untuk thread lain. |
 | `/new` | Memulai percakapan baru: prompt berikutnya dikirim tanpa riwayat. |
 | `/help`, `/start` | Bantuan singkat dan project aktif. |
@@ -81,7 +81,7 @@ Daftar perintah juga muncul di tombol menu `/` Telegram.
 
 ## Percakapan lanjutan
 
-Seperti di Claude Code, prompt berikutnya membawa riwayat percakapan untuk planner: hingga 6 pertukaran terakhir
+Seperti di CLI, prompt berikutnya membawa riwayat percakapan untuk planner: hingga 6 pertukaran terakhir
 (prompt + ringkasan) dari chat ini **di project yang sama**, dipotong bila panjang. Jadi "sekarang tambahkan juga di
 halaman detail" bisa dipahami tanpa mengulang konteks. Riwayat mulai dari nol setelah `/new` atau ganti project.
 
@@ -93,7 +93,7 @@ pilihan atau jawaban Anda sebagai pesan biasa; thread yang sama dilanjutkan. Lih
 
 - Hanya **chat pribadi yang diizinkan** di menu Setting yang bisa menjalankan prompt. Pesan dari grup dan channel
   diabaikan.
-- Izinkan hanya akun Telegram Anda sendiri: sama seperti Claude Code, prompt dapat mengubah file project di laptop.
+- Izinkan hanya akun Telegram Anda sendiri: sama seperti di CLI, prompt dapat mengubah file project di laptop.
 - Chat asing yang mengirim pesan ke bot tercatat sebagai *Menunggu izin* (20 terbaru disimpan) dan log dashboard
   menampilkan peringatan. Klik **Hapus** bila tidak Anda kenal; **Cabut** menghentikan akses chat yang sudah diizinkan
   seketika.

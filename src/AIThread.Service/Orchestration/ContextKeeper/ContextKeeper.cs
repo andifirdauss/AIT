@@ -10,7 +10,7 @@ namespace AIThread.Service.Orchestration;
 // PackMessageIndex is the chat message holding the anchor of the thread whose pack was found.
 public sealed record ResolvedSession(SessionContext Context, int? PackMessageIndex);
 
-// Keeps a running summary ("context pack") of each Claude Code conversation, so every planner run starts from a small,
+// Keeps a running summary ("context pack") of each CLI conversation, so every planner run starts from a small,
 // current context instead of the whole chat. The pack written after a thread is stored on that thread, and threads are
 // found in the chat through their ThreadAnchor line: a rewound or compacted chat simply resolves to an earlier pack.
 public sealed partial class ContextKeeper(

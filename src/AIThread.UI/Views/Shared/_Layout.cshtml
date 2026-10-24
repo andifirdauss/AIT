@@ -80,8 +80,8 @@
                 <win-controls for="alert" />
                 <div class="update-notes">
                     <div class="update-note">
-                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Secret tidak lagi sampai ke model</strong>: password, API key, token, JWT, private key, dan password di connection string diganti placeholder <code>{{AIT_SECRET:…}}</code> sebelum dikirim ke model maupun disimpan ke log, memory, wiki, dan export. Nilai aslinya hanya ada di memori AIT dan dipasang kembali saat executor, Tester, atau Claude Code menulis. File kredensial (kunci, sertifikat, SSH) diblokir, dan aturan per project ada di <code>"secrets"</code> <code>.aithread/project.json</code>. Juga diperbaiki: error 9router <em>tool_use.input: Input should be an object</em> saat tool call menulis file berisi connection string.
-                        <a href="~/Docs/12-keamanan" class="alert-link ms-2">Detail →</a>
+                        <strong>🚀 AIT versi @appVersion</strong> — <strong>Tugas yang gagal bisa diulang langsung dari chat</strong>: bila provider gangguan (mis. 503), balas <code>ulangi</code> dan AIT menjalankan lagi tugas yang belum berhasil dari thread terakhir dengan rencana yang sama, tanpa memanggil planner. Model yang menjawab kosong kini dilaporkan sebagai error provider dan langsung beralih ke node cadangan, bukan <em>No valid SEARCH/REPLACE block</em>; <em>Test</em> di menu Node juga menandainya gagal. Planner juga lebih cepat: tools node mendapat peta folder project, pertanyaan investigasi dikirim paralel per area dengan temuan lebih ringkas, dan progres menampilkan waktu tiap giliran model.
+                        <a href="~/Docs/04-penggunaan#mengulang-tugas-yang-gagal" class="alert-link ms-2">Detail →</a>
                     </div>
                 </div>
             </div>

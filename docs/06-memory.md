@@ -212,7 +212,7 @@ modul, dan memory yang sudah ada **di modul yang sama**, lalu menulis **maksimal
 (modul dari daftar, layer dari peta kode, jenis lewat pertanyaan berurutan, keyword). AIT memvalidasi dan
 menormalisasi hasilnya; memory yang labelnya tidak lengkap dilewati. Karena hanya sesi di dalam sebuah project (folder dengan `.git` atau file build) yang diorkestrasi,
 setiap thread selalu punya project; bila project dihapus saat thread berjalan, hanya knowledge memory yang disimpan.
-Proses ini berjalan di belakang dan tidak menunda balasan ke Claude Code.
+Proses ini berjalan di belakang dan tidak menunda balasan ke CLI.
 
 ## Cara planner memakai memory
 

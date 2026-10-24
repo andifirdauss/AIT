@@ -6,7 +6,7 @@ public sealed partial class ThreadOrchestrator
 {
     private static string SourceLabel(ThreadSource source) => source switch
     {
-        ThreadSource.ClaudeCode => "Claude Code",
+        ThreadSource.ClaudeCode => "CLI",
         ThreadSource.Telegram => "Telegram",
         _ => "dashboard"
     };
