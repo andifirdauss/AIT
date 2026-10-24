@@ -10,6 +10,13 @@ Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasa
 
 ## Yang baru di 1.7.10
 
+- **Tester tidak lagi menebak URL API**: path endpoint dibaca dari atribut route di kode ASP.NET (Core MVC/Web API dan
+  Web API 2) saat testing dimulai: `[controller]` = nama class tanpa `Controller` (`OutletUnionApiController` →
+  `OutletUnionApi`), `[action]`, `[area]`, `{version:apiVersion}`, route base class. Tester mendapat daftar endpoint
+  yang relevan, dan target skenario yang salah eja dikoreksi otomatis.
+- **Setelah 404** Tester diberi route terdekat dari kode (atau tanda bahwa aplikasi belum memuat perubahan), dan halaman
+  Swagger UI diberi daftar dokumen OpenAPI-nya (mis. `/swagger/OutboundService/swagger.json`), jadi tidak berakhir
+  *blocked* karena menebak path.
 - **Fitur 1.7.7 kini ada bersama perbaikan 1.7.8 dan 1.7.9**: akun uji per project, Tester berganti user
   (`switch_user`), deteksi *login as*, test lanjutan yang disarankan, dan skenario multi-langkah dengan Excel ikut di
   versi yang sama dengan `ulangi` dari chat, penanganan jawaban kosong, dan penyamaran secret. Versi 1.7.8 dan 1.7.9 di

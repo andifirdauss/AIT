@@ -522,7 +522,8 @@ Test itu masuk katalog, jadi ikut menjaga regresi di thread berikutnya. Tanpa ka
    semua skenario *tidak bisa dicek* tanpa token terpakai, dengan alasannya (perintah tidak dikenali, exit code dan
    output terakhir, atau batas waktu).
 3. **Tester** bekerja dalam loop tool-nya sendiri (maks 40 langkah). Ia melihat permintaan, ringkasan rencana, kontrak,
-   diff tiap tugas yang berhasil (maks 80 baris per tugas), dan rencana testing — bukan kode lain. Tool-nya:
+   diff tiap tugas yang berhasil (maks 80 baris per tugas), [endpoint dari kode](#endpoint-dari-kode), dan rencana
+   testing — bukan kode lain. Tool-nya:
 
 | Tool | Level | Keterangan |
 |---|---|---|
@@ -542,6 +543,32 @@ Test itu masuk katalog, jadi ikut menjaga regresi di thread berikutnya. Tanpa ka
 4. **Progres** di CLI: fase `🧪 Testing · UI · http://localhost:5000 · model`, satu baris per tool (mis.
    `browser_fill  Deskripsi ← "AIT test"`), dan untuk `http_request` status, durasi, content type, serta 8 baris pertama
    body respons di bawahnya.
+
+### Endpoint dari kode
+
+Path endpoint tidak ditebak dari nama class. Saat testing dimulai (setelah perubahan diterapkan, jadi endpoint baru
+ikut), `Testing/AspNetRoutes` membaca atribut route ASP.NET (Core MVC/Web API dan Web API 2) di semua file `.cs` project
+dengan Roslyn, tanpa build:
+
+- `[controller]` = nama class tanpa `Controller` (`OutletUnionApiController` → `OutletUnionApi`), `[action]` = nama
+  method (`[ActionName]`, akhiran `Async` dibuang), `[area]` = `[Area]`, `{version:apiVersion}` = `[ApiVersion]`
+  (`"1.0"` → `1`); parameter `{controller}`/`{action}` di template diisi nama yang sama.
+- `[Route]`/`[RoutePrefix]` class digabung dengan `[HttpGet("…")]`, `[HttpPost]` + `[Route("…")]`, `[AcceptVerbs]` di
+  method; template method yang diawali `/` atau `~/` tidak digabung. Class tanpa route memakai route base class-nya (juga
+  di file lain). Controller tanpa atribut route sama sekali dianggap memakai route default `{controller}/{action}`.
+
+Hasilnya dipakai di dua tempat:
+
+- **Brief tester** mendapat bagian `# Endpoints in the code` (maks 30): route di file yang diubah thread dan route yang
+  dituju skenario. Target skenario yang tidak dilayani route mana pun tetapi jelas mirip satu route (segmen sama, satu
+  atau dua ditulis sedikit beda, mis. `OutletUnion` untuk `OutletUnionApi`) diganti ke route itu, termasuk di
+  langkah-langkahnya, dengan catatan path yang ditulis planner.
+- **Setelah 404**, jawaban `http_request` ke tester diberi catatan AIT: route di kode yang paling mirip, atau bila path
+  itu memang ada di kode, kemungkinan aplikasi belum memuat perubahan (perlu restart/build ulang). Tanpa route yang
+  mirip, tester diarahkan ke `/swagger/index.html`; respons halaman Swagger UI selalu diberi daftar dokumen OpenAPI yang
+  disebutnya (`Testing/SwaggerDocuments`, mis. `/swagger/OutboundService/swagger.json`).
+
+Planner juga diberi aturan token yang sama saat menulis `target`.
 
 ### Menjalankan aplikasi
 

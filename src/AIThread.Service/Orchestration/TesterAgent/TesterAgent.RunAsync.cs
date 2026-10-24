@@ -22,6 +22,7 @@ public sealed partial class TesterAgent
         foreach (var (name, value) in input.Values ?? new Dictionary<string, string>()) report.Values[name] = value;
         using var run = new TestRun(input, report, http, secrets);
         run.Accounts = await AccountsAsync(input.Project, cancellationToken);
+        run.Routes = await RoutesAsync(input.Project, cancellationToken);
         try
         {
             // An app that is not running is started first; one that still does not answer fails every scenario the same
@@ -53,7 +54,7 @@ public sealed partial class TesterAgent
     {
         var node = run.Input.Tester;
         var tools = TesterTools.For(run.Test.Level, run.Input.CanAskLogin, CanSwitchUser(run));
-        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(run.Input, run.Accounts)) };
+        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(run.Input, run.Accounts, run.Routes)) };
         var tokens = 0;
 
         for (var step = 1; ; step++)

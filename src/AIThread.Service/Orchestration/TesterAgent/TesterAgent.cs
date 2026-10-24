@@ -212,6 +212,9 @@ public sealed partial class TesterAgent(
     private const int MaxDiffLinesPerTask = 80;
     private const int MaxInstructionChars = 600;
 
+    // Endpoints from the code listed in the brief.
+    private const int MaxBriefRoutes = 30;
+
     // Triage of unit tests: more of each diff, since the failing code may sit anywhere in it.
     private const int MaxTriageDiffLines = 150;
 
@@ -247,6 +250,9 @@ public sealed partial class TesterAgent(
 
         // The project's test accounts; null when it has no key or the store could not be read.
         public TestAccountSet? Accounts { get; set; }
+
+        // The endpoints the code declares (AspNetRoutes), for the brief and the hint after a 404.
+        public IReadOnlyList<CodeRoute> Routes { get; set; } = [];
 
         // The account switch_user made current; null: the developer's login (Input.Login), if any.
         public TestAccount? Account { get; private set; }
