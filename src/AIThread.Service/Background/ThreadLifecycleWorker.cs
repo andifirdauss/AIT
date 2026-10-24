@@ -109,7 +109,7 @@ public sealed class ThreadLifecycleWorker(
         await _stopping.CancelAsync();
         if (_sweep is not null) await _sweep;
 
-        // Dashboard and Telegram threads already follow ApplicationStopping; Claude Code threads follow their request.
+        // Dashboard and Telegram threads already follow ApplicationStopping; CLI threads follow their request.
         var cancelled = registry.CancelAll();
         if (cancelled == 0) return;
 

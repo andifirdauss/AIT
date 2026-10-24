@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace AIThread.Service.Orchestration;
 
-// First line of every orchestrated reply. It stays in the Claude Code conversation, so later requests can tell which
+// First line of every orchestrated reply. It stays in the CLI conversation, so later requests can tell which
 // AIT threads the chat contains — also after a rewind, a compaction or a resume, since only the lines still in
 // the history are found. Replies written before the rename carry "**AiThread**"; those are still recognised.
 public static partial class ThreadAnchor

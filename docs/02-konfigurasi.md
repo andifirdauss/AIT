@@ -36,11 +36,11 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 
 | Field | Default | Rentang | Keterangan |
 |---|---|---|---|
-| Orkestrasi aktif | aktif | — | Jika dimatikan, semua request Claude Code diteruskan ke 9router dengan *model passthrough* — Claude Code bekerja sebagai agen biasa. |
-| Tampilkan progres di Claude Code | aktif | — | Menampilkan langkah planner, rencana, dan status tiap tugas sebelum ringkasan akhir. Jika mati, hanya ringkasan yang tampil. |
+| Orkestrasi aktif | aktif | — | Jika dimatikan, semua request CLI diteruskan ke 9router dengan *model passthrough* — CLI bekerja sebagai agen biasa. |
+| Tampilkan progres di CLI | aktif | — | Menampilkan langkah planner, rencana, dan status tiap tugas sebelum ringkasan akhir. Jika mati, hanya ringkasan yang tampil. |
 | Planner boleh bertanya | aktif | — | Planner boleh menghentikan thread dengan satu pertanyaan bernomor bila permintaan benar-benar ambigu, perubahannya berisiko dan tidak diminta, atau ada fakta yang tidak bisa ditemukan di kode/memory. Bukan konfirmasi tiap prompt. Lihat [Pertanyaan dari planner](07-cara-kerja.md#pertanyaan-dari-planner). |
 | Model passthrough | otomatis | — | Model untuk request pendukung (judul sesi, `/compact`, cek kuota). *Otomatis* = model node Wrapper aktif, lalu Executor. |
-| Proxy API key | kosong | — | Jika diisi, Claude Code wajib mengirimnya sebagai `ANTHROPIC_AUTH_TOKEN`. Tombol *Generate* membuat key acak. |
+| Proxy API key | kosong | — | Jika diisi, CLI wajib mengirimnya sebagai bearer token (Claude Code: `ANTHROPIC_AUTH_TOKEN`); menu CLI menuliskannya otomatis. Tombol *Generate* membuat key acak. |
 | Langkah planner | 24 | 3–100 | Maksimal putaran tool planner. Di langkah terakhir planner dipaksa mengirim rencana. |
 | Retry executor | 1 | 0–5 | Berapa kali executor boleh mencoba ulang bila editnya gagal diterapkan. |
 | Maks paralel | 8 | 1–64 | Batas tugas yang berjalan bersamaan **dalam satu thread**. |
@@ -55,8 +55,8 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 | Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. Regresi unit test punya batas sendiri (3 putaran); `0` juga mematikannya. |
 
 Tab *Koneksi 9router*, *Proxy & orkestrasi*, dan *Build & verifikasi* adalah satu form: **Simpan setting** di tab
-mana pun menyimpan ketiganya. Setelah mengganti proxy API key, terapkan ulang integrasi Claude Code agar
-`ANTHROPIC_AUTH_TOKEN` ikut berubah.
+mana pun menyimpan ketiganya. Setelah mengganti proxy API key, matikan lalu nyalakan lagi switch CLI yang aktif di menu
+CLI agar key baru ikut tertulis.
 
 ### Penyimpanan memory
 
@@ -101,7 +101,7 @@ Tab terakhir halaman Setting (`/Setting#telegram`), untuk mengirim prompt dari H
 | Chat | — | Chat pribadi yang pernah mengirim pesan ke bot. **Izinkan** chat Anda sendiri; **Hapus** chat asing; **Cabut** menghentikan akses chat yang sudah diizinkan. |
 
 Tombol **Simpan Telegram** hanya menyimpan bagian ini (terpisah dari *Simpan setting*) dan langsung berlaku tanpa
-restart. Progres di Telegram selalu tampil, tidak dipengaruhi saklar *Tampilkan progres di Claude Code*.
+restart. Progres di Telegram selalu tampil, tidak dipengaruhi saklar *Tampilkan progres di CLI*.
 
 ### Skill
 
@@ -174,7 +174,7 @@ balasan — cara cepat memastikan model dan key benar.
   prioritas terkecil, lalu bergiliran.
 - **Wrapper** juga dipakai untuk ekstraksi memory, dan menjadi model passthrough bila *Model passthrough* diset
   otomatis.
-- **Context Keeper**: node aktif dengan prioritas terkecil meringkas percakapan Claude Code setelah tiap thread.
+- **Context Keeper**: node aktif dengan prioritas terkecil meringkas percakapan CLI setelah tiap thread.
   Tanpa node ini, Wrapper yang meringkas.
 - **Tools Node**: tidak dipilih lewat prioritas; dipakai hanya oleh planner yang mendelegasikan tool kepadanya.
 - **Reviewer**: node aktif dengan prioritas terkecil memeriksa hasil executor (diff, kontrak, hasil build) di setiap
@@ -221,8 +221,12 @@ ikut terbayar lagi di langkah 4, 5, … sampai `submit_plan`. Tools node meminda
 2. Edit node Planner → bagian **Delegasi tool ke tools node**: untuk tiap tool, pilih *Planner langsung* atau tools node.
 3. Tool yang didelegasikan **dihapus** dari daftar tool planner. Sebagai gantinya planner mendapat tool
    `investigate(question)` (plus `agent` bila ada lebih dari satu tools node). Tools node menjalankan tool-nya sendiri dalam
-   loop (maks 12 langkah), lalu mengembalikan **temuan ringkas** — `path:baris` dan kutipan pendek bila perlu, maks
-   12.000 karakter. Output mentah tidak pernah masuk ke konteks planner.
+   loop (maks 12 langkah), lalu mengembalikan **temuan ringkas** — `path:baris` dan kutipan pendek bila perlu, biasanya
+   di bawah 1.500 karakter (dipotong di 6.000). Output mentah tidak pernah masuk ke konteks planner. Brief tools node
+   memuat peta folder project (kedalaman 4, tanpa file) agar tidak menghabiskan giliran untuk `list_directory`/`find_files`,
+   dan tools node diminta menjalankan semua pencarian/pembacaan yang independen dalam satu giliran. Planner mengutamakan
+   rencana yang benar, lalu paralel: pertanyaan yang independen dikirim sekaligus dan dibagi per area agar tidak membaca
+   file yang sama; pertanyaan yang bergantung pada jawaban sebelumnya tetap berurutan.
 
 | Tool | Saran |
 |---|---|
@@ -321,12 +325,12 @@ Slot dibagi di antara semua thread yang sedang berjalan (beberapa project sekali
 | Executor | Satu tugas selama dikerjakan, termasuk retry. Executor dengan 6 slot mengerjakan maksimal 6 tugas serentak. |
 | Planner | Satu slot per panggilan model; slot dilepas saat planner menjalankan tool baca-kode. Dengan 2 slot, maksimal 2 thread menunggu jawaban planner bersamaan. |
 | Wrapper | Satu slot untuk ringkasan akhir dan satu untuk ekstraksi memory tiap thread. |
-| Context Keeper | Satu slot per pembaruan konteks sesi (sekali per thread Claude Code, di belakang). |
+| Context Keeper | Satu slot per pembaruan konteks sesi (sekali per thread dari CLI, di belakang). |
 | Tools Node | Satu slot per panggilan model dalam sebuah `investigate`; dilepas saat tools node menjalankan tool. |
 
 Selain itu, Setting → *Maks paralel* membatasi tugas serentak **per thread**. Jumlah tugas yang benar-benar berjalan
 bersamaan = nilai terkecil dari: tugas yang siap, *Maks paralel* per thread, dan total slot kosong semua executor.
-Panggilan passthrough (request pendukung Claude Code) dan tombol *Test* tidak memakai slot.
+Panggilan passthrough (request pendukung CLI) dan tombol *Test* tidak memakai slot.
 
 ### Biaya token planner
 
@@ -420,4 +424,4 @@ Telegram (token dan chat) tidak pernah masuk profil.
 | Memory | *Salin memory yang sudah ada ke penyimpanan baru* (default aktif) sama dengan opsi di Setting → Penyimpanan memory. |
 | Versi | File dari AIT yang lebih baru (versi format lebih tinggi) ditolak; perbarui AIT dulu. |
 
-Lanjut ke [Integrasi Claude Code](03-integrasi-claude-code.md).
+Lanjut ke [Integrasi CLI](03-integrasi-cli.md).
