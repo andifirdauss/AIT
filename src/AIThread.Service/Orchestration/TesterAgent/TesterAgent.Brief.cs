@@ -6,12 +6,14 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class TesterAgent
 {
-    // What the tester knows about the change: the request, the plan, the diffs, the project's test accounts and the
-    // planner's test section.
-    public static string Brief(TestingInput input, TestAccountSet? accounts = null)
+    // What the tester knows about the change: the request, the plan, the diffs, the project's test accounts, the
+    // endpoints the code declares and the planner's test section, with a target no route serves set to the route it is
+    // meant for.
+    public static string Brief(TestingInput input, TestAccountSet? accounts = null, IReadOnlyList<CodeRoute>? routes = null)
     {
         var plan = input.Plan;
         var test = plan.Test!;
+        var (endpoints, corrections) = RouteBrief(input, routes ?? []);
         var builder = new StringBuilder();
         builder.Append("# Project\n").Append(input.Project.Name);
         if (input.Project.Stacks.Count > 0) builder.Append($" ({string.Join(", ", input.Project.Stacks)})");
@@ -80,6 +82,8 @@ public sealed partial class TesterAgent
             foreach (var (name, value) in values) builder.Append($"- {{{{{name}}}}} = {value}\n");
         }
 
+        if (endpoints is not null) builder.Append(endpoints);
+
         builder.Append("\n# Test plan\n");
         builder.Append($"Level: {test.Level}").Append(test.Level == TestPlan.Ui
             ? " — check the pages in the browser; http_request is available too.\n"
@@ -90,12 +94,18 @@ public sealed partial class TesterAgent
         {
             var scenario = test.Scenarios[i];
             builder.Append($"\n## Scenario {i + 1}: {scenario.Title}\n");
-            if (scenario.Target is not null) builder.Append($"Start at: {scenario.Target}\n");
+            (string Method, string From, string To)? corrected = scenario.Target is not null && corrections.TryGetValue(scenario.Target, out var fix) ? fix : null;
+            if (corrected is { } c) builder.Append($"Start at: {c.Method} {c.To} (the plan wrote {c.From}, which no route in the code serves)\n");
+            else if (scenario.Target is not null) builder.Append($"Start at: {scenario.Target}\n");
             if (scenario.Actor is not null) builder.Append($"As: {scenario.Actor}\n");
             if (scenario.Steps.Count > 0)
             {
                 builder.Append("Steps:\n");
-                for (var s = 0; s < scenario.Steps.Count; s++) builder.Append($"{s + 1}. {scenario.Steps[s]}\n");
+                for (var s = 0; s < scenario.Steps.Count; s++)
+                {
+                    var step = corrected is { } stepFix ? scenario.Steps[s].Replace(stepFix.From, stepFix.To, StringComparison.OrdinalIgnoreCase) : scenario.Steps[s];
+                    builder.Append($"{s + 1}. {step}\n");
+                }
             }
             builder.Append($"Expect: {scenario.Expect}\n");
         }
