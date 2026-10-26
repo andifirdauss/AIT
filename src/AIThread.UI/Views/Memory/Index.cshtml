@@ -358,8 +358,15 @@
                 </div>
                 <div class="small text-secondary mb-2 d-none" id="memoryLegacy"></div>
                 <div>
-                    <label class="form-label small" for="memoryDescription">Deskripsi</label>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <label class="form-label small mb-0" for="memoryDescription">Deskripsi (Markdown)</label>
+                        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="Mode deskripsi">
+                            <button type="button" class="btn btn-outline-secondary" id="btnMemoryWrite">Tulis</button>
+                            <button type="button" class="btn btn-outline-secondary active" id="btnMemoryPreview">Pratinjau</button>
+                        </div>
+                    </div>
                     <textarea class="form-control font-monospace small" id="memoryDescription" rows="12" required></textarea>
+                    <div class="card card-body docs-body small d-none memory-preview" id="memoryPreview" title="Klik dua kali untuk mengedit"></div>
                 </div>
                 <div class="small text-secondary mt-2" id="memoryMeta"></div>
             </div>
