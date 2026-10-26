@@ -82,11 +82,26 @@
     return (isEn ? `<span class="badge text-bg-info">Short</span><div class="small text-secondary">±${left.toFixed(0)} h left before long memory</div>` : `<span class="badge text-bg-info">Short</span><div class="small text-secondary">±${left.toFixed(0)} jam lagi ke long memory</div>`);
   }
 
-  // Branch the memory's thread worked on; author and commit on hover.
+  const gitStates = {
+    Uncommitted: ['secondary', t('belum di-commit', 'not committed')],
+    Staged: ['info', t('di-stage', 'staged')],
+    Committed: ['success', t('di-commit', 'committed')],
+    Pushed: ['success', t('di-push', 'pushed')],
+    ModifiedOutside: ['warning', t('diubah di luar AIT', 'changed outside AIT')],
+    OnOtherBranch: ['primary', t('di branch lain', 'on another branch')],
+    Stashed: ['secondary', t('di-stash', 'stashed')],
+    Discarded: ['danger', t('dibuang', 'discarded')],
+    Lost: ['danger', t('commit hilang', 'commit lost')]
+  };
+
+  // Branch the memory's thread worked on (author and commit on hover) and where its change is in the author's clone.
   function gitSource(m) {
-    if (!m.gitBranch && !m.gitAuthor) return '';
+    if (!m.gitBranch && !m.gitAuthor && !m.gitState) return '';
     const title = [m.gitAuthor, m.gitCommit ? `${t('dari commit', 'from commit')} ${m.gitCommit.substring(0, 8)}` : null].filter(Boolean).join(' · ');
-    return `<div class="mono text-secondary text-truncate" style="max-width:12rem" title="${escapeHtml(title)}">${escapeHtml(m.gitBranch || m.gitAuthor)}</div>`;
+    const branch = m.gitBranch || m.gitAuthor
+      ? `<div class="mono text-secondary text-truncate" style="max-width:12rem" title="${escapeHtml(title)}">${escapeHtml(m.gitBranch || m.gitAuthor)}</div>` : '';
+    const [color, label] = gitStates[m.gitState] || [];
+    return branch + (label ? `<span class="badge text-bg-${color}">${escapeHtml(label)}</span>` : '');
   }
 
   function row(m) {

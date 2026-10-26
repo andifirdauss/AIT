@@ -37,6 +37,21 @@
                 </div>
             </div>
         </div>
+        <div class="card mb-3 d-none" id="gitCard">
+            <div class="card-header">Git</div>
+            <div class="card-body small">
+                <div id="gitStatus" class="mb-2 text-secondary">@Lang.T("Memuat…", "Loading…")</div>
+                <label class="form-label text-secondary" for="gitFetchMinutes">@Lang.T("Fetch otomatis tiap (menit, 0 = mati)", "Fetch automatically every (minutes, 0 = off)")</label>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="number" class="form-control" id="gitFetchMinutes" min="0" max="1440" />
+                    <button class="btn btn-outline-primary" type="button" id="btnSaveGit">@Lang.T("Simpan", "Save")</button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnGitFetch">@Lang.T("Fetch sekarang", "Fetch now")</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnGitSync" title="@Lang.T("Tanya git lagi di mana perubahan thread project ini sekarang", "Ask git again where the changes of this project's threads are now")">@Lang.T("Sinkronkan", "Sync")</button>
+                </div>
+            </div>
+        </div>
         <div class="card mb-3">
             <div class="card-header">@Html.Raw(Lang.T("Solution &amp; file build", "Solution &amp; build files"))</div>
             <ul class="list-group list-group-flush small mono" id="projectModules"><li class="list-group-item text-secondary">@Lang.T("Memuat…", "Loading…")</li></ul>
@@ -420,4 +435,5 @@
     <script src="~/js/pages/project-testaccounts.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-scenarios.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-git.js" asp-append-version="true"></script>
 }

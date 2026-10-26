@@ -87,6 +87,11 @@ public sealed partial class PlannerAgent(
 
     // The module memory written out in the brief: the change log of at most this many modules (summary + newest entries).
     private const int MaxMemoryModules = 3;
+
+    // Read after the memory index when a memory's change is elsewhere (GitChangeTracker.PresenceAsync).
+    private const string NotInThisBranch =
+        "Memory marked \"not in this branch\" describes a change that is not in the branch checked out here (committed on another branch, "
+        + "or not committed yet by its author): its code may be missing or different here. Check the files before relying on it.\n";
     private const int MemoryChangesPerModule = 3;
     private const int MaxModuleMemoryChars = 14_000;
 

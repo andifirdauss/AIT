@@ -676,6 +676,9 @@ namespace AIThread.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("GitFetchMinutes")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("LastSeenAt")
                         .HasColumnType("datetime2");
 
@@ -1298,6 +1301,64 @@ namespace AIThread.Data.Migrations
                     b.ToTable("ThreadAttachments", (string)null);
                 });
 
+            modelBuilder.Entity("AIThread.Common.Entities.ThreadChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Commits")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Files")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GitAuthor")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("GitBaseCommit")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("GitBranch")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ProjectName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectKey");
+
+                    b.ToTable("ThreadChanges", (string)null);
+                });
+
             modelBuilder.Entity("AIThread.Common.Entities.ThreadFileSnapshot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1326,6 +1387,9 @@ namespace AIThread.Data.Migrations
                     b.Property<string>("GitCommit")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("GitEdited")
+                        .HasColumnType("bit");
 
                     b.Property<string>("GitState")
                         .HasMaxLength(20)

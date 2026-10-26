@@ -73,6 +73,35 @@ public class ProjectKeyMemoryTests
     }
 
     [Fact]
+    public async Task The_planner_skips_memory_whose_change_was_thrown_away_and_the_memory_menu_shows_the_git_state()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+        var (discarded, committed) = (Guid.NewGuid(), Guid.NewGuid());
+        await using (var shared = await harness.Service<LongMemoryStore>().CreateGitAsync())
+        {
+            shared.ThreadChanges.Add(new ThreadChange { Id = discarded, ProjectKey = "github.com/org/eep", State = GitChangeState.Discarded });
+            shared.ThreadChanges.Add(new ThreadChange { Id = committed, ProjectKey = "github.com/org/eep", State = GitChangeState.Committed });
+            await shared.SaveChangesAsync();
+        }
+
+        var gone = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Rule,
+            ["Approval"], "TO above 10M needs approval."), discarded);
+        var kept = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Rule,
+            ["Approval", "Limit"], "TO above 20M needs two approvals."), committed);
+
+        var index = await memory.Service.GetIndexAsync(harness.ProjectId, "approval", 10);
+        Assert.DoesNotContain(index, e => e.Id == gone.Id);
+        Assert.Contains(index, e => e.Id == kept.Id);
+
+        var listed = (await memory.Service.QueryAsync(new MemoryQuery(null, null, harness.ProjectId, null))).Items;
+        Assert.Equal(GitChangeState.Discarded, listed.Single(i => i.Id == gone.Id).GitState);
+        Assert.Equal(GitChangeState.Committed, listed.Single(i => i.Id == kept.Id).GitState);
+    }
+
+    [Fact]
     public async Task Unreachable_long_memory_database_only_hides_long_memory()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
@@ -266,6 +295,7 @@ public class ProjectKeyMemoryTests
                 harness.Service<LongMemoryStore>(),
                 harness.Service<BusinessMemoryStore>(),
                 harness.Service<IModuleRegistry>(),
+                harness.Service<IGitChangeTracker>(),
                 harness.Service<IEventBus>(),
                 harness.Service<IActivityLogService>(),
                 Options.Create(new AIThreadOptions { ShortMemoryHours = 0 }),

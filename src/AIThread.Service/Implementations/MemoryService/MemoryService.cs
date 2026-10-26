@@ -22,6 +22,7 @@ public sealed partial class MemoryService(
     LongMemoryStore longStore,
     BusinessMemoryStore businessStore,
     IModuleRegistry registry,
+    IGitChangeTracker gitChanges,
     IEventBus eventBus,
     IActivityLogService activityLog,
     IOptions<AIThreadOptions> options,

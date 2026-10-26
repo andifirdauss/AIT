@@ -29,7 +29,12 @@ public record MemoryItemDto(
     IReadOnlyList<string>? ExtraModules = null,
     string? GitAuthor = null,
     string? GitBranch = null,
-    string? GitCommit = null);
+    string? GitCommit = null,
+    // Where the source thread's change is (GitChangeTracker): its state in the author's clone, its place seen from here,
+    // and the note the planner reads when it is not in this branch.
+    GitChangeState? GitState = null,
+    MemoryGitPlace? GitPlace = null,
+    string? GitNote = null);
 
 // What the planner scans to pick topics without reading descriptions. Labeled entries carry the structured label;
 // unlabeled ones (older memory waiting for relabeling) only Label. Change entries also carry their title.
@@ -47,7 +52,10 @@ public record MemoryIndexEntry(
     int HitCount = 0,
     IReadOnlyList<string>? ExtraModules = null,
     // The headline of a change entry (MemoryKind.Change), so a label line tells which change it is.
-    string? Title = null)
+    string? Title = null,
+    Guid? SourceThreadId = null,
+    // Set when the entry's change is not in the branch checked out here (GitChangeTracker.PresenceAsync).
+    string? GitNote = null)
 {
     public bool Labeled => Module is not null && Kind is not null;
 

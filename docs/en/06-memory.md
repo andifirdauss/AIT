@@ -231,6 +231,27 @@ the branch shows under the *thread* link (hover for the author and commit). Wher
 
 Knowledge memory and memory from older versions have no git origin.
 
+### Memory and git
+
+The git state of every thread's change is shared with the team through the `ThreadChanges` table in the long memory
+database (see [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)). From there:
+
+- The **Memory menu** shows a badge with the state of the memory's change in its author's clone (*committed*, *pushed*,
+  *discarded*, *on another branch*, …) under the *thread* link.
+- The **planner** checks the clone in use:
+
+  | The memory's change | Planner |
+  |---|---|
+  | In the branch checked out (`HEAD` holds its commit, or all its blobs, e.g. after a squash merge) | Read as usual |
+  | On another branch not merged here | Read with the mark `(not in this branch: committed on <branch> by <author>)`, put after the other memory |
+  | Not committed yet or stashed on its author's machine | Read with the mark `(not in this branch: not committed yet …)`, put after the other memory |
+  | Discarded or its commit lost | Not read |
+  | Unknown (knowledge, older memory, not a git repository) | Read as usual |
+
+- The **module summary** leaves out change entries whose change was discarded or whose commit was lost. Such an entry
+  keeps waiting, so it is summarized after all when the change comes back (e.g. `stash pop`, a branch restored). An
+  entry already summarized before it was discarded is not taken out again.
+
 ## Memory storage
 
 The **Setting → Memory storage** menu (`/Setting#memory`) decides where each level is stored. Changes apply right away

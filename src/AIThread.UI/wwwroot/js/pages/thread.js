@@ -212,7 +212,10 @@
     Committed: ['success', t('Sudah di-commit', 'Committed')],
     ModifiedOutside: ['warning', t('Diubah lagi di luar AIT', 'Changed again outside AIT')],
     Discarded: ['danger', t('Dibuang di luar AIT', 'Discarded outside AIT')],
-    OnOtherBranch: ['primary', t('Di branch lain', 'On another branch')]
+    OnOtherBranch: ['primary', t('Di branch lain', 'On another branch')],
+    Pushed: ['success', t('Sudah di-push', 'Pushed')],
+    Stashed: ['secondary', t('Di-stash', 'Stashed')],
+    Lost: ['danger', t('Commit hilang', 'Commit lost')]
   };
 
   function gitBadge(state) {
@@ -240,7 +243,7 @@
       : `<div class="small text-secondary mt-1">${t('Status git belum dicek.', 'Git state not checked yet.')}</div>`;
     const files = git.files.length
       ? `<table class="table table-sm mt-2 mb-0"><tbody>${git.files.map(f => `<tr><td class="mono small">${escapeHtml(f.filePath)}</td>
-          <td>${f.state ? gitBadge(f.state) : '<span class="text-secondary small">–</span>'}${f.commit ? ` ${shortCommit(f.commit)}` : ''}</td></tr>`).join('')}</tbody></table>`
+          <td>${f.state ? gitBadge(f.state) : '<span class="text-secondary small">–</span>'}${f.commit ? ` ${shortCommit(f.commit)}` : ''}${f.edited ? ` <span class="small text-secondary">${t('(diedit developer sebelum commit)', '(edited by the developer before the commit)')}</span>` : ''}</td></tr>`).join('')}</tbody></table>`
       : '';
     el('gitBody').innerHTML = `<div class="small">${origin || t('Asal git tidak diketahui.', 'Git origin unknown.')}</div>${commits}${checked}${files}`;
   }

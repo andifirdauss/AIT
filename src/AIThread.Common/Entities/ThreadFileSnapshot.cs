@@ -33,4 +33,8 @@ public class ThreadFileSnapshot : BaseEntity
     // Where this file's change is now (GitChangeTracker) and the commit that brought it in, when committed.
     public GitChangeState? GitState { get; set; }
     public string? GitCommit { get; set; }
+
+    // The commit holds the thread's change with the developer's own edits on top: found by the thread's lines, not by
+    // its blob.
+    public bool GitEdited { get; set; }
 }
