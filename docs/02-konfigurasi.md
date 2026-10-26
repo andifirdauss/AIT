@@ -6,6 +6,25 @@ Untuk setup pertama, menu **Setup** mengerjakan bagian yang wajib (koneksi 9rout
 [Panduan menu → Setup](05-menu.md#setup). Dalam tim, pengaturan yang sama dibagikan lewat
 [profil setup tim](#profil-setup-tim). Halaman ini menjelaskan semua field lengkapnya.
 
+## Bahasa tampilan
+
+AIT tampil dalam **Bahasa Indonesia** (bawaan) atau **English**. Pilih di kotak bahasa di bawah sidebar; halaman dimuat
+ulang dan pilihan disimpan di database untuk mesin ini (`PUT /api/settings/language`). Bahasa berlaku untuk semua yang
+dibaca developer: halaman web, menu Docs (`docs/en/` untuk English), menu `AIThread.exe` dan ikon tray, output AIT di
+CLI (progres, laporan akhir), log aktivitas, pesan validasi & respons API, pesan Telegram, serta file skenario Excel.
+
+- **Perintah chat dikenali dalam dua bahasa**, apa pun bahasa yang dipilih: `ulangi` / `retry`, `jalankan test lanjutan 2`
+  / `run follow-up test 2`, `buat skenario test lanjutan 2` / `create scenario for follow-up test 2`, `jalankan skenario
+  <nama> setuju` / `run scenario <nama> agree`, `password dev <nilai>` / `dev password <nilai>`.
+- **Jawaban model** tetap mengikuti bahasa prompt Anda; bahasa tampilan hanya dipakai bila prompt tidak menunjukkan
+  bahasanya (mis. hanya tempelan log).
+- **Memory** ditulis dalam bahasa permintaan developer, bawaan bahasa tampilan. Judul bagian catatan perubahan
+  (*Fitur*/*Feature*, *File berubah*/*Changed files*, …) mengikuti bahasa isinya, bukan bahasa tampilan, karena memory
+  dibagi ke tim — lihat [Memory → Bahasa](06-memory.md#bahasa-memory).
+- File skenario Excel ditulis dalam bahasa tampilan (sheet *Panduan/Akun/Langkah* atau *Guide/Accounts/Steps*) dan
+  dibaca dalam dua bahasa, jadi file dari rekan yang memakai bahasa lain tetap bisa diunggah.
+- `AIThread.exe` membaca bahasa dari `cli.json` di `%LOCALAPPDATA%\AIThread`, disamakan otomatis saat bahasa diganti dari web.
+
 ## Menu Setting
 
 ### Koneksi 9router

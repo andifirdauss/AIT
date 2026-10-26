@@ -11,7 +11,7 @@ public sealed partial class DocsService
         return Directory.GetFiles(DirectoryPath, "*.md")
             .OrderBy(f => IsIndex(f) ? 0 : 1)
             .ThenBy(f => Path.GetFileName(f), StringComparer.OrdinalIgnoreCase)
-            .Select(f => new DocEntryDto(SlugOf(Path.GetFileName(f)), TitleOf(f)))
+            .Select(f => new DocEntryDto(SlugOf(Path.GetFileName(f)), TitleOf(PathOf(Path.GetFileName(f)))))
             .ToList();
     }
 }

@@ -1,5 +1,7 @@
 # AIT
 
+**Bahasa Indonesia** · [English](README.en.md)
+
 Proxy lokal untuk CLI coding (Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, oh-my-pi, …) yang memecah satu
 permintaan menjadi tugas-tugas sangat kecil:
 **planner** (model paling cerdas) merencanakan, banyak **executor** (model murah) mengerjakan secara paralel,
@@ -8,7 +10,10 @@ di kode) dan (opsional) **reviewer** memeriksa hasilnya sampai lolos, (opsional)
 aplikasi yang berjalan — UI lewat browser Playwright yang tampil, API lewat request HTTP — lalu **wrapper** merangkum
 hasilnya untuk user. Semua model diakses lewat [9router](https://github.com/decolua/9router).
 
-> **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** — instalasi, konfigurasi, integrasi CLI,
+AIT tampil dalam **Bahasa Indonesia** atau **English** (kotak bahasa di bawah sidebar): UI web, menu `AIThread.exe`,
+output di CLI, log, pesan API, dan Telegram.
+
+> **Panduan lengkap pemakaian ada di [docs/](docs/README.md)** (English: [docs/en/](docs/en/README.md)) — instalasi, konfigurasi, integrasi CLI,
 > penggunaan sehari-hari, memory, cara kerja, troubleshooting, dan referensi API.
 
 ```
@@ -170,7 +175,8 @@ diabaikan: tanpa orkestrasi, tanpa memory.
   yang ditambah/diubah, catatan. Setelah masuk long memory, entri dilipat ke **ringkasan modul** (`Summary`: kondisi modul
   saat ini). Label `Modul · Layer · Jenis` + keyword tetap ada untuk pencarian; modul dan layer diturunkan dari
   **peta kode**, modul dari daftar modul yang sama dengan wiki bisnis. Memory berformat lama (Rule/Flow/Pitfall/…)
-  dimigrasi ke ringkasan modul (dengan backup dulu).
+  dimigrasi ke ringkasan modul (dengan backup dulu). Entri ditulis dalam bahasa permintaan (Indonesia atau Inggris),
+  dengan judul bagian dalam bahasa itu.
 - **Short memory** disimpan di Garnet (protokol Redis, di dalam AIT, tahan restart/crash) tanpa TTL; worker konsolidasi (tiap 10 menit) memindahkan yang berumur
   > 24 jam ke **long memory** di database dengan id yang sama (idempoten).
 - Planner menerima ringkasan + catatan perubahan terbaru modul yang dibahas, ditulis utuh di brief; ditambah peta memory
@@ -200,8 +206,8 @@ interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executo
 ## Catatan penting
 
 - Executor **menulis langsung ke file project**. Jalankan di repo git agar perubahan mudah ditinjau atau dibatalkan.
-- Satu-satunya perintah yang dijalankan AIT adalah build project (bisa dimatikan di Setting); test, migrasi, dan
-  git tidak dijalankan — langkah lanjutan disebutkan di ringkasan wrapper.
+- Perintah yang dijalankan AIT adalah build project (bisa dimatikan di Setting) dan unit test katalognya; migrasi dan
+  git yang mengubah repository tidak dijalankan — langkah lanjutan disebutkan di ringkasan wrapper.
 - Proxy dapat menulis file di folder mana pun yang dikirim sebagai working directory. Biarkan hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin diakses orang lain.
 - API key 9router dan token bot Telegram disimpan terenkripsi (ASP.NET Core Data Protection).
@@ -215,3 +221,5 @@ dotnet test tests/AIThread.Tests
 dotnet tool restore
 dotnet tool run dotnet-ef migrations add <Nama> --context AIThreadDbContext --project src/AIThread.Data --startup-project src/AIThread.Data
 ```
+
+Semua teks untuk user ditulis dua bahasa — lihat [Pengembangan → Dua bahasa](docs/10-pengembangan.md#dua-bahasa).

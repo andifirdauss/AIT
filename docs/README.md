@@ -37,12 +37,15 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 5. *(Opsional)* **Setting → Telegram** untuk mengirim prompt dari HP saat laptop ditinggal —
    [Prompt dari Telegram](11-telegram.md).
 
+AIT bisa tampil dalam **Bahasa Indonesia** atau **English**: pilih di kotak bahasa di bawah sidebar —
+[Bahasa tampilan](02-konfigurasi.md#bahasa-tampilan).
+
 ## Daftar isi
 
 | # | Dokumen | Isi |
 |---|---|---|
 | 1 | [Instalasi](01-instalasi.md) | Prasyarat, short memory (Garnet), 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
-| 2 | [Konfigurasi](02-konfigurasi.md) | Menu Setting (9router, proxy, orkestrasi), menu Node (memilih model per peran), profil setup tim (export/import) |
+| 2 | [Konfigurasi](02-konfigurasi.md) | Bahasa tampilan, menu Setting (9router, proxy, orkestrasi), menu Node (memilih model per peran), profil setup tim (export/import) |
 | 3 | [Integrasi CLI](03-integrasi-cli.md) | Format yang didukung, mengarahkan Claude Code, Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi (atau CLI lain) ke AIT lewat menu CLI, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
 | 5 | [Panduan menu](05-menu.md) | Dashboard, Setup, detail thread, Project, Memory, Node, CLI, Setting |
@@ -50,7 +53,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
 | 7 | [Cara kerja](07-cara-kerja.md) | Detail pipeline: klasifikasi request, planner, kontrak, validator, executor, verifikasi (build & reviewer), testing (Auto Testing: browser Playwright & API), wrapper, katalog unit test (baseline, regresi, triase Tester, pemulihan otomatis) |
 | 8 | [Troubleshooting](08-troubleshooting.md) | Pesan error umum dan solusinya |
 | 9 | [Referensi API](09-referensi-api.md) | Endpoint proxy (Anthropic, OpenAI, Gemini), REST `/api`, event SSE |
-| 10 | [Pengembangan](10-pengembangan.md) | Struktur solusi, build, test, migrasi, titik ekstensi |
+| 10 | [Pengembangan](10-pengembangan.md) | Struktur solusi, build, test, migrasi, titik ekstensi, dua bahasa |
 | 11 | [Prompt dari Telegram](11-telegram.md) | Bot Telegram pribadi untuk prompt jarak jauh: setup, perintah, progres live, keamanan, troubleshooting |
 | 12 | [Keamanan & privasi](12-keamanan.md) | Penyamaran secret sebelum ke model, pemulihan saat menulis file, file kredensial yang diblokir, aturan per project, data yang disimpan & dikirim, batasan |
 

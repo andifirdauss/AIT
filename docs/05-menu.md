@@ -3,7 +3,8 @@
 Semua halaman memperbarui diri secara live lewat Server-Sent Events — tidak perlu refresh. Menu sidebar dikelompokkan
 menjadi *Ruang kerja* (Dashboard, Project, Memory — dipakai sehari-hari), *Konfigurasi* (Setup, Node, CLI, Setting) dan
 *Bantuan* (Docs, Panduan memulai). Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
-antara mode gelap dan terang.
+antara mode gelap dan terang, dan kotak bahasa beralih antara Bahasa Indonesia dan English
+([Bahasa tampilan](02-konfigurasi.md#bahasa-tampilan)).
 
 **Tombol jendela.** Semua jendela, dialog, panel log, dan blok kode memakai tiga tombol gaya macOS di kiri title
 bar (simbolnya muncul saat kursor di atasnya):
@@ -368,5 +369,5 @@ Detail di [Konfigurasi](02-konfigurasi.md) dan [Prompt dari Telegram](11-telegra
 
 Dokumentasi ini, ditampilkan di aplikasi. Kolom kiri berisi daftar dokumen (dengan pencarian judul) dan daftar
 isi halaman yang sedang dibuka; tombol di bawah halaman berpindah ke dokumen sebelum/berikutnya. Tautan antar-dokumen
-dan anchor (mis. `#menu-node`) bekerja seperti di GitLab. Isi diambil dari folder `docs/` — perubahan file langsung
-terlihat setelah refresh.
+dan anchor (mis. `#menu-node`) bekerja seperti di GitLab. Isi diambil dari folder `docs/` (`docs/en/` dalam English,
+kembali ke halaman Indonesia bila halaman belum diterjemahkan) — perubahan file langsung terlihat setelah refresh.

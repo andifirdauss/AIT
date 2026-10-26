@@ -13,6 +13,9 @@ AIT **menarik** pesan dari Telegram (long polling `getUpdates`). Yang dibutuhkan
 `api.telegram.org` — tidak perlu IP publik, port forwarding, atau tunnel seperti ngrok, jadi tetap bekerja di balik
 NAT/firewall kantor.
 
+Pesan bot mengikuti [bahasa tampilan](02-konfigurasi.md#bahasa-tampilan) AIT di laptop; perintahnya sama dalam dua
+bahasa.
+
 ## Prasyarat
 
 - AIT berjalan di laptop, dan laptop tetap menyala serta terhubung internet (lihat

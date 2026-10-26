@@ -130,11 +130,33 @@ Menu **Docs** (`/Docs`, `/Docs/{nama-file-tanpa-.md}`) merender `docs/*.md` deng
 - `README.md` adalah halaman indeks; urutan navigasi mengikuti nama file, jadi pertahankan awalan angka (`11-...md`).
 - Judul diambil dari heading `# ` pertama. Tautan `nama-file.md#anchor` otomatis menjadi `/Docs/nama-file#anchor`;
   anchor mengikuti aturan GitHub/GitLab. Tautan ke file di luar `docs/` tidak bisa dibuka dari web — tulis sebagai teks.
+- Terjemahan Inggris ada di `docs/en/` dengan nama file yang sama; saat bahasa tampilan English, `DocsService` memakai
+  file `docs/en/` bila ada, selain itu file Indonesia. Ubah keduanya bersamaan. Anchor berbeda per bahasa (diambil dari
+  heading), jadi tautan ke anchor dari UI/C# ditulis per bahasa (`Lang.T("/Docs/…#anchor-id", "/Docs/…#anchor-en")`).
+
+## Dua bahasa
+
+Semua teks yang dibaca developer ditulis berpasangan Indonesia + Inggris di tempat pemakaian; tidak ada file resource.
+
+- C#: `Lang.T("Indonesia", "English")` (`AIThread.Common.Localization`). `Lang.Current` = bahasa mesin
+  (`SystemSetting.UiLanguage`, dipasang `Lang.Set` saat start dan saat diganti); `Lang.Culture` untuk format tanggal &
+  angka. `const string` berteks user menjadi properti `static string X => Lang.T(…)`, dan field `static readonly` /
+  initializer properti berteks diganti `=>` agar mengikuti pergantian bahasa.
+- Razor: `@Lang.T("…", "…")`, markup inline `@Html.Raw(Lang.T("…", "…"))`.
+- JS: `t('…', '…')`, `isEn`, `locale` dari `window.AIThread`; template berisi ekspresi ditulis
+  `isEn ? \`English ${x}\` : \`Indonesia ${x}\``. Jangan menamai variabel lokal `t`.
+- Test: `using var _ = Lang.Use("en");` mengganti bahasa hanya di scope itu (AsyncLocal).
+- Parser balasan chat (`RetryReply`, `TestFollowUpReply`, `TestScenarioReply`, `TestLogin`) menerima kedua bahasa, dan
+  file yang dibaca balik (sheet skenario Excel) mengenali nama sheet/kolom dua bahasa.
+- Tetap Bahasa Inggris saja: prompt ke model, pesan error tool planner, dan log developer (`ILogger`). Bila prompt butuh
+  bahasa bawaan, kirim `TextLanguage.Ui` (mis. bagian `# Language` / `# UI language`).
+- Memory memakai bahasa isinya (`TextLanguage.Guess`), bukan bahasa tampilan: `ChangeLog.Render(…, english)`.
 
 ## Titik ekstensi umum
 
 **Menyetel perilaku model** — ubah `AgentPrompts.cs`. Prompt ke model ditulis dalam bahasa Inggris; teks untuk
-user dalam bahasa Indonesia. Untuk penyesuaian per tim tanpa mengubah kode, gunakan *Instruksi tambahan* di node.
+user selalu dua bahasa (lihat [Dua bahasa](#dua-bahasa)). Untuk penyesuaian per tim tanpa mengubah kode, gunakan
+*Instruksi tambahan* di node.
 
 **Menambah tool planner**
 1. Tambahkan definisi di `PlannerTools.Definition()` (nama konstanta + JSON schema) dan namanya di

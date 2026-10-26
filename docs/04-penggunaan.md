@@ -99,6 +99,9 @@ Output terdiri dari tiga bagian:
    memakai `├─`, dan fase ditutup baris `└─` berisi hasilnya. Baris panjang dipotong di 90 kolom.
 3. **Jawaban akhir** setelah `---`.
 
+Baris milik AIT (progres, baris status, tabel, footer) mengikuti [bahasa tampilan](02-konfigurasi.md#bahasa-tampilan);
+teks Wrapper mengikuti bahasa prompt Anda.
+
 | Fase / baris | Arti |
 |---|---|
 | `🧠 Planner` | Planner membaca kode. Entri pertama `🔖 Label` adalah hasil pencarian label sebelum model dipanggil: file yang disebut prompt beserta modul·layer-nya (maks. 4 ditampilkan), lalu jumlah memory yang ditemukan pencarian dua lapis untuk brief planner (lihat [Planner](07-cara-kerja.md#3-planner)). `dari sesi (thread …)` berarti prompt tidak menyebut file, jadi labelnya diambil dari thread AIT sebelumnya di chat ini. Entri berikutnya masing-masing satu panggilan tool (read-only); nama tool rata kiri agar argumennya sejajar. `run_build` tampil dua baris: perintahnya, lalu hasilnya di bawahnya. Saat thread dilanjutkan setelah pertanyaan planner, baris label tidak muncul lagi. |
@@ -200,7 +203,8 @@ tersimpan di file. Untuk mengembalikannya, pakai **Batalkan perubahan file** (di
 
 Detail thread → **🔁 Ulangi yang gagal** (muncul bila thread sudah selesai, gagal, atau dibatalkan dan masih ada tugas
 rencana yang belum berhasil), atau langsung dari chat CLI: balas **`ulangi`** (juga `ulangi yang gagal`,
-`coba lagi`, `retry`). Jawaban yang masih punya tugas gagal menuliskan petunjuk ini di bawah *Perlu perhatian*.
+`coba lagi`, `retry`, `retry failed tasks`, `try again`). Jawaban yang masih punya tugas gagal menuliskan petunjuk ini di
+bawah *Perlu perhatian*.
 
 - Dari chat, yang diulang adalah thread AIT terakhir di chat itu (dan project yang sama), dengan progres dan
   jawaban tampil di chat seperti thread biasa; **Esc** membatalkannya. Hanya balasan pendek itu sendiri yang
@@ -241,13 +245,14 @@ tampil di kartu *Testing* dan aktivitas thread (tidak di CLI).
 ## Test lanjutan
 
 Bila Tester menyarankan **test lanjutan** (mis. approve level 1, edit sebelum approve), jawaban akhir menampilkannya
-bernomor. Jalankan dengan membalas `jalankan test lanjutan <nomor>` di chat yang sama, atau tombol **Jalankan** di kartu
+bernomor. Jalankan dengan membalas `jalankan test lanjutan <nomor>` (atau `run follow-up test <nomor>`) di chat yang sama, atau tombol **Jalankan** di kartu
 *Testing* halaman thread. Tester memakai akun uji project dan nilai yang ia ingat dari langkah sebelumnya (mis. nomor
 dokumen), lalu bisa menyarankan langkah berikutnya lagi. Detail: [Test lanjutan](07-cara-kerja.md#test-lanjutan-dan-nilai-antar-langkah).
 
 Untuk menentukan sendiri akun tiap peran dan nilai form, balas `buat skenario test lanjutan <nomor>`: AIT menulis file
 Excel di `.aithread/testing/`. Isi sel kuningnya, simpan, lalu balas `jalankan skenario <nama>` (pertama kali per project:
-`jalankan skenario <nama> setuju`). Detail: [Skenario multi-langkah](07-cara-kerja.md#skenario-multi-langkah-excel).
+`jalankan skenario <nama> setuju`). Versi Inggris perintah-perintah ini juga dikenali (`create scenario for follow-up test
+<nomor>`, `run scenario <nama> agree`) — [Bahasa tampilan](02-konfigurasi.md#bahasa-tampilan). Detail: [Skenario multi-langkah](07-cara-kerja.md#skenario-multi-langkah-excel).
 
 ## Unit test project
 

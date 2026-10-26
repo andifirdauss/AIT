@@ -1222,11 +1222,11 @@ lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offlin
   `{{AIT_SECRET:…}}`, lalu nilai aslinya dipasang kembali hanya saat executor menulis file (atau Tester memanggil
   aplikasi). Log, memory, wiki, dan export juga disimpan dalam bentuk tersamar. Detail dan batasannya ada di
   [Keamanan & privasi](12-keamanan.md).
-- Satu-satunya perintah yang dijalankan AIT adalah **perintah build** project (tabel di
-  [Verifikasi](#5-verifikasi-build-dan-reviewer)), dengan program dan argumen tetap; model hanya memilih manifest di
-  dalam root. Build menjalankan apa pun yang didefinisikan project itu sendiri (target MSBuild, script `build` di
+- Perintah yang dijalankan AIT adalah **perintah build** project (tabel di
+  [Verifikasi](#5-verifikasi-build-dan-reviewer)) dan **runner unit test** katalog, dengan program dan argumen tetap;
+  model hanya memilih manifest di dalam root. Build menjalankan apa pun yang didefinisikan project itu sendiri (target MSBuild, script `build` di
   `package.json`, plugin Maven), jadi matikan *Build & verifikasi otomatis* untuk project yang tidak Anda percaya.
-  Tidak ada perintah shell lain (test, install paket, migrasi). Pengecualiannya `git clone --depth 1` saat menarik
+  Tidak ada perintah shell lain (install paket, migrasi). Pengecualiannya `git clone --depth 1` saat menarik
   sumber skill dari host git non-GitHub/GitLab (atau bila unduhan ZIP gagal). Clone ini memakai URL yang Anda tempel,
   tanpa prompt kredensial, dan folder `.git`-nya dibuang.
 - **Auto Testing** menjalankan browser lewat Playwright (Edge/Chrome/Chromium dengan proses driver Node.js: `node` di

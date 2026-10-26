@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Implementations;
 
 namespace AIThread.Tests;
@@ -20,6 +21,25 @@ public class DocsServiceTests : IDisposable
 
         Assert.Equal(["", "01-a", "02-b"], entries.Select(e => e.Slug));
         Assert.Equal(["Dokumentasi", "1. Pertama", "2. Kedua"], entries.Select(e => e.Title));
+    }
+
+    [Fact]
+    public void English_serves_the_translated_page_and_falls_back_to_the_original()
+    {
+        _workspace.Write("docs/README.md", "# Dokumentasi\n\nLihat [instalasi](01-a.md).\n");
+        _workspace.Write("docs/01-a.md", "# 1. Instalasi\n");
+        _workspace.Write("docs/02-b.md", "# 2. Kedua\n");
+        _workspace.Write("docs/en/README.md", "# Documentation\n\nSee [installation](01-a.md).\n");
+        _workspace.Write("docs/en/01-a.md", "# 1. Installation\n");
+        var docs = new DocsService(Path.Combine(_workspace.Root, "docs"));
+
+        using (Lang.Use(Lang.English))
+        {
+            Assert.Equal(["Documentation", "1. Installation", "2. Kedua"], docs.List().Select(e => e.Title));
+            Assert.Contains("href=\"/Docs/01-a\"", docs.Get(null)!.Html);
+            Assert.Contains("Installation", docs.Get("01-a")!.Html);
+        }
+        using (Lang.Use(Lang.Indonesian)) Assert.Contains("Instalasi", docs.Get("01-a")!.Html);
     }
 
     [Fact]
