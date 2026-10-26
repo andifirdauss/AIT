@@ -28,6 +28,6 @@ public sealed partial class TelegramThreadReporter
         }
         if (chunks.Count > MaxResultMessages)
             await api.SendAsync(context.ChatId,
-                Lang.T($"… {chunks.Count - MaxResultMessages} bagian lagi tidak dikirim. Lihat detail thread di dashboard AIT.", $"… {chunks.Count - MaxResultMessages} more parts not sent. See the thread detail in the AIT dashboard."), cancellationToken: cancellationToken);
+                Lang.T($"… {chunks.Count - MaxResultMessages} bagian lagi tidak dikirim. Lihat detail thread di Dasbor AIT.", $"… {chunks.Count - MaxResultMessages} more parts not sent. See the thread detail in the AIT dashboard."), cancellationToken: cancellationToken);
     }
 }

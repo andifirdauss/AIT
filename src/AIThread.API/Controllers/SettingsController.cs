@@ -23,11 +23,11 @@ public class SettingsController(
     public async Task<ActionResult<ApiResponse<SystemSettingDto>>> Update(UpdateSystemSettingRequest request, CancellationToken cancellationToken)
     {
         var updated = await settingService.UpdateAsync(request, ProxyUrlResolver.Resolve(HttpContext), cancellationToken);
-        activityLog.Info("setting", Lang.T("Setting disimpan.", "Settings saved."));
+        activityLog.Info("setting", Lang.T("Pengaturan disimpan.", "Settings saved."));
 
         // Refresh the dashboard right away instead of waiting for the next monitor tick.
         _ = await router.CheckStatusAsync(cancellationToken);
-        return ApiResponse<SystemSettingDto>.Ok(updated, Lang.T("Setting tersimpan.", "Settings saved."));
+        return ApiResponse<SystemSettingDto>.Ok(updated, Lang.T("Pengaturan tersimpan.", "Settings saved."));
     }
 
     [HttpPut("language")]

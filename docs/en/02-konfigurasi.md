@@ -17,6 +17,12 @@ messages & API responses, Telegram messages, and the Excel scenario files.
 - **Chat commands are recognized in both languages**, whatever language is chosen: `ulangi` / `retry`, `jalankan test
   lanjutan 2` / `run follow-up test 2`, `buat skenario test lanjutan 2` / `create scenario for follow-up test 2`,
   `jalankan skenario <name> setuju` / `run scenario <name> agree`, `password dev <value>` / `dev password <value>`.
+- **AIT's output in the CLI follows the language of the prompt**, not the display language: the prompt "please add a
+  date filter" is answered in English even when the display language is Bahasa Indonesia, and the other way around. The
+  language is recognized from the words of the prompt (pasted code, logs and tags do not count); when the prompt does
+  not show its language (e.g. `👍` or only pasted logs), the earlier user prompts of that conversation decide, then the
+  display language. That language applies to the whole thread: progress, planner questions, the final report, the
+  memory entry, and that thread's activity log entries.
 - **Model answers** still follow the language of your prompt; the display language is only used when the prompt does
   not show its language (e.g. only pasted logs).
 - **Memory** is written in the language of the developer's request, by default the display language. The section

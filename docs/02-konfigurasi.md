@@ -2,30 +2,35 @@
 
 Konfigurasi runtime disimpan di database dan diubah dari UI — tidak perlu restart.
 
-Untuk setup pertama, menu **Setup** mengerjakan bagian yang wajib (koneksi 9router, node, CLI) di satu halaman — lihat
-[Panduan menu → Setup](05-menu.md#setup). Dalam tim, pengaturan yang sama dibagikan lewat
+Untuk setup pertama, menu **Penyiapan** mengerjakan bagian yang wajib (koneksi 9router, node, CLI) di satu halaman — lihat
+[Panduan menu → Penyiapan](05-menu.md#penyiapan). Dalam tim, pengaturan yang sama dibagikan lewat
 [profil setup tim](#profil-setup-tim). Halaman ini menjelaskan semua field lengkapnya.
 
 ## Bahasa tampilan
 
 AIT tampil dalam **Bahasa Indonesia** (bawaan) atau **English**. Pilih di kotak bahasa di bawah sidebar; halaman dimuat
 ulang dan pilihan disimpan di database untuk mesin ini (`PUT /api/settings/language`). Bahasa berlaku untuk semua yang
-dibaca developer: halaman web, menu Docs (`docs/en/` untuk English), menu `AIThread.exe` dan ikon tray, output AIT di
+dibaca developer: halaman web, menu Dokumentasi (`docs/en/` untuk English), menu `AIThread.exe` dan ikon tray, output AIT di
 CLI (progres, laporan akhir), log aktivitas, pesan validasi & respons API, pesan Telegram, serta file skenario Excel.
 
 - **Perintah chat dikenali dalam dua bahasa**, apa pun bahasa yang dipilih: `ulangi` / `retry`, `jalankan test lanjutan 2`
   / `run follow-up test 2`, `buat skenario test lanjutan 2` / `create scenario for follow-up test 2`, `jalankan skenario
   <nama> setuju` / `run scenario <nama> agree`, `password dev <nilai>` / `dev password <nilai>`.
+- **Output AIT di CLI mengikuti bahasa prompt**, bukan bahasa tampilan: prompt "tolong tambahkan filter tanggal" dijawab
+  dalam Bahasa Indonesia walaupun bahasa tampilan English, dan sebaliknya. Bahasa dikenali dari kata-kata prompt (kode,
+  log, dan tag yang ditempel tidak dihitung); bila prompt tidak menunjukkan bahasanya (mis. `👍` atau hanya tempelan
+  log), dipakai prompt user sebelumnya di percakapan itu, lalu bahasa tampilan. Bahasa itu berlaku untuk seluruh thread:
+  progres, pertanyaan planner, laporan akhir, catatan memory, dan entri log aktivitas thread tersebut.
 - **Jawaban model** tetap mengikuti bahasa prompt Anda; bahasa tampilan hanya dipakai bila prompt tidak menunjukkan
   bahasanya (mis. hanya tempelan log).
 - **Memory** ditulis dalam bahasa permintaan developer, bawaan bahasa tampilan. Judul bagian catatan perubahan
   (*Fitur*/*Feature*, *File berubah*/*Changed files*, …) mengikuti bahasa isinya, bukan bahasa tampilan, karena memory
-  dibagi ke tim — lihat [Memory → Bahasa](06-memory.md#bahasa-memory).
+  dibagi ke tim — lihat [Memori → Bahasa](06-memory.md#bahasa-memory).
 - File skenario Excel ditulis dalam bahasa tampilan (sheet *Panduan/Akun/Langkah* atau *Guide/Accounts/Steps*) dan
   dibaca dalam dua bahasa, jadi file dari rekan yang memakai bahasa lain tetap bisa diunggah.
 - `AIThread.exe` membaca bahasa dari `cli.json` di `%LOCALAPPDATA%\AIThread`, disamakan otomatis saat bahasa diganti dari web.
 
-## Menu Setting
+## Menu Pengaturan
 
 ### Koneksi 9router
 
@@ -33,9 +38,9 @@ CLI (progres, laporan akhir), log aktivitas, pesan validasi & respons API, pesan
 |---|---|
 | Base URL | Alamat 9router, default `http://localhost:20128`. Akhiran `/v1` (seperti yang ditampilkan dashboard 9router) dibuang otomatis. |
 | API key | Key dari dashboard 9router. Disimpan **terenkripsi**; setelah disimpan hanya ditampilkan tersamar (mis. `sk-abc••••1234`). Kosongkan field untuk mempertahankan key lama. |
-| Hapus API key tersimpan | Centang lalu *Simpan setting* untuk menghapus key. |
+| Hapus API key tersimpan | Centang lalu *Simpan pengaturan* untuk menghapus key. |
 
-Tombol **Test koneksi** memakai nilai di form **tanpa menyimpannya**. Setelah hasilnya benar, klik **Simpan setting**
+Tombol **Test koneksi** memakai nilai di form **tanpa menyimpannya**. Setelah hasilnya benar, klik **Simpan pengaturan**
 — hanya key yang tersimpan yang dipakai AIT. Saat halaman dibuka, baris hasil menampilkan
 status konfigurasi yang tersimpan.
 
@@ -49,7 +54,7 @@ status konfigurasi yang tersimpan.
 
 "Online" saja belum cukup: health check dan daftar model 9router tidak butuh key, jadi status key dicek terpisah
 (dengan request kosong yang ditolak 9router sebelum model dipanggil — tanpa biaya token). Masalah key juga tampil
-sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di log.
+sebagai *Online · cek API key* (kuning) di Dasbor dan sebagai peringatan di log.
 
 ### Proxy & orkestrasi
 
@@ -73,7 +78,7 @@ sebagai *Online · cek API key* (kuning) di Dashboard dan sebagai peringatan di 
 | Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. Juga batas satu kali run [unit test](07-cara-kerja.md#unit-test) bila project tidak mengisi *Batas waktu run test*. |
 | Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. Regresi unit test punya batas sendiri (3 putaran); `0` juga mematikannya. |
 
-Tab *Koneksi 9router*, *Proxy & orkestrasi*, dan *Build & verifikasi* adalah satu form: **Simpan setting** di tab
+Tab *Koneksi 9router*, *Proxy & orkestrasi*, dan *Build & verifikasi* adalah satu form: **Simpan pengaturan** di tab
 mana pun menyimpan ketiganya. Setelah mengganti proxy API key, matikan lalu nyalakan lagi switch CLI yang aktif di menu
 CLI agar key baru ikut tertulis.
 
@@ -102,14 +107,14 @@ Kartu di bawah penyimpanan memory (`/Setting#memory`), disimpan lewat **Simpan b
 
 | Field | Default | Keterangan |
 |---|---|---|
-| Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memory → Business memory tetap bisa dipakai saat nonaktif. |
+| Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memori → Business memory tetap bisa dipakai saat nonaktif. |
 | Interval (jam) | 6 | 1–168. Jeda antar rangkuman otomatis. |
 | Model penulis wiki | otomatis | Model 9router penulis wiki; kosong = model node Planner aktif. Pilih model yang teliti dan bisa membaca gambar agar screenshot dari prompt ikut masuk halaman. |
 | Nama developer | `git config user.name` | Dicatat pada halaman dan riwayat revisi, supaya tim tahu siapa (AIT siapa) yang mengubah. Kosong = `user.name` dari git config global (dibaca langsung dari `~/.gitconfig`); bila git juga tidak punya, AIT menanyakannya sekali lewat popup saat UI pertama dibuka. |
 
 ### Telegram
 
-Tab terakhir halaman Setting (`/Setting#telegram`), untuk mengirim prompt dari HP — panduan lengkap di
+Tab terakhir halaman Pengaturan (`/Setting#telegram`), untuk mengirim prompt dari HP — panduan lengkap di
 [Prompt dari Telegram](11-telegram.md).
 
 | Field | Default | Keterangan |
@@ -119,7 +124,7 @@ Tab terakhir halaman Setting (`/Setting#telegram`), untuk mengirim prompt dari H
 | Hapus token tersimpan | — | Centang lalu *Simpan Telegram* untuk menghapus token (bot otomatis berhenti). |
 | Chat | — | Chat pribadi yang pernah mengirim pesan ke bot. **Izinkan** chat Anda sendiri; **Hapus** chat asing; **Cabut** menghentikan akses chat yang sudah diizinkan. |
 
-Tombol **Simpan Telegram** hanya menyimpan bagian ini (terpisah dari *Simpan setting*) dan langsung berlaku tanpa
+Tombol **Simpan Telegram** hanya menyimpan bagian ini (terpisah dari *Simpan pengaturan*) dan langsung berlaku tanpa
 restart. Progres di Telegram selalu tampil, tidak dipengaruhi saklar *Tampilkan progres di CLI*.
 
 ### Skill
@@ -147,7 +152,7 @@ Tab `/Setting#keamanan` mengatur penyamaran secret. Detailnya ada di [Keamanan &
 | Samarkan secret sebelum dikirim ke model dan sebelum disimpan | aktif | Password, API key, token, JWT, private key, dan password di connection string diganti `{{AIT_SECRET:…}}` sebelum dikirim ke model, lalu dipasang kembali saat AIT menulis file. Bila dimatikan, semuanya dikirim apa adanya. |
 | Samarkan juga request passthrough | aktif | Berlaku untuk request yang diteruskan apa adanya ke 9router. Untuk Claude Code, pasang hook di menu CLI agar placeholder dikembalikan sebelum Edit/Write/Bash. |
 
-Blokir file kredensial (`.pem`, `.pfx`, kunci SSH, `.npmrc`, `~/.aws`, …) selalu berlaku. Pengecualian dan nama setting
+Blokir file kredensial (`.pem`, `.pfx`, kunci SSH, `.npmrc`, `~/.aws`, …) selalu berlaku. Pengecualian dan nama pengaturan
 tambahan diatur per project di `.aithread/project.json` → `"secrets"`. Lokasi kunci placeholder bisa diubah lewat
 `AIThread:SecretKeyPath` di `appsettings.json` (default `%LOCALAPPDATA%\AIThread\secret-mask.key`).
 
@@ -160,8 +165,8 @@ kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 [Tools node planner](#tools-node-planner)). Node **Tester** wajib bersyarat: dibutuhkan bila project memakai
 [katalog unit test](#unit-test-project) atau [Auto Testing](#auto-testing-node-tester); tanpa itu boleh tidak ada.
 
-Cara tercepat mengisi semua peran sekaligus: Setup → langkah *Pilih model untuk tiap peran* (cukup pilih model kuat dan
-model murah) — lihat [preset pipeline](05-menu.md#setup). Node `AIT …` yang dibuatnya bisa diubah di sini seperti node lain.
+Cara tercepat mengisi semua peran sekaligus: Penyiapan → langkah *Pilih model untuk tiap peran* (cukup pilih model kuat dan
+model murah) — lihat [preset pipeline](05-menu.md#penyiapan). Node `AIT …` yang dibuatnya bisa diubah di sini seperti node lain.
 
 ### Field node
 
@@ -293,7 +298,7 @@ Yang perlu disiapkan:
 
 - Tambah node ber-role **Tester** (model yang mendukung *tool calling*; default max paralel 1) lalu nyalakan
   *Auto Testing* di node Planner. Tanpa node Tester aktif, banner pipeline memberi catatan dan testing dilewati. Node
-  yang sama menilai unit test yang gagal, jadi pakai model kuat (preset `AIT Tester` di Setup).
+  yang sama menilai unit test yang gagal, jadi pakai model kuat (preset `AIT Tester` di Penyiapan).
 - **Aplikasi yang belum jalan dijalankan AIT** untuk testing itu, lalu dihentikan lagi setelahnya: project ASP.NET Core
   (`dotnet run --urls <baseUrl>`), Laravel (`php artisan serve`), atau script `dev`/`start`/`serve` di `package.json`.
   Untuk stack lain, atau bila perintahnya khusus, tulis di `.aithread/project.json` (di-commit tim):
@@ -304,7 +309,7 @@ Yang perlu disiapkan:
   `login <username> <password>` (akun uji) dan testing dijalankan lagi. Password tidak disimpan ke disk, tidak dikirim ke
   model, dan diingat selama sesi chat itu. Untuk thread dari Dashboard/Telegram, isi di modal **🧪 Ulangi testing**.
   Lihat [Login](07-cara-kerja.md#login).
-- **Akun uji** (opsional, untuk alur multi-user seperti approval berjenjang): isi di Project > Detail → *Akun uji*
+- **Akun uji** (opsional, untuk alur multi-user seperti approval berjenjang): isi di Proyek > Detail → *Akun uji*
   (username, peran, atribut; tanpa password per akun) dan, bila perlu, *Password dev* (bawaan `Test@1234`). Tester
   berganti akun dengan `switch_user` dan memakai fitur *login as* project bila terdeteksi. Lihat
   [Akun uji](07-cara-kerja.md#akun-uji-berganti-user).
@@ -316,8 +321,8 @@ Detail alur, tool tester, dan batasannya: [Testing (Auto Testing)](07-cara-kerja
 
 Project yang punya unit test (xUnit/NUnit/MSTest, jest/vitest/mocha, pytest, PHPUnit, Maven/Gradle, Go, Rust) otomatis
 memakai [katalog unit test](07-cara-kerja.md#unit-test): thread pertama mendaftarkan test-nya, lalu setiap thread
-menjalankan test yang terkait sebelum dan sesudah perubahan. Tidak ada switch global; setting-nya per project di
-[Project > Detail → Unit test](05-menu.md#unit-test) dan berlaku untuk semua developer project itu (lewat project
+menjalankan test yang terkait sebelum dan sesudah perubahan. Tidak ada switch global; pengaturannya per project di
+[Proyek > Detail → Unit test](05-menu.md#unit-test) dan berlaku untuk semua developer project itu (lewat project
 key, jadi project butuh key — lihat [Project key](06-memory.md#berbagi-memory-antar-developer-project-key)).
 Project yang **belum punya test project** juga ikut: bila sebuah perubahan butuh test baru, planner membuatkan test
 project-nya sekalian (lihat [Keputusan planner](07-cara-kerja.md#keputusan-planner)). Dengan Auto Testing aktif,
@@ -351,7 +356,7 @@ Slot dibagi di antara semua thread yang sedang berjalan (beberapa project sekali
 | Context Keeper | Satu slot per pembaruan konteks sesi (sekali per thread dari CLI, di belakang). |
 | Tools Node | Satu slot per panggilan model dalam sebuah `investigate`; dilepas saat tools node menjalankan tool. |
 
-Selain itu, Setting → *Maks paralel* membatasi tugas serentak **per thread**. Jumlah tugas yang benar-benar berjalan
+Selain itu, Pengaturan → *Maks paralel* membatasi tugas serentak **per thread**. Jumlah tugas yang benar-benar berjalan
 bersamaan = nilai terkecil dari: tugas yang siap, *Maks paralel* per thread, dan total slot kosong semua executor.
 Panggilan passthrough (request pendukung CLI) dan tombol *Test* tidak memakai slot.
 
@@ -375,7 +380,7 @@ atau tidak memakainya.
 
 Untuk menghemat lebih jauh:
 
-- Turunkan Setting → *Langkah planner*.
+- Turunkan Pengaturan → *Langkah planner*.
 - Hindari model langganan `cc/…` (Claude via 9router) untuk planner; pakai model/combo yang kuotanya longgar.
 - Tambahkan node Planner kedua dan pilih sebagai [node cadangan](#node-cadangan) planner utama.
 - Delegasikan tool yang outputnya besar ke [tools node](#tools-node-planner) bermodel murah.
@@ -425,9 +430,9 @@ secret miliknya sendiri.
 
 Telegram (token dan chat) tidak pernah masuk profil.
 
-**Export.** Setup → *Export profil*, atau `AIThread.exe setup export tim.json` (instance harus berjalan).
+**Export.** Penyiapan → *Export profil*, atau `AIThread.exe setup export tim.json` (instance harus berjalan).
 
-**Import.** Setup → *Import profil…*, atau `AIThread.exe setup import tim.json` (tambah `--yes` untuk tanpa konfirmasi):
+**Import.** Penyiapan → *Import profil…*, atau `AIThread.exe setup import tim.json` (tambah `--yes` untuk tanpa konfirmasi):
 
 1. **Pratinjau.** Daftar perubahan per bagian dibandingkan dengan komputer ini; tidak ada yang diubah. Bagian bisa dicentang
    atau dilewati.
@@ -444,7 +449,7 @@ Telegram (token dan chat) tidak pernah masuk profil.
 | Node lain | *Biarkan apa adanya* (default), atau *Nonaktifkan* agar pipeline persis sama dengan profil (node tidak dihapus). |
 | Tautan yang hilang | Node cadangan atau tools node yang tidak ada di profil maupun di komputer ini dikosongkan, dengan peringatan. |
 | Skill | Sumber skill baru ditambahkan lalu ditarik di latar belakang, jadi skill-nya belum ada saat import pertama. Import profil lagi setelah sumbernya *Siap* untuk memasang skill ke node. |
-| Memory | *Salin memory yang sudah ada ke penyimpanan baru* (default aktif) sama dengan opsi di Setting → Penyimpanan memory. |
+| Memory | *Salin memory yang sudah ada ke penyimpanan baru* (default aktif) sama dengan opsi di Pengaturan → Penyimpanan memory. |
 | Versi | File dari AIT yang lebih baru (versi format lebih tinggi) ditolak; perbarui AIT dulu. |
 
 Lanjut ke [Integrasi CLI](03-integrasi-cli.md).

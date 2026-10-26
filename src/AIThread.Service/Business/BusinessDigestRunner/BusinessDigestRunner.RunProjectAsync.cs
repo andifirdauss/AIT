@@ -16,7 +16,7 @@ public sealed partial class BusinessDigestRunner
                           ?? throw new AppValidationException(Lang.T("Project tidak ditemukan.", "Project not found."));
             (key, name) = (project.ProjectKey, project.Name);
         }
-        if (string.IsNullOrEmpty(key)) throw new AppValidationException(Lang.T("Project belum punya key; buka lagi menu Project sebentar lagi.", "The project has no key yet; open the Project menu again in a moment."));
+        if (string.IsNullOrEmpty(key)) throw new AppValidationException(Lang.T("Project belum punya key; buka lagi menu Proyek sebentar lagi.", "The project has no key yet; open the Project menu again in a moment."));
 
         if (!await _gate.WaitAsync(TimeSpan.Zero, cancellationToken))
             throw new AppValidationException(Lang.T("Pembaruan business memory sedang berjalan. Tunggu sampai selesai.", "A business memory update is running. Wait until it finishes."));

@@ -283,7 +283,7 @@
         timeoutSeconds: el('unitTestTimeout').value ? Number(el('unitTestTimeout').value) : null
       });
       settingsModal.hide();
-      toast(t('Setting unit test disimpan.', 'Unit test settings saved.'));
+      toast(t('Pengaturan unit test disimpan.', 'Unit test settings saved.'));
       await load();
     } catch (error) {
       toast(error.message, 'error');

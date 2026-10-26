@@ -1,10 +1,10 @@
 @{
-    ViewData["Title"] = "Setup";
+    ViewData["Title"] = Lang.T("Penyiapan", "Setup");
 }
 
 <div class="page-header">
     <div>
-        <h1>Setup</h1>
+        <h1>@Lang.T("Penyiapan", "Setup")</h1>
         <p class="page-subtitle">@Lang.T("Semua langkah awal di satu halaman. Status tiap langkah dibaca dari kondisi AIT saat ini, jadi halaman ini juga bisa dipakai untuk memeriksa ulang kapan saja.", "Every first step on one page. The status of each step is read from AIT's current state, so this page can also be used to check again at any time.")</p>
     </div>
     <div class="d-flex gap-2">
@@ -31,7 +31,7 @@
             <div class="flex-grow-1" style="min-width: 260px">
                 <div class="fw-semibold">@Lang.T("Profil setup tim", "Team setup profile")</div>
                 <div class="small text-secondary">
-                    @Html.Raw(Lang.T("Ketua tim cukup mengatur sekali lalu <strong>Export profil</strong>. Developer lain <strong>Import profil</strong> file itu, lalu hanya mengisi API key 9router dan password database miliknya. Isi profil: alamat 9router, setting orkestrasi, node, penyimpanan memory, business memory, dan sumber skill. Secret dan nama developer tidak pernah ikut ke file.", "The team lead sets things up once, then <strong>Export profile</strong>. Other developers <strong>Import profile</strong> from that file and fill in only their own 9router API key and database password. A profile holds: the 9router address, orchestration settings, nodes, memory storage, business memory, and skill sources. Secrets and developer names never go into the file."))
+                    @Html.Raw(Lang.T("Ketua tim cukup mengatur sekali lalu <strong>Export profil</strong>. Developer lain <strong>Import profil</strong> file itu, lalu hanya mengisi API key 9router dan password database miliknya. Isi profil: alamat 9router, pengaturan orkestrasi, node, penyimpanan memory, business memory, dan sumber skill. Secret dan nama developer tidak pernah ikut ke file.", "The team lead sets things up once, then <strong>Export profile</strong>. Other developers <strong>Import profile</strong> from that file and fill in only their own 9router API key and database password. A profile holds: the 9router address, orchestration settings, nodes, memory storage, business memory, and skill sources. Secrets and developer names never go into the file."))
                 </div>
             </div>
             <div class="d-flex gap-2">
@@ -148,7 +148,7 @@
                     <button class="btn btn-outline-secondary" type="button" id="btnSetupBrowse">@Lang.T("Telusuri…", "Browse…")</button>
                     <button class="btn btn-primary" type="button" id="btnSetupRegister">@Lang.T("Daftarkan", "Register")</button>
                 </div>
-                <div class="form-text">@Html.Raw(Lang.T("Folder berisi <span class=\"mono\">.git</span> atau file build (<span class=\"mono\">.sln</span>, <span class=\"mono\">package.json</span>, <span class=\"mono\">pom.xml</span>, …). Kelola semua project di <a href=\"/Project\">menu Project</a>.", "A folder with <span class=\"mono\">.git</span> or a build file (<span class=\"mono\">.sln</span>, <span class=\"mono\">package.json</span>, <span class=\"mono\">pom.xml</span>, …). Manage all projects in the <a href=\"/Project\">Project menu</a>."))</div>
+                <div class="form-text">@Html.Raw(Lang.T("Folder berisi <span class=\"mono\">.git</span> atau file build (<span class=\"mono\">.sln</span>, <span class=\"mono\">package.json</span>, <span class=\"mono\">pom.xml</span>, …). Kelola semua project di <a href=\"/Project\">menu Proyek</a>.", "A folder with <span class=\"mono\">.git</span> or a build file (<span class=\"mono\">.sln</span>, <span class=\"mono\">package.json</span>, <span class=\"mono\">pom.xml</span>, …). Manage all projects in the <a href=\"/Project\">Project menu</a>."))</div>
             </div>
         </details>
 
@@ -174,7 +174,7 @@
                 </p>
                 <div class="d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-outline-primary btn-sm" data-profile-import>@Lang.T("Import profil tim…", "Import team profile…")</button>
-                    <a class="btn btn-outline-secondary btn-sm" href="/Setting#memory">@Lang.T("Atur di Setting → Penyimpanan memory", "Set it in Setting → Memory storage")</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="/Setting#memory">@Lang.T("Atur di Pengaturan → Penyimpanan memory", "Set it in Setting → Memory storage")</a>
                 </div>
             </div>
         </details>
@@ -182,12 +182,12 @@
 
     <div class="card border-success-subtle bg-success-subtle mt-3 d-none" id="setupDone">
         <div class="card-body">
-            <div class="fw-semibold text-success-emphasis">@Lang.T("Setup selesai 🎉", "Setup done 🎉")</div>
+            <div class="fw-semibold text-success-emphasis">@Lang.T("Penyiapan selesai 🎉", "Setup done 🎉")</div>
             <p class="small mb-2">
-                @Html.Raw(Lang.T("Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel, build &amp; review) tampil langsung di CLI; detail dan diff per file ada di Dashboard.", "Open a <strong>new session</strong> of your CLI in the project folder and give commands as usual. The progress (plan, parallel tasks, build &amp; review) shows right in the CLI; details and per-file diffs are in the Dashboard."))
+                @Html.Raw(Lang.T("Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel, build &amp; review) tampil langsung di CLI; detail dan diff per file ada di Dasbor.", "Open a <strong>new session</strong> of your CLI in the project folder and give commands as usual. The progress (plan, parallel tasks, build &amp; review) shows right in the CLI; details and per-file diffs are in the Dashboard."))
             </p>
             <div class="d-flex flex-wrap gap-2">
-                @Html.Raw(Lang.T("<a class=\"btn btn-sm btn-success\" href=\"/\">Buka Dashboard</a> <a class=\"btn btn-sm btn-outline-secondary\" href=\"/Docs/04-penggunaan\">Cara memakai</a>", "<a class=\"btn btn-sm btn-success\" href=\"/\">Open the Dashboard</a> <a class=\"btn btn-sm btn-outline-secondary\" href=\"/Docs/04-penggunaan\">How to use it</a>"))
+                @Html.Raw(Lang.T("<a class=\"btn btn-sm btn-success\" href=\"/\">Buka Dasbor</a> <a class=\"btn btn-sm btn-outline-secondary\" href=\"/Docs/04-penggunaan\">Cara memakai</a>", "<a class=\"btn btn-sm btn-success\" href=\"/\">Open the Dashboard</a> <a class=\"btn btn-sm btn-outline-secondary\" href=\"/Docs/04-penggunaan\">How to use it</a>"))
             </div>
         </div>
     </div>

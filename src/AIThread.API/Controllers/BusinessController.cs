@@ -115,5 +115,5 @@ public class BusinessController(IBusinessMemoryService business, IBusinessDigest
 
     [HttpPut("settings")]
     public async Task<ActionResult<ApiResponse<BusinessSettingsDto>>> UpdateSettings(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<BusinessSettingsDto>.Ok(await business.UpdateSettingsAsync(request, cancellationToken), Lang.T("Setting business memory disimpan.", "Business memory settings saved."));
+        ApiResponse<BusinessSettingsDto>.Ok(await business.UpdateSettingsAsync(request, cancellationToken), Lang.T("Pengaturan business memory disimpan.", "Business memory settings saved."));
 }

@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+using AIThread.Service.Memory;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
 
@@ -7,6 +9,9 @@ public sealed partial class ThreadOrchestrator
 {
     public async Task<ThreadResult> RunAsync(ThreadRequest request, IThreadObserver observer, CancellationToken cancellationToken)
     {
+        // AIT's own output to the CLI follows the language the developer writes in, whatever the UI language.
+        using var language = Lang.Use(TextLanguage.LangOfPrompt(request.Prompt, request.ConversationContext));
+
         // "login <user> <password>" right after a tester asked for one runs that thread's test again with it.
         if (TestLogin.Parse(request.Prompt) is { } login && testLogins.TakeAsk(request.SessionId, request.ProjectId) is { } waiting)
             return await TestWithLoginAsync(waiting, login, request, observer, cancellationToken);

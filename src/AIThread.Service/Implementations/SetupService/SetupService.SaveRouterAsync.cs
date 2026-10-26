@@ -27,7 +27,7 @@ public sealed partial class SetupService
 
         await settingService.UpdateRouterAsync(baseUrl, typedKey, cancellationToken);
         var saved = await router.CheckStatusAsync(cancellationToken);
-        activityLog.Info("setting", Lang.T($"Koneksi 9router disimpan dari menu Setup ({saved.BaseUrl}).", $"9router connection saved from the Setup menu ({saved.BaseUrl})."));
+        activityLog.Info("setting", Lang.T($"Koneksi 9router disimpan dari menu Penyiapan ({saved.BaseUrl}).", $"9router connection saved from the Setup menu ({saved.BaseUrl})."));
         return new SetupRouterResultDto(saved, true, saved.ModelCount == 0
             ? Lang.T("Tersimpan. 9router belum punya model: hubungkan provider di dashboard 9router (menu Providers).", "Saved. 9router has no model yet: connect a provider in the 9router dashboard (Providers menu).")
             : Lang.T("Koneksi 9router tersimpan.", "9router connection saved."));

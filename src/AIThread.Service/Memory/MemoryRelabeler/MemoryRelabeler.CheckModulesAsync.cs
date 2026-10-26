@@ -24,7 +24,7 @@ public sealed partial class MemoryRelabeler
                     var found = await merger.CheckAsync(key, null, cancellationToken);
                     var duplicates = await CountDuplicateMemoriesAsync(key, cancellationToken);
                     if (found > 0 || duplicates > 0)
-                        activityLog.Info("memory", Lang.T($"Cek modul {key}: {found} modul ganda ditangani, {duplicates} pasang kandidat memory duplikat (lihat Memory → Perlu review).", $"Module check {key}: {found} duplicate modules handled, {duplicates} pairs of possible duplicate memories (see Memory → Needs review)."));
+                        activityLog.Info("memory", Lang.T($"Cek modul {key}: {found} modul ganda ditangani, {duplicates} pasang kandidat memory duplikat (lihat Memori → Perlu review).", $"Module check {key}: {found} duplicate modules handled, {duplicates} pairs of possible duplicate memories (see Memory → Needs review)."));
                 }
                 else if (created.TryGetValue(key, out var modules))
                 {

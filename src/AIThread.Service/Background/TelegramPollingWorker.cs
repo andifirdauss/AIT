@@ -166,7 +166,7 @@ public sealed class TelegramPollingWorker(
     // A rejected token only changes on the Setting page, so wait for that; anything else is retried.
     private async Task ReportFailureAsync(string? botUsername, TelegramApiException ex, CancellationToken token)
     {
-        var message = ex.IsUnauthorized ? Lang.T("Token bot ditolak Telegram. Periksa atau ganti token di menu Setting.", "Telegram rejected the bot token. Check or replace the token in the Setting menu.") : ex.Message;
+        var message = ex.IsUnauthorized ? Lang.T("Token bot ditolak Telegram. Periksa atau ganti token di menu Pengaturan.", "Telegram rejected the bot token. Check or replace the token in the Setting menu.") : ex.Message;
         runtime.Report(TelegramBotStatus.Error, botUsername, message);
         LogOnce(message);
         await Task.Delay(ex.IsUnauthorized ? Timeout.InfiniteTimeSpan : RetryDelay, token);

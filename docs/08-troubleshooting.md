@@ -1,31 +1,31 @@
 # 8. Troubleshooting
 
-Langkah pertama untuk hampir semua masalah: buka **Dashboard → Log langsung** (pilih *Semua (debug)*) atau
+Langkah pertama untuk hampir semua masalah: buka **Dasbor → Log langsung** (pilih *Semua (debug)*) atau
 halaman detail thread → *Aktivitas*.
 
 ## 9router
 
 **Kartu 9router *Offline*: "No connection could be made…" / "Timeout (5 detik)"**
-9router tidak berjalan atau URL salah. Klik **Jalankan 9router** di Dashboard (atau jalankan `9router`), pastikan
-dashboard terbuka di URL yang sama dengan Setting → Base URL, lalu *Test koneksi*.
+9router tidak berjalan atau URL salah. Klik **Jalankan 9router** di Dasbor (atau jalankan `9router`), pastikan
+dashboard terbuka di URL yang sama dengan Pengaturan → Base URL, lalu *Test koneksi*.
 
 **AIT tidak menyalakan 9router saat start**
-Lihat log kategori *9router* di Dashboard. Penyebab umum: Base URL bukan alamat lokal; *Node.js tidak ditemukan*
+Lihat log kategori *9router* di Dasbor. Penyebab umum: Base URL bukan alamat lokal; *Node.js tidak ditemukan*
 (pasang Node.js 18+); *9router belum terpasang* (klik **Jalankan 9router**, atau set `AIThread:NineRouter:AutoInstall`);
 *Port … sudah dipakai* oleh program lain (ganti port 9router dan Base URL, atau hentikan program itu); atau 9router
 berhenti saat dinyalakan, yang detailnya ada di `%LOCALAPPDATA%\AIThread\logs\9router.log`.
 
-**"9router HTTP 401 untuk model '…': Missing API key" padahal Setting terlihat terhubung**
+**"9router HTTP 401 untuk model '…': Missing API key" padahal Pengaturan terlihat terhubung**
 Belum ada API key **tersimpan**. *Test koneksi* hanya menguji key yang diketik di form tanpa menyimpannya, dan
 status *Online* hanya membuktikan 9router hidup (health check dan daftar model tidak butuh key). Isi API key di
-Setting → klik **Simpan** → pastikan baris status menampilkan `API key OK`. Kartu 9router di Dashboard menampilkan
+Pengaturan → klik **Simpan** → pastikan baris status menampilkan `API key OK`. Kartu 9router di Dasbor menampilkan
 *Online · cek API key* selama key belum beres.
 
 **"API key ditolak oleh 9router" / "Invalid API key"**
-Key salah atau sudah dihapus di 9router. Salin ulang dari dashboard 9router, isi di Setting, klik **Simpan**.
+Key salah atau sudah dihapus di 9router. Salin ulang dari dashboard 9router, isi di Pengaturan, klik **Simpan**.
 
 **Key 9router "hilang" setelah pindah komputer/akun Windows**
-Key dienkripsi dengan Data Protection milik akun Windows tersebut. Isi ulang key di Setting.
+Key dienkripsi dengan Data Protection milik akun Windows tersebut. Isi ulang key di Pengaturan.
 
 **"Akun provider untuk model '…' di 9router perlu login ulang (OAuth access token has expired …)"**
 9router hidup dan API key AIT diterima, tetapi akun provider di balik model itu (mis. langganan Claude) sudah logout:
@@ -55,7 +55,7 @@ token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya bes
 - Thread yang sudah terlanjur gagal tidak perlu diulang dari awal: balas `ulangi` di chat, atau buka detail thread →
   **Ulangi yang gagal**.
 - Atau jadikan model planner sebuah **combo** 9router (mis. Claude → model lain) supaya fallback terjadi di 9router.
-- Kurangi slot node planner bila beberapa thread berjalan bersamaan, atau turunkan Setting → *Langkah planner*.
+- Kurangi slot node planner bila beberapa thread berjalan bersamaan, atau turunkan Pengaturan → *Langkah planner*.
 
 **Footer tidak menampilkan *Sisa kuota***
 - 9router di komputer lain dengan *Require login* aktif (bawaan 9router): API `/api/usage` menolak AIT, dan log AIT
@@ -67,11 +67,11 @@ token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya bes
 - 9router tidak menjawab dalam 10 detik; footer dikirim tanpa kuota. Thread berikutnya mencoba lagi.
 
 **"Model '…' tidak merespons dalam N detik"**
-Naikkan Setting → *Timeout (detik)*, atau pakai model yang lebih cepat.
+Naikkan Pengaturan → *Timeout (detik)*, atau pakai model yang lebih cepat.
 
 ## CLI tidak melewati AIT
 
-Jawaban muncul tanpa baris `**AIT** · …` dan tidak ada thread baru di Dashboard:
+Jawaban muncul tanpa baris `**AIT** · …` dan tidak ada thread baru di Dasbor:
 
 1. Buka **sesi CLI baru** — konfigurasi hanya dibaca saat sesi dimulai.
 2. Menu CLI → kartu CLI Anda: switch harus menyala dengan lencana *Aktif* (bukan *Mengarah ke alamat lain*).
@@ -84,7 +84,7 @@ Jawaban muncul tanpa baris `**AIT** · …` dan tidak ada thread baru di Dashboa
    bisa menutupi switch global.
 5. Pastikan tidak ada environment variable Windows yang menimpa (mis. `ANTHROPIC_BASE_URL` untuk Claude Code,
    `GOOGLE_GEMINI_BASE_URL`/`GEMINI_API_KEY` untuk Gemini CLI).
-6. Setting → *Orkestrasi aktif* harus menyala. Jika mati, request tetap lewat AIT tetapi diteruskan tanpa orkestrasi
+6. Pengaturan → *Orkestrasi aktif* harus menyala. Jika mati, request tetap lewat AIT tetapi diteruskan tanpa orkestrasi
    (terlihat sebagai log debug `Passthrough (orchestration disabled)`).
 7. Cari di log baris `Sesi xxxxxxxx (…) bukan bagian project (…)`. Artinya sesi **sengaja diabaikan** karena
    working directory-nya bukan bagian sebuah project — lihat [Project](#project).
@@ -99,7 +99,7 @@ Log debug `Passthrough (auxiliary request without tools)` untuk request judul se
 | `AIT: passthrough model belum diatur…` (503) | Tidak ada model passthrough dan tidak ada node Wrapper/Executor aktif. | Isi *Model passthrough* atau aktifkan node. |
 | `❌ AIT gagal: Belum ada node Planner aktif…` | Pipeline belum lengkap. | Tambahkan/aktifkan node di menu Node. |
 | `❌ AIT gagal: Planner tidak menghasilkan rencana yang valid dalam N langkah.` | Planner kehabisan langkah atau terus mengirim rencana yang ditolak validator. | Lihat alasan penolakan di *Aktivitas* thread. Naikkan *Langkah planner*, pakai model planner yang lebih kuat, atau perjelas prompt. |
-| `❌ AIT gagal memulai thread: …` | Masalah sebelum thread dibuat, biasanya database atau project dihapus saat sesi berjalan. | Periksa kartu Database di Dashboard; daftarkan ulang project bila perlu. |
+| `❌ AIT gagal memulai thread: …` | Masalah sebelum thread dibuat, biasanya database atau project dihapus saat sesi berjalan. | Periksa kartu Database di Dasbor; daftarkan ulang project bila perlu. |
 | CLI timeout | Thread lebih lama dari batas waktu CLI. | Naikkan batasnya (Claude Code: `API_TIMEOUT_MS`; Codex: `stream_idle_timeout_ms`; Qwen Code: `QWEN_STREAM_MAX_LIFETIME_MS`), atau pecah prompt. |
 
 ## Project
@@ -116,7 +116,7 @@ kurung menunjukkan penyebabnya:
 - *working directory tidak diketahui*: klien tidak mengirimnya; set header `X-AIThread-Cwd`.
 
 Solusi: jalankan CLI di folder project, tambahkan `.git` (`git init`) atau file build ke folder itu, atau
-daftarkan foldernya lewat *Daftarkan manual* di menu Project (folder tanpa marker pun bisa). Bisa juga menerapkan
+daftarkan foldernya lewat *Daftarkan manual* di menu Proyek (folder tanpa marker pun bisa). Bisa juga menerapkan
 integrasi *per project* (mengirim header `X-AIThread-Project`). Sesi yang diabaikan dicek ulang setelah sekitar 5 detik.
 
 **Registrasi manual: "Folder … tidak ditemukan" atau "Folder ini terlalu luas untuk jadi project"**
@@ -137,7 +137,7 @@ diutamakan. Bila root yang Anda mau berbeda (mis. satu modul di monorepo sebagai
 itu lewat *Daftarkan manual*: folder dengan marker sendiri didaftarkan apa adanya, dan sesi di dalamnya memakainya.
 Integrasi per project (header `X-AIThread-Project`) juga mengunci foldernya.
 
-**Badge *folder hilang* di menu Project**
+**Badge *folder hilang* di menu Proyek**
 Folder project sudah dipindah/dihapus. Daftarkan path baru; hapus entri lama bila tidak diperlukan
 (ingat: memory project ikut terhapus).
 
@@ -176,18 +176,18 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 
 | Gejala | Arti | Solusi |
 |---|---|---|
-| Unit test tidak pernah jalan / kartu Unit test kosong | Project belum punya project key, mode katalog *Mati*, atau tidak ada suite yang dikenali (lihat [Runner yang dikenali](07-cara-kerja.md#runner-yang-dikenali)). Store long memory yang tidak menjawab dalam 10 detik juga membuat unit test dilewati thread itu (tercatat di log aplikasi). | Cek kartu Unit test di Project > Detail; tekan **Scan test**. Pastikan project punya key dan koneksi store long memory sehat. |
+| Unit test tidak pernah jalan / kartu Unit test kosong | Project belum punya project key, mode katalog *Mati*, atau tidak ada suite yang dikenali (lihat [Runner yang dikenali](07-cara-kerja.md#runner-yang-dikenali)). Store long memory yang tidak menjawab dalam 10 detik juga membuat unit test dilewati thread itu (tercatat di log aplikasi). | Cek kartu Unit test di Proyek > Detail; tekan **Scan test**. Pastikan project punya key dan koneksi store long memory sehat. |
 | Suite bertanda ⚠️ `… tidak ada di node_modules (jalankan npm install dulu)` / `vendor/bin/phpunit tidak ada` / `Assembly test belum di-build` / `vstest.console.exe … tidak ditemukan` | Runner-nya belum terpasang di mesin ini; AIT tidak menginstal paket. | Jalankan `npm install` / `composer install` / build solution sekali, atau pasang Visual Studio (Test Platform) untuk project .NET Framework lama. |
 | Semua test di satu suite *Error: Test tidak bisa dijalankan (exit code …)* | Runner gagal sebelum menjalankan test, biasanya project test tidak bisa di-build atau konfigurasinya rusak. Pesan dan akhir output ada di detail test. | Perbaiki build project test (`dotnet test` membuild sendiri), lalu jalankan lagi. |
-| Test *dilewati — Butuh database / koneksi jaringan / konfigurasi …* | Test gagal karena mesin ini tidak punya database, service, atau file config yang dibutuhkannya; tidak dihitung regresi. Selama 24 jam berikutnya test itu langsung dilewati di thread tanpa menunggu timeout. | Normal untuk test integrasi di laptop tanpa DB. Bila kebutuhannya sudah tersedia, tekan **Jalankan** di Project > Detail (selalu mencoba lagi). Test **baru** dari thread yang sama tidak pernah dilewati karena ini: ia diperbaiki agar tidak menyentuh database/jaringan (lihat [Test yang dilewati](07-cara-kerja.md#test-yang-dilewati)). |
+| Test *dilewati — Butuh database / koneksi jaringan / konfigurasi …* | Test gagal karena mesin ini tidak punya database, service, atau file config yang dibutuhkannya; tidak dihitung regresi. Selama 24 jam berikutnya test itu langsung dilewati di thread tanpa menunggu timeout. | Normal untuk test integrasi di laptop tanpa DB. Bila kebutuhannya sudah tersedia, tekan **Jalankan** di Proyek > Detail (selalu mencoba lagi). Test **baru** dari thread yang sama tidak pernah dilewati karena ini: ia diperbaiki agar tidak menyentuh database/jaringan (lihat [Test yang dilewati](07-cara-kerja.md#test-yang-dilewati)). |
 | Test *tidak dilaporkan runner* | Runner jalan, tetapi tidak menyebut test itu: method/test diganti nama, dipindah, atau filter tidak cocok. | **Scan test** untuk mengikuti perubahan nama/file; test lama yang memang hilang tampil di hasil scan (`missing`) dan bisa ditandai obsolete lewat thread. |
-| `run test melewati batas waktu` | Run lebih lama dari *Batas waktu run test* (default = *Timeout build*). | Naikkan batasnya di Setting unit test project, atau pakai mode *Relevan saja*. |
+| `run test melewati batas waktu` | Run lebih lama dari *Batas waktu run test* (default = *Timeout build*). | Naikkan batasnya di Pengaturan unit test project, atau pakai mode *Relevan saja*. |
 | Thread terasa lebih lama sejak ada katalog | Baseline berjalan paralel dengan planner, tetapi eksekusi menunggunya; run setelah build menambah waktu per putaran. Mode *Semua test aktif* menjalankan seluruh suite. | Pakai *Relevan saja*. Hasil untuk kode yang sama dipakai ulang (14 hari) tanpa menjalankan lagi. |
 | Regresi tidak diperbaiki: *the file to fix cannot be told without the tester's triage* | Tanpa node Tester, AIT hanya bisa menebak file yang diperbaiki (file target test yang diubah, atau satu-satunya file non-test yang diubah). | Tambahkan node Tester (model kuat, preset `AIT Tester`), atau perbaiki lewat prompt berikutnya (*"perbaiki UT-0012"*). |
 | `Masih ada regresi unit test setelah 3 putaran perbaikan` | Perbaikan otomatis dibatasi 3 putaran. | Lihat pesan gagal di bagian *🧪 Unit test*; lanjutkan dengan prompt berikutnya atau perbaiki manual. Bila perilakunya memang sengaja berubah, katakan di prompt agar planner memutuskan `update`. |
 | File test baru muncul di `git status` padahal tidak diminta | Test katalog yang belum ada di repository Anda (dibuat developer lain dan belum di-pull, atau terhapus) dipulihkan otomatis sebelum planner. Laporan menyebut commit/branch asalnya. | Commit file itu. Bila Anda kemudian pull branch yang berisi file yang sama, git menolak menimpa file untracked: hapus salinan hasil pemulihan (isinya sama) lalu pull lagi. Bila test memang sengaja dihapus, tandai obsolete lalu konfirmasi hapus. |
 | Test *Ditulis ulang (perlu konfirmasi)* | Tidak ada snapshot untuk test yang hilang (mis. *Simpan snapshot test* mati), jadi executor menulisnya lagi dari skenario katalog. | Tinjau kode test-nya sebelum di-commit; hasilnya bisa berbeda dari aslinya. |
-| Test berpindah ke status *Karantina* | Test gagal lalu lolos saat diulang, atau Tester menilainya tidak stabil (bergantung waktu, urutan, acak). | Perbaiki test-nya, lalu **Aktifkan** di Project > Detail. |
+| Test berpindah ke status *Karantina* | Test gagal lalu lolos saat diulang, atau Tester menilainya tidak stabil (bergantung waktu, urutan, acak). | Perbaiki test-nya, lalu **Aktifkan** di Proyek > Detail. |
 
 ## Auto Testing
 
@@ -195,7 +195,7 @@ Tugas yang gagal tidak menulis apa pun ke file (edit bersifat all-or-nothing).
 |---|---|---|
 | Fase `🧪 Testing` tidak muncul | *Auto Testing* mati di node Planner yang dipakai, tidak ada node Tester aktif (banner Node memberi catatan), tidak ada tugas yang berhasil, atau thread dibuat sebelum Auto Testing dinyalakan. | Nyalakan *Auto Testing* di Edit node Planner dan tambahkan node ber-role Tester. |
 | `Testing · dilewati` | Planner menilai perubahannya tidak bisa dicoba dari luar (alasannya tertulis), atau build terakhir masih gagal. | Perbaiki build dulu; atau sebut di prompt bagian mana yang harus dites. |
-| Tester tidak berganti user / tidak ada `switch_user` | Project belum punya akun uji, atau belum punya project key. | Isi akun per peran di Project > Detail → *Akun uji*. |
+| Tester tidak berganti user / tidak ada `switch_user` | Project belum punya akun uji, atau belum punya project key. | Isi akun per peran di Proyek > Detail → *Akun uji*. |
 | `Password dev project ditolak aplikasi` | Aplikasi tidak menerima `Test@1234` (atau password dev yang tersimpan). | Balas `password dev <nilai>` di chat (disimpan untuk project), atau isi di kartu *Akun uji*. Untuk password asli, balas `login <user> <password>` (hanya sesi itu). |
 | Rencana ditolak: `actor '…' is neither a test account nor the role of one` | Planner menulis aktor yang tidak ada di daftar akun uji. | Planner memperbaikinya sendiri; bila perannya memang belum ada, tambahkan akun dengan peran itu. |
 | `File skenario belum bisa dipakai: Sheet Langkah baris N: …` | Ada baris tanpa langkah/hasil, atau aktor yang tidak ada di sheet Akun. | Perbaiki baris yang disebut, simpan, lalu jalankan/unggah lagi. |
@@ -228,14 +228,14 @@ ada data hilang.
 
 **Log `Port 6379 is already in use … short memory uses that server`**
 Program lain (biasanya container Docker `aithread-redis` lama) memakai port short memory, sehingga AIT
-memakainya alih-alih Garnet. Pindahkan dulu short memory yang ingin disimpan (menu Memory → **→ DB**), lalu
+memakainya alih-alih Garnet. Pindahkan dulu short memory yang ingin disimpan (menu Memori → **→ DB**), lalu
 `docker rm -f aithread-redis` dan restart AIT. Lihat [Instalasi](01-instalasi.md#1-short-memory-garnet).
 
-**Penyimpanan memory eksternal *Tidak terhubung*** (menu Setting → Penyimpanan memory)
+**Penyimpanan memory eksternal *Tidak terhubung*** (menu Pengaturan → Penyimpanan memory)
 Klik **Test koneksi** pada kartunya: pesan error dari server (host tidak ditemukan, login gagal, database tidak ada)
 ditampilkan apa adanya. Selama short memory eksternal mati, memory baru masuk long memory dan store dicek ulang tiap
 15 detik. Bila long memory eksternal mati, thread tetap berjalan tanpa long memory (log aktivitas mencatat *Long
-memory … tidak dapat dihubungi*), dan konsolidasi menunggu sampai server kembali; atau kembalikan provider ke *Bawaan*. Log `The saved short/long memory store is invalid` saat start berarti setting
+memory … tidak dapat dihubungi*), dan konsolidasi menunggu sampai server kembali; atau kembalikan provider ke *Bawaan*. Log `The saved short/long memory store is invalid` saat start berarti pengaturan
 tersimpan tidak valid, dan AIT memakai store bawaan.
 
 **Simpan penyimpanan memory ditolak dengan `permission denied` / `CREATE DATABASE`**
@@ -274,7 +274,7 @@ Repository tidak punya `SKILL.md` dan model juga tidak menemukan file Markdown y
 link ke folder skill-nya langsung (`/tree/main/<folder>`) atau ke file `.md`-nya.
 
 **Skill tersimpan tanpa tag / *Cari skill* gagal: `Pilih model Skill Orchestrator…`**
-Pilih model di Setting → Skill, atau tambahkan node Planner aktif. Skill tanpa tag tetap bisa dipakai; klik *Sync*
+Pilih model di Pengaturan → Skill, atau tambahkan node Planner aktif. Skill tanpa tag tetap bisa dipakai; klik *Sync*
 setelah model tersedia agar tag dibuat ulang.
 
 **Node terasa lambat atau mahal setelah diberi skill**

@@ -521,7 +521,7 @@
     } else if (!searchResults.length) {
       target.innerHTML = searchTerms.length
         ? t('<div class="dropdown-item-text small text-secondary">Tidak ada skill yang cocok.</div>', '<div class="dropdown-item-text small text-secondary">No matching skill.</div>')
-        : t('<div class="dropdown-item-text small text-secondary">Gudang skill kosong. Tambahkan sumber di <a href="/Setting#skills">Setting → Skill</a>.</div>', '<div class="dropdown-item-text small text-secondary">The skill store is empty. Add a source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
+        : t('<div class="dropdown-item-text small text-secondary">Gudang skill kosong. Tambahkan sumber di <a href="/Setting#skills">Pengaturan → Skill</a>.</div>', '<div class="dropdown-item-text small text-secondary">The skill store is empty. Add a source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
     } else {
       const shown = searchResults.slice(0, maxSearchResults);
       target.innerHTML = shown.map((s, i) => {
@@ -592,7 +592,7 @@
   function renderSuggestions() {
     const target = el('nodeSkillSuggestions');
     if (!suggestions.length) {
-      target.innerHTML = t('<div class="small text-secondary">Tidak ada skill di gudang yang cocok. Coba tulis kebutuhan dengan kata lain, atau tambahkan sumber skill di <a href="/Setting#skills">Setting → Skill</a>.</div>', '<div class="small text-secondary">No skill in the store matches. Try describing the need in other words, or add a skill source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
+      target.innerHTML = t('<div class="small text-secondary">Tidak ada skill di gudang yang cocok. Coba tulis kebutuhan dengan kata lain, atau tambahkan sumber skill di <a href="/Setting#skills">Pengaturan → Skill</a>.</div>', '<div class="small text-secondary">No skill in the store matches. Try describing the need in other words, or add a skill source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
       return;
     }
     const items = suggestions.map((s, i) => {

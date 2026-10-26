@@ -16,7 +16,7 @@ public class SecurityController(ISecurityService security) : ControllerBase
 
     [HttpPut]
     public async Task<ActionResult<ApiResponse<SecurityStatusDto>>> Update(UpdateSecurityRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<SecurityStatusDto>.Ok(await security.UpdateAsync(request, cancellationToken), Lang.T("Setting keamanan tersimpan.", "Security settings saved."));
+        ApiResponse<SecurityStatusDto>.Ok(await security.UpdateAsync(request, cancellationToken), Lang.T("Pengaturan keamanan tersimpan.", "Security settings saved."));
 
     [HttpPost("acknowledge")]
     public async Task<ActionResult<ApiResponse<SecurityStatusDto>>> Acknowledge(CancellationToken cancellationToken) =>

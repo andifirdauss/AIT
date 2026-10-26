@@ -59,7 +59,7 @@ public static class MemoryStoreTester
         var table = level switch { MemoryLevel.Short => "ShortMemories", MemoryLevel.Business => "BusinessPages", _ => "LongMemories" };
         return exists
             ? Lang.T($"Terhubung — tabel {table} sudah ada.", $"Connected — table {table} already exists.")
-            : Lang.T($"Terhubung — database/tabel {table} belum ada dan akan dibuat saat setting disimpan.", $"Connected — the database/table {table} does not exist yet and will be created when the settings are saved.");
+            : Lang.T($"Terhubung — database/tabel {table} belum ada dan akan dibuat saat pengaturan disimpan.", $"Connected — the database/table {table} does not exist yet and will be created when the settings are saved.");
     }
 
     // EF and Redis wrap the provider error ("password authentication failed", "No such host is known").

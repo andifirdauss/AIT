@@ -95,7 +95,7 @@ Tanpa .NET SDK: `.\scripts\publish-exe.ps1 -Zip` membuat `dist\AIThread\AIThread
 tanpa argumen, exe menampilkan menu (Web UI, Sembunyikan ke Tray, log, restart, port, autostart); `AIThread.exe help`
 menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithreadexe-standalone-tanpa-net).
 
-1. **Setting** → isi URL 9router (mis. `http://localhost:20128`) dan API key dari dashboard 9router → *Test koneksi* → *Simpan*.
+1. **Pengaturan** → isi URL 9router (mis. `http://localhost:20128`) dan API key dari dashboard 9router → *Test koneksi* → *Simpan*.
 2. **Node** → tambahkan minimal satu Planner, satu Executor, dan satu Wrapper. Model/combo diambil dari `/v1/models` 9router.
    - Planner: model terkuat yang mendukung *tool calling*.
    - Executor: model murah & cepat; tambah beberapa node untuk menyebar beban. `Max paralel` dibatasi per node lintas semua thread.
@@ -122,7 +122,7 @@ menampilkan perintahnya — [docs/01-instalasi.md](docs/01-instalasi.md#6-aithre
    Backup file asli disimpan sekali sebagai `*.aithread-backup`; mematikan switch menghapus entri AIT saja.
    Codex dipakai lewat `codex --profile aithread`; oh-my-pi, opencode, dan Qwen Code lewat pilihan model AIT.
 4. Buka sesi CLI baru di project tersebut dan beri perintah seperti biasa. Progres (tool planner, rencana,
-   status tiap tugas) tampil di CLI; detail lengkap ada di Dashboard → thread.
+   status tiap tugas) tampil di CLI; detail lengkap ada di Dasbor → thread.
 
 Gunakan URL **http** untuk proxy: CLI berbasis Node (mis. Claude Code) tidak mempercayai sertifikat development
 ASP.NET Core.
@@ -131,15 +131,15 @@ ASP.NET Core.
 
 | Menu | Fungsi |
 |---|---|
-| Dashboard | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
-| Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), **project key** untuk berbagi memory antar developer, stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual, **katalog unit test** (scan, jalankan, obsolete/karantina, setting per project) |
+| Dasbor | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
+| Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), **project key** untuk berbagi memory antar developer, stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual, **katalog unit test** (scan, jalankan, obsolete/karantina, pengaturan per project) |
 | Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi. Tab **Business memory**: wiki bisnis per modul (business memory) dengan editor, screenshot, dan riwayat versi |
 | Node | Planner / executor / reviewer / tester (triase unit test, Auto Testing) / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan, skill (dicarikan Skill Orchestrator dari gudang skill) |
-| Setting | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, penyimpanan memory (short/long/bisnis) & penulis wiki bisnis, bot Telegram, Skill Orchestrator & gudang skill |
+| Pengaturan | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, penyimpanan memory (short/long/bisnis) & penulis wiki bisnis, bot Telegram, Skill Orchestrator & gudang skill |
 
 ## Prompt dari Telegram
 
-Laptop ditinggal di kantor/rumah? Kirim prompt dari HP lewat bot Telegram pribadi: **Setting → Telegram** → tempel
+Laptop ditinggal di kantor/rumah? Kirim prompt dari HP lewat bot Telegram pribadi: **Pengaturan → Telegram** → tempel
 token dari `@BotFather` → *Simpan Telegram*, kirim `/start` ke bot, lalu **Izinkan** chat Anda. Pesan teks biasa
 menjalankan thread di project aktif; progres tampil live di chat dan ringkasan wrapper dikirim saat selesai
 (`/projects`, `/status`, `/cancel`, `/diff`, `/new`). AIT memakai long polling, jadi tidak perlu URL publik atau
@@ -147,7 +147,7 @@ port forwarding. Detail: [docs/11-telegram.md](docs/11-telegram.md).
 
 ## Skill untuk node
 
-**Setting → Skill**: pilih model Skill Orchestrator, tempel link repository skill (mis.
+**Pengaturan → Skill**: pilih model Skill Orchestrator, tempel link repository skill (mis.
 `https://github.com/anthropics/skills`), lalu klik *Tarik skill*. Model memeriksa skill apa saja yang ada, lalu skill
 ditarik ke gudang lokal (offline). Di modal **Node**, tulis kebutuhan ("aku butuh kamu bisa menjadi engineer yang
 handal") lalu klik *Cari skill*. Skill yang cocok dicentang dan ditempel ke node, dan isinya ikut masuk ke system
@@ -184,7 +184,7 @@ diabaikan: tanpa orkestrasi, tanpa memory.
   `set_module` untuk mengoreksi peta kode.
 - *Knowledge memory* tidak terikat project dan terlihat oleh semua project.
 - Memory project diikat ke **project key** (git remote, `.aithread/project.json`, atau key manual), bukan ke folder:
-  arahkan long memory semua developer ke database yang sama (Setting → Penyimpanan memory) agar memory sebuah project
+  arahkan long memory semua developer ke database yang sama (Pengaturan → Penyimpanan memory) agar memory sebuah project
   terkumpul di satu tempat walau folder root tiap orang berbeda.
 - **Business memory**: secara berkala (default tiap 6 jam, atau tombol *Perbarui sekarang*) thread yang selesai
   dirangkum AI menjadi wiki bisnis per modul — requirement, aturan bisnis, tabel status & validasi, dan screenshot
@@ -206,12 +206,12 @@ interval konsolidasi & monitor, retensi log, batas baris file utuh untuk executo
 ## Catatan penting
 
 - Executor **menulis langsung ke file project**. Jalankan di repo git agar perubahan mudah ditinjau atau dibatalkan.
-- Perintah yang dijalankan AIT adalah build project (bisa dimatikan di Setting) dan unit test katalognya; migrasi dan
+- Perintah yang dijalankan AIT adalah build project (bisa dimatikan di Pengaturan) dan unit test katalognya; migrasi dan
   git yang mengubah repository tidak dijalankan — langkah lanjutan disebutkan di ringkasan wrapper.
 - Proxy dapat menulis file di folder mana pun yang dikirim sebagai working directory. Biarkan hanya mendengarkan
   `localhost`, dan isi *Proxy API key* bila mesin diakses orang lain.
 - API key 9router dan token bot Telegram disimpan terenkripsi (ASP.NET Core Data Protection).
-- Bot Telegram hanya melayani chat pribadi yang Anda izinkan di menu Setting — izinkan hanya akun Anda sendiri.
+- Bot Telegram hanya melayani chat pribadi yang Anda izinkan di menu Pengaturan — izinkan hanya akun Anda sendiri.
 
 ## Pengembangan
 

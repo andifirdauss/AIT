@@ -26,7 +26,7 @@ public class SkillsController(ISkillService skillService, ISkillOrchestrator orc
 
     [HttpPut("settings")]
     public async Task<ActionResult<ApiResponse<SkillSettingsDto>>> UpdateSettings(UpdateSkillSettingsRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<SkillSettingsDto>.Ok(await skillService.UpdateSettingsAsync(request, cancellationToken), Lang.T("Setting Skill tersimpan.", "Skill settings saved."));
+        ApiResponse<SkillSettingsDto>.Ok(await skillService.UpdateSettingsAsync(request, cancellationToken), Lang.T("Pengaturan Skill tersimpan.", "Skill settings saved."));
 
     [HttpGet("sources")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<SkillSourceDto>>>> GetSources(CancellationToken cancellationToken) =>

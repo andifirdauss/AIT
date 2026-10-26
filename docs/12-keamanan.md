@@ -27,7 +27,7 @@ File & prompt Anda ──► AIT ── secret → {{AIT_SECRET:…}} ──► 
 
 ### Yang dikenali
 
-- **Nilai setting yang namanya menunjukkan secret**, misalnya `Password`, `DB_PASSWORD`, `smtpPassword`, `ApiKey`,
+- **Nilai pengaturan yang namanya menunjukkan secret**, misalnya `Password`, `DB_PASSWORD`, `smtpPassword`, `ApiKey`,
   `Jwt:Key`, `ClientSecret`, `access_token`, `APP_KEY`, atau `passphrase`. Pola ini dikenali di JSON (`"Password": "…"`),
   C#/Python/JS (`Password = "…"`), PHP (`'password' => '…'`), XML/web.config (`<add key="SmtpPassword" value="…"/>`,
   `password="…"`, `<Password>…</Password>`), dan `.env` (`DB_PASSWORD=…`). Di file konfigurasi (`.yml`, `.yaml`, `.ini`,
@@ -41,7 +41,7 @@ File & prompt Anda ──► AIT ── secret → {{AIT_SECRET:…}} ──► 
   angka, atau simbol) ikut disamarkan di mana pun ia muncul lagi, misalnya saat password dari `appsettings.json`
   ditempel ke prompt.
 
-Nama setting yang hanya *membicarakan* secret tidak disamarkan, misalnya `PasswordLength`, `TokenEndpoint`,
+Nama pengaturan yang hanya *membicarakan* secret tidak disamarkan, misalnya `PasswordLength`, `TokenEndpoint`,
 `ApiKeyHeaderName`, atau `RequireUppercase`. Begitu juga nilai yang merujuk ke tempat lain, seperti `${DB_PASS}`,
 `%PASSWORD%`, `{{password}}`, atau `****`.
 
@@ -67,7 +67,7 @@ Nama setting yang hanya *membicarakan* secret tidak disamarkan, misalnya `Passwo
 | Executor | Isi file yang dikerjakan dan potongan referensi dari file lain. |
 | Tester | Respons `http_request` dan halaman browser, misalnya token dari endpoint login. |
 | Prompt dari CLI | Prompt, konteks prompt, dan riwayat percakapan Claude Code/Codex/Gemini, termasuk file yang dibaca CLI itu sendiri. |
-| Passthrough | Request yang diteruskan apa adanya ke 9router (judul sesi, compact, sesi di luar project). Bisa dimatikan terpisah di Setting. |
+| Passthrough | Request yang diteruskan apa adanya ke 9router (judul sesi, compact, sesi di luar project). Bisa dimatikan terpisah di Pengaturan. |
 
 ### Pemulihan nilai asli
 
@@ -88,7 +88,7 @@ sendiri yang bertindak:
 
 > CLI lain (Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi) belum punya hook seperti ini. Dalam mode passthrough,
 > model bisa menulis placeholder ke file. Bila CLI tersebut sering mengedit file berisi secret, matikan
-> **Samarkan juga request passthrough** di Setting. Thread yang diorkestrasi AIT tetap aman karena file ditulis oleh
+> **Samarkan juga request passthrough** di Pengaturan. Thread yang diorkestrasi AIT tetap aman karena file ditulis oleh
 > executor AIT.
 
 ## File kredensial yang diblokir
@@ -126,11 +126,11 @@ di-commit, jadi berlaku untuk seluruh tim:
 |---|---|
 | `deny` | Glob (relatif ke root project, seperti `.gitignore`) untuk file tambahan yang tidak boleh dibaca atau diubah. Nama tanpa `/` berlaku di semua folder. |
 | `allow` | File kredensial yang *boleh* dibaca, misalnya sertifikat dummy untuk test. Mengalahkan `deny` dan daftar bawaan. |
-| `keys` | Nama setting tambahan yang nilainya selalu disamarkan, untuk nama yang tidak terdeteksi otomatis. |
+| `keys` | Nama pengaturan tambahan yang nilainya selalu disamarkan, untuk nama yang tidak terdeteksi otomatis. |
 
-## Setting
+## Pengaturan
 
-**Setting → Keamanan & privasi**:
+**Pengaturan → Keamanan & privasi**:
 
 | Opsi | Default | Arti |
 |---|---|---|
@@ -145,7 +145,7 @@ menampilkan `🔒 N secret disamarkan` dan log aktivitas mencatatnya di kategori
 
 - **Disimpan lokal**: database AIT (SQL Server), short memory (Garnet di dalam proses), log di `%LOCALAPPDATA%\AIThread`,
   dan snapshot file untuk rollback (isi file apa adanya, termasuk secret yang memang ada di file Anda). Long memory dan
-  wiki bisnis bisa dipindah ke database tim (Setting → Penyimpanan memory); isinya sudah disamarkan.
+  wiki bisnis bisa dipindah ke database tim (Pengaturan → Penyimpanan memory); isinya sudah disamarkan.
 - **Dikirim keluar**: ke 9router (lalu ke provider model yang Anda pilih), ke Telegram bila diaktifkan, cek versi
   terbaru di registry npm (dari browser), serta unduhan yang Anda minta (sumber skill dari GitHub/GitLab, Node.js dan
   browser untuk Auto Testing). AIT tidak mengirim telemetri.
@@ -158,7 +158,7 @@ menampilkan `🔒 N secret disamarkan` dan log aktivitas mencatatnya di kategori
 
 - Penyamaran bekerja berdasarkan pola dan nama setting. Secret dengan format yang tidak lazim, atau yang ditulis langsung
   di kode tanpa nama yang jelas (misalnya `Connect("admin", "rahasia")`), bisa lolos. Simpan secret di user-secrets,
-  environment variable, atau secret manager, dan tambahkan nama setting khusus di `secrets.keys`.
+  environment variable, atau secret manager, dan tambahkan nama pengaturan khusus di `secrets.keys`.
 - Mematikan penyamaran tidak menghapus placeholder yang sudah terkirim; nilainya tetap bisa dipulihkan selama AIT
   berjalan atau file sumbernya masih ada.
 - Vault ada di memori. Setelah restart, placeholder lama hanya bisa dipulihkan dari file yang masih berisi nilai yang

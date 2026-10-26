@@ -116,7 +116,7 @@
             <td class="text-end text-nowrap">${p.exists ? stateHtml(s?.enabled, s?.currentBaseUrl, s?.error) : t('<span class="text-danger small">Folder tidak ada</span>', '<span class="text-danger small">Folder missing</span>')}</td>
           </tr>`;
         }).join('')
-      : t('<tr><td colspan="3" class="text-secondary small">Belum ada project terdaftar — daftarkan di menu Project.</td></tr>', '<tr><td colspan="3" class="text-secondary small">No project registered yet — register one in the Project menu.</td></tr>');
+      : t('<tr><td colspan="3" class="text-secondary small">Belum ada project terdaftar — daftarkan di menu Proyek.</td></tr>', '<tr><td colspan="3" class="text-secondary small">No project registered yet — register one in the Project menu.</td></tr>');
 
     return (isEn ? `
       <p class="small text-secondary mb-2">${escapeHtml(cli.description)}</p>

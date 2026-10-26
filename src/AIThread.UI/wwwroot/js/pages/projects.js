@@ -71,7 +71,7 @@
     if (!confirm((isEn ? `Delete project "${button.dataset.name}"? The thread history stays; memory that exists only on this machine is deleted too.` : `Hapus project "${button.dataset.name}"? Riwayat thread tetap ada; memory yang hanya ada di mesin ini ikut terhapus.`))) return;
     // Memory in a shared store also belongs to the other developers of this project: kept unless asked.
     const includeShared = button.dataset.localKey !== 'true'
-      && confirm(t('Jika memory disimpan di database bersama (Setting → Penyimpanan memory), hapus juga memory project ini di sana untuk SEMUA developer?\n\nOK = hapus juga · Batal = simpan untuk developer lain', 'When memory is kept in a shared database (Setting → Memory storage), also delete the memory of this project there for ALL developers?\n\nOK = delete it too · Cancel = keep it for the other developers'));
+      && confirm(t('Jika memory disimpan di database bersama (Pengaturan → Penyimpanan memory), hapus juga memory project ini di sana untuk SEMUA developer?\n\nOK = hapus juga · Batal = simpan untuk developer lain', 'When memory is kept in a shared database (Setting → Memory storage), also delete the memory of this project there for ALL developers?\n\nOK = delete it too · Cancel = keep it for the other developers'));
     try {
       await api.del(`/api/projects/${button.dataset.delete}${includeShared ? '?includeSharedMemory=true' : ''}`);
       toast(t('Project dihapus.', 'Project deleted.'));

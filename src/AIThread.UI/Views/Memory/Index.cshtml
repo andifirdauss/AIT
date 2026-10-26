@@ -1,11 +1,11 @@
 @{
-    ViewData["Title"] = "Memory";
+    ViewData["Title"] = Lang.T("Memori", "Memory");
     var projectId = ViewData["ProjectId"] as Guid?;
 }
 
 <div class="page-header">
     <div>
-        <h1>Memory</h1>
+        <h1>@Lang.T("Memori", "Memory")</h1>
         <p class="page-subtitle">@Html.Raw(Lang.T("Pengetahuan yang disarikan dari thread. Planner menyaring lewat <strong>label</strong> (Modul · Layer · Jenis), memilih dengan <strong>keyword</strong>, lalu membaca deskripsi yang relevan saja. Memory project dibagi antar developer lewat <a href=\"/Project\">project key</a>.", "Knowledge distilled from threads. The planner narrows it by <strong>label</strong> (Module · Layer · Kind), picks by <strong>keyword</strong>, then reads only the relevant descriptions. Project memory is shared between developers through the <a href=\"/Project\">project key</a>."))</p>
     </div>
 </div>
@@ -176,7 +176,7 @@
         <div class="col-lg-8 col-xl-9">
             <div class="card" id="bizView">
                 <div class="card-body empty-state" id="bizEmpty">
-                    @Html.Raw(Lang.T("Pilih halaman di kiri. Wiki bisnis dibangun otomatis dari pekerjaan developer (Setting → Penyimpanan memory → Business memory), dan bisa ditulis atau diperbaiki manual dengan <strong>Halaman baru</strong>.", "Choose a page on the left. The business wiki is built automatically from the developers' work (Setting → Memory storage → Business memory), and can be written or corrected by hand with <strong>New page</strong>."))
+                    @Html.Raw(Lang.T("Pilih halaman di kiri. Wiki bisnis dibangun otomatis dari pekerjaan developer (Pengaturan → Penyimpanan memory → Business memory), dan bisa ditulis atau diperbaiki manual dengan <strong>Halaman baru</strong>.", "Choose a page on the left. The business wiki is built automatically from the developers' work (Setting → Memory storage → Business memory), and can be written or corrected by hand with <strong>New page</strong>."))
                 </div>
                 <div class="d-none" id="bizPage">
                     <div class="card-header d-flex flex-wrap align-items-center gap-2">

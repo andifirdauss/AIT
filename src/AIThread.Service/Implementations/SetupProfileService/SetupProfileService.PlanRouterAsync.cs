@@ -22,7 +22,7 @@ public sealed partial class SetupProfileService
             await settingService.UpdateRouterAsync(target, key, cancellationToken);
             var status = await router.CheckStatusAsync(cancellationToken);
             if (!status.IsOnline)
-                plan.Warn(Lang.T($"9router belum bisa dihubungi di {status.BaseUrl}. Jalankan 9router, lalu cek langkah 9router di Setup.", $"9router cannot be reached yet at {status.BaseUrl}. Start 9router, then check the 9router step in Setup."));
+                plan.Warn(Lang.T($"9router belum bisa dihubungi di {status.BaseUrl}. Jalankan 9router, lalu cek langkah 9router di Penyiapan.", $"9router cannot be reached yet at {status.BaseUrl}. Start 9router, then check the 9router step in Setup."));
             else if (status.ApiKeyValid == false)
                 plan.Warn(status.HasApiKey ? Lang.T("9router menolak API key yang tersimpan.", "9router rejects the stored API key.") : Lang.T("9router mewajibkan API key. Isi di langkah 9router.", "9router requires an API key. Fill it in at the 9router step."));
         }));

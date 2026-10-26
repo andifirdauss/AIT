@@ -31,7 +31,7 @@ public sealed partial class SetupService
         var delegations = PlannerDelegations(FindPreset(existing, NodeRole.Planner), presetToolsId, request.ToolsNode ? toolsNode?.Node.Id : null);
         await PresetAsync(existing, NodeRole.Planner, strong, true, delegations, results, cancellationToken);
 
-        activityLog.Info("node", Lang.T($"Setup: preset pipeline diterapkan — model kuat {strong}, model murah {cheap}.", $"Setup: pipeline preset applied — strong model {strong}, cheap model {cheap}."));
+        activityLog.Info("node", Lang.T($"Penyiapan: preset pipeline diterapkan — model kuat {strong}, model murah {cheap}.", $"Setup: pipeline preset applied — strong model {strong}, cheap model {cheap}."));
         return new SetupPresetResultDto(results);
     }
 }

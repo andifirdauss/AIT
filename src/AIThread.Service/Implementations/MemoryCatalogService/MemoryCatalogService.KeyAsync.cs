@@ -14,7 +14,7 @@ public sealed partial class MemoryCatalogService
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var key = await db.Projects.AsNoTracking().Where(p => p.Id == id).Select(p => p.ProjectKey).FirstOrDefaultAsync(cancellationToken);
         if (key is null) throw new AppValidationException(Lang.T("Project tidak ditemukan.", "Project not found."));
-        if (key.Length == 0) throw new AppValidationException(Lang.T("Project belum punya key; buka lagi menu Project sebentar lagi.", "The project has no key yet; open the Project menu again in a moment."));
+        if (key.Length == 0) throw new AppValidationException(Lang.T("Project belum punya key; buka lagi menu Proyek sebentar lagi.", "The project has no key yet; open the Project menu again in a moment."));
         return key;
     }
 }

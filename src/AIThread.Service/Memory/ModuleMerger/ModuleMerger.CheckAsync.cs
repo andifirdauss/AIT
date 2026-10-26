@@ -76,7 +76,7 @@ public sealed partial class ModuleMerger
                     Reason = Clip(reason, 1000), Confidence = confidence, CreatedAt = DateTime.UtcNow
                 });
                 await catalog.SaveChangesAsync(cancellationToken);
-                activityLog.Info("memory", Lang.T($"Saran merge modul {from} → {into} (keyakinan {confidence:P0}) menunggu review di menu Memory.", $"Module merge suggestion {from} → {into} (confidence {confidence:P0}) awaits review in the Memory menu."));
+                activityLog.Info("memory", Lang.T($"Saran merge modul {from} → {into} (keyakinan {confidence:P0}) menunggu review di menu Memori.", $"Module merge suggestion {from} → {into} (confidence {confidence:P0}) awaits review in the Memory menu."));
                 Publish("suggested", key);
             }
             decided.Add(PairKey(from, into));
