@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations;
@@ -20,7 +21,7 @@ public sealed partial class NodeService
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { node.Id, action = "created" }));
         var names = await FallbackNamesAsync(db, node, cancellationToken);
-        activityLog.Info("node", $"Node {node.Role} '{node.Name}' ditambahkan ({node.Model}){SkillNote(node)}{DelegationNote(node)}{FallbackNote(node, names)}.");
+        activityLog.Info("node", Lang.T($"Node {node.Role} '{node.Name}' ditambahkan ({node.Model}){SkillNote(node)}{DelegationNote(node)}{FallbackNote(node, names)}.", $"{node.Role} node '{node.Name}' added ({node.Model}){SkillNote(node)}{DelegationNote(node)}{FallbackNote(node, names)}."));
         return ToDto(node, names);
     }
 }

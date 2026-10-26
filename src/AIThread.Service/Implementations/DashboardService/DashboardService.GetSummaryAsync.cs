@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +12,7 @@ public sealed partial class DashboardService
     {
         var routerStatus = router.LastStatus ?? await Safe<RouterStatusDto?>(async () => await router.CheckStatusAsync(cancellationToken), null);
         var pipeline = await Safe(() => nodeService.GetPipelineStatusAsync(cancellationToken),
-            new PipelineStatusDto(false, 0, 0, 0, ["Database tidak dapat diakses."]));
+            new PipelineStatusDto(false, 0, 0, 0, [Lang.T("Database tidak dapat diakses.", "The database cannot be accessed.")]));
         var memory = await Safe(() => memoryService.GetStatsAsync(cancellationToken),
             new MemoryStatsDto(0, 0, 0, 0, shortMemoryStore.IsConnected));
 

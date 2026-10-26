@@ -1,9 +1,10 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AIThread.API.Controllers;
 
@@ -22,7 +23,7 @@ public class TestScenariosController(ITestScenarioService scenarios, IThreadOrch
     public async Task<ActionResult<ApiResponse<TestingScenarioDto>>> FromFollowUp(Guid threadId, int number, CancellationToken cancellationToken)
     {
         var scenario = await scenarios.CreateFromFollowUpAsync(threadId, number, cancellationToken);
-        return ApiResponse<TestingScenarioDto>.Ok(scenario, $"Skenario \"{scenario.Title}\" siap diunduh.");
+        return ApiResponse<TestingScenarioDto>.Ok(scenario, Lang.T($"Skenario \"{scenario.Title}\" siap diunduh.", $"Scenario \"{scenario.Title}\" ready to download."));
     }
 
     [HttpGet("api/projects/{projectId:guid}/test-scenarios/{scenarioId:guid}/excel")]
@@ -37,23 +38,23 @@ public class TestScenariosController(ITestScenarioService scenarios, IThreadOrch
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<ActionResult<ApiResponse<ScenarioImportResultDto>>> Import(Guid projectId, IFormFile? file, CancellationToken cancellationToken)
     {
-        if (file is null || file.Length == 0) throw new AppValidationException("Pilih file skenario (.xlsx) yang sudah diisi.");
+        if (file is null || file.Length == 0) throw new AppValidationException(Lang.T("Pilih file skenario (.xlsx) yang sudah diisi.", "Choose a filled-in scenario file (.xlsx)."));
         await using var content = file.OpenReadStream();
         var result = await scenarios.ImportAsync(projectId, content, cancellationToken);
-        return ApiResponse<ScenarioImportResultDto>.Ok(result, $"Skenario \"{result.Scenario.Title}\" versi {result.Scenario.Version} disimpan" +
-                                                              (result.AccountsAdded.Count == 0 ? "." : $"; akun uji baru: {string.Join(", ", result.AccountsAdded)}."));
+        return ApiResponse<ScenarioImportResultDto>.Ok(result, Lang.T($"Skenario \"{result.Scenario.Title}\" versi {result.Scenario.Version} disimpan", $"Scenario \"{result.Scenario.Title}\" version {result.Scenario.Version} saved") +
+                                                              (result.AccountsAdded.Count == 0 ? "." : Lang.T($"; akun uji baru: {string.Join(", ", result.AccountsAdded)}.", $"; new test accounts: {string.Join(", ", result.AccountsAdded)}.")));
     }
 
     // Runs it in the background on the thread it came from; the thread page follows it over SSE. Returns that thread's id.
     [HttpPost("api/projects/{projectId:guid}/test-scenarios/{scenarioId:guid}/run")]
     public async Task<ActionResult<ApiResponse<Guid>>> Run(Guid projectId, Guid scenarioId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] RunScenarioRequest? request,
         CancellationToken cancellationToken) =>
-        ApiResponse<Guid>.Ok(await orchestrator.ScenarioInBackgroundAsync(projectId, scenarioId, request?.Acknowledge ?? false, cancellationToken), "Skenario dijalankan.");
+        ApiResponse<Guid>.Ok(await orchestrator.ScenarioInBackgroundAsync(projectId, scenarioId, request?.Acknowledge ?? false, cancellationToken), Lang.T("Skenario dijalankan.", "Scenario started."));
 
     [HttpDelete("api/projects/{projectId:guid}/test-scenarios/{scenarioId:guid}")]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid projectId, Guid scenarioId, CancellationToken cancellationToken)
     {
         await scenarios.DeleteAsync(projectId, scenarioId, cancellationToken);
-        return ApiResponse<bool>.Ok(true, "Skenario dihapus.");
+        return ApiResponse<bool>.Ok(true, Lang.T("Skenario dihapus.", "Scenario deleted."));
     }
 }

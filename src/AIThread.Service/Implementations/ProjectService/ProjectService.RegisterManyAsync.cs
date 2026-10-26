@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -8,7 +9,7 @@ public sealed partial class ProjectService
 {
     public async Task<RegisterProjectsResultDto> RegisterManyAsync(IReadOnlyList<string> paths, CancellationToken cancellationToken = default)
     {
-        if (paths is not { Count: > 0 }) throw new AppValidationException("Pilih minimal satu project.");
+        if (paths is not { Count: > 0 }) throw new AppValidationException(Lang.T("Pilih minimal satu project.", "Choose at least one project."));
 
         var registered = await RegisteredRootsAsync(cancellationToken);
         int added = 0, existing = 0;

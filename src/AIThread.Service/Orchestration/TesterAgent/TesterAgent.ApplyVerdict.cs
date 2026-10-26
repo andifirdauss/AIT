@@ -1,11 +1,12 @@
+using AIThread.Common.Localization;
 using System.Text.Json.Nodes;
 
 namespace AIThread.Service.Orchestration;
 
 public sealed partial class TesterAgent
 {
-    private const string NoVerdict = "Tester tidak memberi hasil untuk skenario ini.";
-    private const string NeedsLogin = "Butuh login.";
+    private static string NoVerdict => Lang.T("Tester tidak memberi hasil untuk skenario ini.", "The Tester gave no result for this scenario.");
+    private static string NeedsLogin => Lang.T("Butuh login.", "Needs a login.");
 
     // The verdicts of report_test, matched to the planned scenarios by title, else by position. Scenarios without one
     // stay blocked. arguments null: the tester stopped without report_test; its text, if any, becomes the summary.
@@ -29,7 +30,7 @@ public sealed partial class TesterAgent
             var open = report.Scenarios.FirstOrDefault(s => s.Details is null);
             if (open is null)
             {
-                open = new TestScenarioResult { Title = PlannerToolRunner.Str(verdict, "title")?.Trim() ?? $"Skenario {report.Scenarios.Count + 1}" };
+                open = new TestScenarioResult { Title = PlannerToolRunner.Str(verdict, "title")?.Trim() ?? Lang.T($"Skenario {report.Scenarios.Count + 1}", $"Scenario {report.Scenarios.Count + 1}") };
                 report.Scenarios.Add(open);
             }
             Apply(open, verdict);

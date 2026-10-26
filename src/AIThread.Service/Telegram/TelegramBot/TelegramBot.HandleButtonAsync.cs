@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Telegram;
@@ -9,7 +10,7 @@ public sealed partial class TelegramBot
         var chat = await FindChatAsync(callback.Message?.Chat?.Id ?? callback.From.Id, cancellationToken);
         if (chat is not { IsAllowed: true })
         {
-            await api.AnswerCallbackAsync(callback.Id, "Chat ini belum diizinkan.", cancellationToken);
+            await api.AnswerCallbackAsync(callback.Id, Lang.T("Chat ini belum diizinkan.", "This chat is not allowed yet."), cancellationToken);
             return;
         }
 
@@ -18,7 +19,7 @@ public sealed partial class TelegramBot
             if (TelegramMessages.TryParseButton(callback.Data, TelegramMessages.ProjectButton, out var projectId))
                 await SelectProjectFromButtonAsync(chat, callback, projectId, cancellationToken);
             else if (TelegramMessages.TryParseButton(callback.Data, TelegramMessages.CancelButton, out var threadId))
-                await api.AnswerCallbackAsync(callback.Id, threadService.Cancel(threadId) ? "Pembatalan dikirim." : "Thread sudah selesai.", cancellationToken);
+                await api.AnswerCallbackAsync(callback.Id, threadService.Cancel(threadId) ? Lang.T("Pembatalan dikirim.", "Cancellation sent.") : Lang.T("Thread sudah selesai.", "The thread already finished."), cancellationToken);
             else
                 await api.AnswerCallbackAsync(callback.Id, null, cancellationToken);
         }

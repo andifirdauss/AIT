@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations.Cli;
@@ -22,8 +23,8 @@ public sealed partial class CodexIntegration(ISettingService settingService, str
     public override CliInfoDto Info => new(
         Id,
         "Codex CLI — profile AIT",
-        $"Menambah provider dan profile \"{ProviderId}\" di config.toml Codex. Jalankan codex --profile {ProviderId} (atau -p {ProviderId}); codex tanpa profile tetap memakai provider aslinya.",
+        Lang.T($"Menambah provider dan profile \"{ProviderId}\" di config.toml Codex. Jalankan codex --profile {ProviderId} (atau -p {ProviderId}); codex tanpa profile tetap memakai provider aslinya.", $"Adds the provider and profile \"{ProviderId}\" to the Codex config.toml. Run codex --profile {ProviderId} (or -p {ProviderId}); codex without the profile keeps its original provider."),
         _configPath,
         null,
-        $"Berlaku untuk sesi codex berikutnya yang dijalankan dengan --profile {ProviderId}. Project terdeteksi dari folder tempat codex dijalankan.");
+        Lang.T($"Berlaku untuk sesi codex berikutnya yang dijalankan dengan --profile {ProviderId}. Project terdeteksi dari folder tempat codex dijalankan.", $"Takes effect for the next codex session run with --profile {ProviderId}. The project is detected from the folder codex runs in."));
 }

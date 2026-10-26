@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -22,12 +23,12 @@ public sealed partial class ThreadOrchestrator
         }
         catch (AppValidationException ex)
         {
-            await progress.FinalAsync($"🧭 Test lanjutan {number} tidak bisa dijalankan: {ex.Message}", cancellationToken);
+            await progress.FinalAsync(Lang.T($"🧭 Test lanjutan {number} tidak bisa dijalankan: {ex.Message}", $"🧭 Follow-up test {number} cannot run: {ex.Message}"), cancellationToken);
             return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, 0);
         }
 
         await progress.AnchorAsync(ThreadAnchor.Line(prepared.Project.Name, threadId), cancellationToken);
-        activityLog.Info("thread", $"Test lanjutan {number} diminta dari chat.", threadId, prepared.Project.ProjectId);
+        activityLog.Info("thread", Lang.T($"Test lanjutan {number} diminta dari chat.", $"Follow-up test {number} requested from the chat."), threadId, prepared.Project.ProjectId);
         TestingResult? result;
         try
         {
@@ -40,7 +41,7 @@ public sealed partial class ThreadOrchestrator
         }
 
         await progress.FinalAsync(result is null
-            ? "🟡 Test lanjutan berhenti sebelum selesai (lihat aktivitas di detail thread)."
+            ? Lang.T("🟡 Test lanjutan berhenti sebelum selesai (lihat aktivitas di detail thread).", "🟡 The follow-up test stopped before it finished (see the activity in the thread detail).")
             : FinalReport.Testing(result.Report).TrimStart('\n'), cancellationToken);
         await progress.FinalAsync(FinalReport.Footer(total.Elapsed, result?.Tokens ?? 0, 0, null, false, null, request.DashboardUrl, threadId), cancellationToken);
         return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, result?.Tokens ?? 0);

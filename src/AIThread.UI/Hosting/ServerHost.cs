@@ -92,7 +92,7 @@ public sealed class ServerHost : IAsyncDisposable
     // Returns once Kestrel is listening. Throws when the port is taken.
     public async Task StartAsync(string[] args, int? port)
     {
-        if (_app is not null) throw new InvalidOperationException("Server sudah berjalan.");
+        if (_app is not null) throw new InvalidOperationException(Lang.T("Server sudah berjalan.", "The server is already running."));
 
         var app = Build(args, port);
         try

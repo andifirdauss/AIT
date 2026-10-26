@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -43,7 +44,7 @@ public sealed partial class MemoryStorageService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "The module list and code map could not be copied to the new store.");
-            warnings.Add($"Daftar modul dan peta kode tidak dapat disalin (akan dibangun ulang otomatis): {MemoryStoreTester.ErrorMessage(ex)}");
+            warnings.Add(Lang.T($"Daftar modul dan peta kode tidak dapat disalin (akan dibangun ulang otomatis): {MemoryStoreTester.ErrorMessage(ex)}", $"The module list and code map cannot be copied (they are rebuilt automatically): {MemoryStoreTester.ErrorMessage(ex)}"));
         }
     }
 }

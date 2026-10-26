@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -42,9 +43,9 @@ public sealed partial class ModuleSummaryWriter
                     written++;
                     migrated += folded.Facts;
                     var parts = new List<string>();
-                    if (folded.Changes > 0) parts.Add($"{folded.Changes} catatan perubahan");
-                    if (folded.Facts > 0) parts.Add($"{folded.Facts} memory lama dimigrasi");
-                    activityLog.Info("memory", $"Ringkasan modul `{folded.Summary.Module}` ({folded.Summary.ProjectName ?? item.Key}) diperbarui" +
+                    if (folded.Changes > 0) parts.Add(Lang.T($"{folded.Changes} catatan perubahan", $"{folded.Changes} change entries"));
+                    if (folded.Facts > 0) parts.Add(Lang.T($"{folded.Facts} memory lama dimigrasi", $"{folded.Facts} old memories migrated"));
+                    activityLog.Info("memory", Lang.T($"Ringkasan modul `{folded.Summary.Module}` ({folded.Summary.ProjectName ?? item.Key}) diperbarui", $"Module summary `{folded.Summary.Module}` ({folded.Summary.ProjectName ?? item.Key}) updated") +
                         (parts.Count > 0 ? $": {string.Join(", ", parts)}." : "."));
                     eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = folded.Summary.Id, action = "summary" }));
                 }
@@ -63,15 +64,15 @@ public sealed partial class ModuleSummaryWriter
             _lastRunAt = DateTime.UtcNow;
             // Done: clears the count once nothing waits any more.
             if (migrating) TrackProgress((await PendingAsync(db, withFacts: true, cancellationToken)).Sum(p => p.Facts) + await ShortFactsAsync());
-            if (migrated > 0) _lastMessage = $"{migrated} memory lama dimigrasi ke ringkasan modul pada putaran terakhir.";
+            if (migrated > 0) _lastMessage = Lang.T($"{migrated} memory lama dimigrasi ke ringkasan modul pada putaran terakhir.", $"{migrated} old memories migrated to module summaries in the last pass.");
             return written;
         }
         catch (Exception ex) when (ex is not OperationCanceledException && (ex is MemoryAiUnavailableException || StoreErrors.IsUnreachable(ex)))
         {
             logger.LogInformation(ex, "Module summaries postponed.");
             _lastMessage = ex is MemoryAiUnavailableException
-                ? "Menunggu node Tools, Wrapper, atau Planner yang aktif."
-                : "Long memory tidak dapat dihubungi; migrasi dilanjutkan putaran berikutnya.";
+                ? Lang.T("Menunggu node Tools, Wrapper, atau Planner yang aktif.", "Waiting for an active Tools, Wrapper or Planner node.")
+                : Lang.T("Long memory tidak dapat dihubungi; migrasi dilanjutkan putaran berikutnya.", "Long memory cannot be reached; the migration continues in the next pass.");
             return 0;
         }
         finally

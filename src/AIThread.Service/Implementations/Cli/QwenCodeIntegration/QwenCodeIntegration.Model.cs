@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations.Cli;
 
@@ -8,7 +9,7 @@ public sealed partial class QwenCodeIntegration
     {
         ["id"] = ModelId,
         ["name"] = DisplayName,
-        ["description"] = "Orkestrasi AIT (model asli dipilih AIT)",
+        ["description"] = Lang.T("Orkestrasi AIT (model asli dipilih AIT)", "AIT orchestration (the real model is chosen by AIT)"),
         ["envKey"] = EnvKey,
         ["baseUrl"] = entry.BaseUrl,
         ["generationConfig"] = new JsonObject

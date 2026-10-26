@@ -1,5 +1,6 @@
 using System.Text;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 
 namespace AIThread.Service.Orchestration;
@@ -34,7 +35,7 @@ public sealed partial class VerificationStage
                 await progress.StepAsync($"{icon} {Capitalize(BuildReport.Headline(build))}", cancellationToken, hang: 3);
                 foreach (var error in build.Errors.Where(e => !e.IsLockedOutput).Take(MaxErrorsInProgress))
                     await progress.DetailAsync(BuildReport.Line(error, input.Scope), cancellationToken);
-                recorder.Log(build.Passed ? ActivityLevel.Success : ActivityLevel.Warning, $"Verifikasi putaran {round}: {BuildReport.Headline(build)}.");
+                recorder.Log(build.Passed ? ActivityLevel.Success : ActivityLevel.Warning, Lang.T($"Verifikasi putaran {round}: {BuildReport.Headline(build)}.", $"Verification round {round}: {BuildReport.Headline(build)}."));
                 forModels.Append(BuildReport.Format(build, input.Scope));
             }
 
@@ -96,24 +97,24 @@ public sealed partial class VerificationStage
             if (!canFixBuildReview && !canFixTests)
             {
                 var note = input.Settings.MaxFixRounds == 0
-                    ? "Perbaikan otomatis dimatikan (putaran perbaikan = 0); masalah dilaporkan apa adanya."
+                    ? Lang.T("Perbaikan otomatis dimatikan (putaran perbaikan = 0); masalah dilaporkan apa adanya.", "Automatic fixes are off (fix rounds = 0); issues are reported as they are.")
                     : buildReviewProblems
-                        ? $"Masih ada masalah setelah {input.Settings.MaxFixRounds} putaran perbaikan."
-                        : $"Masih ada regresi unit test setelah {UnitTestStage.MaxFixRounds} putaran perbaikan.";
+                        ? Lang.T($"Masih ada masalah setelah {input.Settings.MaxFixRounds} putaran perbaikan.", $"Issues remain after {input.Settings.MaxFixRounds} fix round(s).")
+                        : Lang.T($"Masih ada regresi unit test setelah {UnitTestStage.MaxFixRounds} putaran perbaikan.", $"Unit test regressions remain after {UnitTestStage.MaxFixRounds} fix round(s).");
                 await progress.StepAsync($"🟡 {note}", cancellationToken, hang: 3);
-                recorder.Log(ActivityLevel.Warning, $"Verifikasi: {note}");
+                recorder.Log(ActivityLevel.Warning, Lang.T($"Verifikasi: {note}", $"Verification: {note}"));
                 break;
             }
             if (fix.Tasks.Count == 0)
             {
-                await progress.StepAsync("🟡 Masalah yang tersisa tidak bisa diperbaiki otomatis (lihat ringkasan).", cancellationToken, hang: 3);
-                recorder.Log(ActivityLevel.Warning, $"Verifikasi: {current.Unfixable.Count} masalah tidak bisa diperbaiki otomatis.");
+                await progress.StepAsync(Lang.T("🟡 Masalah yang tersisa tidak bisa diperbaiki otomatis (lihat ringkasan).", "🟡 The remaining issues cannot be fixed automatically (see the summary)."), cancellationToken, hang: 3);
+                recorder.Log(ActivityLevel.Warning, Lang.T($"Verifikasi: {current.Unfixable.Count} masalah tidak bisa diperbaiki otomatis.", $"Verification: {current.Unfixable.Count} issue(s) cannot be fixed automatically."));
                 break;
             }
             if (canFixTests) testFixRounds++;
 
-            await progress.StepAsync($"🔧 Perbaikan {round} · {fix.Tasks.Count} tugas", cancellationToken, hang: 3);
-            recorder.Log(ActivityLevel.Info, $"Verifikasi putaran {round}: {fix.Tasks.Count} tugas perbaikan.");
+            await progress.StepAsync(Lang.T($"🔧 Perbaikan {round} · {fix.Tasks.Count} tugas", $"🔧 Fix {round} · {fix.Tasks.Count} task(s)"), cancellationToken, hang: 3);
+            recorder.Log(ActivityLevel.Info, Lang.T($"Verifikasi putaran {round}: {fix.Tasks.Count} tugas perbaikan.", $"Verification round {round}: {fix.Tasks.Count} fix task(s)."));
 
             var fixPlan = new ThreadPlan { Summary = input.Plan.Summary, Contract = input.Plan.Contract, Tasks = fix.Tasks.ToList() };
             var entities = await recorder.CreateTasksAsync(fixPlan, order);
@@ -133,7 +134,7 @@ public sealed partial class VerificationStage
 
             if (!execution.Results.Any(r => r.Status == ThreadTaskStatus.Succeeded))
             {
-                await progress.StepAsync("🟡 Tidak ada tugas perbaikan yang berhasil; verifikasi dihentikan.", cancellationToken, hang: 3);
+                await progress.StepAsync(Lang.T("🟡 Tidak ada tugas perbaikan yang berhasil; verifikasi dihentikan.", "🟡 No fix task succeeded; verification stopped."), cancellationToken, hang: 3);
                 break;
             }
         }

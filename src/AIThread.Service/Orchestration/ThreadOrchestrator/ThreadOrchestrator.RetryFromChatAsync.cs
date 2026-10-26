@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -20,11 +21,11 @@ public sealed partial class ThreadOrchestrator
         {
             var settings = await settingService.GetRuntimeAsync(cancellationToken);
             var progress = new ClientProgress(observer, settings.StreamProgressToClient);
-            await progress.FinalAsync($"🔁 Tugas yang gagal tidak bisa diulang: {ex.Message}", cancellationToken);
+            await progress.FinalAsync(Lang.T($"🔁 Tugas yang gagal tidak bisa diulang: {ex.Message}", $"🔁 The failed tasks cannot be retried: {ex.Message}"), cancellationToken);
             return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, 0);
         }
 
-        activityLog.Info("thread", "Percobaan ulang diminta dari chat.", threadId, prepared.Project.ProjectId);
+        activityLog.Info("thread", Lang.T("Percobaan ulang diminta dari chat.", "Retry requested from the chat."), threadId, prepared.Project.ProjectId);
         return await ExecuteRetryAsync(prepared, observer, request);
     }
 }

@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -12,7 +13,7 @@ public sealed partial class ProjectService
         if (string.IsNullOrWhiteSpace(path)) return new FolderBrowseDto(null, null, Drives(), [], quickLocations);
 
         // A file path (e.g. a solution) opens its folder.
-        var directory = FolderOf(path) ?? throw new AppValidationException($"Folder '{path}' tidak ditemukan.");
+        var directory = FolderOf(path) ?? throw new AppValidationException(Lang.T($"Folder '{path}' tidak ditemukan.", $"Folder '{path}' not found."));
 
         var info = new DirectoryInfo(directory);
         var children = ProjectLocator.BrowsableDirectories(info).Take(MaxBrowseFolders).ToList();

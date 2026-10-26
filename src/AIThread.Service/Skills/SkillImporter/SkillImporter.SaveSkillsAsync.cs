@@ -1,6 +1,7 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -57,7 +58,7 @@ public sealed partial class SkillImporter
             db.Skills.Remove(skill);
         }
         if (removed.Count > 0)
-            activityLog.Warn("skill", $"{removed.Count} skill tidak ada lagi di {source.Name} dan dihapus dari gudang: {string.Join(", ", removed.Select(s => s.Name).Take(10))}.");
+            activityLog.Warn("skill", Lang.T($"{removed.Count} skill tidak ada lagi di {source.Name} dan dihapus dari gudang: {string.Join(", ", removed.Select(s => s.Name).Take(10))}.", $"{removed.Count} skills no longer exist in {source.Name} and were removed from the store: {string.Join(", ", removed.Select(s => s.Name).Take(10))}."));
 
         source.Status = SkillSourceStatus.Ready;
         source.Error = null;

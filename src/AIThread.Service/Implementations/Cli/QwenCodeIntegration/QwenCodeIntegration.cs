@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations.Cli;
@@ -20,8 +21,8 @@ public sealed partial class QwenCodeIntegration(ISettingService settingService, 
     public override CliInfoDto Info => new(
         Id,
         "Qwen Code — model AIT",
-        $"Menambah model \"{ModelId}\" (OpenAI-compatible) di modelProviders settings.json Qwen Code beserta {EnvKey} di blok env. Pilih model {DisplayName} lewat /model; model lain tetap bisa dipakai.",
+        Lang.T($"Menambah model \"{ModelId}\" (OpenAI-compatible) di modelProviders settings.json Qwen Code beserta {EnvKey} di blok env. Pilih model {DisplayName} lewat /model; model lain tetap bisa dipakai.", $"Adds the model \"{ModelId}\" (OpenAI-compatible) to modelProviders in the Qwen Code settings.json, with {EnvKey} in the env block. Choose the model {DisplayName} with /model; other models can still be used."),
         _settingsPath,
         null,
-        "Berlaku untuk sesi Qwen Code berikutnya. Project terdeteksi dari folder tempat qwen dijalankan.");
+        Lang.T("Berlaku untuk sesi Qwen Code berikutnya. Project terdeteksi dari folder tempat qwen dijalankan.", "Takes effect for the next Qwen Code session. The project is detected from the folder qwen runs in."));
 }

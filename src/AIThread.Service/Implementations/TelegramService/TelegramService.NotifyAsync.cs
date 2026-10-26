@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -15,7 +16,7 @@ public sealed partial class TelegramService
         }
         catch (TelegramApiException ex)
         {
-            activityLog.Warn("telegram", $"Pesan ke chat Telegram {chat.DisplayName} tidak terkirim: {ex.Message}");
+            activityLog.Warn("telegram", Lang.T($"Pesan ke chat Telegram {chat.DisplayName} tidak terkirim: {ex.Message}", $"The message to Telegram chat {chat.DisplayName} was not sent: {ex.Message}"));
         }
     }
 }

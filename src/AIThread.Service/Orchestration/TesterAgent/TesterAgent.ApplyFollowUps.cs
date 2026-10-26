@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -37,7 +38,7 @@ public sealed partial class TesterAgent
         if (expect is null) return null;
         return new TestScenario
         {
-            Title = Field(item, "title") ?? "Skenario",
+            Title = Field(item, "title") ?? Lang.T("Skenario", "Scenario"),
             Actor = Field(item, "actor"),
             Action = Field(item, "action"),
             Target = Field(item, "target"),

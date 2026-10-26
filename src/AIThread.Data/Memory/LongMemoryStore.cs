@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Data.Context;
@@ -17,7 +18,7 @@ public sealed class LongMemoryStore(IDbContextFactory<AIThreadDbContext> mainFac
     public bool IsExternal => _current.Options is not null;
 
     public string Description => _current.Connection.Provider == MemoryStoreProvider.Default
-        ? "Database utama AIT"
+        ? Lang.T("Database utama AIT", "Main AIT database")
         : _current.Connection.Describe();
 
     public Task<ILongMemoryDb> CreateAsync(CancellationToken cancellationToken = default) => _current.OpenAsync(mainFactory, cancellationToken);

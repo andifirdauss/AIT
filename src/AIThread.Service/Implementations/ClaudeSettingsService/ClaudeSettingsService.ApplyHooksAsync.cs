@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -8,7 +9,7 @@ public sealed partial class ClaudeSettingsService
     public async Task<ClaudeHooksStatusDto> ApplyHooksAsync(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken = default)
     {
         if (!Uri.TryCreate(request.ProxyBaseUrl, UriKind.Absolute, out _))
-            throw new AppValidationException("URL AIT tidak valid.");
+            throw new AppValidationException(Lang.T("URL AIT tidak valid.", "Invalid AIT URL."));
 
         var target = await ResolveTargetAsync(request.Scope, request.ProjectId, cancellationToken);
         var root = await ReadAsync(target.Path, cancellationToken);

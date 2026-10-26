@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -12,9 +13,9 @@ public sealed partial class NineRouterLauncher
     {
         var nodeDir = Path.GetDirectoryName(node)!;
         var npm = NineRouterLocator.FindExecutable("npm.cmd", null, dirs.Prepend(nodeDir), File.Exists);
-        if (npm is null) return "npm tidak ditemukan; pasang ulang Node.js (npm ikut terpasang), lalu coba lagi.";
+        if (npm is null) return Lang.T("npm tidak ditemukan; pasang ulang Node.js (npm ikut terpasang), lalu coba lagi.", "npm was not found; reinstall Node.js (npm comes with it), then try again.");
 
-        activityLog.Info(Category, "9router tidak ditemukan; memasang dengan npm install -g 9router …");
+        activityLog.Info(Category, Lang.T("9router tidak ditemukan; memasang dengan npm install -g 9router …", "9router was not found; installing with npm install -g 9router …"));
         var startInfo = Shell($"\"{npm}\" install -g {NineRouterLocator.PackageName} --no-fund --no-audit", nodeDir, node);
         startInfo.RedirectStandardOutput = true;
         startInfo.RedirectStandardError = true;
@@ -36,12 +37,12 @@ public sealed partial class NineRouterLauncher
         {
             try { process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
             if (cancellationToken.IsCancellationRequested) throw;
-            return $"npm install -g 9router tidak selesai dalam {Settings.InstallTimeoutSeconds} detik.";
+            return Lang.T($"npm install -g 9router tidak selesai dalam {Settings.InstallTimeoutSeconds} detik.", $"npm install -g 9router did not finish within {Settings.InstallTimeoutSeconds} seconds.");
         }
 
         string text;
         lock (output) text = output.ToString();
         logger.LogInformation("npm install -g 9router exited {ExitCode}: {Output}", process.ExitCode, text);
-        return process.ExitCode == 0 ? null : $"npm install -g 9router gagal (exit {process.ExitCode}). {Tail(text)}".TrimEnd();
+        return process.ExitCode == 0 ? null : Lang.T($"npm install -g 9router gagal (exit {process.ExitCode}). {Tail(text)}", $"npm install -g 9router failed (exit {process.ExitCode}). {Tail(text)}").TrimEnd();
     }
 }

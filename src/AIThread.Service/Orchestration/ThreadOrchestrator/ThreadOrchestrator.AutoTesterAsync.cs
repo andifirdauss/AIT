@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -11,7 +12,7 @@ public sealed partial class ThreadOrchestrator
     {
         if (planner is not { AutoTesting: true }) return null;
         var tester = (await nodeService.GetActiveAsync(NodeRole.Tester, cancellationToken)).FirstOrDefault();
-        if (tester is null) recorder.Log(ActivityLevel.Warning, "Auto Testing menyala di planner, tetapi belum ada node Tester aktif; testing dilewati.");
+        if (tester is null) recorder.Log(ActivityLevel.Warning, Lang.T("Auto Testing menyala di planner, tetapi belum ada node Tester aktif; testing dilewati.", "Auto Testing is on in the planner, but there is no active Tester node yet; testing skipped."));
         return tester;
     }
 }

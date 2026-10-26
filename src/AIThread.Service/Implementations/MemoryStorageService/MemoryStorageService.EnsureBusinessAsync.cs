@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ public sealed partial class MemoryStorageService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new AppValidationException($"Business memory: tidak dapat terhubung — {MemoryStoreTester.ErrorMessage(ex)}");
+            throw new AppValidationException(Lang.T($"Business memory: tidak dapat terhubung — {MemoryStoreTester.ErrorMessage(ex)}", $"Business memory: cannot connect — {MemoryStoreTester.ErrorMessage(ex)}"));
         }
     }
 }

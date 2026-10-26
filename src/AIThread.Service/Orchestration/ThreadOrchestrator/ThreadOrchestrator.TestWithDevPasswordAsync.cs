@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -22,23 +23,23 @@ public sealed partial class ThreadOrchestrator
         try
         {
             prepared = await PrepareRetestAsync(threadId, cancellationToken, cancellationToken);
-            if (string.IsNullOrEmpty(prepared.Project.Key)) throw new AppValidationException("project ini belum punya project key, jadi password dev tidak bisa disimpan.");
+            if (string.IsNullOrEmpty(prepared.Project.Key)) throw new AppValidationException(Lang.T("project ini belum punya project key, jadi password dev tidak bisa disimpan.", "this project has no project key yet, so the dev password cannot be saved."));
             await testAccounts.SaveDevPasswordAsync(prepared.Project.Key, devPassword, TestingSettings.SourceChat, settings.EffectiveDeveloperName, cancellationToken);
         }
         catch (AppValidationException ex)
         {
-            await progress.FinalAsync($"🔐 Password dev tidak dipakai: {ex.Message}", cancellationToken);
+            await progress.FinalAsync(Lang.T($"🔐 Password dev tidak dipakai: {ex.Message}", $"🔐 Dev password not used: {ex.Message}"), cancellationToken);
             return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, 0);
         }
 
         await progress.AnchorAsync(ThreadAnchor.Line(prepared.Project.Name, threadId), cancellationToken);
-        activityLog.Info("thread", $"Password dev {prepared.Project.Name} diperbarui dari chat oleh {settings.EffectiveDeveloperName}; testing diulang.", threadId,
+        activityLog.Info("thread", Lang.T($"Password dev {prepared.Project.Name} diperbarui dari chat oleh {settings.EffectiveDeveloperName}; testing diulang.", $"Dev password of {prepared.Project.Name} updated from the chat by {settings.EffectiveDeveloperName}; testing again."), threadId,
             prepared.Project.ProjectId);
-        await progress.StepAsync($"🔐 Password dev project disimpan (oleh {settings.EffectiveDeveloperName}); testing diulang", cancellationToken, hang: 3);
+        await progress.StepAsync(Lang.T($"🔐 Password dev project disimpan (oleh {settings.EffectiveDeveloperName}); testing diulang", $"🔐 Project dev password saved (by {settings.EffectiveDeveloperName}); testing again"), cancellationToken, hang: 3);
         var result = await RetestAsync(prepared, null, progress, canAskLogin: true);
 
         await progress.FinalAsync(result is null
-            ? "🟡 Testing ulang berhenti sebelum selesai (lihat aktivitas di detail thread)."
+            ? Lang.T("🟡 Testing ulang berhenti sebelum selesai (lihat aktivitas di detail thread).", "🟡 Testing again stopped before it finished (see the activity in the thread detail).")
             : FinalReport.Testing(result.Report).TrimStart('\n'), cancellationToken);
         await progress.FinalAsync(FinalReport.Footer(total.Elapsed, result?.Tokens ?? 0, 0, null, false, null, request.DashboardUrl, threadId), cancellationToken);
         return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, result?.Tokens ?? 0);

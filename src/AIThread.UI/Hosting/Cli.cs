@@ -223,7 +223,7 @@ public static class Cli
             return 0;
         }
 
-        Console.WriteLine($"Mematikan AIT (PID {info.ProcessId}) ...");
+        Console.WriteLine(Lang.T($"Mematikan AIT (PID {info.ProcessId}) ...", $"Stopping AIT (PID {info.ProcessId}) ..."));
         if (!await client.ShutdownAsync())
         {
             Console.Error.WriteLine(Lang.T("Permintaan shutdown ditolak. Tutup prosesnya secara manual.", "Shutdown request refused. Close the process by hand."));
@@ -363,7 +363,7 @@ public static class Cli
                 {
                     case "--port":
                         if (i + 1 >= args.Length || !int.TryParse(args[++i], out var p) || p is < 1 or > 65535)
-                            return new Options(null, false, false, rest, "--port butuh angka 1-65535.");
+                            return new Options(null, false, false, rest, Lang.T("--port butuh angka 1-65535.", "--port needs a number 1-65535."));
                         port = p;
                         break;
                     case "--open": open = true; break;

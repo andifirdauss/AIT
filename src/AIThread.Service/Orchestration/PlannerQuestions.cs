@@ -1,7 +1,8 @@
-using System.Text;
 using System.Text.Json.Nodes;
+using System.Text;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Data.Context;
 using AIThread.Data.Messaging;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,7 @@ public sealed record PlannerQuestion(string Question, IReadOnlyList<QuestionOpti
     // Shown to the developer (Claude Code, Codex, Gemini CLI, Telegram) as the thread's reply.
     public string ToText()
     {
-        var builder = new StringBuilder("❓ **Pertanyaan dari planner**\n\n").Append(Question.Trim()).Append('\n');
+        var builder = new StringBuilder(Lang.T("❓ **Pertanyaan dari planner**\n\n", "❓ **Question from the planner**\n\n")).Append(Question.Trim()).Append('\n');
         if (Options.Count > 0)
         {
             builder.Append('\n');
@@ -27,11 +28,11 @@ public sealed record PlannerQuestion(string Question, IReadOnlyList<QuestionOpti
                 if (!string.IsNullOrWhiteSpace(option.Description)) builder.Append(" — ").Append(option.Description.Trim());
                 builder.Append('\n');
             }
-            builder.Append("\nBalas dengan nomor pilihan atau tulis jawaban Anda sendiri.");
+            builder.Append(Lang.T("\nBalas dengan nomor pilihan atau tulis jawaban Anda sendiri.", "\nReply with the option number or write your own answer."));
         }
         else
         {
-            builder.Append("\nBalas pesan ini untuk melanjutkan.");
+            builder.Append(Lang.T("\nBalas pesan ini untuk melanjutkan.", "\nReply to this message to continue."));
         }
         return builder.ToString();
     }

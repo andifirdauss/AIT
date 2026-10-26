@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations;
 
@@ -8,7 +9,7 @@ public sealed partial class SetupProfileService
     // "SQL Server sa@db.kantor:1433/AIThreadMemory", "bawaan", "SQLite default".
     private static string DescribeStore(SetupProfileStore store)
     {
-        if (store.Provider == MemoryStoreProvider.Default) return "bawaan";
+        if (store.Provider == MemoryStoreProvider.Default) return Lang.T("bawaan", "built-in");
         if (store.Provider == MemoryStoreProvider.Sqlite) return $"SQLite {Clean(store.Database) ?? "default"}";
 
         var provider = store.Provider switch

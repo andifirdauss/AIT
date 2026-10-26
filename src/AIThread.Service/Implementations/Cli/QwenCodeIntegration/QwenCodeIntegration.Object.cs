@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations.Cli;
@@ -16,7 +17,7 @@ public sealed partial class QwenCodeIntegration
                 parent[key] = created;
                 return created;
             default:
-                throw new AppValidationException($"\"{key}\" di {FileName} bukan objek.");
+                throw new AppValidationException(Lang.T($"\"{key}\" di {FileName} bukan objek.", $"\"{key}\" in {FileName} is not an object."));
         }
     }
 }

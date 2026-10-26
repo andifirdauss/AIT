@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 using AIThread.Service.Memory;
 
 namespace AIThread.Service.Orchestration;
@@ -22,7 +23,7 @@ public sealed partial class TesterAgent
             TesterTools.BrowserSelect => $"{Element()} ← {Short(string.Join(", ", MemoryAi.Strings(args["values"])))}",
             TesterTools.BrowserPress => PlannerToolRunner.Str(args, "key") ?? string.Empty,
             TesterTools.BrowserWait => PlannerToolRunner.Str(args, "text") is { } waitFor
-                ? $"\"{Short(waitFor)}\"{(PlannerToolRunner.Bool(args, "gone") ? " hilang" : string.Empty)}"
+                ? $"\"{Short(waitFor)}\"{(PlannerToolRunner.Bool(args, "gone") ? Lang.T(" hilang", " gone") : string.Empty)}"
                 : $"{(args["seconds"] is JsonValue s && s.TryGetValue<double>(out var seconds) ? seconds : 5):0.#}s",
             TesterTools.SwitchUser => $"👤 {PlannerToolRunner.Str(args, "account") ?? "?"}",
             TesterTools.Remember => $"{PlannerToolRunner.Str(args, "name") ?? "?"} = \"{Short(PlannerToolRunner.Str(args, "value") ?? string.Empty)}\"",

@@ -1,6 +1,7 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
@@ -12,12 +13,12 @@ public sealed partial class UnitTestScanner
     public async Task<UnitTestScanResultDto> ScanAsync(ProjectContext project, bool label, string by, CancellationToken cancellationToken)
     {
         var key = project.Key;
-        if (string.IsNullOrEmpty(key)) throw new AppValidationException("Project ini belum punya project key.");
+        if (string.IsNullOrEmpty(key)) throw new AppValidationException(Lang.T("Project ini belum punya project key.", "This project has no project key yet."));
 
         var settings = await catalog.GetSettingsAsync(key, cancellationToken);
         var suites = TestCommandResolver.Suites(project.RootPath, project.Modules);
         var warnings = suites.Where(s => !s.CanRun).Select(s => $"{s.Manifest}: {s.Problem}").ToList();
-        if (suites.Count == 0) warnings.Add("Tidak ada test project atau runner test yang dikenali di project ini.");
+        if (suites.Count == 0) warnings.Add(Lang.T("Tidak ada test project atau runner test yang dikenali di project ini.", "No recognized test project or test runner in this project."));
 
         var discovered = await DiscoverAsync(project, suites, cancellationToken);
         var existing = await catalog.ListAsync(key, cancellationToken);

@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Orchestration;
 using Microsoft.Extensions.Logging;
 
@@ -15,7 +16,7 @@ public sealed partial class ThreadService
         {
             try
             {
-                await UnansweredQuestions.CloseAsync(dbFactory, eventBus, [id], "Thread dibatalkan saat menunggu jawaban.");
+                await UnansweredQuestions.CloseAsync(dbFactory, eventBus, [id], Lang.T("Thread dibatalkan saat menunggu jawaban.", "The thread was cancelled while waiting for an answer."));
             }
             catch (Exception ex)
             {

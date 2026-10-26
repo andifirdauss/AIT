@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,7 @@ public sealed partial class TestAccountStore
     {
         await using var db = await store.CreateTestingAsync(cancellationToken);
         var account = await db.TestAccounts.FirstOrDefaultAsync(a => a.Id == accountId && a.ProjectKey == projectKey, cancellationToken)
-                      ?? throw new AppValidationException("Akun uji tidak ditemukan.");
+                      ?? throw new AppValidationException(Lang.T("Akun uji tidak ditemukan.", "Test account not found."));
         db.TestAccounts.Remove(account);
         await db.SaveChangesAsync(cancellationToken);
     }

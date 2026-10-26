@@ -27,7 +27,7 @@ public sealed partial class UnitTestScanner
         var labeled = 0;
         foreach (var batch in tests.Chunk(LabelBatchSize))
         {
-            var input = new StringBuilder($"# Project\n{project.Name}\n\n# Tests\n");
+            var input = new StringBuilder($"# Project\n{project.Name}\n\n# Language\n{TextLanguage.Ui}\n\n# Tests\n");
             for (var i = 0; i < batch.Length; i++)
             {
                 var test = batch[i];

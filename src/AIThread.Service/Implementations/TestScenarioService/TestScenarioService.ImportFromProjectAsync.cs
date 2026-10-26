@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -18,7 +19,7 @@ public sealed partial class TestScenarioService
         }
         catch (IOException ex)
         {
-            throw new AppValidationException($"File {SheetFolder}/{scenario.Slug}.xlsx tidak bisa dibaca ({ex.Message}); tutup dulu di Excel bila sedang terbuka.");
+            throw new AppValidationException(Lang.T($"File {SheetFolder}/{scenario.Slug}.xlsx tidak bisa dibaca ({ex.Message}); tutup dulu di Excel bila sedang terbuka.", $"The file {SheetFolder}/{scenario.Slug}.xlsx cannot be read ({ex.Message}); close it in Excel first if it is open."));
         }
     }
 }

@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Orchestration;
@@ -38,7 +39,7 @@ public sealed partial class UnitTestStage
                 session.Report.BaselineRan += toRun.Count;
                 session.Report.BaselineMs += execution.DurationMs;
             }
-            recorder.Log(ActivityLevel.Info, $"Baseline unit test: {toRun.Count} test dijalankan sebelum perubahan ({execution.DurationMs / 1000.0:0.0}s).");
+            recorder.Log(ActivityLevel.Info, Lang.T($"Baseline unit test: {toRun.Count} test dijalankan sebelum perubahan ({execution.DurationMs / 1000.0:0.0}s).", $"Unit test baseline: {toRun.Count} tests run before the change ({execution.DurationMs / 1000.0:0.0}s)."));
         }
         catch (OperationCanceledException)
         {
@@ -47,7 +48,7 @@ public sealed partial class UnitTestStage
         catch (Exception ex)
         {
             logger.LogWarning(ex, "The unit test baseline of {Project} failed.", session.Project.Name);
-            recorder.Log(ActivityLevel.Warning, $"Baseline unit test gagal: {ex.Message}");
+            recorder.Log(ActivityLevel.Warning, Lang.T($"Baseline unit test gagal: {ex.Message}", $"Unit test baseline failed: {ex.Message}"));
         }
     }
 }

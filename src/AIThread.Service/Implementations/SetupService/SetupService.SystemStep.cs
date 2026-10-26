@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations;
 
@@ -9,9 +10,9 @@ public sealed partial class SetupService
         var shortName = storage?.ShortStatus.Description ?? "short memory";
         var detail = (databaseConnected, shortMemoryConnected) switch
         {
-            (true, true) => $"Database dan short memory ({shortName}) terhubung.",
-            (false, _) => "Database tidak dapat diakses. Periksa ConnectionStrings:Default di appsettings.json (bawaan: LocalDB) lalu restart AIT.",
-            _ => $"Short memory tidak terhubung ({shortName}). Periksa Setting → Penyimpanan memory."
+            (true, true) => Lang.T($"Database dan short memory ({shortName}) terhubung.", $"Database and short memory ({shortName}) connected."),
+            (false, _) => Lang.T("Database tidak dapat diakses. Periksa ConnectionStrings:Default di appsettings.json (bawaan: LocalDB) lalu restart AIT.", "The database cannot be accessed. Check ConnectionStrings:Default in appsettings.json (default: LocalDB), then restart AIT."),
+            _ => Lang.T($"Short memory tidak terhubung ({shortName}). Periksa Setting → Penyimpanan memory.", $"Short memory is not connected ({shortName}). Check Setting → Memory storage.")
         };
         return new SetupStepDto("system", "Database & short memory", true, databaseConnected && shortMemoryConnected, detail);
     }

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -17,8 +18,8 @@ public sealed partial class ModuleMerger
         await using (var catalog = await longStore.CreateCatalogAsync(cancellationToken))
         {
             log = await catalog.ModuleMergeLogs.FirstOrDefaultAsync(l => l.Id == logId, cancellationToken)
-                  ?? throw new AppValidationException("Riwayat merge tidak ditemukan.");
-            if (log.Status != ModuleMergeStatus.Applied) throw new AppValidationException("Hanya merge yang sudah diterapkan yang bisa dibatalkan.");
+                  ?? throw new AppValidationException(Lang.T("Riwayat merge tidak ditemukan.", "Merge history not found."));
+            if (log.Status != ModuleMergeStatus.Applied) throw new AppValidationException(Lang.T("Hanya merge yang sudah diterapkan yang bisa dibatalkan.", "Only an applied merge can be undone."));
             moves = JsonSerializer.Deserialize<ModuleMergeMoves>(log.Moved ?? "{}", Json) ?? new ModuleMergeMoves([], [], [], [], [], []);
 
             var key = log.ProjectKey;
@@ -65,7 +66,7 @@ public sealed partial class ModuleMerger
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.Module, from), cancellationToken);
         }
 
-        activityLog.Info("memory", $"Merge modul {log.FromModule} → {log.IntoModule} dibatalkan oleh {decidedBy}.");
+        activityLog.Info("memory", Lang.T($"Merge modul {log.FromModule} → {log.IntoModule} dibatalkan oleh {decidedBy}.", $"Module merge {log.FromModule} → {log.IntoModule} undone by {decidedBy}."));
         Publish("unmerged", log.ProjectKey);
     }
 }

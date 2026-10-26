@@ -1,6 +1,7 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Business;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -12,7 +13,7 @@ public sealed partial class ThreadOrchestrator
     private async Task<PreparedThread> PrepareAsync(ThreadRequest request, CancellationToken cancellationToken)
     {
         var project = await projectService.GetContextAsync(request.ProjectId, cancellationToken)
-                      ?? throw new AppValidationException("Project tidak ditemukan. Daftarkan ulang di menu Project.");
+                      ?? throw new AppValidationException(Lang.T("Project tidak ditemukan. Daftarkan ulang di menu Project.", "Project not found. Register it again in the Project menu."));
 
         var thread = new ThreadRun
         {
@@ -34,7 +35,7 @@ public sealed partial class ThreadOrchestrator
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.ThreadCreated, new { thread.Id, thread.ProjectId, thread.Status }, thread.Id));
         activityLog.Info("thread",
-            $"Thread baru dari {SourceLabel(request.Source)} · {project.Name}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}",
+            Lang.T($"Thread baru dari {SourceLabel(request.Source)} · {project.Name}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}", $"New thread from {SourceLabel(request.Source)} · {project.Name}: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}"),
             thread.Id, thread.ProjectId);
 
         return new PreparedThread(thread, project, request);

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -26,7 +27,7 @@ public sealed partial class ThreadOrchestrator
         catch (Exception ex)
         {
             registry.Complete(thread.Id);
-            return await FailAsync(recorder, new ClientProgress(observer, true), total, $"Setting tidak dapat dibaca: {ex.Message}");
+            return await FailAsync(recorder, new ClientProgress(observer, true), total, Lang.T($"Setting tidak dapat dibaca: {ex.Message}", $"Settings cannot be read: {ex.Message}"));
         }
 
         var progress = new ClientProgress(observer, settings.StreamProgressToClient);
@@ -38,7 +39,7 @@ public sealed partial class ThreadOrchestrator
             // The first active planner plans; its fallback chain takes over when it is rate limited or down.
             var planners = await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken);
             var planner = planners.FirstOrDefault()
-                          ?? throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
+                          ?? throw new OrchestrationException(Lang.T("Belum ada node Planner aktif. Tambahkan di menu Node.", "No active Planner node yet. Add one in the Node menu."));
             var executors = await nodeService.GetActiveAsync(NodeRole.Executor, cancellationToken);
             var wrapper = (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
             var tester = await AutoTesterAsync(planner, recorder, cancellationToken);
@@ -71,7 +72,7 @@ public sealed partial class ThreadOrchestrator
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
             if (prepared.Resume is { } resume)
             {
-                await progress.StepAsync("💬 Jawaban diterima, rencana dilanjutkan", cancellationToken, hang: 3);
+                await progress.StepAsync(Lang.T("💬 Jawaban diterima, rencana dilanjutkan", "💬 Answer received, the plan goes on"), cancellationToken, hang: 3);
                 planning = await plannerAgent.ResumeAsync(plannerInput, resume.Conversation, resume.Question.AnswerFor(prepared.Reply ?? string.Empty), recorder, progress, cancellationToken);
             }
             else
@@ -80,7 +81,7 @@ public sealed partial class ThreadOrchestrator
             }
             planClock.Stop();
             planner = planning.Node;
-            await progress.StepAsync(planning.Pause is null ? $"selesai dalam {Seconds(planClock.ElapsedMilliseconds)} ({PlanningTimes(planning)}) · {planning.Steps} giliran · {FinalReport.Tokens(planning.Tokens)} token" + (planning.CachedTokens > 0 ? $" · c{FinalReport.Tokens(planning.CachedTokens)}" : string.Empty) + (planning.ToolsNodeTokens > 0 ? $" · sub-agent {FinalReport.Tokens(planning.ToolsNodeTokens)}" : string.Empty) : "menunggu jawaban developer",
+            await progress.StepAsync(planning.Pause is null ? Lang.T($"selesai dalam {Seconds(planClock.ElapsedMilliseconds)} ({PlanningTimes(planning)}) · {planning.Steps} giliran · {FinalReport.Tokens(planning.Tokens)} token", $"done in {Seconds(planClock.ElapsedMilliseconds)} ({PlanningTimes(planning)}) · {planning.Steps} turns · {FinalReport.Tokens(planning.Tokens)} tokens") + (planning.CachedTokens > 0 ? $" · c{FinalReport.Tokens(planning.CachedTokens)}" : string.Empty) + (planning.ToolsNodeTokens > 0 ? $" · sub-agent {FinalReport.Tokens(planning.ToolsNodeTokens)}" : string.Empty) : Lang.T("menunggu jawaban developer", "waiting for the developer's answer"),
                 cancellationToken, last: true);
 
             if (planning.Pause is { } pause)
@@ -117,7 +118,7 @@ public sealed partial class ThreadOrchestrator
                 if (unitTests is not null) _ = Task.Run(() => unitTestStage.FinishAsync(unitTests, plan, null, thread.Id, recorder, CancellationToken.None), CancellationToken.None);
                 var answer = string.IsNullOrWhiteSpace(plan.Answer) ? plan.Summary : plan.Answer;
                 await progress.FinalAsync(answer, cancellationToken);
-                recorder.Log(ActivityLevel.Success, "Planner menjawab langsung tanpa tugas eksekusi.");
+                recorder.Log(ActivityLevel.Success, Lang.T("Planner menjawab langsung tanpa tugas eksekusi.", "The planner answered directly without execution tasks."));
                 await FinishAsync(recorder, ThreadStatus.Completed, answer, total, 0, null);
                 var (memory, memoryPending) = await ExtractMemoryAsync(wrapper ?? planner, thread, plan, null, answer, cancellationToken);
                 await FooterAsync(progress, request, settings, thread, ThreadStatus.Completed, total, planning.MemoriesUsed, memory, memoryPending, cancellationToken);
@@ -125,10 +126,10 @@ public sealed partial class ThreadOrchestrator
                 return new ThreadResult(thread.Id, ThreadStatus.Completed, progress.Transcript, TotalTokens(thread));
             }
 
-            if (executors.Count == 0) throw new OrchestrationException("Belum ada node Executor aktif. Tambahkan di menu Node.");
+            if (executors.Count == 0) throw new OrchestrationException(Lang.T("Belum ada node Executor aktif. Tambahkan di menu Node.", "No active Executor node yet. Add one in the Node menu."));
 
             await ReportPlanAsync(progress, plan, cancellationToken);
-            recorder.Log(ActivityLevel.Info, $"Rencana: {plan.Tasks.Count} tugas, {plan.Contract.Count} item kontrak. {plan.Summary}");
+            recorder.Log(ActivityLevel.Info, Lang.T($"Rencana: {plan.Tasks.Count} tugas, {plan.Contract.Count} item kontrak. {plan.Summary}", $"Plan: {plan.Tasks.Count} tasks, {plan.Contract.Count} contract items. {plan.Summary}"));
 
             // The baseline covers every test the plan concerns before a file changes.
             if (unitTests is not null)
@@ -141,7 +142,7 @@ public sealed partial class ThreadOrchestrator
 
             // 2. Execute in parallel; every write is journaled so the thread can be undone.
             await recorder.UpdateThreadAsync(t => t.Status = ThreadStatus.Executing);
-            await progress.PhaseAsync("🚀", $"Eksekusi · {executors.Count} executor paralel", cancellationToken);
+            await progress.PhaseAsync("🚀", Lang.T($"Eksekusi · {executors.Count} executor paralel", $"Execution · {executors.Count} parallel executors"), cancellationToken);
             var taskEntities = await recorder.CreateTasksAsync(plan);
             var journal = new FileJournal(dbFactory, thread.Id, scope);
             var execution = await executionEngine.RunAsync(new ExecutionRequest(plan, taskEntities, executors, scope, settings, journal), recorder, progress, cancellationToken);

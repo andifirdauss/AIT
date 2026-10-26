@@ -29,7 +29,7 @@ public sealed partial class ImpersonationDetector
         }
         else
         {
-            var input = new StringBuilder();
+            var input = new StringBuilder($"# Language\n{TextLanguage.Ui}\n\n");
             foreach (var hit in hits) input.Append($"## {hit.File} (line {hit.Line})\n```\n{hit.Excerpt}```\n\n");
             JsonNode? json = null;
             try

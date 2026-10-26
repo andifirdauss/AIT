@@ -1,6 +1,7 @@
-using System.Text;
 using System.Text.Json.Nodes;
+using System.Text;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Skills;
@@ -30,7 +31,7 @@ public sealed partial class BusinessMemoryWriter
         }, cancellationToken: cancellationToken);
 
         var json = SkillAi.ParseObject(reply.Content)
-                   ?? throw new OrchestrationException("Model business memory tidak menjawab JSON yang bisa dibaca saat memilih halaman.");
+                   ?? throw new OrchestrationException(Lang.T("Model business memory tidak menjawab JSON yang bisa dibaca saat memilih halaman.", "The business memory model did not answer with readable JSON while choosing pages."));
         var targets = new List<PageTarget>();
         foreach (var item in json["pages"] as JsonArray ?? [])
         {

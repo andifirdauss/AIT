@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace.Structure;
 
@@ -27,7 +28,7 @@ public sealed partial class CodeStructureService
             var (count, types, thirdParty) = folders.GetValueOrDefault(name);
             folders[name] = (count + 1, types + (file.Outline?.Types.Count ?? 0), thirdParty + (file.ThirdParty ? 1 : 0));
         }
-        if (folder.Length > 0 && folders.Count == 0 && files.Count == 0) throw new AppValidationException($"Folder '{folder}' tidak ada di hasil scan.");
+        if (folder.Length > 0 && folders.Count == 0 && files.Count == 0) throw new AppValidationException(Lang.T($"Folder '{folder}' tidak ada di hasil scan.", $"Folder '{folder}' is not in the scan result."));
 
         var folderRows = folders
             .OrderBy(f => f.Key, StringComparer.OrdinalIgnoreCase)

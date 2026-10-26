@@ -11,7 +11,7 @@ public sealed partial class ModuleSummaryWriter
     private const int LanguageSampleEntries = 20;
 
     // The language the summary is written in, decided by AIT rather than left to the model: that of the entries and
-    // facts being folded, else of the project's latest change entries, else of the current summary, else Indonesian.
+    // facts being folded, else of the project's latest change entries, else of the current summary, else the UI language.
     private static async Task<string> LanguageAsync(ILongMemoryDb db, string key, IEnumerable<string> texts, LongMemory? current,
         CancellationToken cancellationToken)
     {
@@ -22,6 +22,6 @@ public sealed partial class ModuleSummaryWriter
             .Take(LanguageSampleEntries)
             .Select(m => m.Description)
             .ToListAsync(cancellationToken);
-        return TextLanguage.Guess(recent) ?? TextLanguage.Guess([current?.Description]) ?? TextLanguage.Indonesian;
+        return TextLanguage.Guess(recent) ?? TextLanguage.Guess([current?.Description]) ?? TextLanguage.Ui;
     }
 }

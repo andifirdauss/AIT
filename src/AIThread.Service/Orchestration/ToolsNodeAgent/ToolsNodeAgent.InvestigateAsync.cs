@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -77,8 +78,8 @@ public sealed partial class ToolsNodeAgent
             ToolsNodeInvestigation Done(string text)
             {
                 var answer = string.IsNullOrWhiteSpace(text) ? "The sub agent found nothing to report." : PlannerToolRunner.Limit(text.Trim(), MaxFindingsChars);
-                recorder.Log(ActivityLevel.Debug, $"{actor} selesai: {step} langkah, {tokens} token, {answer.Length} karakter temuan, "
-                                                  + $"{FinalReport.Duration(clock.Elapsed)} (model {FinalReport.Duration(modelTime)}, laporan {FinalReport.Duration(reply.Elapsed)}, antre {FinalReport.Duration(queueTime)}).");
+                recorder.Log(ActivityLevel.Debug, Lang.T($"{actor} selesai: {step} langkah, {tokens} token, {answer.Length} karakter temuan, ", $"{actor} done: {step} steps, {tokens} tokens, {answer.Length} characters of findings, ")
+                                                  + Lang.T($"{FinalReport.Duration(clock.Elapsed)} (model {FinalReport.Duration(modelTime)}, laporan {FinalReport.Duration(reply.Elapsed)}, antre {FinalReport.Duration(queueTime)}).", $"{FinalReport.Duration(clock.Elapsed)} (model {FinalReport.Duration(modelTime)}, report {FinalReport.Duration(reply.Elapsed)}, queued {FinalReport.Duration(queueTime)})."));
                 return new ToolsNodeInvestigation(answer, step, tokens, cached, node, clock.Elapsed, modelTime, queueTime, reply.Elapsed);
             }
         }

@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using Microsoft.EntityFrameworkCore;
 
 namespace AIThread.Service.Implementations;
@@ -25,7 +26,7 @@ public sealed partial class MemoryService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LongStoreFailed(ex, "Could not count long memories");
-            longDescription += " — tidak terhubung";
+            longDescription += Lang.T(" — tidak terhubung", " — not connected");
         }
 
         var longCount = longByType.Values.Sum();

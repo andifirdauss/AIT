@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Verification;
@@ -37,7 +38,7 @@ public sealed partial class UnitTestRestorer
         bool Moved(UnitTestCase test)
         {
             if (!bySelector.TryGetValue(test.Selector, out var found) || string.Equals(found.File, test.TestFile, StringComparison.OrdinalIgnoreCase)) return false;
-            items.Add(new UnitTestRestoreItem(test.DisplayNumber, found.File, UnitTestRestoreItem.Moved, $"pindah dari {test.TestFile}"));
+            items.Add(new UnitTestRestoreItem(test.DisplayNumber, found.File, UnitTestRestoreItem.Moved, Lang.T($"pindah dari {test.TestFile}", $"moved from {test.TestFile}")));
             test.TestFile = found.File;
             test.TestProject = found.TestProject;
             changed.Add(test);
@@ -68,7 +69,7 @@ public sealed partial class UnitTestRestorer
             {
                 if (File.Exists(Full(root, path))) continue;
                 await WriteAsync(root, path, content, cancellationToken);
-                items.Add(new UnitTestRestoreItem(source.DisplayNumber, path, UnitTestRestoreItem.Snapshot, "file pendukung"));
+                items.Add(new UnitTestRestoreItem(source.DisplayNumber, path, UnitTestRestoreItem.Snapshot, Lang.T("file pendukung", "supporting file")));
                 if (IsProjectFile(path)) await AddToSolutionAsync(project, path, notes, cancellationToken);
             }
 
@@ -101,7 +102,7 @@ public sealed partial class UnitTestRestorer
         {
             var writable = group.Where(t => !string.IsNullOrWhiteSpace(t.Scenario)).ToList();
             items.AddRange(group.Where(t => string.IsNullOrWhiteSpace(t.Scenario))
-                .Select(t => new UnitTestRestoreItem(t.DisplayNumber, t.TestFile, UnitTestRestoreItem.Missing, "tidak ada snapshot maupun skenario untuk menulisnya lagi")));
+                .Select(t => new UnitTestRestoreItem(t.DisplayNumber, t.TestFile, UnitTestRestoreItem.Missing, Lang.T("tidak ada snapshot maupun skenario untuk menulisnya lagi", "no snapshot or scenario to write it again"))));
             if (writable.Count == 0) continue;
             var suite = TestCommandResolver.SuiteFor(suites, root, group.Key);
             tasks.Add(RegenerateTask($"R{tasks.Count + 1}", group.Key, File.Exists(Full(root, group.Key)), writable, suite, Example(discovered, suite, group.Key)));

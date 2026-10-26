@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -9,7 +10,7 @@ public sealed partial class UnitTestService
     {
         var project = await ContextAsync(projectId, cancellationToken);
         var test = await catalog.GetAsync(testId, cancellationToken);
-        if (test is null || test.ProjectKey != project.Key) throw new AppValidationException("Unit test tidak ditemukan di project ini.");
+        if (test is null || test.ProjectKey != project.Key) throw new AppValidationException(Lang.T("Unit test tidak ditemukan di project ini.", "Unit test not found in this project."));
         return (await catalog.HistoryAsync(testId, HistoryRows, cancellationToken))
             .Select(r => new UnitTestHistoryDto(r.Id, r.Phase, r.Result, r.DurationMs, r.Message, r.SkipReason, r.Machine, r.RunBy, r.ThreadId, r.CreatedAt))
             .ToList();

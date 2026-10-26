@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,7 @@ public sealed partial class MemoryTransferService
             var item = items[i];
             if (string.IsNullOrWhiteSpace(item.ProjectKey))
             {
-                warnings.Add($"Akun uji #{i + 1}: project key kosong.");
+                warnings.Add(Lang.T($"Akun uji #{i + 1}: project key kosong.", $"Test account #{i + 1}: empty project key."));
                 continue;
             }
             try
@@ -32,7 +33,7 @@ public sealed partial class MemoryTransferService
             }
             catch (AppValidationException ex)
             {
-                warnings.Add($"Akun uji #{i + 1}: {ex.Message}");
+                warnings.Add(Lang.T($"Akun uji #{i + 1}: {ex.Message}", $"Test account #{i + 1}: {ex.Message}"));
             }
         }
         var settings = (testing.Settings ?? []).Where(s => !string.IsNullOrWhiteSpace(s.ProjectKey)).ToList();

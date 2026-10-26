@@ -38,7 +38,7 @@ public static partial class BusinessMarkdown
 
     // The page as the planner reads it: images become their caption, so no binary or URL noise reaches the model.
     public static string ForPlanner(string markdown) =>
-        ImagePattern().Replace(markdown, m => $"[gambar: {(m.Groups["alt"].Value is { Length: > 0 } alt ? alt : "screenshot")}]");
+        ImagePattern().Replace(markdown, m => $"[image: {(m.Groups["alt"].Value is { Length: > 0 } alt ? alt : "screenshot")}]");
 
     // Ids of the images a page shows.
     public static IReadOnlyList<Guid> AssetIds(string markdown) =>

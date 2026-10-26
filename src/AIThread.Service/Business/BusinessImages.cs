@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Business;
@@ -28,9 +29,9 @@ public static class BusinessImages
     // Throws AppValidationException for anything that is not a supported image within the size limit.
     public static string Validate(byte[] data)
     {
-        if (data.Length == 0) throw new AppValidationException("Gambar kosong.");
-        if (data.Length > MaxBytes) throw new AppValidationException($"Gambar maksimal {MaxBytes / 1024 / 1024} MB.");
-        return Sniff(data) ?? throw new AppValidationException("Format gambar tidak didukung — gunakan PNG, JPEG, GIF, atau WebP.");
+        if (data.Length == 0) throw new AppValidationException(Lang.T("Gambar kosong.", "Empty image."));
+        if (data.Length > MaxBytes) throw new AppValidationException(Lang.T($"Gambar maksimal {MaxBytes / 1024 / 1024} MB.", $"The image is at most {MaxBytes / 1024 / 1024} MB."));
+        return Sniff(data) ?? throw new AppValidationException(Lang.T("Format gambar tidak didukung — gunakan PNG, JPEG, GIF, atau WebP.", "Unsupported image format — use PNG, JPEG, GIF or WebP."));
     }
 
     // The prompt's images as rows to keep with the thread; anything unreadable or unsupported is skipped.

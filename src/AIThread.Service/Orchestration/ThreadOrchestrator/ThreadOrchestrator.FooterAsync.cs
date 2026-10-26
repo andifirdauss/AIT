@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -28,7 +29,7 @@ public sealed partial class ThreadOrchestrator
         var quotas = await NodeQuotasAsync(cancellationToken);
         var masked = secrets.TallyCount;
         if (masked > 0)
-            activityLog.Info("keamanan", $"{masked} secret disamarkan sebelum dikirim ke model.", thread.Id, thread.ProjectId);
+            activityLog.Info("keamanan", Lang.T($"{masked} secret disamarkan sebelum dikirim ke model.", $"{masked} secret(s) masked before being sent to a model."), thread.Id, thread.ProjectId);
         var footer = FinalReport.Footer(total.Elapsed, TotalTokens(thread) + (memory?.Tokens ?? 0), memoriesUsed, memory, memoryPending, wikiHours,
             request.DashboardUrl, thread.Id, quotas, secretsMasked: masked);
         await progress.FinalAsync(footer, cancellationToken);
