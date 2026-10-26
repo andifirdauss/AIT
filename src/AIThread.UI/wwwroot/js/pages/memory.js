@@ -117,6 +117,36 @@
     }
   }
 
+  // The migration of older project facts (Rule, Flow, Pitfall, …) into the module summaries: shown while any wait.
+  async function loadChangelog() {
+    try {
+      const s = await api.get('/api/memory/changelog');
+      const show = s.pendingFacts > 0 || s.shortFacts > 0;
+      el('changelogBanner').classList.toggle('d-none', !show);
+      if (!show) return;
+      const parts = [
+        `<strong>Migrasi memory lama ke ringkasan modul</strong>: ${fmt.number(s.pendingFacts)} memory lama menunggu di ${fmt.number(s.pendingModules)} modul`
+          + ` · ${fmt.number(s.summaries)} ringkasan modul`,
+        s.shortFacts > 0 ? `${fmt.number(s.shortFacts)} masih di short memory (ikut setelah pindah ke long memory)` : null,
+        s.running
+          ? `sedang berjalan: modul ${fmt.number(s.done + 1)}/${fmt.number(s.total)}${s.module ? ` (${escapeHtml(s.module)})` : ''}`
+          : (!s.aiAvailable ? 'menunggu node Tools, Wrapper, atau Planner yang aktif'
+            : (s.lastRunAt ? `terakhir ${fmt.relative(s.lastRunAt)}, berikutnya pada putaran konsolidasi` : 'menunggu putaran konsolidasi')),
+        s.lastMessage ? escapeHtml(s.lastMessage) : null,
+        s.backupPath ? `backup: <span class="mono">${escapeHtml(s.backupPath)}</span>` : null
+      ].filter(Boolean);
+      el('changelogText').innerHTML = parts.join(' · ');
+      el('changelogProgress').classList.toggle('d-none', !s.running);
+      if (s.running) {
+        const percent = Math.round(100 * s.done / Math.max(1, s.total));
+        el('changelogProgress').setAttribute('aria-valuenow', percent);
+        el('changelogBar').style.width = `${percent}%`;
+      }
+    } catch {
+      el('changelogBanner').classList.add('d-none');
+    }
+  }
+
   async function loadProjects() {
     try {
       projects = await api.get('/api/projects');
@@ -616,6 +646,7 @@
     loadModuleFilter();
     loadStats();
     loadRelabel();
+    loadChangelog();
     if (reviewLoaded) loadReview();
   }
 
@@ -671,6 +702,7 @@
 
   loadStats();
   loadRelabel();
+  loadChangelog();
   loadProjects().then(() => { loadModuleFilter(); load(); });
   stream('types=memory', { 'memory.changed': debounce(refreshAll, 500) });
 })();

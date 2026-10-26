@@ -19,10 +19,16 @@ public sealed partial class ModuleSummaryWriter
             if (pending.Count == 0) return 0;
             var withFacts = !pending.Any(p => p.Facts > 0) || await BackupAsync(cancellationToken);
 
+            var taken = pending.Where(p => withFacts || p.Changes + p.ExtraSummaries > 0).Take(MaxModulesPerRun).ToList();
+            var migrating = withFacts && taken.Any(p => p.Facts > 0);
+            (_done, _total) = (0, taken.Count);
             var written = 0;
-            foreach (var item in pending.Where(p => withFacts || p.Changes + p.ExtraSummaries > 0).Take(MaxModulesPerRun))
+            var migrated = 0;
+            foreach (var item in taken)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                _module = item.Module;
+                if (migrating) PublishStatus();
                 try
                 {
                     // A fresh context per module: a failed save must not leave its changes tracked for the next one.
@@ -33,6 +39,7 @@ public sealed partial class ModuleSummaryWriter
                         continue;
                     }
                     written++;
+                    migrated += folded.Facts;
                     var parts = new List<string>();
                     if (folded.Changes > 0) parts.Add($"{folded.Changes} catatan perubahan");
                     if (folded.Facts > 0) parts.Add($"{folded.Facts} memory lama dimigrasi");
@@ -46,17 +53,30 @@ public sealed partial class ModuleSummaryWriter
                     // Another machine sharing the store may have written the same summary first: the next pass reads it.
                     logger.LogWarning(ex, "Could not update the summary of module {Module} ({Key}).", item.Module, item.Key);
                 }
+                finally
+                {
+                    _done++;
+                }
             }
+
+            _lastRunAt = DateTime.UtcNow;
+            if (migrated > 0) _lastMessage = $"{migrated} memory lama dimigrasi ke ringkasan modul pada putaran terakhir.";
             return written;
         }
         catch (Exception ex) when (ex is not OperationCanceledException && (ex is MemoryAiUnavailableException || StoreErrors.IsUnreachable(ex)))
         {
             logger.LogInformation(ex, "Module summaries postponed.");
+            _lastMessage = ex is MemoryAiUnavailableException
+                ? "Menunggu node Tools, Wrapper, atau Planner yang aktif."
+                : "Long memory tidak dapat dihubungi; migrasi dilanjutkan putaran berikutnya.";
             return 0;
         }
         finally
         {
+            var wasRunning = _total > 0;
+            (_module, _done, _total) = (null, 0, 0);
             _gate.Release();
+            if (wasRunning) PublishStatus();
         }
     }
 }
