@@ -124,6 +124,14 @@
             <div class="card-body" id="verificationBody"></div>
         </div>
 
+        <div class="card mb-3 d-none" id="gitCard">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Git <span id="gitOutcome"></span></span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnGitRefresh" title="@Lang.T("Tanya git lagi di mana perubahan thread ini sekarang", "Ask git again where this thread's change is now")">@Lang.T("Sinkronkan", "Sync")</button>
+            </div>
+            <div class="card-body" id="gitBody"></div>
+        </div>
+
         <div class="card mb-3 d-none" id="unitTestCard">
             <div class="card-header d-flex justify-content-between align-items-center">
                 @Html.Raw(Lang.T("<span>Unit test (katalog project)</span> <span id=\"unitTestOutcome\"></span>", "<span>Unit tests (project catalog)</span> <span id=\"unitTestOutcome\"></span>"))

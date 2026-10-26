@@ -82,13 +82,20 @@
     return (isEn ? `<span class="badge text-bg-info">Short</span><div class="small text-secondary">±${left.toFixed(0)} h left before long memory</div>` : `<span class="badge text-bg-info">Short</span><div class="small text-secondary">±${left.toFixed(0)} jam lagi ke long memory</div>`);
   }
 
+  // Branch the memory's thread worked on; author and commit on hover.
+  function gitSource(m) {
+    if (!m.gitBranch && !m.gitAuthor) return '';
+    const title = [m.gitAuthor, m.gitCommit ? `${t('dari commit', 'from commit')} ${m.gitCommit.substring(0, 8)}` : null].filter(Boolean).join(' · ');
+    return `<div class="mono text-secondary text-truncate" style="max-width:12rem" title="${escapeHtml(title)}">${escapeHtml(m.gitBranch || m.gitAuthor)}</div>`;
+  }
+
   function row(m) {
     return (isEn ? `<tr>
       <td>${levelCell(m)}</td>
       <td><span class="badge ${m.type === 'Project' ? 'text-bg-primary' : 'text-bg-success'}">${m.type}</span></td>
       <td class="small">${escapeHtml(m.projectName || (m.type === 'Knowledge' ? 'all projects' : '–'))}</td>
       <td>${labelCell(m)}<div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
-      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}</td>
+      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}${gitSource(m)}</td>
       <td>${m.level === 'Long' ? fmt.number(m.hitCount) : '–'}</td>
       <td class="text-end text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-edit="${m.id}">Open</button>
@@ -100,7 +107,7 @@
       <td><span class="badge ${m.type === 'Project' ? 'text-bg-primary' : 'text-bg-success'}">${m.type}</span></td>
       <td class="small">${escapeHtml(m.projectName || (m.type === 'Knowledge' ? 'semua project' : '–'))}</td>
       <td>${labelCell(m)}<div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
-      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}</td>
+      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}${gitSource(m)}</td>
       <td>${m.level === 'Long' ? fmt.number(m.hitCount) : '–'}</td>
       <td class="text-end text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-edit="${m.id}">Buka</button>

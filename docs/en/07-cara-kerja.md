@@ -840,6 +840,48 @@ background.
 - For a CLI thread (also a failed one), the Context Keeper updates the session context in the background.
 - When files were changed (also by a thread cancelled/failed halfway), the project's Code structure is rescanned and the
   calls of the changed functions are read (see [Function calls](#function-calls)), both in the background.
+- In a git repository, the thread's change is followed from then on: committed, discarded, or on another branch — see
+  [Git state of a thread's change](#git-state-of-a-threads-change).
+
+## Git state of a thread's change
+
+One project is touched by many developers on many branches. AIT records where a thread's change comes from and follows
+where it moves in git. AIT only **reads** git; it never commits, checks out, resets or pushes.
+
+**Origin** is recorded when the thread starts: the branch (`HEAD` when detached), the commit the thread started from,
+and the developer's git identity (`user.name <user.email>`; the repository's config wins over the global one). The
+origin goes along to the memory made from that thread (see [Git origin of memory](06-memory.md#git-origin-of-memory)).
+
+**Fingerprint**: whenever an executor writes a file, AIT keeps git's *blob id* of its content (`git hash-object`, with
+the repository's `.gitattributes`/`autocrlf`, as a commit would store it). A blob id does not change with a squash merge,
+rebase or cherry-pick, so AIT still recognises the thread's change when its commit SHA differs.
+
+| State | Meaning |
+|---|---|
+| Not committed | The file still holds exactly what the thread wrote, not staged |
+| Staged | `git add` done, not committed |
+| Committed | `HEAD` holds what the thread wrote; its commit is recorded (the first commit bringing that blob, a squash commit too) |
+| Changed again outside AIT | The file changed again before being committed (neither what the thread wrote nor the original) |
+| Discarded outside AIT | The file is back to what it was before the thread (discard, `checkout --`, reset) and no branch/tag holds the change |
+| On another branch | The change is in a commit of another branch (local/remote) or a tag, not of the branch checked out now, e.g. after switching branches |
+
+A thread takes its state from its files: all discarded = *Discarded*; any changed again = *Changed again outside AIT*;
+otherwise the least advanced state (e.g. 2 files committed, 1 not = *Not committed*). Files git ignores do not count.
+
+**When it is checked**:
+
+- when the thread finishes (a missing fingerprint is taken then);
+- when the `.git` folder changes (`HEAD`, index, refs, reflog: commit, checkout, merge, reset, stash, fetch), 2 seconds
+  after the last change;
+- every 5 minutes (edits in the working tree do not touch `.git`);
+- before the planner builds the brief section `# Changes in this session`;
+- by hand: the **Sync** button on the thread page's Git card, or `POST /api/projects/{id}/git/refresh`.
+
+Threads are followed for 30 days after they finish, at most the 200 newest per project. A thread rolled back through AIT
+is no longer followed.
+
+**Effect on the planner**: a thread whose change is *Discarded* or *On another branch* no longer counts as "this change"
+in the brief section `# Changes in this session` (its files are not in the working tree any more).
 
 ## Unit tests
 

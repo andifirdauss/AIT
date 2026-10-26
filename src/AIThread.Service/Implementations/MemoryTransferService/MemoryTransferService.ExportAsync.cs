@@ -44,7 +44,8 @@ public sealed partial class MemoryTransferService
 
             items.AddRange((await query.ToListAsync(cancellationToken)).Select(m => ToItem(projects, m.Id, MemoryLevel.Long, m.Type,
                 m.ProjectId, m.ProjectKey, m.ProjectName, m.Label, m.Description, m.SourceThreadId, m.CreatedAt, m.PromotedAt,
-                m.HitCount, m.LastAccessedAt, Label(m.LabelVersion, m.Module, m.Layers, m.Kind, m.Area, m.Keywords, m.ExtraModules), m.LegacyLabel)));
+                m.HitCount, m.LastAccessedAt, Label(m.LabelVersion, m.Module, m.Layers, m.Kind, m.Area, m.Keywords, m.ExtraModules), m.LegacyLabel)
+                with { GitAuthor = m.GitAuthor, GitBranch = m.GitBranch, GitCommit = m.GitCommit }));
         }
 
         // The file leaves this machine: a secret that slipped into a memory (written by an older version) stays masked.

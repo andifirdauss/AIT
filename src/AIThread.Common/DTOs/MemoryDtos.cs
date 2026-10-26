@@ -26,7 +26,10 @@ public record MemoryItemDto(
     bool Labeled = false,
     string? LegacyLabel = null,
     string? ReviewReason = null,
-    IReadOnlyList<string>? ExtraModules = null);
+    IReadOnlyList<string>? ExtraModules = null,
+    string? GitAuthor = null,
+    string? GitBranch = null,
+    string? GitCommit = null);
 
 // What the planner scans to pick topics without reading descriptions. Labeled entries carry the structured label;
 // unlabeled ones (older memory waiting for relabeling) only Label. Change entries also carry their title.
