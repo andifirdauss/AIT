@@ -12,7 +12,9 @@ namespace AIThread.Service.Background;
 // Keeps the git state of AIT threads current (GitChangeTracker). Runs the tracker's queue (a thread finished, git of a
 // project moved) and watches the .git folder of every project that has threads being followed: a commit, checkout,
 // reset, stash, merge or fetch touches HEAD, the index, refs or the reflog, and the project is looked at again a moment
-// later. Edits in the working tree do not touch .git, so the projects are also looked at every few minutes.
+// later. Edits in the working tree do not touch .git, so the projects are also looked at every few minutes. The remotes
+// of the projects in use are fetched every Project.GitFetchMinutes (default 15), one project at a time, so other
+// developers' pushes and merges show too.
 public sealed class GitWatchWorker(
     IDbContextFactory<AIThreadDbContext> dbFactory,
     IGitChangeTracker tracker,
@@ -47,7 +49,7 @@ public sealed class GitWatchWorker(
     {
         try
         {
-            await Task.WhenAll(RunQueueAsync(stoppingToken), WatchAsync(stoppingToken));
+            await Task.WhenAll(RunQueueAsync(stoppingToken), WatchAsync(stoppingToken), FetchLoopAsync(stoppingToken));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -102,6 +104,43 @@ public sealed class GitWatchWorker(
             }
             await _syncNow.WaitAsync(SyncInterval, stoppingToken);
         }
+    }
+
+    private async Task FetchLoopAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            // Not right at start: AIT starts with the machine, before the network may be up.
+            await Task.Delay(SyncInterval, stoppingToken);
+            try
+            {
+                foreach (var (id, minutes) in await FetchableProjectsAsync(stoppingToken))
+                {
+                    if (tracker.LastFetch(id) is { } last && DateTime.UtcNow - last.At < TimeSpan.FromMinutes(minutes)) continue;
+                    await tracker.FetchAsync(id, stoppingToken);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Fetching the remotes of the projects failed");
+            }
+        }
+    }
+
+    // Projects in use (seen or with a followed thread within TrackedFor) whose automatic fetch is on, with its interval.
+    private async Task<IReadOnlyList<(Guid Id, int Minutes)>> FetchableProjectsAsync(CancellationToken cancellationToken)
+    {
+        var since = DateTime.UtcNow - GitChangeTracker.TrackedFor;
+        await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
+        var projects = await db.Projects.AsNoTracking()
+            .Where(p => p.GitFetchMinutes != 0
+                        && (p.LastSeenAt >= since || p.Threads.Any(t => t.GitCheckedAt != null && (t.CompletedAt ?? t.CreatedAt) >= since)))
+            .Select(p => new { p.Id, p.RootPath, p.GitFetchMinutes })
+            .ToListAsync(cancellationToken);
+        return projects
+            .Where(p => Directory.Exists(p.RootPath) && GitTools.IsRepository(p.RootPath))
+            .Select(p => (p.Id, p.GitFetchMinutes ?? GitChangeTracker.DefaultFetchMinutes))
+            .ToList();
     }
 
     // Projects with a thread the tracker follows (looked at before, finished within TrackedFor), by id with their root.

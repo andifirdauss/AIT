@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AIThread.Data.Context;
 
-public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb, IMemoryCatalogDb, IUnitTestDb, ITestingDb
+public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb, IMemoryCatalogDb, IUnitTestDb, ITestingDb, IGitTrackingDb
 {
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<AiNode> Nodes => Set<AiNode>();
@@ -38,6 +38,7 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
     public DbSet<TestAccount> TestAccounts => Set<TestAccount>();
     public DbSet<TestingSettings> TestingSettings => Set<TestingSettings>();
     public DbSet<TestingScenario> TestingScenarios => Set<TestingScenario>();
+    public DbSet<ThreadChange> ThreadChanges => Set<ThreadChange>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -280,6 +281,9 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
 
         // Same mapping as the testing data next to an external long memory store (TestingDbContext).
         TestingModel.Configure(modelBuilder);
+
+        // Same mapping as the git tracking data next to an external long memory store (GitTrackingDbContext).
+        GitTrackingModel.Configure(modelBuilder);
     }
 
     // Columns ShortMemoryStore_* / LongMemoryStore_* / BusinessMemoryStore_* of SystemSettings.

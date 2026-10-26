@@ -121,6 +121,9 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Hasil: `root`, `projects[]` (bentuk sama dengan `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
 | `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — key manual (kosong/`null` = hapus); `.aithread/project.json` tetap menang. Memory di bawah key lokal lama ikut pindah (juga daftar modul & peta kodenya) |
 | `POST` | `/api/projects/{id}/git/refresh` | — → jumlah thread yang statusnya berubah. Menanyakan git lagi status perubahan semua thread project yang diikuti (30 hari terakhir); tiap perubahan dikirim lewat SSE `thread.git` |
+| `GET` | `/api/projects/{id}/git` | — → `isRepository`, `hasRemote`, `fetchMinutes` (diatur; `null` = bawaan), `effectiveFetchMinutes`, `lastFetchAt`, `lastFetchError`, `followedThreads` |
+| `PUT` | `/api/projects/{id}/git` | `{ "fetchMinutes": 15 \| 0 \| null }` — interval `git fetch` otomatis (0–1440 menit, 0 = mati, `null` = bawaan 15) → bentuk sama dengan `GET` |
+| `POST` | `/api/projects/{id}/git/fetch` | — → `git fetch --all --prune` sekarang, lalu thread yang diikuti dicek ulang; bentuk sama dengan `GET` (gagal = `lastFetchError`) |
 | `GET` | `/api/projects/{id}/codemap?search=&module=` | peta kode: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (maks 500 baris) |
 | `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — koreksi manual, tidak pernah ditimpa; nama class/file dicari ke file project (400 bila tidak ada atau lebih dari satu) |
 | `POST` | `/api/projects/{id}/codemap/scan` | memetakan file sumber yang belum terpetakan (maks 3.000) → `files`, `mapped`, `modules` |
@@ -166,7 +169,7 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (maks 200) |
+| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (maks 200). Tiap memory memuat `gitAuthor`, `gitBranch`, `gitCommit` (asal-usul) dan `gitState` (status perubahannya di clone author, dari `ThreadChanges`) |
 | `GET` | `/api/memory/stats` | — (+ `unlabeledCount`, `reviewCount`) |
 | `GET` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "extraModules": ["Invoice"], "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → short memory. `module`, `kind`, minimal satu keyword (maks 16), dan `description` wajib; `extraModules` opsional (maks 3); knowledge hanya `Pitfall`/`Pattern`/`Architecture`. Modul dicocokkan ke daftar modul (nama/alias/jamak) atau ditambahkan; semua dinormalisasi PascalCase (singkatan kapital pada nama modul dipertahankan: `MKPP`, `KlaimDF`). Respons memory memuat `extraModules[]`; filter `module` di `GET /api/memory` ikut mencocokkan modul lain |
@@ -235,7 +238,7 @@ disimpan per project key.
 | `GET` | `/api/health` | — |
 
 Detail thread (`GET /api/threads/{id}`) juga memuat `git` (`null` di luar repository git): `branch`, `baseCommit`,
-`author` (asal-usul saat thread mulai), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`). Ringkasan
+`author` (asal-usul saat thread mulai), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`, `edited`). Ringkasan
 thread (`GET /api/threads`) memuat `gitState`. Lihat [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread).
 
 ### Sistem
@@ -295,7 +298,7 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `router.status` | status 9router (dikirim tiap interval monitor; juga saat koneksi dibuka tanpa `threadId`) |
 | `thread.created` | `id`, `projectId`, `status` |
 | `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
-| `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`ModifiedOutside`/`Discarded`/`OnOtherBranch`), `commits[]` — status git perubahan thread berubah |
+| `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`Pushed`/`ModifiedOutside`/`Stashed`/`OnOtherBranch`/`Discarded`/`Lost`), `commits[]` — status git perubahan thread berubah |
 | `thread.output` | aktivitas planner: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | objek tugas lengkap (status, node, durasi, diff, error, …) |
 | `task.output` | potongan output model executor: `taskId`, `taskKey`, `text` |

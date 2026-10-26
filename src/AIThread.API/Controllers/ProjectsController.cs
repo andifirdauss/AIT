@@ -19,6 +19,34 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
         return ApiResponse<int>.Ok(changed, Lang.T($"Status git disinkronkan: {changed} thread berubah.", $"Git state synced: {changed} thread(s) changed."));
     }
 
+    // Git of the project: automatic fetch and its last result, threads followed.
+    [HttpGet("{id:guid}/git")]
+    public async Task<ActionResult<ApiResponse<ProjectGitDto>>> Git(Guid id, CancellationToken cancellationToken) =>
+        await gitChanges.GetProjectAsync(id, cancellationToken) is { } git
+            ? ApiResponse<ProjectGitDto>.Ok(git)
+            : NotFound(ApiResponse<ProjectGitDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    [HttpPut("{id:guid}/git")]
+    public async Task<ActionResult<ApiResponse<ProjectGitDto>>> SetGit(Guid id, SetGitFetchRequest request, CancellationToken cancellationToken) =>
+        await gitChanges.SetFetchMinutesAsync(id, request.FetchMinutes, cancellationToken) is { } git
+            ? ApiResponse<ProjectGitDto>.Ok(git, Lang.T("Pengaturan git disimpan.", "Git settings saved."))
+            : NotFound(ApiResponse<ProjectGitDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    // git fetch of every remote now, then the followed threads are looked at again.
+    [HttpPost("{id:guid}/git/fetch")]
+    public async Task<ActionResult<ApiResponse<ProjectGitDto>>> FetchGit(Guid id, CancellationToken cancellationToken)
+    {
+        var status = await gitChanges.FetchAsync(id, cancellationToken);
+        if (await gitChanges.GetProjectAsync(id, cancellationToken) is not { } git)
+            return NotFound(ApiResponse<ProjectGitDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+        return status switch
+        {
+            null => ApiResponse<ProjectGitDto>.Ok(git, Lang.T("Tidak ada git remote untuk di-fetch.", "No git remote to fetch.")),
+            { Error: { } error } => ApiResponse<ProjectGitDto>.Ok(git, Lang.T($"git fetch gagal: {error}", $"git fetch failed: {error}")),
+            _ => ApiResponse<ProjectGitDto>.Ok(git, Lang.T("git fetch selesai.", "git fetch done."))
+        };
+    }
+
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectDto>>>> GetAll(CancellationToken cancellationToken) =>
         ApiResponse<IReadOnlyList<ProjectDto>>.Ok(await projectService.GetAllAsync(cancellationToken));
