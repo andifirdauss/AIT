@@ -50,6 +50,15 @@
                     <button class="btn btn-sm btn-outline-secondary" type="button" id="btnGitFetch">@Lang.T("Fetch sekarang", "Fetch now")</button>
                     <button class="btn btn-sm btn-outline-secondary" type="button" id="btnGitSync" title="@Lang.T("Tanya git lagi di mana perubahan thread project ini sekarang", "Ask git again where the changes of this project's threads are now")">@Lang.T("Sinkronkan", "Sync")</button>
                 </div>
+                <hr />
+                <div class="fw-semibold mb-1">Environment</div>
+                <p class="text-secondary mb-2">@Lang.T("Dipakai bersama semua developer project ini. Ref = branch remote environment itu, mis. origin/develop. Wiki bisnis punya halaman per environment.", "Shared by every developer of this project. Ref = that environment's remote branch, e.g. origin/develop. The business wiki keeps a page per environment.")</p>
+                <div id="envRows" class="mb-2"></div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnEnvAdd">@Lang.T("+ Environment", "+ Environment")</button>
+                    <button class="btn btn-sm btn-outline-primary" type="button" id="btnEnvSave">@Lang.T("Simpan environment", "Save environments")</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnEnvRefresh" title="@Lang.T("Cari perubahan yang sudah masuk tiap environment sekarang", "Look for the changes that reached each environment now")">@Lang.T("Cek sekarang", "Check now")</button>
+                </div>
             </div>
         </div>
         <div class="card mb-3">

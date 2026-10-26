@@ -29,3 +29,21 @@ public record ProjectGitDto(
     int FollowedThreads);
 
 public record SetGitFetchRequest(int? FetchMinutes);
+
+// An environment of the project (shared by the project key): RefFound/RefCommit = whether this clone knows the ref (and
+// where it points) after its last fetch; Changes = AIT changes seen in it; LastSeenAt = when the newest one was seen.
+public record ProjectEnvironmentDto(
+    Guid Id,
+    string Name,
+    string Ref,
+    int Order,
+    bool IsProduction,
+    bool RefFound,
+    string? RefCommit,
+    int Changes,
+    DateTime? LastSeenAt);
+
+public record SaveProjectEnvironment(string Name, string Ref, bool IsProduction = false);
+
+// The whole list, in display order: environments left out are removed.
+public record SaveProjectEnvironmentsRequest(IReadOnlyList<SaveProjectEnvironment> Environments);

@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 using System.Threading.Channels;
 using AIThread.Common.Enums;
 using AIThread.Data.Context;
@@ -80,11 +79,6 @@ public sealed partial class GitChangeTracker(
     {
         public static readonly PathFacts None = new(null, null, false);
     }
-
-    private static readonly JsonSerializerOptions FilesJson = new(JsonSerializerDefaults.Web);
-
-    // One file of ThreadChange.Files.
-    private sealed record SharedFile(string Path, string? Blob, bool Removed);
 
     // A file snapshot as the state is worked out from it.
     private sealed record TrackedFile(Guid Id, Guid ThreadId, string FilePath, bool Existed, bool Removed, string? OriginalHash, string? AfterHash,

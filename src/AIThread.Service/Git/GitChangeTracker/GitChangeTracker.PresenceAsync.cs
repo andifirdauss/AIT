@@ -56,14 +56,14 @@ public sealed partial class GitChangeTracker
                     continue;
                 }
 
-                var files = SharedFiles(row.Files);
-                var commits = Split(row.Commits);
+                var files = ThreadChangeFiles.Read(row.Files);
+                var commits = ThreadChangeFiles.Commits(row.Commits);
                 if (commits.Count > 0)
                     history ??= await HeadHistoryAsync(root, rows.Min(r => r.CreatedAt), cancellationToken);
                 var place = commits.Any(c => history?.Contains(c) == true) ? MemoryGitPlace.Here : MemoryGitPlace.OtherBranch;
                 if (place != MemoryGitPlace.Here && files.Count > 0 && files.All(f => f.Removed || f.Blob is not null))
                 {
-                    facts ??= await ReadFactsAsync(root, rows.SelectMany(r => SharedFiles(r.Files)).Select(f => f.Path).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    facts ??= await ReadFactsAsync(root, rows.SelectMany(r => ThreadChangeFiles.Read(r.Files)).Select(f => f.Path).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                         cancellationToken);
                     if (files.All(f => facts.GetValueOrDefault(f.Path) is { } fact && (f.Removed ? fact.HeadBlob is null : fact.HeadBlob == f.Blob)))
                         place = MemoryGitPlace.Here;

@@ -8,8 +8,32 @@ namespace AIThread.API.Controllers;
 [ApiController]
 [Route("api/projects")]
 public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog, ICodeStructureService structure,
-    IGitChangeTracker gitChanges) : ControllerBase
+    IGitChangeTracker gitChanges, IGitEnvironmentTracker environments) : ControllerBase
 {
+    // The project key's environments (dev, staging, prod, ...), shared by every developer, with what this clone knows.
+    [HttpGet("{id:guid}/environments")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>>> Environments(Guid id, CancellationToken cancellationToken) =>
+        await environments.ListAsync(id, cancellationToken) is { } list
+            ? ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Ok(list)
+            : NotFound(ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    [HttpPut("{id:guid}/environments")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>>> SaveEnvironments(Guid id, SaveProjectEnvironmentsRequest request,
+        CancellationToken cancellationToken) =>
+        await environments.SaveAsync(id, request.Environments ?? [], cancellationToken) is { } list
+            ? ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Ok(list, Lang.T("Environment disimpan.", "Environments saved."))
+            : NotFound(ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    // Looks for the shared changes in each environment's ref of this clone now (after a fetch of its own).
+    [HttpPost("{id:guid}/environments/refresh")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>>> RefreshEnvironments(Guid id, CancellationToken cancellationToken)
+    {
+        var found = await environments.RefreshAsync(id, cancellationToken);
+        return await environments.ListAsync(id, cancellationToken) is { } list
+            ? ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Ok(list, Lang.T($"{found} perubahan baru terlihat di environment.", $"{found} new change(s) seen in the environments."))
+            : NotFound(ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+    }
+
     // Asks git again where the change of every followed thread of the project is now; the count of threads whose state
     // changed. The UI hears each change over SSE (thread.git).
     [HttpPost("{id:guid}/git/refresh")]
@@ -37,6 +61,7 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
     public async Task<ActionResult<ApiResponse<ProjectGitDto>>> FetchGit(Guid id, CancellationToken cancellationToken)
     {
         var status = await gitChanges.FetchAsync(id, cancellationToken);
+        if (status is { Error: null }) await environments.RefreshAsync(id, cancellationToken);
         if (await gitChanges.GetProjectAsync(id, cancellationToken) is not { } git)
             return NotFound(ApiResponse<ProjectGitDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
         return status switch

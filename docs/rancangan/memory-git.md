@@ -1,6 +1,6 @@
 # Rancangan: Memory & wiki bisnis yang mengikuti git
 
-> Status: **F1 dan F2 sudah diimplementasikan** (2026-10-26), F3–F4 rancangan. Dokumen ini tidak tampil di menu Docs. Perilaku yang sudah
+> Status: **F1–F3 sudah diimplementasikan** (2026-10-26), F4 rancangan. Dokumen ini tidak tampil di menu Docs. Perilaku yang sudah
 > berlaku dipindah ke dokumen pengguna ([06-memory.md](../06-memory.md), [07-cara-kerja.md](../07-cara-kerja.md),
 > [09-referensi-api.md](../09-referensi-api.md)) setiap fase selesai.
 
@@ -146,7 +146,7 @@ digest wiki, dengan author dari author commit. Memakai token, jadi opt-in per pr
 |---|---|
 | **F1** ✓ | Asal-usul di `ThreadRun` + memory (`GitAuthor`, `GitBranch`, `GitBaseCommit`); `AfterBlob` (diambil `FileJournal` saat menulis, bukan saat thread selesai: developer bisa commit / pindah branch lebih dulu); `GitChangeTracker` status lokal (`Uncommitted`, `Staged`, `Committed`, `ModifiedOutside`, `Discarded`, `OnOtherBranch`); watcher `.git` (`GitWatchWorker`); kartu Git di thread & branch sumber di memory; API `git/refresh`; `SessionChanges` melewati `Discarded`/`OnOtherBranch`. |
 | **F2** ✓ | Tabel bersama `ThreadChanges` (status + commit + blob per file per thread, ditulis AIT pemilik thread, dibaca AIT developer lain); `Pushed`, `Stashed`, `Lost`; `git fetch --all --prune` berkala per project (bawaan 15 menit, 0 = mati) + kartu Git di Proyek > Detail; `PresenceAsync` (commit di `HEAD` atau semua blob di `HEAD` = ada di branch ini) → planner melewati memory yang dibuang/hilang dan menandai + menurunkan memory dari branch lain / belum di-commit; ringkasan modul melewati entri yang dibuang/hilang; badge status di menu Memori. Beda dari rancangan: fallback `patch-id` / hunk diganti pencocokan baris diff tugas (≥ 80% baris tambahan ada dan ≥ 80% baris hapus hilang di `HEAD`, `GitEdited`); commit revert di riwayat `HEAD` = `Discarded`, bukan `OnOtherBranch`; isi yang sama ditulis ulang memakai commit terbaru yang menambah blob. Batas: entri yang sudah masuk ringkasan modul sebelum dibuang tidak dikeluarkan lagi. |
-| **F3** | Environment per project, `CommitPresence`, halaman wiki per environment, compare, filter memory per environment. |
+| **F3** ✓ | Environment per project key (bersama tim, Proyek > Detail → Git), `ChangePresence` per thread + environment (bukan `CommitPresence` per commit: commit squash berbeda dari commit thread), dicek setelah fetch / sapuan 5 menit / *Cek sekarang* oleh AIT developer mana pun; halaman wiki per environment (`BusinessEnvPage`) = **salinan** revisi terbaru yang semua thread sumbernya sudah masuk (bukan susun ulang oleh model: deterministik, tanpa token; konsekuensinya halaman tertahan bila thread revisi lama belum masuk); compare dua sisi (environment atau wiki kerja) + perubahan yang hanya di satu sisi; filter memory per environment. |
 | **F4** | Ingest commit di luar AIT. |
 
 ## Skenario

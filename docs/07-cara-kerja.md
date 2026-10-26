@@ -879,6 +879,32 @@ commit-nya atau semua blob-nya (squash merge).
   author) tetap dibaca, tapi ditandai `(not in this branch: …)` dan ditaruh setelah memory lain; planner diminta
   memeriksa file sebelum mengandalkannya. Lihat [Memory dan git](06-memory.md#memory-dan-git).
 
+## Environment
+
+Branch remote bisa dijadikan **environment** (dev, staging, staging2, prod, …) di
+[Proyek > Detail → Git](05-menu.md#proyek): nama, ref (mis. `origin/develop`), dan tanda *prod*. Daftarnya **dipakai
+bersama** semua developer project key itu (disimpan di database long memory), jadi cukup diatur satu orang.
+
+Setelah setiap `git fetch` (otomatis atau *Fetch sekarang*), tiap 5 menit, atau lewat *Cek sekarang*, AIT mencari
+setiap perubahan yang dibagi tim (`ThreadChanges`, dari developer mana pun) di ref tiap environment pada clone ini.
+Perubahan dianggap **sudah masuk** environment bila:
+
+1. riwayat environment memuat salah satu commit-nya (merge, fast-forward); atau
+2. tree environment memuat blob setiap file yang ditulisnya dan tidak lagi memuat file yang dihapusnya (squash merge,
+   cherry-pick); atau
+3. riwayat environment pernah memuat blob itu (file-nya sudah berubah lagi setelahnya; maks 50 perubahan per environment
+   per putaran).
+
+Yang terlihat dicatat di tabel bersama `ChangePresences` (thread, environment, commit environment yang membawanya,
+siapa yang melihat). Sekali masuk tetap tercatat; AIT developer mana pun yang fetch ikut mengisinya. Mengganti ref atau
+menghapus environment melupakan catatannya. Nama `work` tidak boleh dipakai (dipakai AIT untuk wiki kerja).
+
+Efeknya:
+
+- **Wiki bisnis per environment** — lihat [Wiki per environment](06-memory.md#wiki-per-environment).
+- **Menu Memori**: filter *Di &lt;environment&gt;* menampilkan hanya memory yang perubahannya sudah masuk environment
+  itu (memory tanpa thread tetap tampil).
+
 ## Unit test
 
 Setiap project punya **katalog unit test** yang dipakai bersama semua developer project itu (scope `ProjectKey`,

@@ -560,6 +560,24 @@ in the store and written as `![caption](asset:<id>)`. *Preview* shows the page e
 HTML is not rendered, and links may only go to `http(s)`, `mailto` or inside the application — the wiki can be written by
 anyone who shares the store, so its content is not trusted as it is.
 
+### Wiki per environment
+
+When the project has [environments](07-cara-kerja.md#environments), the business wiki keeps a **separate page per
+environment** besides the working wiki (the newest version from every branch). An environment's page is the **newest
+revision** of the working page whose source threads (of that revision and the ones before) all reached that environment:
+
+- a manual revision (no thread) holds when the one before it holds;
+- a thread git knows nothing of (older threads, not a repository) and a change discarded or with its commit lost do not
+  hold a page back;
+- the content is **copied** from that revision, never rewritten by a model — exactly what the wiki once said. When an
+  older revision's thread has not arrived, the page stays at the revision before it even if a newer one has.
+
+Environment pages are updated after the environments are checked and after the wiki writer writes pages. In
+**Memory → Business memory**, choose an *Environment* to read that environment's wiki (read-only; a yellow badge when
+the working wiki is newer), and **Compare** two sides (environments or the working wiki): the pages that differ with a
+line diff, the pages on one side only, and the changes (threads/commits) on one side only — e.g. *in staging, not in
+prod yet*.
+
 ## Managing from the Memory menu
 
 - **Add memory**: write knowledge you want the planner to always remember, e.g. a change made outside AIT or a team

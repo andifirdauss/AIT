@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Service.Git;
@@ -242,6 +243,85 @@ public class GitChangeTrackerTests
 
         // The project's own clone answers from its own state.
         Assert.Equal(MemoryGitPlace.Here, (await tracker.PresenceAsync(harness.ProjectId, [threadId]))[threadId].Place);
+    }
+
+    [Fact]
+    public async Task A_change_squash_merged_into_develop_is_in_dev_but_not_in_prod_and_the_wiki_follows()
+    {
+        await using var harness = await CreateAsync();
+        using var remote = new TempWorkspace();
+        GitIn(remote.Root, "init", "--bare", "--quiet", "--initial-branch=main");
+        Git(harness, "remote", "add", "origin", remote.Root);
+        Git(harness, "push", "--quiet", "origin", "main", "main:develop");
+        Git(harness, "checkout", "--quiet", "-b", "feature/halo");
+        var threadId = await ThreadWritesAsync(harness, File1, Changed);
+        Git(harness, "commit", "--quiet", "-am", "Halo");
+        Git(harness, "fetch", "--quiet", "origin");
+        Git(harness, "checkout", "--quiet", "-b", "develop", "origin/develop");
+        Git(harness, "merge", "--quiet", "--squash", "feature/halo");
+        Git(harness, "commit", "--quiet", "-m", "Squash feature/halo");
+        Git(harness, "push", "--quiet", "origin", "develop");
+        Git(harness, "fetch", "--quiet", "origin");
+        await harness.Service<IGitChangeTracker>().RefreshThreadsAsync([threadId]);
+
+        // The working wiki: version 1 written by hand, version 2 from the thread.
+        var pages = harness.Service<AIThread.Service.Interfaces.IBusinessPageStore>();
+        var page = await pages.SaveAsync(new AIThread.Service.Business.BusinessPageDraft(null, ProjectKey, "Demo", "Greeter", "Sapaan", null, "Greeter",
+            "Sapaan: Hi.", true, null, BusinessEditKind.Manual, "AIT Test", null, []), CancellationToken.None);
+        await pages.SaveAsync(new AIThread.Service.Business.BusinessPageDraft(page.Id, ProjectKey, "Demo", "Greeter", "Sapaan", null, "Greeter",
+            "Sapaan: Halo.", true, 1, BusinessEditKind.Ai, "AIT Test", null, [threadId]), CancellationToken.None);
+
+        var environments = harness.Service<IGitEnvironmentTracker>();
+        var list = await environments.SaveAsync(harness.ProjectId,
+            [new SaveProjectEnvironment("dev", "origin/develop"), new SaveProjectEnvironment("prod", "origin/main", IsProduction: true)]);
+        Assert.Equal(["dev", "prod"], list!.Select(e => e.Name));
+        Assert.All(list!, e => Assert.True(e.RefFound));
+        Assert.Equal(1, list!.Single(e => e.Name == "dev").Changes);
+
+        Assert.Contains(threadId, await environments.ThreadsInAsync(ProjectKey, "dev"));
+        Assert.DoesNotContain(threadId, await environments.ThreadsInAsync(ProjectKey, "prod"));
+
+        var business = harness.Service<IBusinessEnvService>();
+        Assert.Equal((2, "Sapaan: Halo."), (await business.GetPageAsync(page.Id, "dev")) is { } dev ? (dev.Version, dev.Content) : default);
+        Assert.Equal((1, "Sapaan: Hi."), (await business.GetPageAsync(page.Id, "prod")) is { } prod ? (prod.Version, prod.Content) : default);
+
+        var compare = await business.CompareAsync(harness.ProjectId, "dev", "prod");
+        var item = Assert.Single(compare!.Pages);
+        Assert.Equal(("changed", 2, 1), (item.Status, item.LeftVersion, item.RightVersion));
+        Assert.Contains(item.Diff, l => l.Kind == "del" && l.Text == "Sapaan: Halo.");
+        Assert.Contains(item.Diff, l => l.Kind == "add" && l.Text == "Sapaan: Hi.");
+        var change = Assert.Single(compare.Changes);
+        Assert.Equal((threadId, "left"), (change.ThreadId, change.Side));
+
+        // Merged into main as well: prod follows.
+        Git(harness, "checkout", "--quiet", "main");
+        Git(harness, "merge", "--quiet", "--ff-only", "develop");
+        Git(harness, "push", "--quiet", "origin", "main");
+        Git(harness, "fetch", "--quiet", "origin");
+        Assert.Equal(1, await environments.RefreshAsync(harness.ProjectId));
+        Assert.Equal(2, (await business.GetPageAsync(page.Id, "prod"))!.Version);
+        Assert.Equal("same", Assert.Single((await business.CompareAsync(harness.ProjectId, "dev", "prod"))!.Pages).Status);
+    }
+
+    [Fact]
+    public async Task An_environment_name_or_ref_that_is_not_valid_is_refused()
+    {
+        await using var harness = await CreateAsync();
+        var environments = harness.Service<IGitEnvironmentTracker>();
+        await Assert.ThrowsAsync<AppValidationException>(() => environments.SaveAsync(harness.ProjectId, [new SaveProjectEnvironment("prod", "--upload-pack=x")]));
+        await Assert.ThrowsAsync<AppValidationException>(() => environments.SaveAsync(harness.ProjectId, [new SaveProjectEnvironment("work", "origin/main")]));
+        await Assert.ThrowsAsync<AppValidationException>(() => environments.SaveAsync(harness.ProjectId,
+            [new SaveProjectEnvironment("prod", "origin/main"), new SaveProjectEnvironment("PROD", "origin/master")]));
+    }
+
+    [Fact]
+    public void A_page_diff_keeps_the_changed_lines_with_some_context()
+    {
+        var left = string.Join('\n', Enumerable.Range(1, 20).Select(i => $"line {i}"));
+        var right = left.Replace("line 10", "line ten");
+        var diff = AIThread.Service.Business.TextDiff.Lines(left, right);
+        Assert.Equal([("skip", "6"), ("same", "line 7"), ("same", "line 8"), ("same", "line 9"), ("del", "line 10"), ("add", "line ten"),
+            ("same", "line 11"), ("same", "line 12"), ("same", "line 13"), ("skip", "7")], diff.Select(l => (l.Kind, l.Text)));
     }
 
     [Fact]

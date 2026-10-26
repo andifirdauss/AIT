@@ -108,6 +108,36 @@ public static class MemorySchema
             await db.Database.ExecuteSqlRawAsync(command.CommandText, cancellationToken);
     }
 
+    // Tables added to a store after a release created it (the context's other tables exist, so CreateTables would fail):
+    // only the missing ones are created, with their indexes, from the context's model by the provider's own migrations
+    // SQL generator.
+    public static async Task EnsureTablesAsync(DbContext db, CancellationToken cancellationToken, params string[] tables)
+    {
+        var sql = db.GetService<ISqlGenerationHelper>();
+        var missing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var table in tables)
+        {
+            try
+            {
+                // Names come from the EF model (not from input) and are delimited by the provider.
+                await db.Database.ExecuteSqlRawAsync("SELECT 1 FROM " + sql.DelimitIdentifier(table) + " WHERE 1 = 0", cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                missing.Add(table);
+            }
+        }
+        if (missing.Count == 0) return;
+
+        var model = db.GetService<IDesignTimeModel>().Model;
+        var operations = db.GetService<IMigrationsModelDiffer>().GetDifferences(null, model.GetRelationalModel())
+            .Where(o => o is CreateTableOperation create && missing.Contains(create.Name)
+                        || o is CreateIndexOperation index && missing.Contains(index.Table))
+            .ToList();
+        foreach (var command in db.GetService<IMigrationsSqlGenerator>().Generate(operations, model))
+            await db.Database.ExecuteSqlRawAsync(command.CommandText, cancellationToken);
+    }
+
     public static async Task EnsureAsync<TContext>(
         MemoryStoreConnection connection,
         TContext db,

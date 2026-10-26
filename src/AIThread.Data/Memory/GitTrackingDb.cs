@@ -8,6 +8,8 @@ namespace AIThread.Data.Memory;
 public interface IGitTrackingDb : IAsyncDisposable
 {
     DbSet<ThreadChange> ThreadChanges { get; }
+    DbSet<ProjectEnvironment> ProjectEnvironments { get; }
+    DbSet<ChangePresence> ChangePresences { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
@@ -32,6 +34,29 @@ public static class GitTrackingModel
             e.Property(x => x.UpdatedBy).HasMaxLength(MemorySchema.GitAuthorLength);
             e.HasIndex(x => x.ProjectKey);
         });
+
+        modelBuilder.Entity<ProjectEnvironment>(e =>
+        {
+            e.ToTable("ProjectEnvironments");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(ProjectEnvironment.MaxNameLength).IsRequired();
+            e.Property(x => x.Ref).HasMaxLength(ProjectEnvironment.MaxRefLength).IsRequired();
+            e.Property(x => x.UpdatedBy).HasMaxLength(MemorySchema.GitAuthorLength);
+            e.HasIndex(x => new { x.ProjectKey, x.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<ChangePresence>(e =>
+        {
+            e.ToTable("ChangePresences");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength).IsRequired();
+            e.Property(x => x.Environment).HasMaxLength(ProjectEnvironment.MaxNameLength).IsRequired();
+            e.Property(x => x.Commit).HasMaxLength(MemorySchema.GitCommitLength);
+            e.Property(x => x.SeenBy).HasMaxLength(MemorySchema.GitAuthorLength);
+            e.HasIndex(x => new { x.ThreadId, x.Environment }).IsUnique();
+            e.HasIndex(x => new { x.ProjectKey, x.Environment });
+        });
     }
 }
 
@@ -39,6 +64,8 @@ public static class GitTrackingModel
 public sealed class GitTrackingDbContext(DbContextOptions<GitTrackingDbContext> options) : DbContext(options), IGitTrackingDb
 {
     public DbSet<ThreadChange> ThreadChanges => Set<ThreadChange>();
+    public DbSet<ProjectEnvironment> ProjectEnvironments => Set<ProjectEnvironment>();
+    public DbSet<ChangePresence> ChangePresences => Set<ChangePresence>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.Properties<DateTime>().HaveConversion<MemoryUtcDateTimeConverter>();

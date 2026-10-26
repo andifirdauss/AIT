@@ -244,6 +244,24 @@
     if ([...project, ...knowledge].some(m => m.name === current)) el('filterModule').value = current;
   }
 
+  // The chosen project's environments (dev, staging, prod, ...), for the environment filter.
+  async function loadEnvFilter() {
+    const projectId = el('filterProject').value;
+    let environments = [];
+    if (projectId) {
+      try {
+        environments = await api.get(`/api/projects/${projectId}/environments`);
+      } catch {
+        environments = [];
+      }
+    }
+    const current = el('filterEnv').value;
+    el('filterEnv').innerHTML = t('<option value="">Semua environment</option>', '<option value="">All environments</option>')
+      + environments.map(e => `<option value="${escapeHtml(e.name)}">${escapeHtml(isEn ? `In ${e.name}` : `Di ${e.name}`)}</option>`).join('');
+    el('filterEnv').disabled = environments.length === 0;
+    el('filterEnv').value = environments.some(e => e.name === current) ? current : '';
+  }
+
   function filterParams(params = new URLSearchParams()) {
     const set = (name, id) => { if (el(id).value) params.set(name, el(id).value); };
     set('level', 'filterLevel');
@@ -253,6 +271,7 @@
     set('layer', 'filterLayer');
     set('kind', 'filterKind');
     set('labeled', 'filterLabeled');
+    if (el('filterProject').value) set('environment', 'filterEnv');
     if (el('filterSearch').value.trim()) params.set('search', el('filterSearch').value.trim());
     return params;
   }
@@ -800,8 +819,8 @@
   });
   // A hidden required field cannot show its message: back to writing so the browser can.
   el('memoryDescription').addEventListener('invalid', () => setDescriptionPreview(false));
-  ['filterLevel', 'filterType', 'filterModule', 'filterLayer', 'filterKind', 'filterLabeled'].forEach(id => el(id).addEventListener('change', resetAndLoad));
-  el('filterProject').addEventListener('change', () => { loadModuleFilter(); resetAndLoad(); });
+  ['filterLevel', 'filterType', 'filterModule', 'filterLayer', 'filterKind', 'filterLabeled', 'filterEnv'].forEach(id => el(id).addEventListener('change', resetAndLoad));
+  el('filterProject').addEventListener('change', () => { loadModuleFilter(); loadEnvFilter().then(resetAndLoad); });
   el('filterSearch').addEventListener('input', debounce(resetAndLoad, 350));
   el('btnPrev').addEventListener('click', () => { page = Math.max(1, page - 1); load(); });
   el('btnNext').addEventListener('click', () => { page += 1; load(); });
@@ -809,6 +828,6 @@
   loadStats();
   loadRelabel();
   loadChangelog();
-  loadProjects().then(() => { loadModuleFilter(); load(); });
+  loadProjects().then(() => { loadModuleFilter(); loadEnvFilter(); load(); });
   stream('types=memory', { 'memory.changed': debounce(refreshAll, 500) });
 })();
