@@ -107,6 +107,11 @@ lewat blob (`--find-object` di ref environment), lalu commit squash-nya dicatat 
 
 ### 6. Memory di planner
 
+Project memory sudah bergaya MEMORY.md: satu entri `Change` per thread (file dari `ThreadFileSnapshots`) dan satu
+`Summary` per modul. Status git melekat ke entri `Change` lewat `SourceThreadId`; `Summary` modul disusun ulang
+`ModuleSummaryWriter` hanya dari entri `Change` yang tidak `Discarded` / `RolledBack` / `Lost` (F2), dan per
+environment dari entri yang sudah masuk environment itu (F3).
+
 | Kondisi memory | Perlakuan |
 |---|---|
 | Perubahannya ada di `HEAD` (ancestor) | Normal |
