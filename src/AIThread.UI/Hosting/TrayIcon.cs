@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using AIThread.Common.Localization;
 
 namespace AIThread.UI.Hosting;
 
@@ -193,7 +194,7 @@ public sealed class TrayIcon : IDisposable
     private static void SafeInvoke(Action action)
     {
         try { action(); }
-        catch (Exception ex) { Console.Error.WriteLine($"Aksi tray gagal: {ex.Message}"); }
+        catch (Exception ex) { Console.Error.WriteLine(Lang.T($"Aksi tray gagal: {ex.Message}", $"Tray action failed: {ex.Message}")); }
     }
 
     private void RemoveIcon()

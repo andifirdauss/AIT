@@ -16,18 +16,18 @@
                 <select class="form-select" id="@(prefix)Provider">
                     @if (Model.AllowRedis)
                     {
-                        <option value="Default">Bawaan — Garnet di dalam AIT</option>
-                        <option value="Redis">Redis (server eksternal)</option>
+                        <option value="Default">@Lang.T("Bawaan — Garnet di dalam AIT", "Default — Garnet inside AIT")</option>
+                        <option value="Redis">@Lang.T("Redis (server eksternal)", "Redis (external server)")</option>
                     }
                     else
                     {
-                        <option value="Default">Bawaan — database utama AIT</option>
+                        <option value="Default">@Lang.T("Bawaan — database utama AIT", "Default — the main AIT database")</option>
                     }
                     <option value="SqlServer">SQL Server</option>
                     <option value="PostgreSql">PostgreSQL</option>
                     <option value="MySql">MySQL</option>
                     <option value="Oracle">Oracle</option>
-                    <option value="Sqlite">SQLite (file lokal)</option>
+                    <option value="Sqlite">@Lang.T("SQLite (file lokal)", "SQLite (local file)")</option>
                 </select>
                 <div class="form-text" id="@(prefix)Help"></div>
             </div>
@@ -52,23 +52,23 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label small" for="@(prefix)Password">Password</label>
-                    <input type="password" class="form-control mono" id="@(prefix)Password" autocomplete="new-password" placeholder="Kosongkan untuk mempertahankan" />
+                    <input type="password" class="form-control mono" id="@(prefix)Password" autocomplete="new-password" placeholder="@Lang.T("Kosongkan untuk mempertahankan", "Leave empty to keep it")" />
                 </div>
                 <div class="col-12">
                     <div class="form-text mt-0" id="@(prefix)PasswordHint"></div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="@(prefix)PasswordClear" />
-                        <label class="form-check-label small" for="@(prefix)PasswordClear">Hapus password tersimpan</label>
+                        <label class="form-check-label small" for="@(prefix)PasswordClear">@Lang.T("Hapus password tersimpan", "Delete the stored password")</label>
                     </div>
                 </div>
             </div>
             <div class="mb-3" data-field="options">
-                <label class="form-label small" for="@(prefix)Options">Opsi tambahan</label>
+                <label class="form-label small" for="@(prefix)Options">@Lang.T("Opsi tambahan", "Extra options")</label>
                 <input type="text" class="form-control mono" id="@(prefix)Options" />
                 <div class="form-text" id="@(prefix)OptionsHint"></div>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2">
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-memory-test="@prefix">Test koneksi</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-memory-test="@prefix">@Lang.T("Test koneksi", "Test connection")</button>
                 <span class="small" id="@(prefix)TestResult"></span>
             </div>
         </div>

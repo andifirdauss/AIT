@@ -24,7 +24,7 @@
     try {
       response = await fetch(url, options);
     } catch {
-      throw new Error('Tidak dapat menghubungi server AIT.');
+      throw new Error(t('Tidak dapat menghubungi server AIT.', 'Cannot reach the AIT server.'));
     }
 
     let payload = null;
@@ -67,7 +67,7 @@
   // Razor views use <win-controls /> (TagHelpers/WinControlsTagHelper.cs); this renders the same markup.
   //   kind: 'window' (a .win panel), 'modal', 'alert' or 'toast' (the last two get the close button alone)
   //   closeLabel: tooltip of the red button; disabled: buttons shown grey, e.g. ['close']
-  function winControls({ kind = 'window', closeLabel = 'Tutup', disabled = [] } = {}) {
+  function winControls({ kind = 'window', closeLabel = t('Tutup', 'Close'), disabled = [] } = {}) {
     const button = (name, label, action) => {
       const text = escapeHtml(label);
       return `<button type="button" class="win-btn win-${name}"${disabled.includes(name) ? ' disabled' : ` ${action}`} aria-label="${text}" title="${text}"></button>`;
@@ -75,10 +75,10 @@
     const dismiss = kind === 'window' ? 'data-win="close"' : `data-bs-dismiss="${kind}"`;
     let html = button('close', closeLabel, dismiss);
     if (kind !== 'alert' && kind !== 'toast') {
-      html += button('min', kind === 'modal' ? 'Kecilkan' : 'Lipat', 'data-win="min"')
-        + button('max', 'Layar penuh', 'data-win="max"');
+      html += button('min', kind === 'modal' ? t('Kecilkan', 'Shrink') : t('Lipat', 'Minimize'), 'data-win="min"')
+        + button('max', t('Layar penuh', 'Full screen'), 'data-win="max"');
     }
-    return `<div class="win-controls" role="group" aria-label="Kontrol jendela">${html}</div>`;
+    return (isEn ? `<div class="win-controls" role="group" aria-label="Window controls">${html}</div>` : `<div class="win-controls" role="group" aria-label="Kontrol jendela">${html}</div>`);
   }
 
   // A window around body (HTML). id keeps its folded/full-screen state when the page re-renders it; minimized is
@@ -248,10 +248,10 @@
       const date = toDate(value);
       if (!date) return '–';
       const seconds = Math.round((Date.now() - date.getTime()) / 1000);
-      if (seconds < 60) return `${Math.max(seconds, 0)} dtk lalu`;
-      if (seconds < 3600) return `${Math.floor(seconds / 60)} mnt lalu`;
-      if (seconds < 86400) return `${Math.floor(seconds / 3600)} jam lalu`;
-      return `${Math.floor(seconds / 86400)} hari lalu`;
+      if (seconds < 60) return (isEn ? `${Math.max(seconds, 0)}s ago` : `${Math.max(seconds, 0)} dtk lalu`);
+      if (seconds < 3600) return (isEn ? `${Math.floor(seconds / 60)} min ago` : `${Math.floor(seconds / 60)} mnt lalu`);
+      if (seconds < 86400) return (isEn ? `${Math.floor(seconds / 3600)} h ago` : `${Math.floor(seconds / 3600)} jam lalu`);
+      return (isEn ? `${Math.floor(seconds / 86400)} d ago` : `${Math.floor(seconds / 86400)} hari lalu`);
     },
     ms(value) {
       if (value === null || value === undefined) return '–';
@@ -266,20 +266,20 @@
   };
 
   const statusStyles = {
-    Pending: ['secondary', 'Menunggu'],
+    Pending: ['secondary', t('Menunggu', 'Pending')],
     Planning: ['info', 'Planning'],
-    Executing: ['primary', 'Eksekusi'],
-    Verifying: ['info', 'Verifikasi'],
+    Executing: ['primary', t('Eksekusi', 'Executing')],
+    Verifying: ['info', t('Verifikasi', 'Verifying')],
     Testing: ['info', 'Testing'],
     Wrapping: ['info', 'Wrapping'],
-    AwaitingInput: ['warning', 'Menunggu jawaban'],
-    Completed: ['success', 'Selesai'],
-    Failed: ['danger', 'Gagal'],
-    Cancelled: ['warning', 'Dibatalkan'],
-    RolledBack: ['secondary', 'Perubahan dibatalkan'],
-    Running: ['primary', 'Berjalan'],
-    Succeeded: ['success', 'Berhasil'],
-    Skipped: ['secondary', 'Dilewati']
+    AwaitingInput: ['warning', t('Menunggu jawaban', 'Awaiting answer')],
+    Completed: ['success', t('Selesai', 'Completed')],
+    Failed: ['danger', t('Gagal', 'Failed')],
+    Cancelled: ['warning', t('Dibatalkan', 'Cancelled')],
+    RolledBack: ['secondary', t('Perubahan dibatalkan', 'Changes rolled back')],
+    Running: ['primary', t('Berjalan', 'Running')],
+    Succeeded: ['success', t('Berhasil', 'Succeeded')],
+    Skipped: ['secondary', t('Dilewati', 'Skipped')]
   };
 
   function statusBadge(status) {
@@ -338,11 +338,14 @@
   // The page survives refreshes (clamped when the list shrinks); `reset` jumps back to page 1.
   function pager(footerId, render, pageSize = 10) {
     const footer = document.getElementById(footerId);
-    footer.innerHTML = `<span class="text-secondary"></span>
+    footer.innerHTML = t(`<span class="text-secondary"></span>
       <div class="btn-group btn-group-sm">
         <button type="button" class="btn btn-outline-secondary" data-page="-1">‹ Sebelumnya</button>
         <button type="button" class="btn btn-outline-secondary" data-page="1">Berikutnya ›</button>
-      </div>`;
+      </div>`, `<span class="text-secondary"></span>
+      <div class="btn-group btn-group-sm">\n        <button type="button" class="btn btn-outline-secondary" data-page="-1">‹ Previous</button>
+        <button type="button" class="btn btn-outline-secondary" data-page="1">Next ›</button>
+      </div>`);
     const [prev, next] = footer.querySelectorAll('button');
     let items = [];
     let page = 1;
@@ -353,7 +356,7 @@
       const start = (page - 1) * pageSize;
       render(items.slice(start, start + pageSize));
       footer.classList.toggle('d-none', items.length <= pageSize);
-      footer.firstElementChild.textContent = `${start + 1}–${Math.min(start + pageSize, items.length)} dari ${fmt.number(items.length)}`;
+      footer.firstElementChild.textContent = (isEn ? `${start + 1}–${Math.min(start + pageSize, items.length)} of ${fmt.number(items.length)}` : `${start + 1}–${Math.min(start + pageSize, items.length)} dari ${fmt.number(items.length)}`);
       prev.disabled = page <= 1;
       next.disabled = page >= pages;
     }
@@ -445,15 +448,15 @@
   // How chat calls will authenticate against 9router: [label, isProblem]. Health and the model list are public,
   // so a router can be online while every chat call fails for lack of a key.
   function routerKeyState(status) {
-    if (status.apiKeyValid === false) return [status.hasApiKey ? 'API key ditolak' : 'API key wajib, belum disimpan', true];
-    return [status.hasApiKey ? 'API key OK' : 'tanpa API key (tidak diwajibkan)', false];
+    if (status.apiKeyValid === false) return [status.hasApiKey ? t('API key ditolak', 'API key rejected') : t('API key wajib, belum disimpan', 'API key required, not saved yet'), true];
+    return [status.hasApiKey ? 'API key OK' : t('tanpa API key (tidak diwajibkan)', 'no API key (not required)'), false];
   }
 
   async function refreshRouterPill() {
     try {
       renderRouterPill(await api.get('/api/router/status'));
     } catch {
-      renderRouterPill({ isOnline: false, baseUrl: '', error: 'server tidak merespons' });
+      renderRouterPill({ isOnline: false, baseUrl: '', error: t('server tidak merespons', 'server not responding') });
     }
   }
 
@@ -544,8 +547,8 @@
       if (!response.ok) return;
       const { version } = await response.json();
       if (!version || !isNewerVersion(version, link.dataset.version)) return;
-      link.querySelector('.app-update-text').textContent = `Update tersedia · v${version}`;
-      link.title = `Versi terpasang ${link.dataset.version}. Jalankan: npm i -g aithread@latest`;
+      link.querySelector('.app-update-text').textContent = (isEn ? `Update available · v${version}` : `Update tersedia · v${version}`);
+      link.title = (isEn ? `Installed version ${link.dataset.version}. Run: npm i -g aithread@latest` : `Versi terpasang ${link.dataset.version}. Jalankan: npm i -g aithread@latest`);
       link.classList.remove('d-none');
     } catch {
       // Offline or blocked — no update hint.
@@ -572,7 +575,7 @@
     const next = document.getElementById('onboardingNext');
     const dots = document.getElementById('onboardingDots');
     dots.innerHTML = items.map((_, i) =>
-      `<button type="button" data-step="${i}" aria-label="Langkah ${i + 1}"></button>`).join('');
+      (isEn ? `<button type="button" data-step="${i}" aria-label="Step ${i + 1}"></button>` : `<button type="button" data-step="${i}" aria-label="Langkah ${i + 1}"></button>`)).join('');
 
     const current = () => Math.max(0, items.findIndex(item => item.classList.contains('active')));
     function render(index) {
@@ -582,7 +585,7 @@
         dot.setAttribute('aria-current', i === index ? 'step' : 'false');
       });
       prev.disabled = index === 0;
-      next.textContent = index === items.length - 1 ? 'Mulai pakai AIT' : 'Lanjut ›';
+      next.textContent = index === items.length - 1 ? t('Mulai pakai AIT', 'Start using AIT') : t('Lanjut ›', 'Next ›');
     }
     // Jumps without animation; used while the dialog is hidden, where a slide transition would never finish.
     function jump(index) {
@@ -627,7 +630,7 @@
     const badge = document.getElementById('setupBadge');
     if (badge) {
       badge.textContent = `${status.requiredDone}/${status.requiredCount}`;
-      badge.title = open.length ? `Belum: ${open.map(s => s.title).join(', ')}` : '';
+      badge.title = open.length ? (isEn ? `Not yet: ${open.map(s => s.title).join(', ')}` : `Belum: ${open.map(s => s.title).join(', ')}`) : '';
       badge.classList.toggle('d-none', status.isComplete);
     }
 
@@ -644,7 +647,7 @@
       notice.classList.add('d-none');
       return;
     }
-    notice.querySelector('[data-setup-count]').textContent = `${status.requiredDone} dari ${status.requiredCount} langkah wajib selesai`;
+    notice.querySelector('[data-setup-count]').textContent = (isEn ? `${status.requiredDone} of ${status.requiredCount} required steps done` : `${status.requiredDone} dari ${status.requiredCount} langkah wajib selesai`);
     notice.querySelector('[data-setup-open]').textContent = open.map(s => s.title.toLowerCase()).join(', ');
     notice.dataset.open = openIds;
     notice.classList.remove('d-none');
@@ -687,11 +690,11 @@
   // The secret guard in one line, for the security notice and the Setting tab.
   function securityStatusText(s) {
     const masking = s.maskingEnabled
-      ? `Penyamaran secret aktif${s.passthroughMasking ? ', termasuk request passthrough' : ', kecuali request passthrough'}`
-      : 'Penyamaran secret NONAKTIF, aktifkan lagi di Setting → Keamanan & privasi';
+      ? (isEn ? `Secret masking on${s.passthroughMasking ? ', including passthrough requests' : ', except passthrough requests'}` : `Penyamaran secret aktif${s.passthroughMasking ? ', termasuk request passthrough' : ', kecuali request passthrough'}`)
+      : t('Penyamaran secret NONAKTIF, aktifkan lagi di Setting → Keamanan & privasi', 'Secret masking OFF, turn it back on in Setting → Security & privacy');
     const count = n => Number(n || 0).toLocaleString(locale);
-    return `${masking}. Sejak AIT berjalan: ${count(s.masked)} secret disamarkan, ${count(s.restored)} dipasang kembali saat menulis, `
-      + `${count(s.blockedReads)} akses ke file kredensial ditolak.`;
+    return (isEn ? `${masking}. Since AIT started: ${count(s.masked)} secrets masked, ${count(s.restored)} put back when writing, ` : `${masking}. Sejak AIT berjalan: ${count(s.masked)} secret disamarkan, ${count(s.restored)} dipasang kembali saat menulis, `)
+      + (isEn ? `${count(s.blockedReads)} reads of credential files blocked.` : `${count(s.blockedReads)} akses ke file kredensial ditolak.`);
   }
 
   // Security & privacy: opens by itself until it is closed once on this installation (the server remembers it, so
@@ -767,7 +770,7 @@
       try {
         const saved = await api.put('/api/business/developer', { name });
         modal.hide();
-        toast(`Halo, ${saved.developerName}!`);
+        toast((isEn ? `Hello, ${saved.developerName}!` : `Halo, ${saved.developerName}!`));
         document.dispatchEvent(new CustomEvent('aithread:developer-name', { detail: saved }));
       } catch (error) {
         toast(error.message, 'error');

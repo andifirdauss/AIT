@@ -7,13 +7,13 @@
     <div>
         <a asp-controller="Home" asp-action="Index" class="small text-decoration-none">← Dashboard</a>
         <h1 class="mt-1">Thread <span class="mono text-secondary" id="threadShortId"></span> <span id="threadStatus"></span></h1>
-        <p class="page-subtitle" id="threadMeta">Memuat…</p>
+        <p class="page-subtitle" id="threadMeta">@Lang.T("Memuat…", "Loading…")</p>
     </div>
     <div class="d-flex gap-2 flex-wrap justify-content-end">
-        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetest" title="Jalankan lagi testing dari rencana testing planner ke aplikasi yang sedang berjalan, mis. setelah aplikasinya dijalankan. Kode tidak diubah.">🧪 Ulangi testing</button>
-        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetry" title="Jalankan lagi tugas yang gagal, dilewati, atau dibatalkan memakai rencana yang sama (planner tidak dipanggil).">🔁 Ulangi yang gagal</button>
-        <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnRollback" title="Kembalikan semua file yang diubah thread ini ke isi sebelum thread berjalan.">↩ Batalkan perubahan file</button>
-        <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCancel">Batalkan thread</button>
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetest" title="@Lang.T("Jalankan lagi testing dari rencana testing planner ke aplikasi yang sedang berjalan, mis. setelah aplikasinya dijalankan. Kode tidak diubah.", "Run the testing of the planner's testing plan again against the running application, e.g. after the application was started. The code does not change.")">@Lang.T("🧪 Ulangi testing", "🧪 Test again")</button>
+        <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetry" title="@Lang.T("Jalankan lagi tugas yang gagal, dilewati, atau dibatalkan memakai rencana yang sama (planner tidak dipanggil).", "Run the failed, skipped or cancelled tasks again with the same plan (the planner is not called).")">@Lang.T("🔁 Ulangi yang gagal", "🔁 Retry the failed ones")</button>
+        <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnRollback" title="@Lang.T("Kembalikan semua file yang diubah thread ini ke isi sebelum thread berjalan.", "Restore every file this thread changed to its content before the thread ran.")">@Lang.T("↩ Batalkan perubahan file", "↩ Roll back file changes")</button>
+        <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCancel">@Lang.T("Batalkan thread", "Cancel thread")</button>
     </div>
 </div>
 
@@ -22,31 +22,30 @@
         <form class="modal-content" id="retestForm" autocomplete="off">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="retestModalTitle">Ulangi testing</h5>
+                <h5 class="modal-title" id="retestModalTitle">@Lang.T("Ulangi testing", "Test again")</h5>
             </div>
             <div class="modal-body">
                 <p class="small text-secondary">
-                    Skenario rencana testing dijalankan lagi ke aplikasi yang sedang berjalan; kode tidak diubah. Pastikan aplikasinya sudah jalan.
+                    @Lang.T("Skenario rencana testing dijalankan lagi ke aplikasi yang sedang berjalan; kode tidak diubah. Pastikan aplikasinya sudah jalan.", "The scenarios of the testing plan run again against the running application; the code does not change. Make sure the application is running.")
                 </p>
                 <div id="retestLoginNeeded"></div>
                 <div class="row g-2">
                     <div class="col-md-6">
-                        <label class="form-label small" for="retestUsername">Username (opsional)</label>
+                        <label class="form-label small" for="retestUsername">@Lang.T("Username (opsional)", "Username (optional)")</label>
                         <input type="text" class="form-control" id="retestUsername" autocomplete="off" spellcheck="false" />
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small" for="retestPassword">Password (opsional)</label>
+                        <label class="form-label small" for="retestPassword">@Lang.T("Password (opsional)", "Password (optional)")</label>
                         <input type="password" class="form-control" id="retestPassword" autocomplete="new-password" />
                     </div>
                 </div>
                 <div class="form-text">
-                    Untuk aplikasi yang butuh login. Hanya dipakai untuk testing ini dan tidak disimpan. Tester hanya melihat
-                    <span class="mono">{{password}}</span>; AIT yang mengetikkan password aslinya.
+                    @Html.Raw(Lang.T("Untuk aplikasi yang butuh login. Hanya dipakai untuk testing ini dan tidak disimpan. Tester hanya melihat <span class=\"mono\">{{password}}</span>; AIT yang mengetikkan password aslinya.", "For applications that need a login. Used for this testing only and not stored. The Tester only sees <span class=\"mono\">{{password}}</span>; AIT types the real password."))
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-primary" id="btnRetestConfirm">🧪 Jalankan testing</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Batal", "Cancel")</button>
+                <button type="submit" class="btn btn-primary" id="btnRetestConfirm">@Lang.T("🧪 Jalankan testing", "🧪 Run testing")</button>
             </div>
         </form>
     </div>
@@ -57,26 +56,23 @@
         <div class="modal-content">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="rollbackModalTitle">Batalkan perubahan file</h5>
+                <h5 class="modal-title" id="rollbackModalTitle">@Lang.T("Batalkan perubahan file", "Roll back file changes")</h5>
             </div>
             <div class="modal-body">
                 <p class="small text-secondary">
-                    Sebelum executor menulis sebuah file untuk pertama kali, AIT menyimpan isi aslinya. Pembatalan mengembalikan
-                    isi asli itu (atau menghapus file yang dibuat thread ini). Supaya pekerjaan lain tidak hilang, sebuah file hanya
-                    dikembalikan bila isinya <strong>masih persis</strong> hasil thread ini. Kalau ada satu saja file yang sudah berubah lagi
-                    (diedit developer atau thread lain), <strong>pembatalan ditolak seluruhnya</strong> dan tidak ada file yang disentuh.
+                    @Html.Raw(Lang.T("Sebelum executor menulis sebuah file untuk pertama kali, AIT menyimpan isi aslinya. Pembatalan mengembalikan isi asli itu (atau menghapus file yang dibuat thread ini). Supaya pekerjaan lain tidak hilang, sebuah file hanya dikembalikan bila isinya <strong>masih persis</strong> hasil thread ini. Kalau ada satu saja file yang sudah berubah lagi (diedit developer atau thread lain), <strong>pembatalan ditolak seluruhnya</strong> dan tidak ada file yang disentuh.", "Before an executor writes a file for the first time, AIT keeps its original content. Rolling back restores that content (or deletes the files this thread created). So other work is not lost, a file is only restored when its content is <strong>still exactly</strong> what this thread left. If even one file changed again (edited by a developer or another thread), <strong>the whole rollback is refused</strong> and no file is touched."))
                 </p>
                 <div id="rollbackReason"></div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>File</th><th>Yang akan terjadi</th></tr></thead>
-                        <tbody id="rollbackRows"><tr><td colspan="2" class="text-secondary">Memeriksa file…</td></tr></tbody>
+                        <thead><tr><th>File</th><th>@Lang.T("Yang akan terjadi", "What will happen")</th></tr></thead>
+                        <tbody id="rollbackRows"><tr><td colspan="2" class="text-secondary">@Lang.T("Memeriksa file…", "Checking files…")</td></tr></tbody>
                     </table>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="button" class="btn btn-warning" id="btnRollbackConfirm" disabled>Batalkan perubahan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                <button type="button" class="btn btn-warning" id="btnRollbackConfirm" disabled>@Lang.T("Batalkan perubahan", "Roll back changes")</button>
             </div>
         </div>
     </div>
@@ -85,18 +81,18 @@
 <div class="row g-3">
     <div class="col-xl-8">
         <div class="card mb-3">
-            <div class="card-header">Permintaan</div>
+            <div class="card-header">@Lang.T("Permintaan", "Request")</div>
             <div class="card-body"><div class="pre-wrap" id="threadPrompt"></div></div>
         </div>
 
         <div class="card mb-3">
-            <div class="card-header">Rencana planner</div>
+            <div class="card-header">@Lang.T("Rencana planner", "Planner plan")</div>
             <div class="card-body">
-                <p id="planSummary" class="mb-3 text-secondary">Planner sedang menganalisis…</p>
-                <h6 class="text-secondary small text-uppercase">Kontrak (nama yang wajib dipakai semua executor)</h6>
+                <p id="planSummary" class="mb-3 text-secondary">@Lang.T("Planner sedang menganalisis…", "The planner is analysing…")</p>
+                <h6 class="text-secondary small text-uppercase">@Lang.T("Kontrak (nama yang wajib dipakai semua executor)", "Contract (names every executor must use)")</h6>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
-                        <thead><tr><th style="width:35%">Item</th><th>Nilai</th></tr></thead>
+                        <thead><tr><th style="width:35%">Item</th><th>@Lang.T("Nilai", "Value")</th></tr></thead>
                         <tbody id="contractRows"><tr><td colspan="2" class="text-secondary">–</td></tr></tbody>
                     </table>
                 </div>
@@ -106,17 +102,16 @@
 
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Tugas executor</span>
-                <span class="small text-secondary fw-normal" id="taskCounter"></span>
+                @Html.Raw(Lang.T("<span>Tugas executor</span> <span class=\"small text-secondary fw-normal\" id=\"taskCounter\"></span>", "<span>Executor tasks</span> <span class=\"small text-secondary fw-normal\" id=\"taskCounter\"></span>"))
             </div>
             <div class="card-body border-bottom">
-                <h6 class="text-secondary small text-uppercase mb-2">Timeline paralel</h6>
-                <div class="timeline" id="timeline"><div class="text-secondary small">Belum ada tugas.</div></div>
+                <h6 class="text-secondary small text-uppercase mb-2">@Lang.T("Timeline paralel", "Parallel timeline")</h6>
+                <div class="timeline" id="timeline"><div class="text-secondary small">@Lang.T("Belum ada tugas.", "No task yet.")</div></div>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
-                    <thead><tr><th>ID</th><th>Tugas</th><th>Executor</th><th>Status</th><th>Durasi</th><th>Token</th><th></th></tr></thead>
-                    <tbody id="taskRows"><tr><td colspan="7" class="empty-state">Menunggu rencana…</td></tr></tbody>
+                    <thead><tr><th>ID</th><th>@Lang.T("Tugas", "Task")</th><th>Executor</th><th>Status</th><th>@Lang.T("Durasi", "Duration")</th><th>Token</th><th></th></tr></thead>
+                    <tbody id="taskRows"><tr><td colspan="7" class="empty-state">@Lang.T("Menunggu rencana…", "Waiting for the plan…")</td></tr></tbody>
                 </table>
             </div>
             <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="taskPager"></div>
@@ -124,16 +119,14 @@
 
         <div class="card mb-3 d-none" id="verificationCard">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Verifikasi (build &amp; reviewer)</span>
-                <span id="verificationOutcome"></span>
+                @Html.Raw(Lang.T("<span>Verifikasi (build &amp; reviewer)</span> <span id=\"verificationOutcome\"></span>", "<span>Verification (build &amp; reviewer)</span> <span id=\"verificationOutcome\"></span>"))
             </div>
             <div class="card-body" id="verificationBody"></div>
         </div>
 
         <div class="card mb-3 d-none" id="unitTestCard">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Unit test (katalog project)</span>
-                <span id="unitTestOutcome"></span>
+                @Html.Raw(Lang.T("<span>Unit test (katalog project)</span> <span id=\"unitTestOutcome\"></span>", "<span>Unit tests (project catalog)</span> <span id=\"unitTestOutcome\"></span>"))
             </div>
             <div class="card-body" id="unitTestBody"></div>
         </div>
@@ -147,19 +140,19 @@
         </div>
 
         <div class="card mb-3">
-            <div class="card-header">Hasil wrapper (yang diterima user)</div>
-            <div class="card-body markdown-body" id="finalResponse"><span class="text-secondary">Belum ada.</span></div>
+            <div class="card-header">@Lang.T("Hasil wrapper (yang diterima user)", "Wrapper result (what the user received)")</div>
+            <div class="card-body markdown-body" id="finalResponse">@Html.Raw(Lang.T("<span class=\"text-secondary\">Belum ada.</span>", "<span class=\"text-secondary\">None yet.</span>"))</div>
         </div>
 
         <details class="card mb-3 d-none" id="contextPackCard">
-            <summary class="card-header">Konteks sesi dari Context Keeper (titik awal planner di prompt berikutnya)</summary>
+            <summary class="card-header">@Lang.T("Konteks sesi dari Context Keeper (titik awal planner di prompt berikutnya)", "Session context from the Context Keeper (the planner's starting point on the next prompt)")</summary>
             <div class="card-body markdown-body" id="contextPack"></div>
         </details>
     </div>
 
     <div class="col-xl-4">
         <div class="card mb-3">
-            <div class="card-header">Waktu & token</div>
+            <div class="card-header">@Lang.T("Waktu & token", "Time & tokens")</div>
             <div class="card-body">
                 <dl class="row mb-0 small" id="metrics"></dl>
             </div>
@@ -167,10 +160,10 @@
 
         <div class="card win" id="activityWindow" data-win-id="thread-activity" data-win-persist>
             <div class="card-header win-bar">
-                <win-controls close-label="Kosongkan log" />
-                <span class="win-title">Aktivitas</span>
+                <win-controls close-label="@Lang.T("Kosongkan log", "Clear log")" />
+                <span class="win-title">@Lang.T("Aktivitas", "Activity")</span>
             </div>
-            <div class="log-panel" style="height:560px" id="activity"><div class="empty-state">Memuat…</div></div>
+            <div class="log-panel" style="height:560px" id="activity"><div class="empty-state">@Lang.T("Memuat…", "Loading…")</div></div>
         </div>
     </div>
 </div>
