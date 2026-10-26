@@ -11,7 +11,7 @@ public sealed partial class MemoryService
     private async Task<PreparedLabel> PrepareLabelAsync(SaveMemoryRequest request, ProjectScope? owner, CancellationToken cancellationToken)
     {
         if (!Enum.IsDefined(request.Type) || request.Type == MemoryType.Business)
-            throw new AppValidationException("Tipe memory tidak valid (business memory dikelola di tab Business Memory).");
+            throw new AppValidationException("Tipe memory tidak valid (business memory dikelola di tab Business memory).");
         if (request.Type == MemoryType.Project && request.ProjectId is null)
             throw new AppValidationException("Project memory harus terkait dengan sebuah project.");
         if (string.IsNullOrWhiteSpace(request.Description)) throw new AppValidationException("Deskripsi wajib diisi.");
