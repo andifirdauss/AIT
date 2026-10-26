@@ -176,7 +176,7 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `GET` | `/api/memory/review?projectId=` | `memories[]` (perlu review), `merges[]` (saran), `duplicates[]` (`first`, `second`, `similarity`) |
 | `GET` | `/api/memory/relabel` | status migrasi label: `running`, `phase`, `pending`, `labeled`, `needsReview`, `lastRunAt`, `lastMessage`, `backupPath`, `detail` (yang sedang dikerjakan fase itu, mis. `KN2018_KCO (1/5) · 12/40 file disebut memory`) |
 | `POST` | `/api/memory/relabel` | jalankan migrasi label sekarang (di belakang) |
-| `GET` | `/api/memory/changelog` | status migrasi memory lama ke ringkasan modul: `running`, `pendingFacts`, `pendingModules`, `shortFacts` (masih di short memory), `summaries`, `done`/`total`/`module` (putaran yang berjalan), `lastRunAt`, `lastMessage`, `backupPath`, `aiAvailable` |
+| `GET` | `/api/memory/changelog` | status migrasi memory lama ke ringkasan modul: `running`, `pendingFacts`, `pendingModules`, `shortFacts` (masih di short memory), `summaries`, `done`/`total`/`module` (putaran yang berjalan), `lastRunAt`, `lastMessage`, `backupPath`, `aiAvailable`, `totalFacts`/`migratedFacts` (progres keseluruhan, bertahan setelah restart) |
 | `GET` | `/api/settings/memory-storage` | — (`shortMemory`, `longMemory`, `businessMemory` beserta status masing-masing; password tidak pernah dikembalikan) |
 | `PUT` | `/api/settings/memory-storage` | `{ "shortMemory": {…}, "longMemory": {…}, "businessMemory": {…}, "copyExistingData": true }` — `businessMemory` boleh dihilangkan (store tidak berubah). Hasil: `settings`, `copiedShort`, `copiedLong`, `copiedBusiness`, `warnings[]` |
 | `POST` | `/api/settings/memory-storage/test` | `{ "level": "Short"\|"Long"\|"Business", "store": {…} }` |
