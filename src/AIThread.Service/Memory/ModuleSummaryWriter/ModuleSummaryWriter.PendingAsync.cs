@@ -43,6 +43,14 @@ public sealed partial class ModuleSummaryWriter
                 Add(row.ProjectKey!, row.Module!, change: false);
             }
         }
+        // A summary written in another language by mistake is written again.
+        var summaryTexts = await db.LongMemories.AsNoTracking()
+            .Where(m => m.Type == MemoryType.Project && m.Kind == MemoryKind.Summary && m.ProjectKey != null && m.Module != null)
+            .Select(m => new { m.ProjectKey, m.Module, m.Description })
+            .ToListAsync(cancellationToken);
+        foreach (var summary in summaryTexts.Where(s => TextLanguage.IsForeign(s.Description)))
+            pending.TryAdd((summary.ProjectKey!, summary.Module!.ToLowerInvariant()), (summary.Module!, 0, 0));
+
         // Modules merged into one keep the summary of each: those are folded into one even without new entries.
         foreach (var group in rows.Where(r => r.Kind == MemoryKind.Summary).GroupBy(r => (r.ProjectKey!, r.Module!.ToLowerInvariant())).Where(g => g.Count() > 1))
             pending.TryAdd(group.Key, (group.First().Module!, 0, 0));
