@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Orchestration;
@@ -14,10 +15,10 @@ public sealed partial class TesterAgent
         if (run.Accounts is not { Accounts.Count: > 1 } set || set.Settings.Impersonation is not null) return;
         try
         {
-            await progress.StepAsync("🔎 Mencari fitur login as di kode project (sekali per project)", cancellationToken, hang: 3);
+            await progress.StepAsync(Lang.T("🔎 Mencari fitur login as di kode project (sekali per project)", "🔎 Searching the project code for a login-as feature (once per project)"), cancellationToken, hang: 3);
             var info = await impersonation.DetectAsync(run.Input.Project, DetectedBy, cancellationToken);
             run.Accounts = await accountStore.GetAsync(run.Input.Project.Key, cancellationToken);
-            recorder.Log(ActivityLevel.Info, $"Deteksi login as: {info?.Status ?? "unknown"}" + (info?.IsAvailable == true ? $" — {info.How}" : "."));
+            recorder.Log(ActivityLevel.Info, Lang.T($"Deteksi login as: {info?.Status ?? "unknown"}", $"Login as detection: {info?.Status ?? "unknown"}") + (info?.IsAvailable == true ? $" — {info.How}" : "."));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

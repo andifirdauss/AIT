@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Orchestration;
 
 namespace AIThread.Service.Implementations;
@@ -18,12 +19,12 @@ public sealed partial class SetupProfileService
         {
             if (string.IsNullOrWhiteSpace(node.Name) || !Enum.IsDefined(node.Role) || string.IsNullOrWhiteSpace(node.Model))
             {
-                plan.Warn($"Node '{node.Name}' dilewati: nama, role, dan model wajib diisi.");
+                plan.Warn(Lang.T($"Node '{node.Name}' dilewati: nama, role, dan model wajib diisi.", $"Node '{node.Name}' skipped: name, role and model are required."));
                 continue;
             }
             if (valid.Any(v => IsNode(v.Role, v.Name, node.Role, node.Name)))
             {
-                plan.Warn($"Node {RoleLabels[node.Role]} '{node.Name}' ada lebih dari sekali di profil; yang pertama dipakai.");
+                plan.Warn(Lang.T($"Node {RoleLabels[node.Role]} '{node.Name}' ada lebih dari sekali di profil; yang pertama dipakai.", $"{RoleLabels[node.Role]} node '{node.Name}' appears more than once in the profile; the first one is used."));
                 continue;
             }
             valid.Add(node with { Name = node.Name.Trim(), Model = node.Model.Trim() });
@@ -40,7 +41,7 @@ public sealed partial class SetupProfileService
             var fallback = Clean(node.Fallback);
             if (fallback is not null && !Known(node.Role, fallback))
             {
-                plan.Warn($"Node cadangan '{fallback}' untuk '{node.Name}' tidak ada di profil maupun di komputer ini; cadangan dikosongkan.");
+                plan.Warn(Lang.T($"Node cadangan '{fallback}' untuk '{node.Name}' tidak ada di profil maupun di komputer ini; cadangan dikosongkan.", $"Fallback node '{fallback}' for '{node.Name}' is neither in the profile nor on this computer; the fallback is cleared."));
                 fallback = null;
             }
 
@@ -50,9 +51,9 @@ public sealed partial class SetupProfileService
                 foreach (var delegation in node.ToolDelegations ?? [])
                 {
                     if (!PlannerTools.Delegable.Contains(delegation.Tool))
-                        plan.Warn($"Tool '{delegation.Tool}' untuk planner '{node.Name}' tidak bisa didelegasikan; dilewati.");
+                        plan.Warn(Lang.T($"Tool '{delegation.Tool}' untuk planner '{node.Name}' tidak bisa didelegasikan; dilewati.", $"Tool '{delegation.Tool}' for planner '{node.Name}' cannot be delegated; skipped."));
                     else if (!Known(NodeRole.ToolsNode, delegation.ToolsNode))
-                        plan.Warn($"Tools node '{delegation.ToolsNode}' untuk planner '{node.Name}' tidak ditemukan; {delegation.Tool} dijalankan planner sendiri.");
+                        plan.Warn(Lang.T($"Tools node '{delegation.ToolsNode}' untuk planner '{node.Name}' tidak ditemukan; {delegation.Tool} dijalankan planner sendiri.", $"Tools node '{delegation.ToolsNode}' for planner '{node.Name}' was not found; the planner runs {delegation.Tool} itself."));
                     else if (delegations.All(d => d.Tool != delegation.Tool))
                         delegations.Add(delegation);
                 }
@@ -64,7 +65,7 @@ public sealed partial class SetupProfileService
                 var found = skills.FirstOrDefault(s => string.Equals(s.Name, skill.Name, StringComparison.OrdinalIgnoreCase)
                                                        && (skill.SourceUrl is null || string.Equals(s.SourceUrl, skill.SourceUrl, StringComparison.OrdinalIgnoreCase)));
                 if (found is null)
-                    plan.Warn($"Skill '{skill.Name}' belum ada di gudang skill komputer ini. Setelah sumbernya selesai ditarik, import profil ini lagi untuk memasangnya.");
+                    plan.Warn(Lang.T($"Skill '{skill.Name}' belum ada di gudang skill komputer ini. Setelah sumbernya selesai ditarik, import profil ini lagi untuk memasangnya.", $"Skill '{skill.Name}' is not in the skill store of this computer yet. Once its source has been fetched, import this profile again to install it."));
                 else if (!skillIds.Contains(found.Id))
                     skillIds.Add(found.Id);
             }
@@ -72,13 +73,13 @@ public sealed partial class SetupProfileService
             var draft = new ResolvedNode(node, match, fallback, delegations, skillIds, false);
             if (match is null)
             {
-                plan.Change(SetupProfileSection.Nodes, $"Ditambah: {RoleLabels[node.Role]} '{node.Name}' ({node.Model}).");
+                plan.Change(SetupProfileSection.Nodes, Lang.T($"Ditambah: {RoleLabels[node.Role]} '{node.Name}' ({node.Model}).", $"Added: {RoleLabels[node.Role]} '{node.Name}' ({node.Model})."));
                 resolved.Add(draft with { Changed = true });
                 continue;
             }
 
             var diffs = NodeDiffs(match, draft);
-            if (diffs.Count > 0) plan.Change(SetupProfileSection.Nodes, $"Diperbarui: {RoleLabels[node.Role]} '{node.Name}' — {string.Join(", ", diffs)}.");
+            if (diffs.Count > 0) plan.Change(SetupProfileSection.Nodes, Lang.T($"Diperbarui: {RoleLabels[node.Role]} '{node.Name}' — {string.Join(", ", diffs)}.", $"Updated: {RoleLabels[node.Role]} '{node.Name}' — {string.Join(", ", diffs)}."));
             resolved.Add(draft with { Changed = diffs.Count > 0 });
         }
 
@@ -86,7 +87,7 @@ public sealed partial class SetupProfileService
             ? existing.Where(e => e.IsActive && !valid.Any(v => IsNode(v.Role, v.Name, e.Role, e.Name))).ToList()
             : [];
         foreach (var other in others)
-            plan.Change(SetupProfileSection.Nodes, $"Dinonaktifkan: {RoleLabels[other.Role]} '{other.Name}' ({other.Model}).");
+            plan.Change(SetupProfileSection.Nodes, Lang.T($"Dinonaktifkan: {RoleLabels[other.Role]} '{other.Name}' ({other.Model}).", $"Deactivated: {RoleLabels[other.Role]} '{other.Name}' ({other.Model})."));
 
         if (others.Count == 0 && !resolved.Any(r => r.Changed)) return;
         plan.Actions.Add((SetupProfileSection.Nodes, () => ApplyNodesAsync(resolved, others, cancellationToken)));

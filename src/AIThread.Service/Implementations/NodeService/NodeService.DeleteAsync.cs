@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,8 +21,8 @@ public sealed partial class NodeService
         await db.SaveChangesAsync(cancellationToken);
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { node.Id, action = "deleted" }));
-        activityLog.Info("node", $"Node {node.Role} '{node.Name}' dihapus." +
-                                 (toolsReleased > 0 ? $" {toolsReleased} delegasi tool planner dilepas dan kembali dijalankan planner." : string.Empty));
+        activityLog.Info("node", Lang.T($"Node {node.Role} '{node.Name}' dihapus.", $"{node.Role} node '{node.Name}' deleted.") +
+                                 (toolsReleased > 0 ? Lang.T($" {toolsReleased} delegasi tool planner dilepas dan kembali dijalankan planner.", $" {toolsReleased} planner tool delegations released; the planner runs them again.") : string.Empty));
         return true;
     }
 }

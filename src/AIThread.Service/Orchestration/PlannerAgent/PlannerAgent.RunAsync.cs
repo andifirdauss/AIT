@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -114,6 +115,6 @@ public sealed partial class PlannerAgent
             }
         }
 
-        throw new OrchestrationException($"Planner tidak menghasilkan rencana yang valid dalam {run.MaxSteps} langkah.");
+        throw new OrchestrationException(Lang.T($"Planner tidak menghasilkan rencana yang valid dalam {run.MaxSteps} langkah.", $"The planner produced no valid plan within {run.MaxSteps} steps."));
     }
 }

@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Data.Cache;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,7 @@ public sealed class SwitchableShortMemoryStore(
 
     // The store in use, named without credentials.
     public string Description => _current.Connection.Provider == MemoryStoreProvider.Default
-        ? $"Garnet bawaan · {defaultRedisConnectionString.Split(',')[0]}"
+        ? Lang.T($"Garnet bawaan · {defaultRedisConnectionString.Split(',')[0]}", $"Built-in Garnet · {defaultRedisConnectionString.Split(',')[0]}")
         : _current.Connection.Describe();
 
     public bool IsConnected => _current.Store.IsConnected;

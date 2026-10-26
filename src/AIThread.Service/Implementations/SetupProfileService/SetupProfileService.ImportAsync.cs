@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -10,10 +11,10 @@ public sealed partial class SetupProfileService
     {
         var profile = request.Profile;
         if (profile is null || profile.Format != SetupProfileFile.FormatName)
-            throw new AppValidationException($"Bukan file profil setup AIT (format harus \"{SetupProfileFile.FormatName}\").");
+            throw new AppValidationException(Lang.T($"Bukan file profil setup AIT (format harus \"{SetupProfileFile.FormatName}\").", $"Not an AIT setup profile file (the format must be \"{SetupProfileFile.FormatName}\")."));
         if (profile.Version > SetupProfileFile.CurrentVersion)
-            throw new AppValidationException($"Profil dibuat oleh AIT yang lebih baru (format v{profile.Version}). Perbarui AIT dulu.");
-        if (!Enum.IsDefined(request.NodeMode)) throw new AppValidationException("Mode node tidak valid.");
+            throw new AppValidationException(Lang.T($"Profil dibuat oleh AIT yang lebih baru (format v{profile.Version}). Perbarui AIT dulu.", $"The profile was made by a newer AIT (format v{profile.Version}). Update AIT first."));
+        if (!Enum.IsDefined(request.NodeMode)) throw new AppValidationException(Lang.T("Mode node tidak valid.", "Invalid node mode."));
 
         var available = SectionsOf(profile);
         var selected = (request.Sections ?? available).Where(available.Contains).ToHashSet();
@@ -42,9 +43,9 @@ public sealed partial class SetupProfileService
                 }
             }
 
-            var failed = errors.Count > 0 ? $", {errors.Count} bagian gagal" : string.Empty;
-            activityLog.Info("setting", $"Profil setup diimpor: {plan.Changes.Count} perubahan{failed}.");
-            foreach (var error in errors) activityLog.Warn("setting", $"Import profil setup — {error}");
+            var failed = errors.Count > 0 ? Lang.T($", {errors.Count} bagian gagal", $", {errors.Count} sections failed") : string.Empty;
+            activityLog.Info("setting", Lang.T($"Profil setup diimpor: {plan.Changes.Count} perubahan{failed}.", $"Setup profile imported: {plan.Changes.Count} changes{failed}."));
+            foreach (var error in errors) activityLog.Warn("setting", Lang.T($"Import profil setup — {error}", $"Setup profile import — {error}"));
         }
 
         return new SetupProfileImportResultDto(request.DryRun, available, plan.Changes, plan.Secrets, plan.Warnings, errors);

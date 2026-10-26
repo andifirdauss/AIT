@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -20,7 +21,7 @@ public sealed partial class TesterAgent
         if (!run.Report.Values.ContainsKey(name) && run.Report.Values.Count >= MaxValues) return $"Error: at most {MaxValues} values are kept.";
 
         run.Report.Values[name] = value;
-        recorder.Log(ActivityLevel.Info, $"Tester mengingat {name} = {value}");
+        recorder.Log(ActivityLevel.Info, Lang.T($"Tester mengingat {name} = {value}", $"Tester remembers {name} = {value}"));
         return $"Remembered: write {{{{{name}}}}} in a later tool call (also in a follow-up test) for \"{value}\".";
     }
 

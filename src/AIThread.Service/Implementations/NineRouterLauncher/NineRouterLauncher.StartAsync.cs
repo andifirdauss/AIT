@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations;
@@ -12,10 +13,10 @@ public sealed partial class NineRouterLauncher
         var source = cli.Source switch
         {
             NineRouterSource.Global => "npm global",
-            NineRouterSource.Bundled => "paket aithread",
+            NineRouterSource.Bundled => Lang.T("paket aithread", "aithread package"),
             _ => "AIThread:NineRouter:CliPath"
         };
-        activityLog.Info(Category, $"Menyalakan 9router di port {port} ({source}: {cli.Path}).");
+        activityLog.Info(Category, Lang.T($"Menyalakan 9router di port {port} ({source}: {cli.Path}).", $"Starting 9router on port {port} ({source}: {cli.Path})."));
 
         // cmd redirects to a file so 9router keeps a valid stdout after AIThread exits.
         var command = $"\"{node}\" --dns-result-order=ipv4first \"{cli.Path}\" --tray --no-browser --skip-update -p {port} > \"{LogPath}\" 2>&1";
@@ -31,7 +32,7 @@ public sealed partial class NineRouterLauncher
             if (status.IsOnline)
             {
                 eventBus.Publish(AppEvent.Create(AppEventTypes.RouterStatus, status));
-                var message = installed ? "9router dipasang dan dijalankan." : "9router dijalankan.";
+                var message = installed ? Lang.T("9router dipasang dan dijalankan.", "9router installed and started.") : Lang.T("9router dijalankan.", "9router started.");
                 activityLog.Success(Category, $"{message} Log: {LogPath}");
                 return new RouterLaunchResultDto(true, true, installed, message);
             }
@@ -39,10 +40,10 @@ public sealed partial class NineRouterLauncher
             if (process.HasExited)
             {
                 Interlocked.CompareExchange(ref _started, null, process);
-                return Fail($"9router berhenti saat dinyalakan (exit {process.ExitCode}). {LogTail()}".TrimEnd());
+                return Fail(Lang.T($"9router berhenti saat dinyalakan (exit {process.ExitCode}). {LogTail()}", $"9router stopped while starting (exit {process.ExitCode}). {LogTail()}").TrimEnd());
             }
         }
 
-        return Fail($"9router belum menjawab setelah {Settings.StartTimeoutSeconds} detik; prosesnya dibiarkan berjalan. Lihat {LogPath}.");
+        return Fail(Lang.T($"9router belum menjawab setelah {Settings.StartTimeoutSeconds} detik; prosesnya dibiarkan berjalan. Lihat {LogPath}.", $"9router has not answered after {Settings.StartTimeoutSeconds} seconds; the process is left running. See {LogPath}."));
     }
 }

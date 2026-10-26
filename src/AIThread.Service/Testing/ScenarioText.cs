@@ -1,7 +1,8 @@
-using System.Text;
 using System.Text.Json;
+using System.Text;
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Orchestration;
 
 namespace AIThread.Service.Testing;
@@ -33,8 +34,8 @@ public static class ScenarioText
     // What still blocks a run, for the developer: a role without an account, or no step.
     public static IReadOnlyList<string> Missing(TestingScenario scenario)
     {
-        var missing = Roles(scenario).Where(r => string.IsNullOrWhiteSpace(r.Username)).Select(r => $"Peran {r.Role} belum punya akun uji (sheet Akun).").ToList();
-        if (Steps(scenario).Count == 0) missing.Add("Belum ada langkah (sheet Langkah).");
+        var missing = Roles(scenario).Where(r => string.IsNullOrWhiteSpace(r.Username)).Select(r => Lang.T($"Peran {r.Role} belum punya akun uji (sheet Akun).", $"Role {r.Role} has no test account yet (Accounts sheet).")).ToList();
+        if (Steps(scenario).Count == 0) missing.Add(Lang.T("Belum ada langkah (sheet Langkah).", "No steps yet (Steps sheet)."));
         return missing;
     }
 
@@ -55,7 +56,7 @@ public static class ScenarioText
             ProjectKey = projectKey,
             Slug = slug,
             Title = Clip(followUp.Title, TestingScenario.MaxTitleLength),
-            Description = followUp.Why is null ? followUp.Needs : followUp.Needs is null ? followUp.Why : $"{followUp.Why} Perlu: {followUp.Needs}",
+            Description = followUp.Why is null ? followUp.Needs : followUp.Needs is null ? followUp.Why : Lang.T($"{followUp.Why} Perlu: {followUp.Needs}", $"{followUp.Why} Needs: {followUp.Needs}"),
             Level = test.Level,
             BaseUrl = test.BaseUrl,
             Notes = test.Notes,

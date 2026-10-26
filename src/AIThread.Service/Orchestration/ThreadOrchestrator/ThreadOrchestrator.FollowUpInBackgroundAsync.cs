@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
 
@@ -12,7 +13,7 @@ public sealed partial class ThreadOrchestrator
         if (TestFollowUpReply.Find(prepared.Thread.TestingJson, number) is null)
         {
             registry.Complete(threadId);
-            throw new AppValidationException($"Test lanjutan {number} tidak ada di thread ini.");
+            throw new AppValidationException(Lang.T($"Test lanjutan {number} tidak ada di thread ini.", $"Follow-up test {number} is not in this thread."));
         }
         _ = Task.Run(() => RunFollowUpAsync(prepared, number, new ClientProgress(NullThreadObserver.Instance, showProgress: false), canAskLogin: false),
             CancellationToken.None);

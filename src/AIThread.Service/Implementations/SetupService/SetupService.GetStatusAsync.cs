@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations;
 
@@ -11,7 +12,7 @@ public sealed partial class SetupService
             ? cached
             : await Safe<RouterStatusDto?>(async () => await router.CheckStatusAsync(cancellationToken), null);
 
-        var noDatabase = new PipelineStatusDto(false, 0, 0, 0, ["Database tidak dapat diakses."]);
+        var noDatabase = new PipelineStatusDto(false, 0, 0, 0, [Lang.T("Database tidak dapat diakses.", "The database cannot be accessed.")]);
         var pipeline = databaseConnected ? await Safe(() => nodeService.GetPipelineStatusAsync(cancellationToken), noDatabase) : noDatabase;
         var projectCount = databaseConnected ? await CountProjectsAsync(cancellationToken) : 0;
         var storage = databaseConnected ? await Safe<MemoryStorageSettingsDto?>(async () => await memoryStorage.GetAsync(cancellationToken), null) : null;

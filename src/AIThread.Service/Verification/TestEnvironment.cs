@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Verification;
 
@@ -10,16 +11,16 @@ public static partial class TestEnvironment
     public const string Network = "network";
     public const string Config = "config";
 
-    // Requirement and the reason (Indonesian, for the developer), or null when the message reads like a real failure.
+    // Requirement and the reason (in the UI language, for the developer), or null when the message reads like a real failure.
     public static (string Requirement, string Reason)? Classify(string? message)
     {
         if (string.IsNullOrWhiteSpace(message)) return null;
         if (DatabaseError().Match(message) is { Success: true } database)
-            return (Database, $"Butuh database yang tidak tersedia di mesin ini: {Line(message, database.Index)}");
+            return (Database, Lang.T($"Butuh database yang tidak tersedia di mesin ini: {Line(message, database.Index)}", $"Needs a database that is not available on this machine: {Line(message, database.Index)}"));
         if (NetworkError().Match(message) is { Success: true } network)
-            return (Network, $"Butuh koneksi jaringan/layanan yang tidak tersedia di mesin ini: {Line(message, network.Index)}");
+            return (Network, Lang.T($"Butuh koneksi jaringan/layanan yang tidak tersedia di mesin ini: {Line(message, network.Index)}", $"Needs a network connection/service that is not available on this machine: {Line(message, network.Index)}"));
         if (ConfigError().Match(message) is { Success: true } config)
-            return (Config, $"Butuh konfigurasi yang tidak ada di mesin ini: {Line(message, config.Index)}");
+            return (Config, Lang.T($"Butuh konfigurasi yang tidak ada di mesin ini: {Line(message, config.Index)}", $"Needs configuration that does not exist on this machine: {Line(message, config.Index)}"));
         return null;
     }
 

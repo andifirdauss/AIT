@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,19 +17,19 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
     public async Task<ActionResult<ApiResponse<ProjectDetailDto>>> Get(Guid id, CancellationToken cancellationToken) =>
         await projectService.GetDetailAsync(id, cancellationToken) is { } detail
             ? ApiResponse<ProjectDetailDto>.Ok(detail)
-            : NotFound(ApiResponse<ProjectDetailDto>.Fail("Project tidak ditemukan."));
+            : NotFound(ApiResponse<ProjectDetailDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
 
     // Registers a project manually from its folder (a path inside it also works; a file path uses its folder).
     [HttpPost]
     public async Task<ActionResult<ApiResponse<ProjectDto>>> Register(RegisterProjectRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<ProjectDto>.Ok(await projectService.RegisterAsync(request.Path, cancellationToken), "Project terdaftar.");
+        ApiResponse<ProjectDto>.Ok(await projectService.RegisterAsync(request.Path, cancellationToken), Lang.T("Project terdaftar.", "Project registered."));
 
     // Registers several project folders picked in the browser or found by a scan.
     [HttpPost("batch")]
     public async Task<ActionResult<ApiResponse<RegisterProjectsResultDto>>> RegisterMany(RegisterProjectsRequest request, CancellationToken cancellationToken)
     {
         var result = await projectService.RegisterManyAsync(request.Paths, cancellationToken);
-        return ApiResponse<RegisterProjectsResultDto>.Ok(result, $"{result.Registered} project terdaftar, {result.AlreadyRegistered} sudah terdaftar sebelumnya.");
+        return ApiResponse<RegisterProjectsResultDto>.Ok(result, Lang.T($"{result.Registered} project terdaftar, {result.AlreadyRegistered} sudah terdaftar sebelumnya.", $"{result.Registered} project(s) registered, {result.AlreadyRegistered} already registered before."));
     }
 
     // Lists the sub-folders of a folder (marking project folders); no path lists the drives.
@@ -46,7 +47,7 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
     public async Task<ActionResult<ApiResponse<ProjectDto>>> SetKey(Guid id, SetProjectKeyRequest request, CancellationToken cancellationToken) =>
         await projectService.SetKeyAsync(id, request.Key, cancellationToken) is { } project
             ? ApiResponse<ProjectDto>.Ok(project, $"Project key: {project.Key}.")
-            : NotFound(ApiResponse<ProjectDto>.Fail("Project tidak ditemukan."));
+            : NotFound(ApiResponse<ProjectDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
 
     // Module and layer of the project's files (the first layer of memory labels).
     [HttpGet("{id:guid}/codemap")]
@@ -67,7 +68,7 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
     public async Task<ActionResult<ApiResponse<CodeMapScanResultDto>>> ScanCodeMap(Guid id, CancellationToken cancellationToken)
     {
         var result = await catalog.ScanCodeMapAsync(id, cancellationToken);
-        return ApiResponse<CodeMapScanResultDto>.Ok(result, $"{result.Mapped} dari {result.Files} file terpetakan ke {result.Modules} modul.");
+        return ApiResponse<CodeMapScanResultDto>.Ok(result, Lang.T($"{result.Mapped} dari {result.Files} file terpetakan ke {result.Modules} modul.", $"{result.Mapped} of {result.Files} files mapped to {result.Modules} modules."));
     }
 
     // Folder and class tree of the project (Struktur kode): counts of the latest walk; rescan=true walks again now.
@@ -102,7 +103,7 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
     public async Task<ActionResult<ApiResponse<StructureFunctionCallsDto>>> StructureCalls(Guid id, [FromQuery] string key, CancellationToken cancellationToken) =>
         await structure.GetCallsAsync(id, key, cancellationToken) is { } calls
             ? ApiResponse<StructureFunctionCallsDto>.Ok(calls)
-            : NotFound(ApiResponse<StructureFunctionCallsDto>.Fail("Panggilan function ini belum pernah dibaca."));
+            : NotFound(ApiResponse<StructureFunctionCallsDto>.Fail(Lang.T("Panggilan function ini belum pernah dibaca.", "The calls of this function have not been read yet.")));
 
     [HttpGet("{id:guid}/structure/search")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<StructureSearchHitDto>>>> StructureSearch(Guid id, [FromQuery] string q, CancellationToken cancellationToken) =>
@@ -112,6 +113,6 @@ public class ProjectsController(IProjectService projectService, IMemoryCatalogSe
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id, [FromQuery] bool includeSharedMemory = false, CancellationToken cancellationToken = default) =>
         await projectService.DeleteAsync(id, includeSharedMemory, cancellationToken)
-            ? ApiResponse<bool>.Ok(true, "Project dihapus.")
-            : NotFound(ApiResponse<bool>.Fail("Project tidak ditemukan."));
+            ? ApiResponse<bool>.Ok(true, Lang.T("Project dihapus.", "Project deleted."))
+            : NotFound(ApiResponse<bool>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
 }

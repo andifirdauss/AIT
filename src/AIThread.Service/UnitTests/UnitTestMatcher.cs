@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 
 namespace AIThread.Service.UnitTests;
@@ -42,7 +43,7 @@ public static class UnitTestMatcher
         }
         if (outcomes.Any(o => o.Result == UnitTestResult.Passed)) return new TestVerdict(UnitTestResult.Passed, duration, null, null);
         var skipped = outcomes.First();
-        return new TestVerdict(UnitTestResult.Skipped, duration, null, skipped.SkipReason ?? "Di-skip oleh runner tanpa alasan.");
+        return new TestVerdict(UnitTestResult.Skipped, duration, null, skipped.SkipReason ?? Lang.T("Di-skip oleh runner tanpa alasan.", "Skipped by the runner without a reason."));
     }
 
     public static bool Matches(UnitTestCase test, TestSuite suite, TestCaseOutcome outcome)

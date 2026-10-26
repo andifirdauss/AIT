@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +14,7 @@ public sealed partial class SkillService
         var source = await db.SkillSources.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
         if (source is null) return null;
         if (source.Status is SkillSourceStatus.Queued or SkillSourceStatus.Fetching or SkillSourceStatus.Analyzing)
-            throw new AppValidationException("Sumber ini sedang dalam antrean atau sedang ditarik.");
+            throw new AppValidationException(Lang.T("Sumber ini sedang dalam antrean atau sedang ditarik.", "This source is queued or being fetched."));
 
         source.Status = SkillSourceStatus.Queued;
         source.Error = null;

@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 
 namespace AIThread.Service.UnitTests;
@@ -20,7 +21,7 @@ public sealed partial class UnitTestExecutor
         {
             foreach (var test in tests)
                 verdicts[test.Id] = UnitTestMatcher.Match(test, suite, result.Outcomes)
-                                    ?? new TestVerdict(UnitTestResult.NotFound, null, "Runner tidak melaporkan test ini; namanya atau file-nya mungkin sudah berubah.", null);
+                                    ?? new TestVerdict(UnitTestResult.NotFound, null, Lang.T("Runner tidak melaporkan test ini; namanya atau file-nya mungkin sudah berubah.", "The runner did not report this test; its name or file may have changed."), null);
             return (run, verdicts, true);
         }
 

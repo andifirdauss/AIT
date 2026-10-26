@@ -1,4 +1,5 @@
 using AIThread.API.Infrastructure;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Proxy;
@@ -29,7 +30,7 @@ public class GeminiProxyController(AgentProxyHandler handler, INineRouterService
         {
             // countTokens and friends have no orchestrated form; they are not proxied.
             await AgentProxyHandler.WriteErrorAsync(Response, ClientProtocol.GeminiGenerate, StatusCodes.Status404NotFound, "not_found",
-                $"AIT hanya mendukung generateContent dan streamGenerateContent (diminta: {action}).");
+                Lang.T($"AIT hanya mendukung generateContent dan streamGenerateContent (diminta: {action}).", $"AIT only supports generateContent and streamGenerateContent (requested: {action})."));
             return;
         }
 

@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -17,7 +18,7 @@ public sealed partial class SettingService
             entity.TelegramBotTokenProtected = _protector.Protect(request.BotToken.Trim());
 
         if (request.Enabled && Unprotect(entity.TelegramBotTokenProtected) is null)
-            throw new AppValidationException("Isi bot token dari @BotFather sebelum mengaktifkan Telegram.");
+            throw new AppValidationException(Lang.T("Isi bot token dari @BotFather sebelum mengaktifkan Telegram.", "Fill in the bot token from @BotFather before turning on Telegram."));
 
         entity.TelegramEnabled = request.Enabled;
         entity.UpdatedAt = DateTime.UtcNow;

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Memory;
 
@@ -8,6 +9,9 @@ public static partial class TextLanguage
 {
     public const string Indonesian = "Indonesian";
     public const string English = "English";
+
+    // The UI language as a memory language: the default when the words do not tell.
+    public static string Ui => Lang.IsEnglish ? English : Indonesian;
 
     private static readonly HashSet<string> IndonesianWords = new(StringComparer.OrdinalIgnoreCase)
     {

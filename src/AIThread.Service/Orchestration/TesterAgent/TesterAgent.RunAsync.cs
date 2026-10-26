@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
@@ -93,14 +94,14 @@ public sealed partial class TesterAgent
             if (run.Input.CanAskLogin && result.ToolCalls.FirstOrDefault(c => c.Name == TesterTools.AskLogin) is { } ask)
             {
                 var args = PlannerToolRunner.ParseArguments(ask.Arguments, out _);
-                run.Report.LoginNeeded = (args is null ? null : PlannerToolRunner.Str(args, "reason"))?.Trim() ?? "Aplikasi meminta login.";
+                run.Report.LoginNeeded = (args is null ? null : PlannerToolRunner.Str(args, "reason"))?.Trim() ?? Lang.T("Aplikasi meminta login.", "The application asks for a login.");
                 run.Report.LoginUrl = args is null ? null : PlannerToolRunner.Str(args, "loginUrl")?.Trim();
                 // The development password can only be refused when the tester logged in with it.
                 run.Report.LoginKind = args is not null && PlannerToolRunner.Str(args, "kind")?.Trim() == TestingReport.LoginKindDevPassword && run.Account is not null
                     ? TestingReport.LoginKindDevPassword
                     : TestingReport.LoginKindLogin;
-                recorder.Log(ActivityLevel.Info, $"Tester meminta login: {run.Report.LoginNeeded}");
-                await progress.StepAsync($"🔐 Butuh login: {run.Report.LoginNeeded}", cancellationToken, hang: 3);
+                recorder.Log(ActivityLevel.Info, Lang.T($"Tester meminta login: {run.Report.LoginNeeded}", $"Tester asks for a login: {run.Report.LoginNeeded}"));
+                await progress.StepAsync(Lang.T($"🔐 Butuh login: {run.Report.LoginNeeded}", $"🔐 Login needed: {run.Report.LoginNeeded}"), cancellationToken, hang: 3);
                 ApplyVerdict(run.Report, null);
                 return Done(run, tokens, node);
             }

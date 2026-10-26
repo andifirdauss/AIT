@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -21,9 +22,9 @@ public sealed partial class UnitTestRestorer
             var where = $"commit {commit[..Math.Min(8, commit.Length)]}" + (branch is null or "HEAD" ? string.Empty : $" (branch {branch})");
             notes.Add(await git.ContainsAsync(commit, cancellationToken) switch
             {
-                false => $"{tests} berasal dari {where} yang belum ada di branch ini; pull/merge branch itu untuk mendapatkan riwayat aslinya.",
-                true => $"{tests} sudah ada di {where}, tetapi terhapus setelahnya di branch ini; kalau memang sengaja dihapus, tandai obsolete agar tidak dipulihkan lagi.",
-                null => $"{tests} berasal dari {where} yang belum dikenal git di mesin ini (belum di-fetch)."
+                false => Lang.T($"{tests} berasal dari {where} yang belum ada di branch ini; pull/merge branch itu untuk mendapatkan riwayat aslinya.", $"{tests} come from {where}, which is not on this branch yet; pull/merge that branch to get their original history."),
+                true => Lang.T($"{tests} sudah ada di {where}, tetapi terhapus setelahnya di branch ini; kalau memang sengaja dihapus, tandai obsolete agar tidak dipulihkan lagi.", $"{tests} already existed in {where}, but were deleted afterwards on this branch; if they were deleted on purpose, mark them obsolete so they are not restored again."),
+                null => Lang.T($"{tests} berasal dari {where} yang belum dikenal git di mesin ini (belum di-fetch).", $"{tests} come from {where}, which git does not know on this machine yet (not fetched).")
             });
         }
         return notes;

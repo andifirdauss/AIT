@@ -27,12 +27,15 @@ public sealed record ChangeLogState(
     IReadOnlyList<string> Notes);
 
 // The MEMORY.md-like text of project memory: AIT renders every change entry and module summary from the model's JSON,
-// so all of them read the same way for the developer in the Memory menu and for the planner of a later thread.
+// so all of them read the same way for the developer in the Memory menu and for the planner of a later thread. The
+// headings follow the language the text is written in (english: TextLanguage.English), not the UI language: memory is
+// shared with a team whose members may use AIT in another language.
 public static class ChangeLog
 {
-    public const string Created = "baru";
-    public const string Modified = "ubah";
-    public const string Deleted = "hapus";
+    // What the thread did to a file; rendered as baru/ubah/hapus or new/modified/deleted.
+    public const string Created = "created";
+    public const string Modified = "modified";
+    public const string Deleted = "deleted";
 
     public const int MaxTitleChars = 120;
     public const int MaxEntryFiles = 40;
@@ -81,27 +84,27 @@ public static class ChangeLog
         return changed.Select(c => c with { Note = notes.GetValueOrDefault(c.Path) ?? c.Note }).Take(MaxEntryFiles).ToList();
     }
 
-    public static string Render(ChangeLogEntry entry)
+    public static string Render(ChangeLogEntry entry, bool english = false)
     {
         var builder = new StringBuilder();
         builder.Append("### ").Append(entry.Title).Append('\n');
-        if (entry.Feature is not null) builder.Append("**Fitur:** ").Append(entry.Feature).Append('\n');
-        AppendFiles(builder, "File berubah", entry.Files);
-        AppendList(builder, "Validasi", entry.Validation, numbered: false);
+        if (entry.Feature is not null) builder.Append(english ? "**Feature:** " : "**Fitur:** ").Append(entry.Feature).Append('\n');
+        AppendFiles(builder, english ? "Changed files" : "File berubah", entry.Files, english);
+        AppendList(builder, english ? "Validation" : "Validasi", entry.Validation, numbered: false);
         AppendList(builder, "Flow", entry.Flow, numbered: true);
-        AppendList(builder, "Catatan", entry.Notes, numbered: false);
+        AppendList(builder, english ? "Notes" : "Catatan", entry.Notes, numbered: false);
         return Clip(builder.ToString().TrimEnd(), MaxEntryChars);
     }
 
-    public static string Render(string module, ChangeLogState state)
+    public static string Render(string module, ChangeLogState state, bool english = false)
     {
         var builder = new StringBuilder();
-        builder.Append("### ").Append(module).Append(" — kondisi saat ini\n");
-        AppendList(builder, "Fitur", state.Features, numbered: false);
-        AppendFiles(builder, "File utama", state.Files);
-        AppendList(builder, "Validasi", state.Validation, numbered: false);
+        builder.Append("### ").Append(module).Append(english ? " — current state\n" : " — kondisi saat ini\n");
+        AppendList(builder, english ? "Features" : "Fitur", state.Features, numbered: false);
+        AppendFiles(builder, english ? "Main files" : "File utama", state.Files, english);
+        AppendList(builder, english ? "Validation" : "Validasi", state.Validation, numbered: false);
         AppendList(builder, "Flow", state.Flow, numbered: false);
-        AppendList(builder, "Catatan", state.Notes, numbered: false);
+        AppendList(builder, english ? "Notes" : "Catatan", state.Notes, numbered: false);
         return Clip(builder.ToString().TrimEnd(), MaxSummaryChars);
     }
 
@@ -119,14 +122,14 @@ public static class ChangeLog
     // Forward slashes, no leading "./" or "/".
     public static string NormalizePath(string path) => path.Trim().Trim('`').Replace('\\', '/').TrimStart('.', '/');
 
-    private static void AppendFiles(StringBuilder builder, string heading, IReadOnlyList<ChangeLogFile> files)
+    private static void AppendFiles(StringBuilder builder, string heading, IReadOnlyList<ChangeLogFile> files, bool english)
     {
         if (files.Count == 0) return;
         builder.Append("\n**").Append(heading).Append(":**\n");
         foreach (var file in files)
         {
             builder.Append("- `").Append(file.Path).Append('`');
-            if (!string.IsNullOrEmpty(file.Action)) builder.Append(" (").Append(file.Action).Append(')');
+            if (!string.IsNullOrEmpty(file.Action)) builder.Append(" (").Append(ActionText(file.Action, english)).Append(')');
             if (file.Note is not null) builder.Append(" — ").Append(file.Note);
             builder.Append('\n');
         }
@@ -139,6 +142,14 @@ public static class ChangeLog
         for (var i = 0; i < lines.Count; i++)
             builder.Append(numbered ? $"{i + 1}. " : "- ").Append(lines[i]).Append('\n');
     }
+
+    private static string ActionText(string action, bool english) => action switch
+    {
+        Created => english ? "new" : "baru",
+        Modified => english ? "modified" : "ubah",
+        Deleted => english ? "deleted" : "hapus",
+        _ => action
+    };
 
     // Strings of a JSON array (a single string counts as one), one line each, without the model's own bullets.
     private static IReadOnlyList<string> Lines(JsonNode? node, int max)

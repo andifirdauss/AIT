@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -35,16 +36,16 @@ public sealed partial class ProjectService
         var context = lookup.Project is null ? null : ToContext(lookup.Project);
         _sessions[key] = new SessionDecision(context?.ProjectId, now + (context is null ? IgnoredSessionLifetime : SessionDecisionLifetime));
 
-        var sessionLabel = string.IsNullOrEmpty(sessionId) ? "tanpa id" : sessionId[..Math.Min(8, sessionId.Length)];
+        var sessionLabel = string.IsNullOrEmpty(sessionId) ? Lang.T("tanpa id", "no id") : sessionId[..Math.Min(8, sessionId.Length)];
         if (context is null)
         {
             var subject = directory ?? hint;
             activityLog.Info("proxy",
-                $"Sesi {sessionLabel} ({subject ?? "tanpa working directory"}) bukan bagian project ({NoProjectReason(subject, lookup.Resolution)}) — prompt diabaikan orkestrasi dan diteruskan langsung.");
+                Lang.T($"Sesi {sessionLabel} ({subject ?? "tanpa working directory"}) bukan bagian project ({NoProjectReason(subject, lookup.Resolution)}) — prompt diabaikan orkestrasi dan diteruskan langsung.", $"Session {sessionLabel} ({subject ?? "no working directory"}) is not part of a project ({NoProjectReason(subject, lookup.Resolution)}) — the prompt skips orchestration and is passed through directly."));
         }
         else
         {
-            activityLog.Info("proxy", $"Sesi {sessionLabel} terhubung ke project {context.Name}.", projectId: context.ProjectId);
+            activityLog.Info("proxy", Lang.T($"Sesi {sessionLabel} terhubung ke project {context.Name}.", $"Session {sessionLabel} connected to project {context.Name}."), projectId: context.ProjectId);
         }
 
         return context;

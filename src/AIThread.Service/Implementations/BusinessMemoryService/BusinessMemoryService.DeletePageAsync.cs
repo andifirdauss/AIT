@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Business;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public sealed partial class BusinessMemoryService
 
         Publish("deleted", page);
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
-        activityLog.Info("business", $"Halaman bisnis '{page.Module} — {page.Title}' dihapus oleh {settings.EffectiveDeveloperName}.");
+        activityLog.Info("business", Lang.T($"Halaman bisnis '{page.Module} — {page.Title}' dihapus oleh {settings.EffectiveDeveloperName}.", $"Business page '{page.Module} — {page.Title}' deleted by {settings.EffectiveDeveloperName}."));
         return true;
     }
 }

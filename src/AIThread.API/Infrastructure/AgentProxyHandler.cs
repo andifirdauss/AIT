@@ -1,14 +1,15 @@
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json;
+using System.Text;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Proxy;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace AIThread.API.Infrastructure;
@@ -84,7 +85,7 @@ public sealed class AgentProxyHandler(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Could not resolve the project of session {SessionId}.", info.SessionId);
-            activityLog.Error("proxy", $"Project sesi tidak dapat ditentukan ({ex.Message}); prompt diteruskan tanpa orkestrasi.");
+            activityLog.Error("proxy", Lang.T($"Project sesi tidak dapat ditentukan ({ex.Message}); prompt diteruskan tanpa orkestrasi.", $"The session's project cannot be determined ({ex.Message}); the prompt is forwarded without orchestration."));
             return null;
         }
     }
@@ -136,7 +137,7 @@ public sealed class AgentProxyHandler(
         {
             // Failures inside a thread are reported by the orchestrator; this covers setup errors (e.g. database down).
             logger.LogError(ex, "Orchestration failed before the thread started.");
-            await writer.TextAsync($"❌ AIT gagal memulai thread: {ex.Message}", cancellationToken);
+            await writer.TextAsync(Lang.T($"❌ AIT gagal memulai thread: {ex.Message}", $"❌ AIT failed to start the thread: {ex.Message}"), cancellationToken);
         }
 
         if (!cancellationToken.IsCancellationRequested) await writer.FinishAsync(cancellationToken);
@@ -162,7 +163,7 @@ public sealed class AgentProxyHandler(
         if (model is null)
         {
             await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status503ServiceUnavailable, "api_error",
-                "AIT: passthrough model belum diatur (menu Setting) dan tidak ada node aktif yang bisa dipakai.");
+                Lang.T("AIT: passthrough model belum diatur (menu Setting) dan tidak ada node aktif yang bisa dipakai.", "AIT: no passthrough model is set (Setting menu) and there is no active node to use."));
             return;
         }
 
@@ -210,7 +211,7 @@ public sealed class AgentProxyHandler(
         }
 
         activityLog.Debug("proxy", $"Passthrough ({reason}) [{call.Protocol}] {requestedModel} → {model} [{(int)upstream.StatusCode}]"
-                                   + (masked > 0 ? $" · 🔒 {masked} secret disamarkan" : string.Empty));
+                                   + (masked > 0 ? Lang.T($" · 🔒 {masked} secret disamarkan", $" · 🔒 {masked} secret(s) masked") : string.Empty));
     }
 
     // Explicit setting first, then the cheapest configured workers.

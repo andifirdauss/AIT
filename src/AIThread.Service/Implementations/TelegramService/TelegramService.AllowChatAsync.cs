@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Telegram;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +21,7 @@ public sealed partial class TelegramService
             await db.SaveChangesAsync(cancellationToken);
 
             eventBus.Publish(AppEvent.Create(AppEventTypes.TelegramChanged, new { chat.Id, action = "allowed" }));
-            activityLog.Success("telegram", $"Chat Telegram {chat.DisplayName} (ID {chat.ChatId}) diizinkan mengirim prompt.");
+            activityLog.Success("telegram", Lang.T($"Chat Telegram {chat.DisplayName} (ID {chat.ChatId}) diizinkan mengirim prompt.", $"Telegram chat {chat.DisplayName} (ID {chat.ChatId}) is allowed to send prompts."));
             await NotifyAsync(chat, TelegramMessages.Allowed(chat.ActiveProject?.Name), cancellationToken);
         }
 

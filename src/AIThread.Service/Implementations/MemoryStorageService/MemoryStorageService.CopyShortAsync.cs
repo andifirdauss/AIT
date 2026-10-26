@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Data.Cache;
 using AIThread.Data.Memory;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ public sealed partial class MemoryStorageService
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Short memories could not be copied to the new store.");
-            warnings.Add($"Short memory lama tidak dapat disalin: {MemoryStoreTester.ErrorMessage(ex)}");
+            warnings.Add(Lang.T($"Short memory lama tidak dapat disalin: {MemoryStoreTester.ErrorMessage(ex)}", $"The old short memory cannot be copied: {MemoryStoreTester.ErrorMessage(ex)}"));
             return 0;
         }
         finally

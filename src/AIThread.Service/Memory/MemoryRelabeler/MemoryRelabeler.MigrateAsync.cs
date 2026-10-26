@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+
 namespace AIThread.Service.Memory;
 
 public sealed partial class MemoryRelabeler
@@ -24,7 +26,7 @@ public sealed partial class MemoryRelabeler
             reviewed += r;
         }
 
-        SetPhase("Relabel", withMemory.Count > 0 ? "memory lainnya" : null);
+        SetPhase("Relabel", withMemory.Count > 0 ? Lang.T("memory lainnya", "other memories") : null);
         var (restLabeled, restReviewed) = await RelabelAsync(projects, null, relabeledKeys, cancellationToken);
         return (labeled + restLabeled, reviewed + restReviewed);
     }

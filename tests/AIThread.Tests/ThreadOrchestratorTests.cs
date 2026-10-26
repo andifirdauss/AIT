@@ -104,7 +104,7 @@ public class ThreadOrchestratorTests
         Assert.DoesNotContain("src/Other.cs", memory.Description);
         Assert.Contains("**Catatan:**\n- Belum ada test untuk `Farewell`.", memory.Description);
         var extractorInput = router.CallsTo(ScriptedAgent.MemoryExtractor).Single().Messages.OfType<JsonObject>().Last()["content"]!.GetValue<string>();
-        Assert.Contains("# Changed files\n- src/Farewell.cs (baru)\n- src/Greeter.cs (ubah)\n", extractorInput);
+        Assert.Contains("# Changed files\n- src/Farewell.cs (created)\n- src/Greeter.cs (modified)\n", extractorInput);
         Assert.Equal(harness.ProjectId, memory.ProjectId);
         Assert.Equal(result.ThreadId, sourceThread);
     }

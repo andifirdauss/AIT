@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations.Cli;
@@ -24,8 +25,8 @@ public sealed partial class OhMyPiProviderIntegration(ISettingService settingSer
     public CliInfoDto Info => new(
         Id,
         "oh-my-pi (omp) — provider AIT",
-        $"Menambah provider \"{ProviderId}\" di models.yml omp. Pilih model {ProviderId}/{ModelId} lewat /model (atau --model {ProviderId}/{ModelId}); provider Anthropic asli tetap bisa dipakai.",
+        Lang.T($"Menambah provider \"{ProviderId}\" di models.yml omp. Pilih model {ProviderId}/{ModelId} lewat /model (atau --model {ProviderId}/{ModelId}); provider Anthropic asli tetap bisa dipakai.", $"Adds the provider \"{ProviderId}\" to the omp models.yml. Choose the model {ProviderId}/{ModelId} with /model (or --model {ProviderId}/{ModelId}); the original Anthropic provider can still be used."),
         _modelsPath,
         null,
-        "Berlaku untuk sesi omp berikutnya. Project tetap terdeteksi dari folder tempat omp dijalankan.");
+        Lang.T("Berlaku untuk sesi omp berikutnya. Project tetap terdeteksi dari folder tempat omp dijalankan.", "Takes effect for the next omp session. The project is still detected from the folder omp runs in."));
 }

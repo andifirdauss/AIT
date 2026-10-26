@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
@@ -36,7 +37,7 @@ public sealed partial class ThreadOrchestrator
             t.TotalMs = (t.TotalMs ?? 0) + total.ElapsedMilliseconds;
         });
         questions.Add(thread.Id, project.ProjectId, request.SessionId!, pause.Question, pause.Conversation);
-        recorder.Log(ActivityLevel.Info, $"Planner bertanya ke developer; thread menunggu jawaban: {Truncate(pause.Question.Question.ReplaceLineEndings(" "), 200)}");
+        recorder.Log(ActivityLevel.Info, Lang.T($"Planner bertanya ke developer; thread menunggu jawaban: {Truncate(pause.Question.Question.ReplaceLineEndings(" "), 200)}", $"The planner asked the developer; the thread waits for the answer: {Truncate(pause.Question.Question.ReplaceLineEndings(" "), 200)}"));
         return new ThreadResult(thread.Id, ThreadStatus.AwaitingInput, progress.Transcript, TotalTokens(thread));
     }
 }

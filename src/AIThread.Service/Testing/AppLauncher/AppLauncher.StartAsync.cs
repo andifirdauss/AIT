@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 using Microsoft.Extensions.Logging;
 
@@ -52,7 +53,7 @@ public sealed partial class AppLauncher
         {
             process.Dispose();
             logger.LogWarning("Aplikasi tidak bisa dijalankan dengan {Command}: {Error}", command.Display, ex.Message);
-            return new AppStartResult(null, $"'{command.FileName}' tidak bisa dijalankan ({ex.Message.TrimEnd('.')}); pastikan toolchain {command.Stack} terpasang dan ada di PATH");
+            return new AppStartResult(null, Lang.T($"'{command.FileName}' tidak bisa dijalankan ({ex.Message.TrimEnd('.')}); pastikan toolchain {command.Stack} terpasang dan ada di PATH", $"'{command.FileName}' cannot be run ({ex.Message.TrimEnd('.')}); make sure the {command.Stack} toolchain is installed and on PATH"));
         }
 
         logger.LogInformation("Menjalankan aplikasi untuk testing: {Command} (PID {ProcessId})", command.Display, process.Id);
@@ -80,13 +81,13 @@ public sealed partial class AppLauncher
                     if (await AnswersAsync(http, baseUrl, cancellationToken)) return new AppStartResult(null, null);
                     // Windows crash codes read better in hex: -1073741819 is 0xC0000005 (access violation).
                     var code = exitCode < 0 ? $"{exitCode} (0x{exitCode:X8})" : exitCode.ToString();
-                    return Failed(command, $"berhenti dengan exit code {code} sebelum menjawab", Output());
+                    return Failed(command, Lang.T($"berhenti dengan exit code {code} sebelum menjawab", $"stopped with exit code {code} before answering"), Output());
                 }
 
                 if (clock.Elapsed > StartTimeout)
                 {
                     await app.DisposeAsync();
-                    return Failed(command, $"belum menjawab setelah {StartTimeout.TotalMinutes:0} menit, jadi dihentikan lagi", Output());
+                    return Failed(command, Lang.T($"belum menjawab setelah {StartTimeout.TotalMinutes:0} menit, jadi dihentikan lagi", $"did not answer after {StartTimeout.TotalMinutes:0} minutes, so it was stopped again"), Output());
                 }
 
                 await Task.Delay(PollInterval, cancellationToken);

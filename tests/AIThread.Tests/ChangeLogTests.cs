@@ -51,6 +51,31 @@ public class ChangeLogTests
     }
 
     [Fact]
+    public void Headings_follow_the_language_the_entry_is_written_in()
+    {
+        var entry = new ChangeLogEntry("Add a Description column", "Users can fill in a description.",
+            [new ChangeLogFile("Views/User/Index.cshtml", ChangeLog.Modified, null), new ChangeLogFile("Old.cs", ChangeLog.Deleted, null)],
+            ["`Description` max 500 characters"], [], ["Run the migration."]);
+
+        Assert.Equal("""
+            ### Add a Description column
+            **Feature:** Users can fill in a description.
+
+            **Changed files:**
+            - `Views/User/Index.cshtml` (modified)
+            - `Old.cs` (deleted)
+
+            **Validation:**
+            - `Description` max 500 characters
+
+            **Notes:**
+            - Run the migration.
+            """.ReplaceLineEndings("\n"), ChangeLog.Render(entry, english: true));
+        Assert.StartsWith("### User — current state\n\n**Features:**\n- Login",
+            ChangeLog.Render("User", new ChangeLogState(["Login"], [], [], [], []), english: true));
+    }
+
+    [Fact]
     public void Entry_without_a_title_is_dropped()
     {
         Assert.Null(ChangeLog.ParseEntry(JsonNode.Parse("""{"title": " ", "files": []}""")!.AsObject()));

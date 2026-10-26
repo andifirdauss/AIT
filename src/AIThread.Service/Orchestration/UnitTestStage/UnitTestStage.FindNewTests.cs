@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.UnitTests;
 using AIThread.Service.Verification;
 
@@ -21,8 +22,8 @@ public sealed partial class UnitTestStage
             if (found is null)
             {
                 var note = suite is null
-                    ? $"Test baru \"{wanted.Name}\" ada di {wanted.File}, yang bukan bagian dari suite test mana pun."
-                    : $"Test baru \"{wanted.Name}\" tidak ditemukan di {wanted.File}.";
+                    ? Lang.T($"Test baru \"{wanted.Name}\" ada di {wanted.File}, yang bukan bagian dari suite test mana pun.", $"New test \"{wanted.Name}\" is in {wanted.File}, which is not part of any test suite.")
+                    : Lang.T($"Test baru \"{wanted.Name}\" tidak ditemukan di {wanted.File}.", $"New test \"{wanted.Name}\" was not found in {wanted.File}.");
                 if (!session.Report.Notes.Contains(note)) session.Report.Notes.Add(note);
                 continue;
             }

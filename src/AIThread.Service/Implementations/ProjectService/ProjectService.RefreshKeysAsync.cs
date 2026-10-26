@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +27,7 @@ public sealed partial class ProjectService
         var filled = await memoryKeys.BackfillAsync(projects, cancellationToken);
         if (filled > 0)
         {
-            activityLog.Info("memory", $"{filled} memory lama diberi project key agar bisa dibagi antar developer.");
+            activityLog.Info("memory", Lang.T($"{filled} memory lama diberi project key agar bisa dibagi antar developer.", $"{filled} old memories got a project key so they can be shared between developers."));
             eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = (Guid?)null, action = "updated" }));
         }
     }

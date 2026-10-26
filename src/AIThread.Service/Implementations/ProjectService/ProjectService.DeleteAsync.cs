@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Workspace;
 using Microsoft.EntityFrameworkCore;
@@ -40,19 +41,19 @@ public sealed partial class ProjectService
         string outcome;
         if (sibling is not null)
         {
-            outcome = "memory-nya tetap dipakai clone lain dari repository yang sama";
+            outcome = Lang.T("memory-nya tetap dipakai clone lain dari repository yang sama", "its memory is still used by another clone of the same repository");
         }
         else
         {
             await memoryKeys.DeleteAsync(id, key, includeSharedMemory, cancellationToken);
             var sharedKept = !includeSharedMemory && !ProjectKeyResolver.IsLocal(key)
                              && (memoryKeys.LongStoreIsShared || memoryKeys.ShortStoreIsShared);
-            outcome = sharedKept ? "memory di store central tetap disimpan untuk developer lain" : "beserta memory-nya";
+            outcome = sharedKept ? Lang.T("memory di store central tetap disimpan untuk developer lain", "the memory in the central store is kept for other developers") : Lang.T("beserta memory-nya", "together with its memory");
         }
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.ProjectChanged, new { id, action = "deleted" }));
         eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = (Guid?)null, action = "deleted" }));
-        activityLog.Info("project", $"Project '{project.Name}' dihapus — {outcome}.", projectId: id);
+        activityLog.Info("project", Lang.T($"Project '{project.Name}' dihapus — {outcome}.", $"Project '{project.Name}' deleted — {outcome}."), projectId: id);
         return true;
     }
 }
