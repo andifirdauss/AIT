@@ -64,11 +64,17 @@ public sealed partial class MemoryExtractor
             var area = areas is [{ } single] ? single : null;
             var entry = extracted.Entry with { Files = ChangeLog.MergeFiles(changed, extracted.Entry.Files) };
             var keywords = extracted.Keywords.Count > 0 ? extracted.Keywords : MemoryLabels.Tokens(entry.Title, 8);
+            var description = ChangeLog.Render(entry);
+            if (TextLanguage.IsForeign(description))
+            {
+                activityLog.Warn("memory", "Catatan perubahan tidak disimpan: model menulisnya dalam bahasa lain.", thread.Id, thread.ProjectId);
+                return new MemoryExtraction(0, tokens);
+            }
             try
             {
                 // Memory outlives the thread and may be shared with the team: a secret the model repeated stays masked.
                 var saved = await memoryService.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, projectId, module, MemoryKind.Change, keywords,
-                    secrets.Redact(ChangeLog.Render(entry)), layers, area, extracted.OtherModules), thread.Id, cancellationToken);
+                    secrets.Redact(description), layers, area, extracted.OtherModules), thread.Id, cancellationToken);
                 activityLog.Info("memory",
                     $"Catatan perubahan baru dari thread ini ({(saved.Level == MemoryLevel.Short ? "short" : "long")} memory): {saved.Label} — {entry.Title}",
                     thread.Id, thread.ProjectId);

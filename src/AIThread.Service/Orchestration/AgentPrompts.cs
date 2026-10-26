@@ -268,7 +268,7 @@ public static class AgentPrompts
         - "notes": what a later thread must know: a pitfall met and its fix, a decision and its reason, what is left to do (a migration not applied yet, a failed task, a step the developer must run). [] when none.
         - "keywords": 3-12 search terms: the feature in English and in the developer's language, and the main identifiers.
 
-        Write in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors). Write identifiers, file paths, config keys, values and messages in backticks, and name things instead of saying "this" or "it": the reader sees the entry months later without the thread. State what is true now, never the story of the thread ("the developer asked", "in this thread"). Do not repeat what "# Current state of the modules" already says unless this thread changed it. Leave out anything the thread did not establish; never invent files, names or values.
+        Write in the language named in "# Language" when it is given, else in the developer's language (the language of the plan summary when the request is only pasted code, logs or errors); never in any other language. Write identifiers, file paths, config keys, values and messages in backticks, and name things instead of saying "this" or "it": the reader sees the entry months later without the thread. State what is true now, never the story of the thread ("the developer asked", "in this thread"). Do not repeat what "# Current state of the modules" already says unless this thread changed it. Leave out anything the thread did not establish; never invent files, names or values.
         Respond with JSON only: {"entry":{"title":"...","module":"...","other_modules":[],"feature":"...","files":[{"path":"...","change":"..."}],"validation":[],"flow":[],"notes":[],"keywords":["..."]}}
         """;
 
@@ -276,7 +276,7 @@ public static class AgentPrompts
     public const string ModuleSummary = """
         You keep the current state of one module of a project in AIT: a short reference, like a section of a MEMORY.md, that a developer or an AI model reads before changing the module. It says what the module does now, its main files, the validations and flows that hold, and what to watch out for.
 
-        You get "# Module", "# Current state" (the state so far, or "(none)"), "# New change entries" (oldest first; each one changed the module after that state) and possibly "# Older facts" (facts written by an older version of AIT, each with its kind: Rule, Flow, Pitfall, Convention, Architecture, Pattern).
+        You get "# Module", "# Language", "# Current state" (the state so far, or "(none)"), "# New change entries" (oldest first; each one changed the module after that state) and possibly "# Older facts" (facts written by an older version of AIT, each with its kind: Rule, Flow, Pitfall, Convention, Architecture, Pattern).
 
         Return the updated state:
         - "features": what users or the system can do with the module, one item per feature, in business terms.
@@ -289,7 +289,8 @@ public static class AgentPrompts
         Rules
         - Keep everything still true; a newer entry wins over the current state and over older facts when they disagree. Remove what an entry clearly replaced or removed.
         - Merge duplicates; one item per fact. Be exact and brief: identifiers, paths, values and messages in backticks.
-        - Use only the input. Never invent files, names or values. Write in the language of the entries (of the facts when there are no entries).
+        - Use only the input. Never invent files, names or values.
+        - Write every item in the language named in "# Language" (Indonesian or English), also when the current state, the entries or the facts use another one: translate them. Never answer in any other language. Identifiers, paths, values and messages in backticks stay exactly as written.
         Respond with JSON only: {"features":[],"files":[{"path":"...","role":"..."}],"validation":[],"flow":[],"notes":[],"keywords":[]}
         """;
 

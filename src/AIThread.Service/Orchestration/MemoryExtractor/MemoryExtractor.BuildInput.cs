@@ -12,6 +12,8 @@ public sealed partial class MemoryExtractor
         IReadOnlyList<CodeMapHit> map, IReadOnlyList<ProjectModule> modules, IReadOnlyList<MemoryItemDto> existing)
     {
         var builder = new StringBuilder();
+        // Decided by AIT when the words tell it, so a cheap model does not drift into another language.
+        if (TextLanguage.Guess([thread.Prompt, plan.Summary]) is { } language) builder.Append("# Language\n").Append(language).Append("\n\n");
         builder.Append("# Developer request\n").Append(thread.Prompt).Append("\n\n");
         builder.Append("# Plan summary\n").Append(plan.Summary).Append("\n\n");
         if (plan.Contract.Count > 0)

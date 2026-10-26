@@ -177,6 +177,57 @@ public class ChangeLogTests
         harness.Service<IActivityLogService>(),
         NullLogger<ModuleSummaryWriter>.Instance);
 
+    private const string Vietnamese = """
+        ### Request — kondisi saat ini
+
+        **Validasi:**
+        - `TrRequest` không được giữ trạng thái `APPROVED` sau khi faktur ở trạng thái `CLOSED`. Unlock yêu cầu backup `TrRequest`, cập nhật status thành `DONE` và requester approval.
+        """;
+
+    [Fact]
+    public void Language_of_memory_text_is_told_apart()
+    {
+        Assert.True(TextLanguage.IsForeign(Vietnamese));
+        Assert.False(TextLanguage.IsForeign("Aturan: `Email` wajib unik untuk user José Müller dan tidak boleh kosong."));
+        Assert.Equal(TextLanguage.Indonesian, TextLanguage.Guess(["Outlet tidak bisa mengajukan TO bila `TrRequest` masih `APPROVED` setelah faktur `CLOSED`."]));
+        Assert.Equal(TextLanguage.English, TextLanguage.Guess(["The outlet is locked when the request is still approved after the invoice is closed."]));
+        Assert.Null(TextLanguage.Guess([Vietnamese]));
+    }
+
+    [Fact]
+    public async Task Summary_in_another_language_is_written_again_and_a_foreign_answer_is_not_saved()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
+        using var backup = new TempWorkspace();
+        MemoryRelabeler.BackupDirectory = backup.Root;
+        var t0 = DateTime.UtcNow.AddHours(-1);
+        // The project writes Indonesian; the entry was folded already (the summary's watermark is after it).
+        await AddAsync(harness, "Request", MemoryKind.Change, "### Unlock outlet\n**Fitur:** Outlet bisa mengajukan TO lagi setelah faktur ditutup dan request sudah selesai.", t0);
+        var summary = await AddAsync(harness, "Request", MemoryKind.Summary, Vietnamese, t0.AddMinutes(1));
+        var writer = harness.Service<IModuleSummaryWriter>();
+        harness.Router.On(ScriptedAgent.ModuleSummary, call =>
+        {
+            Assert.Contains("# Language\nIndonesian\n", call.LastUser);
+            Assert.Contains("# New change entries\n(none)", call.LastUser);
+            return ScriptedRouter.Text("""{"validation": ["`TrRequest` tidak boleh tetap `APPROVED` setelah faktur `CLOSED`."]}""");
+        });
+
+        Assert.Equal(1, await writer.RunAsync(default));
+        var rewritten = (await FindAsync(harness, summary))!;
+        Assert.Contains("tidak boleh tetap", rewritten.Description);
+        Assert.Equal(t0.AddMinutes(1), rewritten.PromotedAt, TimeSpan.FromMilliseconds(1));
+
+        // Indonesian now: nothing to do. A foreign answer for a foreign summary is never stored.
+        Assert.Equal(0, await writer.RunAsync(default));
+        await using (var db = await harness.CreateDbAsync())
+            await db.LongMemories.Where(m => m.Id == summary).ExecuteUpdateAsync(u => u.SetProperty(m => m.Description, Vietnamese));
+        harness.Router.On(ScriptedAgent.ModuleSummary, ScriptedRouter.Text("""{"validation": ["`TrRequest` không được giữ trạng thái `APPROVED` sau khi faktur ở trạng thái `CLOSED`, cập nhật status thành `DONE`."]}"""));
+        Assert.Equal(0, await writer.RunAsync(default));
+        Assert.Equal(Vietnamese, (await FindAsync(harness, summary))!.Description);
+    }
+
     [Fact]
     public async Task Planner_brief_writes_out_the_module_memory()
     {
