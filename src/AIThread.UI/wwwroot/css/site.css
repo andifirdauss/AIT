@@ -633,6 +633,24 @@ body {
   padding-left: 0.85rem;
 }
 
+/* Memory description in Pratinjau mode: as tall as the textarea it replaces, scrolling inside the modal. */
+.memory-preview {
+  min-height: 16rem;
+  max-height: 55vh;
+  overflow-y: auto;
+  cursor: text;
+}
+
+.memory-preview > :first-child {
+  margin-top: 0;
+}
+
+.memory-preview p,
+.memory-preview ul,
+.memory-preview ol {
+  margin-bottom: 0.5rem;
+}
+
 .docs-body {
   font-size: 0.95rem;
   line-height: 1.65;
