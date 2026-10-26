@@ -5,6 +5,7 @@ using AIThread.Common.Memory;
 using AIThread.Data.Memory;
 using AIThread.Service.Orchestration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Memory;
 
@@ -45,11 +46,22 @@ public sealed partial class ModuleSummaryWriter
             .OrderBy(m => m.CreatedAt)
             .Take(MaxFactsPerCall)
             .ToList();
-        if (changes.Count + facts.Count + others.Count == 0) return null;
+        // A summary a model wrote in another language (Vietnamese, say) is written again even without new entries.
+        var foreign = summaries.Any(s => TextLanguage.IsForeign(s.Description));
+        if (changes.Count + facts.Count + others.Count == 0 && !foreign) return null;
 
-        var (json, _) = await ai.AskJsonAsync(AgentPrompts.ModuleSummary, BuildInput(module, current, others, changes, facts), MaxTokens, cancellationToken);
+        var language = await LanguageAsync(db, key, changes.Concat(facts).Select(m => m.Description), current, cancellationToken);
+        var input = BuildInput(module, language, current, others, changes, facts);
+        var (json, _) = await ai.AskJsonAsync(AgentPrompts.ModuleSummary, input, MaxTokens, cancellationToken);
         var state = ChangeLog.ParseState(json as JsonObject);
         if (ChangeLog.IsEmpty(state)) return null;
+        var description = ChangeLog.Render(module, state);
+        if (TextLanguage.IsForeign(description))
+        {
+            // Never stored: the facts stay, and the next pass asks again.
+            logger.LogWarning("Summary of module {Module} ({Key}) came back in another language than {Language}; not saved.", module, key, language);
+            return null;
+        }
 
         var sources = changes.Concat(facts).Concat(summaries).ToList();
         var layers = sources.SelectMany(m => MemoryLabels.ParseLayers(m.Layers)).Distinct().Order().ToList();
@@ -73,7 +85,7 @@ public sealed partial class ModuleSummaryWriter
         summary.Layers = MemoryLabels.LayersCsv(layers);
         summary.Keywords = MemoryLabels.JoinCsv(keywords);
         summary.Label = MemoryLabels.Compose(MemoryLabels.Display(null, name, layers, MemoryKind.Summary), keywords);
-        summary.Description = ChangeLog.Render(name, state);
+        summary.Description = name == module ? description : ChangeLog.Render(name, state);
         summary.LabelVersion = MemoryLabels.CurrentVersion;
         summary.PromotedAt = changes.Count == 0 ? watermark : changes[^1].PromotedAt;
         if (current is null) db.LongMemories.Add(summary);

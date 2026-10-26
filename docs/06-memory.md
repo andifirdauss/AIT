@@ -285,6 +285,11 @@ dipindah ke long memory, AIT memperbarui `Summary` setiap modul yang punya entri
 - Entri `Change` tetap disimpan (riwayat); ringkasan hanya tambahan di atasnya.
 - Modul yang digabung membawa ringkasannya masing-masing; keduanya dilebur menjadi satu pada putaran berikutnya.
 - Maks 30 modul per putaran; sisanya menunggu putaran berikutnya. Tanpa node model aktif, ringkasan menunggu.
+- **Bahasa ditentukan AIT**, bukan ditebak model: bahasa entri dan fakta yang dilipat (Indonesia atau Inggris), bila
+  tidak jelas bahasa entri `Change` terbaru project, lalu bahasa ringkasan saat ini, bawaan Indonesia. Model diminta
+  menerjemahkan isi lain ke bahasa itu. Jawaban yang ternyata berbahasa lain (mis. Vietnam) tidak disimpan, dan
+  ringkasan yang terlanjur berbahasa lain ditulis ulang di putaran berikutnya. Entri `Change` dijaga dengan cara yang
+  sama: bahasanya dari permintaan developer, entri berbahasa lain tidak disimpan.
 
 ## Migrasi memory lama ke ringkasan modul
 
