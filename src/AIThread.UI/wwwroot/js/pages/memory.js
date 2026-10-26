@@ -35,6 +35,30 @@
   // The shape AIT writes change entries in (ChangeLog.Render), shown in an empty description.
   const changeTemplate = '### Tambah kolom Deskripsi di User\n**Fitur:** ...\n\n**File berubah:**\n- `path/ke/file` (ubah) — ...\n\n**Validasi:**\n- ...\n\n**Flow:**\n1. ...\n\n**Catatan:**\n- ...';
 
+  // The description is Markdown (change entries and module summaries are written that way): Tulis edits the text,
+  // Pratinjau renders it on the server like a wiki page (no raw HTML, safe links).
+  let previewRequest = 0;
+  async function setDescriptionPreview(on) {
+    el('btnMemoryWrite').classList.toggle('active', !on);
+    el('btnMemoryPreview').classList.toggle('active', on);
+    el('memoryDescription').classList.toggle('d-none', on);
+    el('memoryPreview').classList.toggle('d-none', !on);
+    const request = ++previewRequest;
+    if (!on) return;
+    const text = el('memoryDescription').value;
+    if (!text.trim()) {
+      el('memoryPreview').innerHTML = '<span class="text-secondary">Deskripsi masih kosong.</span>';
+      return;
+    }
+    el('memoryPreview').innerHTML = '<span class="text-secondary">Memuat pratinjau…</span>';
+    try {
+      const html = await api.post('/api/business/preview', { content: text });
+      if (request === previewRequest) el('memoryPreview').innerHTML = html;
+    } catch (error) {
+      if (request === previewRequest) el('memoryPreview').innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
+    }
+  }
+
   function keywords(values) {
     return (values || []).map(k => `<span class="mem-kw">${escapeHtml(k)}</span>`).join('');
   }
@@ -356,6 +380,8 @@
     el('memoryLegacy').classList.toggle('d-none', !legacy);
     el('memoryDescription').value = memory?.description || '';
     el('memoryDescription').placeholder = changeTemplate;
+    // Markdown preview by default; an empty description (a new memory) opens ready to write.
+    setDescriptionPreview(Boolean(memory?.description));
     el('memoryModalTitle').textContent = memory ? `Memory · ${memory.level === 'Short' ? 'Short' : 'Long'}` : 'Tambah memory (masuk ke short memory)';
     el('memoryMeta').textContent = memory
       ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? (memory.kind === 'Summary'
@@ -694,6 +720,14 @@
     }
   });
   el('memoryKeywords').addEventListener('input', syncKeywordCount);
+  el('btnMemoryWrite').addEventListener('click', () => setDescriptionPreview(false));
+  el('btnMemoryPreview').addEventListener('click', () => setDescriptionPreview(true));
+  el('memoryPreview').addEventListener('dblclick', () => {
+    setDescriptionPreview(false);
+    el('memoryDescription').focus();
+  });
+  // A hidden required field cannot show its message: back to writing so the browser can.
+  el('memoryDescription').addEventListener('invalid', () => setDescriptionPreview(false));
   ['filterLevel', 'filterType', 'filterModule', 'filterLayer', 'filterKind', 'filterLabeled'].forEach(id => el(id).addEventListener('change', resetAndLoad));
   el('filterProject').addEventListener('change', () => { loadModuleFilter(); resetAndLoad(); });
   el('filterSearch').addEventListener('input', debounce(resetAndLoad, 350));
