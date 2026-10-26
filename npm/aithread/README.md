@@ -8,6 +8,24 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.8.0
+
+- **AIT kini dua bahasa (Indonesia / English)**: pilih di kotak bahasa di bawah sidebar. Halaman web, menu
+  `AIThread.exe` dan ikon tray, log aktivitas, pesan validasi & respons API, pesan Telegram, file skenario Excel, dan
+  menu Dokumentasi (`docs/en/`) ikut berganti. Nama menu di sisi Indonesia kini Dasbor, Proyek, Memori, Penyiapan,
+  Pengaturan, dan Dokumentasi.
+- **Output AIT di CLI mengikuti bahasa prompt**, apa pun bahasa tampilannya: prompt berbahasa Indonesia dijawab dalam
+  Bahasa Indonesia dan sebaliknya (kode, log, dan tag yang ditempel tidak dihitung). Perintah chat dikenali dalam dua
+  bahasa: `ulangi` / `retry`, `jalankan test lanjutan 2` / `run follow-up test 2`, `password dev <nilai>` /
+  `dev password <nilai>`, dan seterusnya.
+- **Project memory bergaya MEMORY.md**: satu catatan perubahan per thread (fitur, file yang berubah, validasi & flow,
+  catatan) dilipat menjadi **ringkasan modul** yang menggambarkan kondisi modul saat ini. Planner membaca utuh ringkasan
+  dan catatan terbaru modul yang dibahas, dan bisa mencari catatan lama lewat `search_memory`.
+- **Migrasi memory lama otomatis**: fakta lama dibackup sekali, dilipat ke ringkasan modul, lalu dihapus. Progresnya
+  tampil sebagai banner di menu Memori dan tetap berlanjut setelah AIT di-restart. Ringkasan yang terlanjur berbahasa
+  lain ditulis ulang.
+- Deskripsi memory bisa dipratinjau sebagai Markdown; tab wiki bisnis kini bernama **Business memory**.
+
 ## Yang baru di 1.7.10
 
 - **Tester tidak lagi menebak URL API**: path endpoint dibaca dari atribut route di kode ASP.NET (Core MVC/Web API dan
