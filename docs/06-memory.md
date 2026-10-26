@@ -301,6 +301,11 @@ dan punya project key dimigrasi otomatis oleh worker yang sama:
 Memory lama yang belum berlabel dilabeli dulu oleh [migrasi label](#migrasi-label-memory-lama), lalu ikut dimigrasi.
 Memory yang menunggu review tidak disentuh. Knowledge memory tidak dimigrasi.
 
+Banner **Migrasi memory lama ke ringkasan modul** di menu Memory tampil selama masih ada memory lama yang menunggu:
+jumlah yang menunggu dan di berapa modul, jumlah ringkasan modul, yang masih di short memory, status (sedang berjalan
+`modul 3/12 (User)` dengan progress bar, menunggu node model, atau waktu putaran terakhir), pesan terakhir (mis. backup
+gagal), dan path backup. Banner diperbarui lewat SSE setiap modul selesai dan hilang sendiri setelah semuanya dimigrasi.
+
 > **Store bersama**: AIT versi sebelum catatan perubahan tidak mengenal jenis `Change`/`Summary`. Bila long memory
 > dipakai bersama tim, perbarui AIT semua developer.
 
