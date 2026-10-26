@@ -385,7 +385,10 @@
     el('memoryModalTitle').textContent = memory ? `Memory · ${memory.level === 'Short' ? 'Short' : 'Long'}` : 'Tambah memory (masuk ke short memory)';
     el('memoryMeta').textContent = memory
       ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? (memory.kind === 'Summary'
-        ? ` · memuat catatan perubahan sampai ${fmt.dateTime(memory.promotedAt)}`
+        // A summary that has folded no change entry yet carries the start value (year 2000) instead of a time.
+        ? (toDate(memory.promotedAt).getUTCFullYear() <= 2000
+          ? ' · belum memuat catatan perubahan (dari memory lama)'
+          : ` · memuat catatan perubahan sampai ${fmt.dateTime(memory.promotedAt)}`)
         : ` · dipindah ke DB ${fmt.dateTime(memory.promotedAt)}`) : ''}${memory.reviewReason ? ` · perlu review: ${memory.reviewReason}` : ''}`
       : '';
     syncProjectField(memory?.module || '');

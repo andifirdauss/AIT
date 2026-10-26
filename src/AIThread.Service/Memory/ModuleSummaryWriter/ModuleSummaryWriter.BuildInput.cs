@@ -5,11 +5,12 @@ namespace AIThread.Service.Memory;
 
 public sealed partial class ModuleSummaryWriter
 {
-    private static string BuildInput(string module, LongMemory? current, IReadOnlyList<LongMemory> others, IReadOnlyList<LongMemory> changes,
-        IReadOnlyList<LongMemory> facts)
+    private static string BuildInput(string module, string language, LongMemory? current, IReadOnlyList<LongMemory> others,
+        IReadOnlyList<LongMemory> changes, IReadOnlyList<LongMemory> facts)
     {
         var builder = new StringBuilder();
         builder.Append("# Module\n").Append(module).Append("\n\n");
+        builder.Append("# Language\n").Append(language).Append("\n\n");
         builder.Append("# Current state\n").Append(current?.Description ?? "(none)").Append("\n\n");
         // A module merged into this one brought its own summary: it is part of the current state.
         foreach (var other in others) builder.Append(other.Description).Append("\n\n");
