@@ -810,6 +810,50 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 - Untuk thread dari CLI (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
 - Bila ada file yang diubah (juga thread yang dibatalkan/gagal di tengah), Struktur kode project dipindai ulang dan
   function yang diubah dibaca panggilannya (lihat [Panggilan function](#panggilan-function)), keduanya di belakang.
+- Di repository git, perubahan thread mulai diikuti: sudah di-commit, dibuang, atau ada di branch lain — lihat
+  [Status git perubahan thread](#status-git-perubahan-thread).
+
+## Status git perubahan thread
+
+Satu project disentuh banyak developer di banyak branch. AIT mencatat dari mana perubahan sebuah thread berasal dan
+mengikuti ke mana perubahan itu bergerak di git. AIT hanya **membaca** git; tidak pernah commit, checkout, reset, atau
+push.
+
+**Asal-usul** dicatat saat thread mulai: branch (`HEAD` bila detached), commit tempat thread mulai, dan identitas git
+developer (`user.name <user.email>`; config repository menang atas config global). Asal-usul ini ikut ke memory yang
+lahir dari thread itu (lihat [Asal-usul git memory](06-memory.md#asal-usul-git-memory)).
+
+**Sidik jari**: setiap kali executor menulis file, AIT menyimpan *blob id* git dari isinya (`git hash-object`, dengan
+`.gitattributes`/`autocrlf` repository, sama seperti saat di-commit). Blob id tidak berubah karena squash merge, rebase,
+atau cherry-pick, jadi AIT tetap mengenali perubahan thread walau SHA commit-nya berbeda.
+
+| Status | Arti |
+|---|---|
+| Belum di-commit | Isi file masih persis tulisan thread, belum di-stage |
+| Sudah di-stage | Sudah `git add`, belum di-commit |
+| Sudah di-commit | `HEAD` memuat isi tulisan thread; commit-nya dicatat (commit pertama yang membawa blob itu, juga commit squash) |
+| Diubah lagi di luar AIT | Isi file berubah lagi sebelum di-commit (bukan tulisan thread, bukan isi asli) |
+| Dibuang di luar AIT | File kembali ke isi sebelum thread (discard, `checkout --`, reset) dan tidak ada branch/tag yang memuat perubahannya |
+| Di branch lain | Perubahan ada di commit branch lain (lokal/remote) atau tag, tapi tidak di branch yang sedang aktif, mis. setelah pindah branch |
+
+Status thread diambil dari file-filenya: semua dibuang = *Dibuang*; ada yang diubah lagi = *Diubah lagi di luar AIT*;
+sisanya status yang paling belum maju (mis. 2 file di-commit, 1 belum = *Belum di-commit*). File yang di-ignore git
+tidak dihitung.
+
+**Kapan dicek**:
+
+- saat thread selesai (sidik jari yang belum ada diambil saat itu);
+- saat folder `.git` berubah (`HEAD`, index, refs, reflog: commit, checkout, merge, reset, stash, fetch), 2 detik
+  setelah perubahan terakhir;
+- tiap 5 menit (edit di working tree tidak menyentuh `.git`);
+- sebelum planner menyusun bagian brief `# Changes in this session`;
+- manual: tombol **Sinkronkan** di kartu Git halaman thread, atau `POST /api/projects/{id}/git/refresh`.
+
+Thread diikuti 30 hari setelah selesai, maks 200 thread terbaru per project. Thread yang di-rollback lewat AIT tidak
+diikuti lagi.
+
+**Efek ke planner**: thread yang perubahannya *Dibuang* atau *Di branch lain* tidak lagi dianggap "perubahan ini" di
+bagian brief `# Changes in this session` (filenya sudah tidak ada di working tree).
 
 ## Unit test
 

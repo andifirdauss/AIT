@@ -220,6 +220,17 @@ to the shared long memory.
 - The module list, the code map and the project's [unit test catalog](07-cara-kerja.md#unit-tests) follow the same rules:
   they move along when the key changes from local to a shared key, and are deleted together with its memory.
 
+### Git origin of memory
+
+Project memory made from a thread keeps **who** (the developer's git identity, `Name <email>`), the **branch**, and the
+**commit** the thread started from. The values are taken from the thread when the memory moves to long memory, so other
+developers read them in a shared store, and they go along in `aithread-memory` export/import files. In the Memory menu
+the branch shows under the *thread* link (hover for the author and commit). Where the thread's change moves afterwards
+(committed, discarded, on another branch) shows on the thread page — see
+[Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change).
+
+Knowledge memory and memory from older versions have no git origin.
+
 ## Memory storage
 
 The **Setting → Memory storage** menu (`/Setting#memory`) decides where each level is stored. Changes apply right away

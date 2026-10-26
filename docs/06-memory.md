@@ -212,6 +212,17 @@ tetap lokal: setelah 24 jam ia pindah ke long memory bersama.
 - Daftar modul, peta kode, dan [katalog unit test](07-cara-kerja.md#unit-test) project mengikuti aturan yang sama:
   ikut pindah saat key berubah dari lokal ke key bersama, dan ikut terhapus bersama memory-nya.
 
+### Asal-usul git memory
+
+Project memory yang lahir dari thread menyimpan **siapa** (identitas git developer, `Nama <email>`), **branch**, dan
+**commit** tempat thread itu mulai. Nilainya diambil dari thread saat memory pindah ke long memory, jadi ikut terbaca
+developer lain di store bersama dan ikut file export/import `aithread-memory`. Di menu Memori, branch tampil di bawah
+tautan *thread* (arahkan kursor untuk author dan commit). Ke mana perubahan thread itu bergerak setelahnya (di-commit,
+dibuang, di branch lain) tampil di halaman thread — lihat
+[Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread).
+
+Knowledge memory dan memory dari versi lama tidak punya asal-usul git.
+
 ## Penyimpanan memory
 
 Menu **Pengaturan → Penyimpanan memory** (`/Setting#memory`) menentukan di mana tiap level disimpan. Perubahan langsung

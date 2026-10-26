@@ -16,6 +16,11 @@ public sealed partial class ThreadService
             .Where(t => t.ThreadRunId == id)
             .OrderBy(t => t.Order)
             .ToListAsync(cancellationToken);
+        var files = await db.ThreadFileSnapshots.AsNoTracking()
+            .Where(s => s.ThreadRunId == id)
+            .OrderBy(s => s.FilePath)
+            .Select(s => new ThreadGitFileDto(s.FilePath, s.GitState, s.GitCommit))
+            .ToListAsync(cancellationToken);
 
         return new ThreadDetailDto(
             summary,
@@ -46,6 +51,7 @@ public sealed partial class ThreadService
             thread.TestingMs,
             thread.TestingJson,
             thread.UnitTestMs,
-            thread.UnitTestJson);
+            thread.UnitTestJson,
+            ToGitDto(thread, files));
     }
 }
