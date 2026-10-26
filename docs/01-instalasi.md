@@ -153,6 +153,8 @@ Bila sudah ada instance yang berjalan di port itu (mis. di tray), menu mengendal
 lihat log terakhir, atau matikan. Klik kanan ikon tray untuk *Buka Web UI*, *Lihat log*, *Buka folder log*,
 *Jalankan saat login Windows*, dan *Keluar*; klik ganda membuka Web UI.
 
+Menu dan tray mengikuti [bahasa tampilan](02-konfigurasi.md#bahasa-tampilan) (ikut disimpan di `cli.json`).
+
 Perintah tanpa menu (`AIThread.exe help` menampilkan semuanya):
 
 ```powershell

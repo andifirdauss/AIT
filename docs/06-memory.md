@@ -285,11 +285,22 @@ dipindah ke long memory, AIT memperbarui `Summary` setiap modul yang punya entri
 - Entri `Change` tetap disimpan (riwayat); ringkasan hanya tambahan di atasnya.
 - Modul yang digabung membawa ringkasannya masing-masing; keduanya dilebur menjadi satu pada putaran berikutnya.
 - Maks 30 modul per putaran; sisanya menunggu putaran berikutnya. Tanpa node model aktif, ringkasan menunggu.
-- **Bahasa ditentukan AIT**, bukan ditebak model: bahasa entri dan fakta yang dilipat (Indonesia atau Inggris), bila
-  tidak jelas bahasa entri `Change` terbaru project, lalu bahasa ringkasan saat ini, bawaan Indonesia. Model diminta
-  menerjemahkan isi lain ke bahasa itu. Jawaban yang ternyata berbahasa lain (mis. Vietnam) tidak disimpan, dan
-  ringkasan yang terlanjur berbahasa lain ditulis ulang di putaran berikutnya. Entri `Change` dijaga dengan cara yang
-  sama: bahasanya dari permintaan developer, entri berbahasa lain tidak disimpan.
+- **Bahasa ditentukan AIT**, bukan ditebak model — lihat [Bahasa memory](#bahasa-memory).
+
+### Bahasa memory
+
+Memory ditulis dalam Bahasa Indonesia atau Inggris, dan AIT yang menentukannya:
+
+- Entri `Change`: bahasa permintaan developer (dan ringkasan rencana); bila tidak jelas (mis. hanya tempelan log),
+  [bahasa tampilan](02-konfigurasi.md#bahasa-tampilan).
+- Ringkasan modul: bahasa entri dan fakta yang dilipat, bila tidak jelas bahasa entri `Change` terbaru project, lalu
+  bahasa ringkasan saat ini, lalu bahasa tampilan. Model diminta menerjemahkan isi lain ke bahasa itu.
+- Judul bagian mengikuti bahasa isinya: *Fitur / File berubah / Validasi / Flow / Catatan* dengan aksi file
+  `baru`/`ubah`/`hapus`, atau *Feature / Changed files / Validation / Flow / Notes* dengan `new`/`modified`/`deleted`
+  (ringkasan: *kondisi saat ini* / *current state*, *File utama* / *Main files*). Bahasa tampilan tidak mengubah memory
+  yang sudah tersimpan, karena memory dibagi ke anggota tim yang mungkin memakai bahasa lain.
+- Jawaban yang ternyata berbahasa lain (mis. Vietnam) tidak disimpan; ringkasan yang terlanjur berbahasa lain ditulis
+  ulang di putaran berikutnya.
 
 ## Migrasi memory lama ke ringkasan modul
 
@@ -477,7 +488,8 @@ thread selesai (tiap developer) ──► menunggu dirangkum (lokal)
   dirangkum (atau setelah masa retensi log, default 14 hari). Model yang tidak bisa membaca gambar tetap menulis dari
   teksnya saja.
 - Penulis wiki diminta mempertahankan isi lama (termasuk tulisan manual), hanya menulis fakta yang didukung thread,
-  menandai yang meragukan dengan *(perlu konfirmasi)*, dan memakai bahasa halaman (default Bahasa Indonesia).
+  menandai yang meragukan dengan *(perlu konfirmasi)* atau *(needs confirmation)*, dan memakai bahasa halaman (halaman
+  baru: bahasa permintaan developer, bawaan bahasa tampilan).
 - Thread ditandai *sudah dirangkum* hanya bila semua halaman yang ia sentuh berhasil disimpan; yang gagal dicoba lagi
   di jalan berikutnya.
 - **Banyak developer**: setiap AIT merangkum thread miliknya sendiri ke store yang sama. Setiap halaman punya
