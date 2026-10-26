@@ -538,6 +538,24 @@ ditulis sebagai `![keterangan](asset:<id>)`. *Pratinjau* menampilkan halaman per
 tidak dirender, dan tautan hanya boleh ke `http(s)`, `mailto`, atau dalam aplikasi — wiki bisa ditulis siapa saja yang
 berbagi store, jadi isinya tidak dipercaya mentah-mentah.
 
+### Wiki per environment
+
+Bila project punya [environment](07-cara-kerja.md#environment), wiki bisnis punya **halaman terpisah per environment**
+selain wiki kerja (versi terbaru dari semua branch). Halaman sebuah environment adalah **revisi terbaru** halaman kerja
+yang semua thread sumbernya (di revisi itu dan sebelumnya) sudah masuk environment itu:
+
+- revisi manual (tanpa thread) ikut berlaku bila revisi sebelumnya berlaku;
+- thread yang tidak dikenal git (thread lama, bukan repository) dan perubahan yang dibuang/commit-nya hilang tidak
+  menahan halaman;
+- isi halaman **disalin** dari revisi itu, tidak ditulis ulang model — jadi persis yang pernah ditulis wiki. Bila
+  thread revisi lebih lama belum masuk, halaman tertahan di revisi sebelumnya walau revisi lebih baru sudah masuk.
+
+Halaman environment diperbarui setelah environment dicek dan setelah penulis wiki menulis halaman. Di
+**Memori → Business memory**, pilih *Environment* untuk membaca wiki environment itu (hanya baca; badge kuning bila wiki
+kerja sudah lebih baru), dan **Bandingkan** dua sisi (environment atau wiki kerja): halaman yang berbeda dengan diff
+baris, halaman yang hanya ada di satu sisi, dan perubahan (thread/commit) yang hanya ada di satu sisi — mis. *ada di
+staging, belum di prod*.
+
 ## Mengelola dari menu Memori
 
 - **Tambah memory**: tulis pengetahuan yang ingin selalu diingat planner, mis. perubahan yang dikerjakan di luar AIT

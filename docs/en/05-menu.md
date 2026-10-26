@@ -143,7 +143,9 @@ The list of codebases AIT knows. One project = one root folder, i.e. a folder ho
 **Project detail**: the stack, the **Project key** card (the effective key, its source, and the *Manual key* field), the
 **Git** card (git repositories only: the automatic `git fetch` interval in minutes (empty = the default 15, 0 = off),
 the last fetch and its error, the number of threads followed, the *Fetch now* and *Sync* buttons; see
-[Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)), the solution/build files found in the
+[Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change); then the team's shared
+**Environments**: name, ref, *prod* mark, number of changes that reached it, *Save environments* and *Check now*; see
+[Environments](07-cara-kerja.md#environments)), the solution/build files found in the
 project, CLI sessions (session id, number of threads, last active), this project's
 threads, and a link to its memory. The session, thread, module, code map and module merge history tables show 10 rows
 per page (*‹ Previous* / *Next ›*; the navigation only shows when there are more than 10). The open page stays when the
@@ -261,7 +263,8 @@ The *Short & long memory* tab:
 - **Statistics**: the number of short & long memories, project & knowledge, unlabeled (and needing review), the status
   of the short memory store.
 - **Filters**: level, type, project, a search in label/description, module (the chosen project + knowledge), layer,
-  kind, labeled/unlabeled. Coming from a project page? The project filter is already filled in.
+  kind, labeled/unlabeled, and *In &lt;environment&gt;* (a chosen project with environments: only memory whose change
+  reached that environment). Coming from a project page? The project filter is already filled in.
 - **Table**: level (short shows the estimated hours left before it moves to the DB), type, project, the label as one
   segmented tag `Module | Other module | Layer | Kind` followed by `#keyword` (old memory: an *unlabeled* mark + its old
   label) and an excerpt of the description, the creation time & a link to the source thread, the use count (long
@@ -295,6 +298,10 @@ The *Business memory* tab — see [Business memory](06-memory.md#business-memory
   *Insert image* — the image is uploaded to the store and inserted at the cursor. When the page was changed by someone
   else since you opened it, saving is refused (the editor stays open) so nobody's change is overwritten.
 - **Update now**: summarizes this project's threads that are not in the wiki yet without waiting for the schedule.
+- **Environment**: *Working wiki* (the default) or one of the project's environments — reads the wiki as it holds in that
+  environment (read-only); see [Wiki per environment](06-memory.md#wiki-per-environment).
+- **Compare**: choose two sides (environments or the working wiki) → the pages that differ (line diff), the pages on one
+  side only, and the changes on one side only with their author, branch and commit.
 
 ## Node
 
