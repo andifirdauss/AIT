@@ -239,7 +239,7 @@ yang disebut prompt langsung di-outline di brief planner (lihat [Cara kerja](07-
 ## Memory
 
 Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi tiga tab: **Short & long memory**, **Perlu review**
-(`/Memory#review`), dan **Business Memory** (`/Memory#bisnis`). Selama masih ada memory lama yang menunggu label, banner
+(`/Memory#review`), dan **Business memory** (`/Memory#bisnis`). Selama masih ada memory lama yang menunggu label, banner
 *Migrasi label memory* menampilkan progres (menunggu, sudah berlabel, perlu review, fase beserta project dan jumlah
 file yang sedang dipetakan, lokasi backup) dengan tombol
 *Jalankan sekarang*.
@@ -271,7 +271,7 @@ Tab *Perlu review*:
 - **Kandidat memory duplikat**: pasangan memory dengan modul & jenis sama dan keyword sangat mirip, berdampingan
   dengan tombol *Buka* dan *Hapus*. Tidak ada yang dihapus otomatis.
 
-Tab *Business Memory* — lihat [Business memory](06-memory.md#business-memory-wiki-bisnis):
+Tab *Business memory* — lihat [Business memory](06-memory.md#business-memory-wiki-bisnis):
 
 - **Project**: pilih project; baris info menampilkan project key, jumlah thread yang menunggu dirangkum, waktu
   rangkuman terakhir, dan store yang dipakai.

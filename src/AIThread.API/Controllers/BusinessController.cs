@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AIThread.API.Controllers;
 
-// Business memory: the business wiki of each project (Memory menu → tab Business Memory) and its settings.
+// Business memory: the business wiki of each project (Memory menu → tab Business memory) and its settings.
 [ApiController]
 [Route("api/business")]
 public class BusinessController(IBusinessMemoryService business, IBusinessDigestRunner runner) : ControllerBase
