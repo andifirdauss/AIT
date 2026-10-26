@@ -3,10 +3,14 @@ using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Common.Memory;
+using AIThread.Data.Cache;
+using AIThread.Data.Memory;
+using AIThread.Data.Messaging;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Memory;
 using AIThread.Service.Orchestration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AIThread.Tests;
 
@@ -124,6 +128,54 @@ public class ChangeLogTests
         Assert.Equal(3, harness.Router.CallsTo(ScriptedAgent.ModuleSummary).Count);
         Assert.Contains("Kelola user tanpa deskripsi", (await SummaryAsync(harness, "User")).Description);
     }
+
+    [Fact]
+    public async Task Migration_progress_survives_a_restart_and_the_rest_continues()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        await harness.AddNodeAsync(NodeRole.ToolsNode, "tools-model");
+        using var backup = new TempWorkspace();
+        MemoryRelabeler.BackupDirectory = backup.Root;
+        var t0 = DateTime.UtcNow.AddHours(-1);
+        await AddAsync(harness, "User", MemoryKind.Rule, "Aturan: `Email` wajib unik.", t0);
+        await AddAsync(harness, "User", MemoryKind.Flow, "Pemicu: simpan user.", t0);
+        var orderFact = await AddAsync(harness, "Order", MemoryKind.Pitfall, "Masalah: total dobel.", t0);
+        // The process "stops" after the first module: the second call gives nothing usable.
+        harness.Router.On(ScriptedAgent.ModuleSummary, ScriptedRouter.Text("""{"validation": ["`Email` wajib unik"], "flow": ["Simpan user"]}"""));
+        harness.Router.On(ScriptedAgent.ModuleSummary, ScriptedRouter.Text("""{"features": []}"""));
+
+        Assert.Equal(1, await NewWriter(harness).RunAsync(default));
+
+        // A new instance, as after a restart, sees what was done and only what is left waits.
+        var restarted = NewWriter(harness);
+        var status = await restarted.GetStatusAsync(default);
+        Assert.Equal((false, 3, 2, 1, 1), (status.Running, status.TotalFacts, status.MigratedFacts, status.PendingFacts, status.PendingModules));
+        Assert.True(File.Exists(ModuleSummaryWriter.ProgressFile));
+
+        harness.Router.On(ScriptedAgent.ModuleSummary, call =>
+        {
+            Assert.Contains("# Module\nOrder\n", call.LastUser);
+            return ScriptedRouter.Text("""{"notes": ["Total dobel: hitung sekali"]}""");
+        });
+        Assert.Equal(1, await restarted.RunAsync(default));
+
+        Assert.Null(await FindAsync(harness, orderFact));
+        Assert.False(File.Exists(ModuleSummaryWriter.ProgressFile));
+        var done = await restarted.GetStatusAsync(default);
+        Assert.Equal((0, 0, 0), (done.PendingFacts, done.TotalFacts, done.MigratedFacts));
+        Assert.Single(Directory.GetFiles(backup.Root, $"{ModuleSummaryWriter.BackupPrefix}*.json"));
+    }
+
+    // A writer with nothing in memory, as a freshly started AIT has.
+    private static ModuleSummaryWriter NewWriter(OrchestrationHarness harness) => new(
+        harness.Service<LongMemoryStore>(),
+        harness.Service<IShortMemoryStore>(),
+        harness.Service<IMemoryAi>(),
+        harness.Service<IMemoryTransferService>(),
+        harness.Service<IEventBus>(),
+        harness.Service<IActivityLogService>(),
+        NullLogger<ModuleSummaryWriter>.Instance);
 
     [Fact]
     public async Task Planner_brief_writes_out_the_module_memory()

@@ -16,6 +16,7 @@ public sealed partial class ModuleSummaryWriter
 
             await using var db = await longStore.CreateAsync(cancellationToken);
             var pending = await PendingAsync(db, withFacts: true, cancellationToken);
+            TrackProgress(pending.Sum(p => p.Facts) + await ShortFactsAsync());
             if (pending.Count == 0) return 0;
             var withFacts = !pending.Any(p => p.Facts > 0) || await BackupAsync(cancellationToken);
 
@@ -60,6 +61,8 @@ public sealed partial class ModuleSummaryWriter
             }
 
             _lastRunAt = DateTime.UtcNow;
+            // Done: clears the count once nothing waits any more.
+            if (migrating) TrackProgress((await PendingAsync(db, withFacts: true, cancellationToken)).Sum(p => p.Facts) + await ShortFactsAsync());
             if (migrated > 0) _lastMessage = $"{migrated} memory lama dimigrasi ke ringkasan modul pada putaran terakhir.";
             return written;
         }

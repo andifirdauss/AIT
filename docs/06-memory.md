@@ -296,15 +296,22 @@ dan punya project key dimigrasi otomatis oleh worker yang sama:
    migrasi ditunda (ringkasan dari entri `Change` tetap jalan).
 2. Per modul, fakta lama (maks 40 per panggilan) dilipat ke `Summary` modul itu bersama entri `Change` yang menunggu:
    `Rule` → validasi, `Flow` → flow, `Pitfall`/`Convention`/`Architecture` → catatan, dst.
-3. Fakta yang sudah dilipat **dihapus** — isinya kini ada di ringkasan (dan di file backup).
+3. Fakta yang sudah dilipat **dihapus** — isinya kini ada di ringkasan (dan di file backup). Ringkasan disimpan dan
+   fakta dihapus dalam satu transaksi, jadi AIT yang berhenti di tengah tidak melipat fakta yang sama dua kali.
+
+**Restart di tengah migrasi aman**: setiap modul yang selesai langsung tersimpan, dan setelah AIT start lagi migrasi
+melanjutkan modul yang tersisa (paling lambat ±20 detik setelah start). Modul yang sedang diproses saat AIT berhenti
+diulang dari awal. Progres keseluruhan (jumlah memory lama saat migrasi dimulai) disimpan di
+`%LOCALAPPDATA%\AIThread\backup\memory-changelog-progress.json`; sisanya dihitung dari store, jadi kerja mesin lain
+yang berbagi store ikut terhitung. File itu dihapus setelah semua memory lama selesai dimigrasi.
 
 Memory lama yang belum berlabel dilabeli dulu oleh [migrasi label](#migrasi-label-memory-lama), lalu ikut dimigrasi.
 Memory yang menunggu review tidak disentuh. Knowledge memory tidak dimigrasi.
 
 Banner **Migrasi memory lama ke ringkasan modul** di menu Memory tampil selama masih ada memory lama yang menunggu:
-jumlah yang menunggu dan di berapa modul, jumlah ringkasan modul, yang masih di short memory, status (sedang berjalan
-`modul 3/12 (User)` dengan progress bar, menunggu node model, atau waktu putaran terakhir), pesan terakhir (mis. backup
-gagal), dan path backup. Banner diperbarui lewat SSE setiap modul selesai dan hilang sendiri setelah semuanya dimigrasi.
+progres keseluruhan `120/300 dimigrasi (40%)` dengan progress bar (bertahan setelah restart), yang menunggu dan di
+berapa modul, jumlah ringkasan modul, yang masih di short memory, status (putaran yang berjalan `modul 3/12 (User)`,
+menunggu node model, atau waktu putaran terakhir), pesan terakhir (mis. backup gagal), dan path backup. Banner diperbarui lewat SSE setiap modul selesai dan hilang sendiri setelah semuanya dimigrasi.
 
 > **Store bersama**: AIT versi sebelum catatan perubahan tidak mengenal jenis `Change`/`Summary`. Bila long memory
 > dipakai bersama tim, perbarui AIT semua developer.

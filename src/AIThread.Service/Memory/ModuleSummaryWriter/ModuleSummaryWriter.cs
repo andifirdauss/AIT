@@ -51,8 +51,15 @@ public sealed partial class ModuleSummaryWriter(
 
     public static string BackupPrefix => "memory-before-changelog-";
 
+    // The overall progress of the migration, kept next to the backup so a restart does not start the count again.
+    public static string ProgressFile => Path.Combine(MemoryRelabeler.BackupDirectory, "memory-changelog-progress.json");
+
     // The memory of one module of one project key waiting to be folded.
     private sealed record Pending(string Key, string Module, int Changes, int Facts, int ExtraSummaries);
 
     private sealed record Folded(LongMemory Summary, int Changes, int Facts);
+
+    // Total: the facts waiting when the migration started (raised when more arrive); migrated = Total - still waiting.
+    // The waiting count comes from the store, so the work of other machines sharing it counts too.
+    private sealed record MigrationProgress(int Total, DateTime StartedAt);
 }
