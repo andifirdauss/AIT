@@ -17,6 +17,7 @@ public class GitChangeTrackerTests
     private const string File1 = "src/Greeter.cs";
     private const string Original = "class Greeter { string Hello() => \"Hi\"; }\n";
     private const string Changed = "class Greeter { string Hello() => \"Halo\"; }\n";
+    private const string ProjectKey = "github.com/org/demo";
 
     [Fact]
     public async Task Origin_names_the_branch_commit_and_author()
@@ -136,6 +137,114 @@ public class GitChangeTrackerTests
     }
 
     [Fact]
+    public async Task A_push_a_stash_a_revert_and_a_dropped_commit_are_told_apart()
+    {
+        await using var harness = await CreateAsync();
+        using var remote = new TempWorkspace();
+        GitIn(remote.Root, "init", "--bare", "--quiet", "--initial-branch=main");
+        Git(harness, "remote", "add", "origin", remote.Root);
+        var tracker = harness.Service<IGitChangeTracker>();
+
+        // Stashed, then back in the working tree.
+        var stashed = await ThreadWritesAsync(harness, File1, Changed);
+        Git(harness, "stash", "--quiet");
+        await tracker.RefreshThreadsAsync([stashed]);
+        Assert.Equal(GitChangeState.Stashed, (await LoadAsync(harness, stashed)).Thread.GitState);
+        Git(harness, "stash", "pop", "--quiet");
+        await tracker.RefreshThreadsAsync([stashed]);
+        Assert.Equal(GitChangeState.Uncommitted, (await LoadAsync(harness, stashed)).Thread.GitState);
+
+        // Committed, then pushed.
+        Git(harness, "commit", "--quiet", "-am", "Halo");
+        await tracker.RefreshThreadsAsync([stashed]);
+        Assert.Equal(GitChangeState.Committed, (await LoadAsync(harness, stashed)).Thread.GitState);
+        Git(harness, "push", "--quiet", "origin", "main");
+        await tracker.RefreshThreadsAsync([stashed]);
+        Assert.Equal(GitChangeState.Pushed, (await LoadAsync(harness, stashed)).Thread.GitState);
+
+        // Reverted in HEAD's own history: discarded, not "on another branch".
+        Git(harness, "revert", "--no-edit", "HEAD");
+        await tracker.RefreshThreadsAsync([stashed]);
+        Assert.Equal(GitChangeState.Discarded, (await LoadAsync(harness, stashed)).Thread.GitState);
+
+        // Committed, then dropped by a reset while no branch holds the commit.
+        var dropped = await ThreadWritesAsync(harness, File1, Changed);
+        Git(harness, "commit", "--quiet", "-am", "Halo again");
+        await tracker.RefreshThreadsAsync([dropped]);
+        Assert.Equal(GitChangeState.Committed, (await LoadAsync(harness, dropped)).Thread.GitState);
+        Git(harness, "reset", "--quiet", "--hard", "HEAD~1");
+        await tracker.RefreshThreadsAsync([dropped]);
+        Assert.Equal(GitChangeState.Lost, (await LoadAsync(harness, dropped)).Thread.GitState);
+    }
+
+    [Fact]
+    public async Task A_commit_with_the_developers_edits_on_top_is_found_by_the_threads_lines()
+    {
+        await using var harness = await CreateAsync();
+        var threadId = await ThreadWritesAsync(harness, File1, Changed,
+            $"--- a/{File1}\n+++ b/{File1}\n@@ block 1 @@\n-{Original.TrimEnd()}\n+{Changed.TrimEnd()}\n");
+        harness.Project.Write(File1, "// Reviewed by the team\n" + Changed);
+        var tracker = harness.Service<IGitChangeTracker>();
+
+        await tracker.RefreshThreadsAsync([threadId]);
+        Assert.Equal(GitChangeState.ModifiedOutside, (await LoadAsync(harness, threadId)).Thread.GitState);
+
+        Git(harness, "commit", "--quiet", "-am", "Halo, reviewed");
+        await tracker.RefreshThreadsAsync([threadId]);
+        var (thread, file) = await LoadAsync(harness, threadId);
+        Assert.Equal(GitChangeState.Committed, thread.GitState);
+        Assert.True(file.GitEdited);
+        Assert.Equal(Git(harness, "rev-parse", "HEAD"), file.GitCommit);
+    }
+
+    [Fact]
+    public async Task Another_clone_sees_the_shared_change_on_another_branch_until_it_is_squash_merged()
+    {
+        await using var harness = await CreateAsync();
+        using var remote = new TempWorkspace();
+        using var clone = new TempWorkspace();
+        GitIn(remote.Root, "init", "--bare", "--quiet", "--initial-branch=main");
+        Git(harness, "remote", "add", "origin", remote.Root);
+        Git(harness, "push", "--quiet", "origin", "main");
+        Git(harness, "checkout", "--quiet", "-b", "feature/halo");
+        var threadId = await ThreadWritesAsync(harness, File1, Changed);
+        Git(harness, "commit", "--quiet", "-am", "Halo");
+        Git(harness, "push", "--quiet", "origin", "feature/halo");
+        var tracker = harness.Service<IGitChangeTracker>();
+        await tracker.RefreshThreadsAsync([threadId]);
+
+        // The row other developers read.
+        await using (var shared = await harness.Service<AIThread.Data.Memory.LongMemoryStore>().CreateGitAsync())
+        {
+            var row = await shared.ThreadChanges.SingleAsync(c => c.Id == threadId);
+            Assert.Equal((ProjectKey, GitChangeState.Pushed, "AIT Test <ait@test.local>"), (row.ProjectKey, row.State, row.GitAuthor));
+            Assert.Contains(Git(harness, "rev-parse", "HEAD"), row.Commits);
+            Assert.Contains(Git(harness, "hash-object", File1), row.Files);
+        }
+
+        // A second clone of the same repository, on main.
+        GitIn(Path.GetDirectoryName(clone.Root)!, "clone", "--quiet", remote.Root, clone.Root);
+        var cloneId = Guid.NewGuid();
+        await using (var db = await harness.CreateDbAsync())
+        {
+            db.Projects.Add(new Project { Id = cloneId, Name = "Demo (clone)", RootPath = clone.Root, ProjectKey = ProjectKey });
+            await db.SaveChangesAsync();
+        }
+        var presence = await tracker.PresenceAsync(cloneId, [threadId]);
+        Assert.Equal(MemoryGitPlace.OtherBranch, presence[threadId].Place);
+        Assert.Equal("not in this branch: committed on feature/halo by AIT Test", GitNotes.ForPlanner(presence[threadId]));
+
+        GitIn(clone.Root, "merge", "--quiet", "--squash", "origin/feature/halo");
+        GitIn(clone.Root, "commit", "--quiet", "-m", "Squash feature/halo");
+        presence = await tracker.PresenceAsync(cloneId, [threadId]);
+        Assert.Equal(MemoryGitPlace.Here, presence[threadId].Place);
+        Assert.Null(GitNotes.ForPlanner(presence[threadId]));
+
+        // The project's own clone answers from its own state.
+        Assert.Equal(MemoryGitPlace.Here, (await tracker.PresenceAsync(harness.ProjectId, [threadId]))[threadId].Place);
+    }
+
+    [Fact]
     public void A_thread_takes_the_least_advanced_state_of_the_files_it_still_has()
     {
         Assert.Equal((GitChangeState?)null, GitChangeTracker.Summarize([(null, null)]).State);
@@ -147,12 +256,17 @@ public class GitChangeTrackerTests
         var other = GitChangeTracker.Summarize([(GitChangeState.OnOtherBranch, "b"), (GitChangeState.Discarded, null)]);
         Assert.Equal(GitChangeState.OnOtherBranch, other.State);
         Assert.Equal(["b"], other.Commits);
+        Assert.Equal(GitChangeState.Committed, GitChangeTracker.Summarize([(GitChangeState.Pushed, "a"), (GitChangeState.Committed, "b")]).State);
+        Assert.Equal(GitChangeState.Stashed, GitChangeTracker.Summarize([(GitChangeState.Stashed, null), (GitChangeState.OnOtherBranch, "b")]).State);
+        Assert.Equal(GitChangeState.Lost, GitChangeTracker.Summarize([(GitChangeState.Lost, "a"), (GitChangeState.Discarded, null)]).State);
     }
 
     private static async Task<OrchestrationHarness> CreateAsync()
     {
         var harness = await OrchestrationHarness.CreateAsync();
         Git(harness, "init", "--initial-branch=main", "--quiet");
+        await using (var db = await harness.CreateDbAsync())
+            await db.Projects.Where(p => p.Id == harness.ProjectId).ExecuteUpdateAsync(p => p.SetProperty(x => x.ProjectKey, ProjectKey));
         Git(harness, "config", "user.name", "AIT Test");
         Git(harness, "config", "user.email", "ait@test.local");
         Git(harness, "config", "commit.gpgsign", "false");
@@ -163,13 +277,23 @@ public class GitChangeTrackerTests
         return harness;
     }
 
-    // A finished thread that wrote one file through the file journal, as the executor does.
-    private static async Task<Guid> ThreadWritesAsync(OrchestrationHarness harness, string path, string content)
+    // A finished thread that wrote one file through the file journal, as the executor does; diff = its task's diff.
+    private static async Task<Guid> ThreadWritesAsync(OrchestrationHarness harness, string path, string content, string? diff = null)
     {
-        var thread = new ThreadRun { ProjectId = harness.ProjectId, Prompt = "Ganti sapaan", Status = ThreadStatus.Completed, CompletedAt = DateTime.UtcNow };
+        var origin = await harness.Service<IGitChangeTracker>().ReadOriginAsync(harness.Project.Root);
+        var thread = new ThreadRun
+        {
+            ProjectId = harness.ProjectId, Prompt = "Ganti sapaan", Status = ThreadStatus.Completed, CompletedAt = DateTime.UtcNow,
+            GitBranch = origin?.Branch, GitBaseCommit = origin?.Commit, GitAuthor = origin?.Author
+        };
         await using (var db = await harness.CreateDbAsync())
         {
             db.Threads.Add(thread);
+            if (diff is not null)
+                db.ThreadTasks.Add(new ThreadTask
+                {
+                    ThreadRunId = thread.Id, TaskKey = "T1", Title = "Halo", FilePath = path, Status = ThreadTaskStatus.Succeeded, Diff = diff
+                });
             await db.SaveChangesAsync();
         }
 
@@ -190,17 +314,21 @@ public class GitChangeTrackerTests
         return (thread, file);
     }
 
-    private static string Git(OrchestrationHarness harness, params string[] arguments)
+    private static string Git(OrchestrationHarness harness, params string[] arguments) => GitIn(harness.Project.Root, arguments);
+
+    // Fixed identity and no signing or line ending conversion, whatever the machine's git config says.
+    private static string GitIn(string directory, params string[] arguments)
     {
         var startInfo = new ProcessStartInfo("git")
         {
-            WorkingDirectory = harness.Project.Root,
+            WorkingDirectory = directory,
             UseShellExecute = false,
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        string[] config = ["-c", "user.name=AIT Test", "-c", "user.email=ait@test.local", "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"];
+        foreach (var argument in config.Concat(arguments)) startInfo.ArgumentList.Add(argument);
 
         using var process = Process.Start(startInfo)!;
         var error = process.StandardError.ReadToEndAsync();

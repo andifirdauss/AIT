@@ -34,7 +34,10 @@ public sealed partial class ModuleSummaryWriter
             .OrderBy(m => m.PromotedAt)
             .ThenBy(m => m.Id)
             .ToList();
-        var changes = Batch(due);
+        // A change thrown away or lost in git is not part of the module's state. It stays due, so it is folded in after
+        // all if it comes back (stash pop, a branch restored).
+        var gone = await GoneThreadsAsync(due.Select(m => m.SourceThreadId), cancellationToken);
+        var changes = Batch(due.Where(m => m.SourceThreadId is not { } thread || !gone.Contains(thread)).ToList());
 
         // Kind is stored as text, so the facts are named one by one rather than compared as a range.
         var facts = !withFacts ? [] : (await db.LongMemories

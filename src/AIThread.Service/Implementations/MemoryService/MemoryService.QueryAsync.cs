@@ -61,6 +61,7 @@ public sealed partial class MemoryService
         }
 
         var ordered = items.OrderByDescending(i => i.CreatedAt).ToList();
-        return new PagedResult<MemoryItemDto>(ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList(), ordered.Count, page, pageSize);
+        var shown = await WithGitStatesAsync(ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList(), cancellationToken);
+        return new PagedResult<MemoryItemDto>(shown, ordered.Count, page, pageSize);
     }
 }

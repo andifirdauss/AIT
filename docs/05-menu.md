@@ -95,7 +95,7 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
 | Verifikasi | Muncul bila build/reviewer/unit test berjalan. Hasil akhir (*Lolos* / *Masih ada masalah* / *Tidak dapat dipastikan*), perintah build, model reviewer, lalu per putaran: hasil build dan errornya, temuan reviewer, ringkasan unit test, masalah yang tidak bisa diperbaiki otomatis, dan id tugas perbaikan (`V1-1`, …) yang tampil juga di tabel tugas. |
-| Git | Muncul di repository git. Asal-usul thread (branch, commit awal, author) dan status perubahannya sekarang (*Belum di-commit* / *Sudah di-stage* / *Sudah di-commit* / *Diubah lagi di luar AIT* / *Dibuang di luar AIT* / *Di branch lain*), commit yang memuatnya, lalu status per file. Tombol *Sinkronkan* menanyakan git lagi; selain itu diperbarui otomatis (lihat [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread)). |
+| Git | Muncul di repository git. Asal-usul thread (branch, commit awal, author) dan status perubahannya sekarang (*Belum di-commit* / *Sudah di-stage* / *Sudah di-commit* / *Sudah di-push* / *Diubah lagi di luar AIT* / *Di-stash* / *Di branch lain* / *Dibuang di luar AIT* / *Commit hilang*), commit yang memuatnya, lalu status per file (*diedit developer sebelum commit* bila commit-nya dikenali lewat baris). Tombol *Sinkronkan* menanyakan git lagi; selain itu diperbarui otomatis (lihat [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread)). |
 | Unit test (katalog project) | Muncul bila unit test katalog dijalankan atau dipulihkan. Hasil (*Lolos* / *Gagal* / *Dilewati*), mode (atau *Hanya pengujian*), baseline (berapa dijalankan, berapa dari hasil sebelumnya, durasi), runner, lalu tabel per test: nomor, judul dan file, keputusan planner, hasil sebelum dan sesudah perubahan (*(cache)* = hasil sebelumnya untuk kode yang sama), verdict, pesan gagal atau alasan dilewati, dan verdict Tester. Di bawahnya test yang dipulihkan otomatis dan catatan. Hasil per putaran ada di kartu Verifikasi. |
 | Testing | Muncul bila Auto Testing berjalan. Hasil (*Lolos* / *Gagal* / *Tidak bisa dicek* / *Dilewati*), level (UI/API), URL aplikasi, browser, model tester, username yang dipakai login, jumlah langkah, alasan bila tidak bisa berjalan, *🔐 Tester butuh login* bila tester berhenti meminta login, ringkasan tester, verdict per skenario, error browser, lalu satu jendela per `http_request` dengan URL, body request, dan body respons (jendela ke-4 dst. dilipat). |
 | Hasil wrapper | Balasan yang diterima CLI. |
@@ -137,8 +137,11 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
   *hapus juga untuk SEMUA developer*. Bila clone lain dari repository yang sama masih terdaftar, memory-nya pindah ke
   clone itu.
 
-**Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), daftar file
-solution/build yang ditemukan di dalam project, sesi CLI (id sesi, jumlah thread, terakhir aktif), thread
+**Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), kartu **Git** (hanya
+untuk repository git: interval `git fetch` otomatis dalam menit (kosong = bawaan 15, 0 = mati), fetch terakhir dan
+errornya, jumlah thread yang diikuti, tombol *Fetch sekarang* dan *Sinkronkan*; lihat
+[Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread)), daftar file solution/build yang ditemukan
+di dalam project, sesi CLI (id sesi, jumlah thread, terakhir aktif), thread
 project ini, dan tautan ke memory-nya. Tabel sesi, thread, modul, peta kode, dan riwayat gabung modul tampil
 10 baris per halaman (*‹ Sebelumnya* / *Berikutnya ›*; navigasi hanya muncul bila isinya lebih dari 10). Halaman yang
 sedang dibuka tetap saat data diperbarui otomatis; mengganti pencarian atau filter peta kode kembali ke halaman 1.

@@ -19,7 +19,7 @@ public sealed partial class ThreadService
         var files = await db.ThreadFileSnapshots.AsNoTracking()
             .Where(s => s.ThreadRunId == id)
             .OrderBy(s => s.FilePath)
-            .Select(s => new ThreadGitFileDto(s.FilePath, s.GitState, s.GitCommit))
+            .Select(s => new ThreadGitFileDto(s.FilePath, s.GitState, s.GitCommit, s.GitEdited))
             .ToListAsync(cancellationToken);
 
         return new ThreadDetailDto(

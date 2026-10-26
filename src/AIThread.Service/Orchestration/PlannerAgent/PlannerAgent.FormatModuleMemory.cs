@@ -18,6 +18,7 @@ public sealed partial class PlannerAgent
             {
                 builder.Append($"change {item.CreatedAt:yyyy-MM-dd}");
                 if (item.SourceThreadId is { } thread) builder.Append($" (thread {ThreadAnchor.ShortId(thread)})");
+                builder.Append(PlannerToolRunner.Note(item.GitNote));
             }
             builder.Append('\n').Append(item.Description.Trim()).Append("\n\n");
         }

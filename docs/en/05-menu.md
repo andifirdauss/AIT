@@ -97,7 +97,7 @@ profile*. See [Team setup profile](02-konfigurasi.md#team-setup-profile).
 | Planner plan | The summary and the **contract** table. |
 | Executor tasks | A **parallel timeline** (overlapping bars ran at the same time) and the task table. Click a task for its instruction, dependencies, summary, error, colored diff and live model output. |
 | Verification | Shows when a build/reviewer/unit tests ran. The final result (*Passed* / *Issues remain* / *Could not be determined*), the build command, the reviewer model, then per round: the build result and its errors, reviewer findings, the unit test summary, problems that cannot be fixed automatically, and the ids of the fix tasks (`V1-1`, …) that also show in the task table. |
-| Git | Shows in a git repository. The thread's origin (branch, starting commit, author) and the state of its change now (*Not committed* / *Staged* / *Committed* / *Changed again outside AIT* / *Discarded outside AIT* / *On another branch*), the commits holding it, then the state per file. The *Sync* button asks git again; otherwise it updates by itself (see [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)). |
+| Git | Shows in a git repository. The thread's origin (branch, starting commit, author) and the state of its change now (*Not committed* / *Staged* / *Committed* / *Pushed* / *Changed again outside AIT* / *Stashed* / *On another branch* / *Discarded outside AIT* / *Commit lost*), the commits holding it, then the state per file (*edited by the developer before the commit* when its commit was recognised by the lines). The *Sync* button asks git again; otherwise it updates by itself (see [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)). |
 | Unit tests (project catalog) | Shows when catalog unit tests were run or restored. The result (*Passed* / *Failed* / *Skipped*), the mode (or *Testing only*), the baseline (how many ran, how many from earlier results, duration), the runner, then a table per test: number, title and file, the planner's decision, the result before and after the change (*(cache)* = an earlier result for the same code), the verdict, the failure message or the reason it was skipped, and the Tester's verdict. Below it the tests restored automatically and notes. The results per round are in the Verification card. |
 | Testing | Shows when Auto Testing ran. The result (*Passed* / *Failed* / *Could not be checked* / *Skipped*), level (UI/API), application URL, browser, tester model, the username used to log in, the number of steps, the reason when it could not run, *🔐 Tester needs a login* when the tester stopped to ask for a login, the tester's summary, the verdict per scenario, browser errors, then one window per `http_request` with the URL, request body and response body (the 4th window and later are folded). |
 | Wrapper result | The reply the CLI received. |
@@ -141,7 +141,10 @@ The list of codebases AIT knows. One project = one root folder, i.e. a folder ho
   memory moves to that clone.
 
 **Project detail**: the stack, the **Project key** card (the effective key, its source, and the *Manual key* field), the
-solution/build files found in the project, CLI sessions (session id, number of threads, last active), this project's
+**Git** card (git repositories only: the automatic `git fetch` interval in minutes (empty = the default 15, 0 = off),
+the last fetch and its error, the number of threads followed, the *Fetch now* and *Sync* buttons; see
+[Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)), the solution/build files found in the
+project, CLI sessions (session id, number of threads, last active), this project's
 threads, and a link to its memory. The session, thread, module, code map and module merge history tables show 10 rows
 per page (*‹ Previous* / *Next ›*; the navigation only shows when there are more than 10). The open page stays when the
 data refreshes automatically; changing the search or the code map filter goes back to page 1. Below the threads:

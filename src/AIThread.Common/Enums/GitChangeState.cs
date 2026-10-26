@@ -1,7 +1,7 @@
 namespace AIThread.Common.Enums;
 
-// Where the change a thread made to the code is now, as git sees it (GitChangeTracker). Ordered by progress: a thread
-// whose files are in different states takes the least advanced one of the files it still has (see GitChangeTracker).
+// Where the change a thread made to the code is now, as git sees it (GitChangeTracker). A thread whose files are in
+// different states takes one state for all of them (GitChangeTracker.Summarize). Stored by name.
 public enum GitChangeState
 {
     // In the working tree only: neither staged nor committed.
@@ -22,5 +22,14 @@ public enum GitChangeState
 
     // In a commit of another branch (local or remote) or a tag, not of the one checked out now: after a checkout, or a
     // change committed on a feature branch that is not merged here.
-    OnOtherBranch = 6
+    OnOtherBranch = 6,
+
+    // Committed and in a remote-tracking branch (pushed, or fetched from someone who pushed it).
+    Pushed = 7,
+
+    // Taken off the working tree by git stash: a stash entry holds the change.
+    Stashed = 8,
+
+    // It was committed, but no branch or tag holds that commit any more (reset, rebase or force-push dropped it).
+    Lost = 9
 }
