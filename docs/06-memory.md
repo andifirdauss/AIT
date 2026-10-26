@@ -490,6 +490,8 @@ berbagi store, jadi isinya tidak dipercaya mentah-mentah.
   ikut ke ringkasan modulnya. `Summary` tidak bisa ditambah (ditulis AIT), tapi bisa dibuka dan diedit; jenis lama untuk
   project memory akan dilipat ke ringkasan modul.
 - **Buka**: ubah tipe, project, label, deskripsi. Perbaiki memory yang kurang tepat — planner mempercayainya.
+  Deskripsi (Markdown) terbuka dalam mode **Pratinjau**; pindah ke **Tulis** untuk mengedit (atau klik dua kali
+  pratinjaunya). Memory baru dengan deskripsi kosong langsung terbuka di mode Tulis.
   Menyimpan memory yang belum berlabel memberinya label (label lamanya tetap tercatat).
 - **Filter** modul, layer, jenis, dan *berlabel / belum berlabel* di atas tabel; banner *Migrasi label memory* tampil
   selama masih ada memory yang menunggu label (tombol *Jalankan sekarang*).
