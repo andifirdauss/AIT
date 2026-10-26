@@ -1,4 +1,5 @@
 using AIThread.API;
+using AIThread.Common.Localization;
 using AIThread.Data;
 using AIThread.Service;
 using Microsoft.Extensions.Logging.Console;
@@ -76,6 +77,14 @@ public sealed class ServerHost : IAsyncDisposable
             name: "default",
             pattern: "{controller=Home}/{action=Index}/{id?}")
             .WithStaticAssets();
+
+        // The exe's menu runs without the server: it reads the language from cli.json, kept in step from here.
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            CliSettings.SaveLanguage(Lang.Current);
+            Lang.Changed += CliSettings.SaveLanguage;
+        });
+        app.Lifetime.ApplicationStopping.Register(() => Lang.Changed -= CliSettings.SaveLanguage);
 
         return app;
     }

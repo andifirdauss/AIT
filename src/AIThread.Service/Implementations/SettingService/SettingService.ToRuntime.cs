@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -9,6 +10,7 @@ public sealed partial class SettingService
     private RuntimeSettings ToRuntime(SystemSetting entity)
     {
         secrets.Configure(entity.SecretMaskingEnabled, entity.PassthroughSecretMasking);
+        Lang.Set(entity.UiLanguage);
         return new RuntimeSettings(
             entity.NineRouterBaseUrl,
             Unprotect(entity.NineRouterApiKeyProtected),

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using AIThread.Common.Localization;
 using AIThread.Data;
 
 namespace AIThread.UI.Hosting;
@@ -47,6 +48,8 @@ public static class Cli
 
     public static async Task<int> RunAsync(string[] args)
     {
+        // The menu and the commands speak the language chosen in the web UI; the server applies its own on start.
+        Lang.Set(CliSettings.Load().Language);
         var command = args.Length > 0 && Array.IndexOf(Commands, args[0].ToLowerInvariant()) >= 0 ? args[0].ToLowerInvariant() : null;
         var optionArgs = args;
 

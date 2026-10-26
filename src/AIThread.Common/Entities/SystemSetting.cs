@@ -68,6 +68,9 @@ public class SystemSetting : BaseEntity
     public bool SecretMaskingEnabled { get; set; } = true;
     public bool PassthroughSecretMasking { get; set; } = true;
 
+    // Language of the text AIT shows its user (Lang): "id" (default) or "en".
+    public string UiLanguage { get; set; } = "id";
+
     // When the security & privacy notice was closed; null = it opens on the next page load.
     public DateTime? PrivacyNoticeAcknowledgedAt { get; set; }
 }

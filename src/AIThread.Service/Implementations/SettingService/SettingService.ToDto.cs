@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations;
 
@@ -24,6 +25,7 @@ public sealed partial class SettingService
             entity.BuildTimeoutSeconds,
             entity.MaxFixRounds,
             proxyBaseUrl,
-            entity.PlannerCanAsk);
+            entity.PlannerCanAsk,
+            Lang.Normalize(entity.UiLanguage));
     }
 }

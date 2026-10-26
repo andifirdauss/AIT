@@ -2,6 +2,14 @@
 (() => {
   'use strict';
 
+  // The language of the page (Setting → Bahasa / Language), rendered into <html lang>. Every text is written in place
+  // as a pair: t('Indonesia', 'English'); a template with expressions as (isEn ? `English ${x}` : `Indonesia ${x}`),
+  // so only one of them is built.
+  const lang = document.documentElement.lang === 'en' ? 'en' : 'id';
+  const isEn = lang === 'en';
+  const locale = isEn ? 'en-US' : 'id-ID';
+  const t = (indonesian, english) => (isEn ? english : indonesian);
+
   async function api(method, url, body) {
     const options = { method, headers: { Accept: 'application/json' } };
     if (body instanceof FormData) {
@@ -230,11 +238,11 @@
   const fmt = {
     dateTime(value) {
       const date = toDate(value);
-      return date ? date.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '–';
+      return date ? date.toLocaleString(locale, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '–';
     },
     time(value) {
       const date = toDate(value);
-      return date ? date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '–';
+      return date ? date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '–';
     },
     relative(value) {
       const date = toDate(value);
@@ -250,7 +258,7 @@
       return value < 1000 ? `${value} ms` : `${(value / 1000).toFixed(1)} s`;
     },
     number(value) {
-      return value === null || value === undefined ? '–' : Number(value).toLocaleString('id-ID');
+      return value === null || value === undefined ? '–' : Number(value).toLocaleString(locale);
     },
     speedup(sum, wall) {
       return sum && wall ? `${(sum / wall).toFixed(1)}x` : '–';
@@ -447,6 +455,24 @@
     } catch {
       renderRouterPill({ isOnline: false, baseUrl: '', error: 'server tidak merespons' });
     }
+  }
+
+  // Setting → language of AIT (web UI, output to the CLI, logs): saved on the server, the page reloads to show it.
+  function initLanguageSelect() {
+    const select = document.getElementById('languageSelect');
+    if (!select) return;
+    select.value = lang;
+    select.addEventListener('change', async () => {
+      select.disabled = true;
+      try {
+        await api.put('/api/settings/language', { language: select.value });
+        window.location.reload();
+      } catch (error) {
+        toast(error.message, 'error');
+        select.value = lang;
+        select.disabled = false;
+      }
+    });
   }
 
   function initThemeToggle() {
@@ -663,7 +689,7 @@
     const masking = s.maskingEnabled
       ? `Penyamaran secret aktif${s.passthroughMasking ? ', termasuk request passthrough' : ', kecuali request passthrough'}`
       : 'Penyamaran secret NONAKTIF, aktifkan lagi di Setting → Keamanan & privasi';
-    const count = n => Number(n || 0).toLocaleString('id-ID');
+    const count = n => Number(n || 0).toLocaleString(locale);
     return `${masking}. Sejak AIT berjalan: ${count(s.masked)} secret disamarkan, ${count(s.restored)} dipasang kembali saat menulis, `
       + `${count(s.blockedReads)} akses ke file kredensial ditolak.`;
   }
@@ -756,6 +782,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     initWindows();
     initThemeToggle();
+    initLanguageSelect();
     initUpdateBar();
     initNpmUpdate();
     initOnboarding();
@@ -768,5 +795,5 @@
     setInterval(refreshRouterPill, 20000);
   });
 
-  window.AIThread = { api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager, renderSetupStatus, securityStatusText };
+  window.AIThread = { lang, isEn, locale, t, api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager, renderSetupStatus, securityStatusText };
 })();

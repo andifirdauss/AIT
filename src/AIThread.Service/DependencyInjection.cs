@@ -150,7 +150,8 @@ public static class DependencyInjection
         services.AddSingleton<IBusinessDigestRunner, BusinessDigestRunner>();
         services.AddSingleton<IBusinessMemoryService, BusinessMemoryService>();
 
-        // First, so memory is read from the configured stores by everything that starts after it.
+        // First, so every text shown after it is in the chosen language and memory is read from the configured stores.
+        services.AddHostedService<LanguageInitializer>();
         services.AddHostedService<MemoryStorageInitializer>();
         services.AddHostedService<ProjectKeyBackfill>();
         services.AddHostedService<ActivityLogWriter>();

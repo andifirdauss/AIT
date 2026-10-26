@@ -23,4 +23,7 @@ public interface ISettingService
     Task<RuntimeSettings> UpdateSkillsAsync(UpdateSkillSettingsRequest request, CancellationToken cancellationToken = default);
 
     Task<RuntimeSettings> UpdateBusinessAsync(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken = default);
+
+    // Only touches the language of the text AIT shows ("id" or "en").
+    Task<RuntimeSettings> UpdateLanguageAsync(string language, CancellationToken cancellationToken = default);
 }

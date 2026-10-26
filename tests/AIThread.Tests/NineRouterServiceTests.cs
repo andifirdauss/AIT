@@ -240,5 +240,7 @@ public class NineRouterServiceTests
 
         public Task<RuntimeSettings> UpdateBusinessAsync(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public Task<RuntimeSettings> UpdateLanguageAsync(string language, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }
