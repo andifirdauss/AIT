@@ -935,6 +935,36 @@ Its effects:
 - **The Memory menu**: the *In &lt;environment&gt;* filter shows only memory whose change reached that environment
   (memory without a thread still shows).
 
+## Commits made outside AIT
+
+Commits developers make **without AIT** can be summarized into memory and the business wiki too. It is **off by
+default**, because every commit costs tokens of the memory node (the cheap node: Tools → Wrapper → Planner). Turn it on
+in [Projects > Detail → Git](05-menu.md#project), section *Commits made outside AIT*; the settings are shared by every
+developer of the project key.
+
+| Setting | Meaning |
+|---|---|
+| Ref | The branch whose commits are read, e.g. `origin/develop`. Empty = the *prod* environment's ref, or `origin/HEAD` |
+| Since | Only commits after it was turned on (turning it on again starts from then), so old history is not summarized at once |
+| Commits per pass | At most this many commits summarized per pass (default 10, at most 50) |
+
+Each pass (after a `git fetch`, every 5 minutes, or *Summarize now*) AIT reads that ref's commits, oldest first, without
+merge commits, and **leaves out** AIT's own: a commit or squash commit of a thread change the team shares, and a commit
+whose every file holds exactly what an AIT thread wrote. The rest is:
+
+1. **claimed** in the shared `IngestedCommits` table — one commit is taken by one AIT only, even when several developers
+   have it on;
+2. summarized by the model from its diff (at most 14,000 characters, secrets masked) and message into one **change
+   entry** (`Change`) in the same format as a thread's; its author and ref become the memory's origin, and the Memory menu
+   names its source *commit &lt;id&gt;*;
+3. recorded as a `ThreadChange` (marked *ingested*), so git state, [environments](#environments) and the wiki per
+   environment treat it like a thread;
+4. summarized into the **business wiki** by the wiki writer of the AIT that claimed it, with the next threads.
+
+A commit with nothing worth keeping (formatting, a version bump, generated files) is skipped by the model. A commit that
+fails to be summarized is marked *failed* and not tried again automatically. The newest commits and their state show on
+the Git card.
+
 ## Unit tests
 
 Every project has a **unit test catalog** shared by every developer of that project (scope `ProjectKey`, stored with

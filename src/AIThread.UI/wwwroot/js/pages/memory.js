@@ -94,6 +94,12 @@
     Lost: ['danger', t('commit hilang', 'commit lost')]
   };
 
+  // The thread a memory came from, or the commit made outside AIT it was summarized from.
+  function sourceLink(m) {
+    if (m.fromCommit) return `<div class="mono" title="${escapeHtml(t('Dirangkum dari commit di luar AIT', 'Summarized from a commit made outside AIT'))}">commit ${escapeHtml((m.gitCommit || '').substring(0, 8))}</div>`;
+    return m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : '';
+  }
+
   // Branch the memory's thread worked on (author and commit on hover) and where its change is in the author's clone.
   function gitSource(m) {
     if (!m.gitBranch && !m.gitAuthor && !m.gitState) return '';
@@ -110,7 +116,7 @@
       <td><span class="badge ${m.type === 'Project' ? 'text-bg-primary' : 'text-bg-success'}">${m.type}</span></td>
       <td class="small">${escapeHtml(m.projectName || (m.type === 'Knowledge' ? 'all projects' : '–'))}</td>
       <td>${labelCell(m)}<div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
-      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}${gitSource(m)}</td>
+      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${sourceLink(m)}${gitSource(m)}</td>
       <td>${m.level === 'Long' ? fmt.number(m.hitCount) : '–'}</td>
       <td class="text-end text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-edit="${m.id}">Open</button>
@@ -122,7 +128,7 @@
       <td><span class="badge ${m.type === 'Project' ? 'text-bg-primary' : 'text-bg-success'}">${m.type}</span></td>
       <td class="small">${escapeHtml(m.projectName || (m.type === 'Knowledge' ? 'semua project' : '–'))}</td>
       <td>${labelCell(m)}<div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
-      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}${gitSource(m)}</td>
+      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${sourceLink(m)}${gitSource(m)}</td>
       <td>${m.level === 'Long' ? fmt.number(m.hitCount) : '–'}</td>
       <td class="text-end text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-edit="${m.id}">Buka</button>

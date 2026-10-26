@@ -41,6 +41,8 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
     public DbSet<ThreadChange> ThreadChanges => Set<ThreadChange>();
     public DbSet<ProjectEnvironment> ProjectEnvironments => Set<ProjectEnvironment>();
     public DbSet<ChangePresence> ChangePresences => Set<ChangePresence>();
+    public DbSet<CommitIngestSettings> CommitIngestSettings => Set<CommitIngestSettings>();
+    public DbSet<IngestedCommit> IngestedCommits => Set<IngestedCommit>();
     public DbSet<BusinessEnvPage> BusinessEnvPages => Set<BusinessEnvPage>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
