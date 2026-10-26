@@ -54,6 +54,18 @@ public sealed class ThreadPlan
         }
     }
 
+    // File paths the planner copied from masked tool output: their placeholders back to the real names, so the files
+    // can be checked and changed. A placeholder AIT does not know stays, and the validator reports the missing file.
+    public void RestorePaths(Func<string, string> restore)
+    {
+        foreach (var task in Tasks)
+        {
+            task.File = restore(task.File);
+            if (task.To is not null) task.To = restore(task.To);
+            foreach (var reference in task.Context ?? []) reference.File = restore(reference.File);
+        }
+    }
+
     // For models that ignore tool calling and print the plan as text.
     public static bool TryParseFromText(string text, out ThreadPlan? plan)
     {

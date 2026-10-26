@@ -125,6 +125,52 @@ public sealed class SecretGuardTests : IDisposable
     }
 
     [Fact]
+    public void A_code_name_is_masked_where_it_is_the_secret_but_not_wherever_it_appears()
+    {
+        var guard = Guard();
+
+        var masked = guard.Redact("ref_token: \"LunchClaimRateHeaderDto\"");
+        Assert.DoesNotContain("LunchClaimRateHeaderDto", masked);
+
+        // Class and file names stay readable, so the files behind them can still be read and edited.
+        const string code = "public partial class LunchClaimRateHeaderDto // NewESS.Common/DTO/ESS/LunchClaimRateHeaderDto.cs";
+        Assert.Equal(code, guard.Redact(code));
+        Assert.False(SecretRules.IsDistinctive("NewESS.Common.Dto"));
+        Assert.True(SecretRules.IsDistinctive("Zx9-Distinct-Value"));
+    }
+
+    [Fact]
+    public async Task A_file_name_the_model_only_saw_masked_can_still_be_read_and_changed()
+    {
+        await using var harness = await ThreadOrchestratorTests.CreateAsync();
+        const string file = "src/Rate9Header.cs";
+        const string active = "    public bool BolActive { get; set; }";
+        const string withMode = active + "\n    public string? TxtMode { get; set; }";
+        harness.Project.Write(file, $"namespace Demo;\n\npublic class Rate9Header\n{{\n{active}\n}}\n");
+
+        // An earlier output masked the name, so the model only knows the file by its placeholder.
+        var placeholder = Placeholder(harness.Service<ISecretGuard>().Redact("ref_token: \"Rate9Header\""));
+        var maskedFile = $"src/{placeholder}.cs";
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ReadFile, new { path = maskedFile }))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan
+            {
+                Summary = "Tambah TxtMode.",
+                Tasks = [ThreadOrchestratorTests.Step("T1", maskedFile, "Add TxtMode after BolActive.")]
+            }))
+            .OnExecutor(file, ScriptedRouter.Edit(active, withMode, "TxtMode ditambahkan."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("TxtMode ditambahkan."));
+
+        var (result, _) = await harness.RunAsync("Tambah TxtMode di DTO header");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        var read = router.CallsTo(ScriptedAgent.Planner)[1].Messages.OfType<JsonObject>().Single(m => m["role"]?.GetValue<string>() == "tool");
+        Assert.Contains("BolActive", read["content"]!.GetValue<string>());
+        Assert.Contains("public string? TxtMode { get; set; }", harness.ReadFile(file));
+    }
+
+    [Fact]
     public void Unknown_placeholders_are_reported_instead_of_written()
     {
         var restore = Guard().Restore("Password={{AIT_SECRET:Password:0123456789}}");

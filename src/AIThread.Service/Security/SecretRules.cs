@@ -165,10 +165,13 @@ public static partial class SecretRules
         return NotSecretValues.Contains(trimmed);
     }
 
-    // Long enough and mixed enough that replacing it wherever it appears does not hit ordinary words or code.
+    // Long enough and mixed enough that replacing it wherever it appears does not hit ordinary words or code. A name
+    // made of letters only (LunchClaimRateHeaderDto, NewESS.Common.Dto, ref_token) reads as code: masked everywhere, it
+    // would hide class and file names from the planner, and the files behind them could no longer be read or edited.
     public static bool IsDistinctive(string value)
     {
         if (value.Length < 8 || value.Length > MaxValueChars || value.Any(char.IsWhiteSpace)) return false;
+        if (CodeName().IsMatch(value)) return false;
         var classes = 0;
         if (value.Any(char.IsLower)) classes++;
         if (value.Any(char.IsUpper)) classes++;
@@ -354,4 +357,7 @@ public static partial class SecretRules
 
     [GeneratedRegex(@"[^A-Za-z0-9]+", RegexOptions.CultureInvariant)]
     private static partial Regex Separator();
+
+    [GeneratedRegex(@"^[A-Za-z_]+(?:[.\-/\\:][A-Za-z_]+)*$", RegexOptions.CultureInvariant)]
+    private static partial Regex CodeName();
 }

@@ -40,7 +40,9 @@ Your files & prompts ──► AIT ── secret → {{AIT_SECRET:…}} ──�
   Telegram bot tokens, JWTs, and `-----BEGIN … PRIVATE KEY-----` blocks.
 - **Secrets found before**: a value that is long and random enough (at least 8 characters with a mix of letters, digits
   or symbols) is masked wherever it shows up again, for example when a password from `appsettings.json` is pasted into a
-  prompt.
+  prompt. A value made of letters only (with `_`, `.`, `-`, `/` or `:` between them), such as `LunchClaimRateHeaderDto`,
+  counts as a code name: it is still masked where it is the secret, but not elsewhere, so class and file names are not
+  masked along with it.
 
 Setting names that only *talk about* a secret are not masked, for example `PasswordLength`, `TokenEndpoint`,
 `ApiKeyHeaderName` or `RequireUppercase`. Neither are values that refer to somewhere else, such as `${DB_PASS}`,
@@ -79,6 +81,9 @@ acts:
   Before that AIT reads the target file again, so a placeholder copied from that file can still be restored after a
   restart. An unrecognized placeholder makes the edit refused and the executor is asked to try again. The diff shown in
   reports and stored with the thread keeps the placeholders.
+- **Planner tools and the plan**: a path or name the model copied from masked output (`read_file`, `find_references`,
+  …, and the task files of `submit_plan`) is restored before the tool runs and before the plan is validated, so that
+  file can still be read and changed. The tool output is masked again.
 - **Tester**: a token the application returned earlier (and that was masked) is put back in the next request, so a login
   → call API flow keeps working.
 - **Claude Code** (the `PreToolUse` hook): before Edit, MultiEdit, Write, NotebookEdit or Bash runs, AIT replaces the

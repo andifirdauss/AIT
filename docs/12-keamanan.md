@@ -39,7 +39,9 @@ File & prompt Anda ──► AIT ── secret → {{AIT_SECRET:…}} ──► 
   npm, Stripe, bot Telegram, JWT, dan blok `-----BEGIN … PRIVATE KEY-----`.
 - **Secret yang sudah pernah ditemukan**: nilai yang cukup panjang dan acak (minimal 8 karakter dengan campuran huruf,
   angka, atau simbol) ikut disamarkan di mana pun ia muncul lagi, misalnya saat password dari `appsettings.json`
-  ditempel ke prompt.
+  ditempel ke prompt. Nilai yang hanya berisi huruf (dengan `_`, `.`, `-`, `/`, atau `:` di antaranya) seperti
+  `LunchClaimRateHeaderDto` dianggap nama kode: tetap disamarkan di tempat ia menjadi secret, tetapi tidak di tempat lain,
+  agar nama class dan file tidak ikut tersamarkan.
 
 Nama pengaturan yang hanya *membicarakan* secret tidak disamarkan, misalnya `PasswordLength`, `TokenEndpoint`,
 `ApiKeyHeaderName`, atau `RequireUppercase`. Begitu juga nilai yang merujuk ke tempat lain, seperti `${DB_PASS}`,
@@ -78,6 +80,9 @@ sendiri yang bertindak:
   Sebelumnya AIT membaca ulang file target, jadi placeholder yang disalin dari file itu tetap bisa dipulihkan setelah
   restart. Placeholder yang tidak dikenali membuat edit ditolak dan executor diminta mengulang. Diff yang ditampilkan
   di laporan dan disimpan di thread tetap memakai placeholder.
+- **Tool planner dan rencana**: path atau nama yang disalin model dari output yang disamarkan (`read_file`,
+  `find_references`, …, serta file tugas di `submit_plan`) dipulihkan sebelum tool berjalan dan sebelum rencana
+  divalidasi, jadi file tersebut tetap bisa dibaca dan diubah. Output tool tetap disamarkan lagi.
 - **Tester**: token yang tadi dikembalikan aplikasi (dan disamarkan) dipasang kembali di request berikutnya, sehingga
   alur login → panggil API tetap berjalan.
 - **Claude Code** (hook `PreToolUse`): sebelum Edit, MultiEdit, Write, NotebookEdit, atau Bash dijalankan, AIT mengganti
