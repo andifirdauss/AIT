@@ -11,7 +11,7 @@ public sealed partial class DocsService
         if (index < 0) return null;
 
         var entry = entries[index];
-        var path = Path.Combine(DirectoryPath!, entry.Slug.Length == 0 ? IndexFileName : entry.Slug + ".md");
+        var path = PathOf(entry.Slug.Length == 0 ? IndexFileName : entry.Slug + ".md");
         var stamp = File.GetLastWriteTimeUtc(path);
         if (!_cache.TryGetValue(path, out var page) || page.Stamp != stamp)
         {

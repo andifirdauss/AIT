@@ -3,6 +3,9 @@
 Semua endpoint berada di host AIT (default `http://localhost:5225`). Enum dikirim sebagai string
 (`"Planner"`, `"Short"`, `"Completed"`, …) dan properti JSON memakai camelCase.
 
+Pesan di respons (`message`, error validasi, status) mengikuti [bahasa tampilan](02-konfigurasi.md#bahasa-tampilan)
+mesin; nama field dan nilai enum tidak berubah.
+
 ## Proxy CLI coding (Claude Code, Codex, Gemini CLI, …)
 
 | Method | Path | Keterangan |
@@ -51,8 +54,9 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/settings` | — |
+| `GET` | `/api/settings` | — (juga `uiLanguage` = `id`/`en`) |
 | `PUT` | `/api/settings` | `nineRouterBaseUrl`, `nineRouterApiKey`, `clearNineRouterApiKey`, `proxyApiKey`, `passthroughModel`, `orchestrationEnabled`, `streamProgressToClient`, `plannerMaxSteps`, `executorMaxRetries`, `maxParallelTasks`, `requestTimeoutSeconds`, `buildEnabled` (default `true`), `buildTimeoutSeconds` (30–3600, default 300), `maxFixRounds` (0–5, default 2) |
+| `PUT` | `/api/settings/language` | `{ "language": "id" \| "en" }` — bahasa tampilan mesin ini ([Bahasa tampilan](02-konfigurasi.md#bahasa-tampilan)) |
 | `POST` | `/api/settings/test-router` | `{ "baseUrl"?: "...", "apiKey"?: "..." }` — kosong = pakai nilai tersimpan |
 | `GET` | `/api/settings/claude?scope=User\|Project&projectId=` | status file settings Claude Code |
 | `POST` | `/api/settings/claude/apply` | `{ "scope": "Project", "projectId": "...", "proxyBaseUrl": "http://localhost:5225", "timeoutMs": null }` |
@@ -147,8 +151,8 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `POST` | `/api/projects/{id}/testing-settings/impersonation/detect` | — → `settings`. Scan kode + model murah; hasilnya belum dikonfirmasi (`impersonation.source` = `scan`) |
 | `GET` | `/api/projects/{id}/test-scenarios` | — → skenario[]: `id`, `slug`, `title`, `description`, `version`, `level`, `baseUrl`, `steps[]` (`order`, `role`, `action`, `target`, `instruction`, `values` objek field → nilai, `expect`), `roles[]` (`role`, `username`), `fields[]`, `sourceThreadId`, `sourceFollowUp`, `missing[]`, `lastOutcome`, `lastRunAt`, `lastRunBy`, `createdBy`, `updatedBy`, `createdAt`, `updatedAt` |
 | `POST` | `/api/threads/{id}/follow-ups/{number}/scenario` | — → skenario. Membuat skenario dari saran test lanjutan (sama lagi bila sudah pernah dibuat) |
-| `GET` | `/api/projects/{id}/test-scenarios/{scenarioId}/excel` | — → file `.xlsx` (`<slug>.xlsx`) untuk diisi |
-| `POST` | `/api/projects/{id}/test-scenarios/import` | multipart `file` (.xlsx, maks 5 MB) → `scenario`, `accountsAdded[]`, `warnings[]`. 400 dengan daftar baris yang salah |
+| `GET` | `/api/projects/{id}/test-scenarios/{scenarioId}/excel` | — → file `.xlsx` (`<slug>.xlsx`) untuk diisi; nama sheet dalam bahasa tampilan |
+| `POST` | `/api/projects/{id}/test-scenarios/import` | multipart `file` (.xlsx, maks 5 MB; sheet dalam bahasa mana pun) → `scenario`, `accountsAdded[]`, `warnings[]`. 400 dengan daftar baris yang salah |
 | `POST` | `/api/projects/{id}/test-scenarios/{scenarioId}/run` | `{ "acknowledge": true }` → id thread asal (kemajuan lewat SSE di thread itu). 400 bila peran belum punya akun, tanpa thread asal, atau efek samping belum dikonfirmasi (`acknowledge` false) |
 | `DELETE` | `/api/projects/{id}/test-scenarios/{scenarioId}` | — → `true` |
 | `POST` | `/api/projects/{id}/unit-tests/{testId}/confirm-removal` | `{ "removeCode": true }` → `test`, `threadId`. Hanya test obsolete: status `Removed`, snapshot dihapus, dan bila `removeCode` serta file test-nya ada, thread Dashboard dimulai untuk menghapus kode test itu (`threadId`) |
@@ -165,8 +169,8 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `DELETE` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory/{id}/promote` | — (short → long) |
 | `POST` | `/api/memory/consolidate` | — (jumlah yang dipindah) |
-| `GET` | `/api/memory/export` | `level`, `type`, `projectId`, `search`, `includeUnitTests` (default `true`) → file JSON `aithread-memory` v3; katalog unit test di `unitTests[]` (dengan snapshot), tidak ikut bila `search` diisi atau `type=Knowledge` (lihat [Memory](06-memory.md#export--import)) |
-| `POST` | `/api/memory/import` | body = file export (v1, v2, atau v3); query `mode` (`Skip` default / `Overwrite`; tidak berlaku untuk unit test), `dryRun` (`true` = hanya ringkasan). Hasil juga memuat `unitTestsAdded`, `unitTestsUpdated`, `unitTestsRenumbered`, `unitTestsSkipped` |
+| `GET` | `/api/memory/export` | `level`, `type`, `projectId`, `search`, `includeUnitTests` (default `true`) → file JSON `aithread-memory`; katalog unit test di `unitTests[]` (dengan snapshot), tidak ikut bila `search` diisi atau `type=Knowledge` (lihat [Memory](06-memory.md#export--import)) |
+| `POST` | `/api/memory/import` | body = file export (v1–v4); query `mode` (`Skip` default / `Overwrite`; tidak berlaku untuk unit test), `dryRun` (`true` = hanya ringkasan). Hasil juga memuat `unitTestsAdded`, `unitTestsUpdated`, `unitTestsRenumbered`, `unitTestsSkipped` |
 | `GET` | `/api/memory/modules?projectId=&knowledge=false` | daftar modul: `name`, `aliases[]`, `description`, `memories`, `files` (`knowledge=true` = modul knowledge memory) |
 | `PUT` | `/api/memory/modules/{name}?projectId=&knowledge=` | `{ "name": "KlaimDF", "description": "...", "aliases": ["Pengguna"] }`; semua field opsional. `name` mengganti nama modul (boleh hanya huruf besar/kecil): memory, peta kode, dan wiki ikut; nama yang dipakai modul lain ditolak |
 | `POST` | `/api/memory/modules/merge?knowledge=` | `{ "projectId": "...", "from": "Pengguna", "into": "User" }` → riwayat merge |
