@@ -8,8 +8,31 @@ namespace AIThread.API.Controllers;
 [ApiController]
 [Route("api/projects")]
 public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog, ICodeStructureService structure,
-    IGitChangeTracker gitChanges, IGitEnvironmentTracker environments) : ControllerBase
+    IGitChangeTracker gitChanges, IGitEnvironmentTracker environments, ICommitIngestor ingestor) : ControllerBase
 {
+    // Summarizing commits made outside AIT into memory and the business wiki (shared per project key, costs tokens).
+    [HttpGet("{id:guid}/git/ingest")]
+    public async Task<ActionResult<ApiResponse<CommitIngestDto>>> Ingest(Guid id, CancellationToken cancellationToken) =>
+        await ingestor.GetAsync(id, cancellationToken) is { } ingest
+            ? ApiResponse<CommitIngestDto>.Ok(ingest)
+            : NotFound(ApiResponse<CommitIngestDto>.Fail(Lang.T("Project tidak ditemukan atau belum punya key.", "Project not found or without a key.")));
+
+    [HttpPut("{id:guid}/git/ingest")]
+    public async Task<ActionResult<ApiResponse<CommitIngestDto>>> SaveIngest(Guid id, SaveCommitIngestRequest request, CancellationToken cancellationToken) =>
+        await ingestor.SaveAsync(id, request, cancellationToken) is { } ingest
+            ? ApiResponse<CommitIngestDto>.Ok(ingest, Lang.T("Pengaturan ingest commit disimpan.", "Commit ingest settings saved."))
+            : NotFound(ApiResponse<CommitIngestDto>.Fail(Lang.T("Project tidak ditemukan atau belum punya key.", "Project not found or without a key.")));
+
+    // One pass now; the result message says what happened.
+    [HttpPost("{id:guid}/git/ingest/run")]
+    public async Task<ActionResult<ApiResponse<CommitIngestResultDto>>> RunIngest(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await ingestor.RunAsync(id, cancellationToken);
+        return ApiResponse<CommitIngestResultDto>.Ok(result, result.Problem ?? Lang.T(
+            $"{result.Ingested} commit dirangkum, {result.Skipped} dilewati, {result.Failed} gagal.",
+            $"{result.Ingested} commit(s) summarized, {result.Skipped} skipped, {result.Failed} failed."));
+    }
+
     // The project key's environments (dev, staging, prod, ...), shared by every developer, with what this clone knows.
     [HttpGet("{id:guid}/environments")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>>> Environments(Guid id, CancellationToken cancellationToken) =>

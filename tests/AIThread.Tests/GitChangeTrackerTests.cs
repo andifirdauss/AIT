@@ -325,6 +325,64 @@ public class GitChangeTrackerTests
     }
 
     [Fact]
+    public async Task A_commit_made_outside_AIT_is_summarized_once_and_the_AIT_commit_is_left_alone()
+    {
+        await using var harness = await CreateAsync();
+        await harness.AddStandardNodesAsync();
+        // The initial commit is from before commit ingest was turned on.
+        GitIn(harness.Project.Root, DateTimeOffset.UtcNow.AddDays(-2), "commit", "--quiet", "--amend", "--no-edit");
+        using var remote = new TempWorkspace();
+        GitIn(remote.Root, "init", "--bare", "--quiet", "--initial-branch=main");
+        Git(harness, "remote", "add", "origin", remote.Root);
+        var threadId = await ThreadWritesAsync(harness, File1, Changed);
+        Git(harness, "commit", "--quiet", "-am", "Halo (AIT)");
+        await harness.Service<IGitChangeTracker>().RefreshThreadsAsync([threadId]);
+        harness.Project.Write("src/Other.cs", "class Other { }\n");
+        Git(harness, "add", "src/Other.cs");
+        Git(harness, "commit", "--quiet", "-m", "Add Other by hand");
+        var outside = Git(harness, "rev-parse", "HEAD");
+        Git(harness, "push", "--quiet", "origin", "main");
+        Git(harness, "fetch", "--quiet", "origin");
+
+        harness.Router.On(ScriptedAgent.CommitExtractor, ScriptedRouter.Text("""
+            {"entry": {"title": "Tambah class Other", "module": "Other", "other_modules": [], "feature": "Class `Other` tersedia.",
+              "files": [{"path": "src/Other.cs", "change": "class `Other` baru"}], "validation": [], "flow": [], "notes": [], "keywords": ["Other"]}}
+            """));
+        var ingestor = harness.Service<ICommitIngestor>();
+        Assert.Contains("belum dinyalakan", (await ingestor.RunAsync(harness.ProjectId)).Problem);
+        var settings = await ingestor.SaveAsync(harness.ProjectId, new SaveCommitIngestRequest(true, "origin/main", DateTime.UtcNow.AddHours(-1), 10));
+        Assert.Equal("origin/main", settings!.EffectiveRef);
+
+        var result = await ingestor.RunAsync(harness.ProjectId);
+        Assert.Equal((1, 0, 0), (result.Ingested, result.Skipped, result.Failed));
+        var call = Assert.Single(harness.Router.CallsTo(ScriptedAgent.CommitExtractor));
+        Assert.Contains("Add Other by hand", call.LastUser);
+        Assert.Contains("+class Other { }", call.LastUser);
+
+        Guid ingestId;
+        await using (var shared = await harness.Service<AIThread.Data.Memory.LongMemoryStore>().CreateGitAsync())
+        {
+            var row = await shared.IngestedCommits.SingleAsync();
+            Assert.Equal((outside, IngestStatus.Done), (row.Commit, row.Status));
+            ingestId = row.Id;
+            var change = await shared.ThreadChanges.SingleAsync(c => c.Id == ingestId);
+            Assert.True(change.Ingested);
+            Assert.Equal((GitChangeState.Pushed, outside, "AIT Test <ait@test.local>"), (change.State, change.Commits, change.GitAuthor));
+        }
+        var saved = Assert.Single(harness.Memory.Saved);
+        Assert.Equal((ingestId, "Other", MemoryKind.Change), (saved.ThreadId!.Value, saved.Request.Module, saved.Request.Kind));
+
+        // Nothing new: no model call, nothing claimed twice.
+        Assert.Equal(0, (await ingestor.RunAsync(harness.ProjectId)).Ingested);
+        Assert.Single(harness.Router.CallsTo(ScriptedAgent.CommitExtractor));
+
+        // The business wiki writer of this machine reads it like a thread (after the AIT thread waiting too).
+        var digests = await harness.Service<IBusinessDigestCollector>().NextBatchAsync(ProjectKey, CancellationToken.None);
+        Assert.Equal([threadId, ingestId], digests.Select(d => d.ThreadId));
+        Assert.Contains("made outside AIT", digests[1].Text);
+    }
+
+    [Fact]
     public void A_thread_takes_the_least_advanced_state_of_the_files_it_still_has()
     {
         Assert.Equal((GitChangeState?)null, GitChangeTracker.Summarize([(null, null)]).State);
@@ -397,7 +455,10 @@ public class GitChangeTrackerTests
     private static string Git(OrchestrationHarness harness, params string[] arguments) => GitIn(harness.Project.Root, arguments);
 
     // Fixed identity and no signing or line ending conversion, whatever the machine's git config says.
-    private static string GitIn(string directory, params string[] arguments)
+    private static string GitIn(string directory, params string[] arguments) => GitIn(directory, null, arguments);
+
+    // date: the author and committer date of a commit made by the call.
+    private static string GitIn(string directory, DateTimeOffset? date, params string[] arguments)
     {
         var startInfo = new ProcessStartInfo("git")
         {
@@ -409,6 +470,11 @@ public class GitChangeTrackerTests
         };
         string[] config = ["-c", "user.name=AIT Test", "-c", "user.email=ait@test.local", "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"];
         foreach (var argument in config.Concat(arguments)) startInfo.ArgumentList.Add(argument);
+        if (date is { } when)
+        {
+            startInfo.Environment["GIT_AUTHOR_DATE"] = when.ToString("yyyy-MM-ddTHH:mm:sszzz");
+            startInfo.Environment["GIT_COMMITTER_DATE"] = when.ToString("yyyy-MM-ddTHH:mm:sszzz");
+        }
 
         using var process = Process.Start(startInfo)!;
         var error = process.StandardError.ReadToEndAsync();

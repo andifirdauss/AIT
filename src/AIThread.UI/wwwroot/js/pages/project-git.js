@@ -122,6 +122,57 @@
     toast(t('Environment dicek.', 'Environments checked.'));
   }));
 
+  // --- Commits made outside AIT (shared by the project key) ---
+
+  const ingestLabels = {
+    Done: ['success', t('dirangkum', 'summarized')],
+    Skipped: ['secondary', t('dilewati', 'skipped')],
+    Failed: ['danger', t('gagal', 'failed')],
+    Pending: ['info', t('diproses', 'in progress')]
+  };
+
+  function renderIngest(ingest) {
+    if (document.activeElement !== el('ingestRef')) el('ingestRef').value = ingest.ref || '';
+    if (document.activeElement !== el('ingestMax')) el('ingestMax').value = ingest.maxPerRun;
+    el('ingestEnabled').checked = ingest.enabled;
+    el('btnIngestRun').disabled = !ingest.enabled;
+    const source = ingest.effectiveRef
+      ? (isEn ? `Reads <span class="mono">${escapeHtml(ingest.effectiveRef)}</span>` : `Membaca <span class="mono">${escapeHtml(ingest.effectiveRef)}</span>`)
+      : `<span class="text-warning">${t('ref tidak ditemukan di clone ini', 'ref not found in this clone')}</span>`;
+    el('ingestStatus').innerHTML = `${source} · ${isEn ? `since ${fmt.dateTime(ingest.since)}` : `sejak ${fmt.dateTime(ingest.since)}`}`
+      + ` · ${isEn ? `${ingest.done} summarized, ${ingest.skipped} skipped, ${ingest.failed} failed` : `${ingest.done} dirangkum, ${ingest.skipped} dilewati, ${ingest.failed} gagal`}`;
+    el('ingestRecent').innerHTML = ingest.recent.map(c => {
+      const [color, label] = ingestLabels[c.status] || ['secondary', c.status];
+      return `<li class="mb-1"><span class="badge text-bg-${color}">${label}</span> <span class="mono">${escapeHtml(c.commit.substring(0, 8))}</span>
+        ${escapeHtml(c.title || '')} <span class="text-secondary">— ${escapeHtml(c.author || '')}${c.note ? ` · ${escapeHtml(c.note)}` : ''}</span></li>`;
+    }).join('');
+  }
+
+  async function loadIngest() {
+    try {
+      renderIngest(await api.get(`/api/projects/${projectId}/git/ingest`));
+    } catch (error) {
+      el('ingestStatus').textContent = error.message;
+    }
+  }
+
+  el('btnIngestSave').addEventListener('click', () => run(el('btnIngestSave'), async () => {
+    if (el('ingestEnabled').checked && !confirm(t('Setiap commit di luar AIT akan dirangkum model (memakai token). Lanjut?', 'Every commit made outside AIT will be summarized by a model (costs tokens). Continue?'))) return;
+    const max = el('ingestMax').value.trim();
+    renderIngest(await api.put(`/api/projects/${projectId}/git/ingest`, {
+      enabled: el('ingestEnabled').checked, ref: el('ingestRef').value.trim() || null, since: null, maxPerRun: max === '' ? null : Number(max)
+    }));
+    toast(t('Pengaturan ingest commit disimpan.', 'Commit ingest settings saved.'));
+  }));
+
+  el('btnIngestRun').addEventListener('click', () => run(el('btnIngestRun'), async () => {
+    const result = await api.post(`/api/projects/${projectId}/git/ingest/run`);
+    toast(result.problem || (isEn ? `${result.ingested} commit(s) summarized, ${result.skipped} skipped, ${result.failed} failed.`
+      : `${result.ingested} commit dirangkum, ${result.skipped} dilewati, ${result.failed} gagal.`), result.problem ? 'error' : 'success');
+    loadIngest();
+  }));
+
   load();
   loadEnvironments();
+  loadIngest();
 })();

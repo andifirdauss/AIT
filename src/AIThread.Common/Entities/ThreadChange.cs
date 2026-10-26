@@ -31,4 +31,7 @@ public class ThreadChange : BaseEntity
 
     // The git identity of the AIT that last wrote the row.
     public string? UpdatedBy { get; set; }
+
+    // A commit made outside AIT (IngestedCommit, same id), not an AIT thread: GitBaseCommit is the commit itself.
+    public bool Ingested { get; set; }
 }

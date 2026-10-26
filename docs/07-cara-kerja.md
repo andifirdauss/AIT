@@ -905,6 +905,35 @@ Efeknya:
 - **Menu Memori**: filter *Di &lt;environment&gt;* menampilkan hanya memory yang perubahannya sudah masuk environment
   itu (memory tanpa thread tetap tampil).
 
+## Commit di luar AIT
+
+Commit yang dibuat developer **tanpa AIT** bisa ikut dirangkum ke memory dan wiki bisnis. Fitur ini **mati secara
+bawaan** karena tiap commit memakai token node memory (node murah: Tools → Wrapper → Planner). Nyalakan di
+[Proyek > Detail → Git](05-menu.md#proyek), bagian *Commit di luar AIT*; pengaturannya dipakai bersama semua developer
+project key itu.
+
+| Pengaturan | Arti |
+|---|---|
+| Ref | Branch yang commit-nya dibaca, mis. `origin/develop`. Kosong = ref environment *prod*, atau `origin/HEAD` |
+| Mulai dari | Hanya commit setelah fitur dinyalakan (menyalakan ulang mulai dari saat itu), supaya riwayat lama tidak dirangkum sekaligus |
+| Commit per putaran | Maks commit yang dirangkum per putaran (bawaan 10, maks 50) |
+
+Setiap putaran (setelah `git fetch`, tiap 5 menit, atau *Rangkum sekarang*) AIT membaca commit ref itu, yang paling lama
+dulu, tanpa merge commit, lalu **melewati** commit milik AIT sendiri: commit atau commit squash dari thread AIT yang dibagi
+tim, dan commit yang semua filenya berisi persis tulisan thread AIT. Sisanya:
+
+1. **diklaim** di tabel bersama `IngestedCommits` — satu commit hanya diproses satu AIT, walau beberapa developer
+   menyalakannya;
+2. diff-nya (maks 14.000 karakter, secret disamarkan) dan pesan commit-nya dirangkum model menjadi satu **catatan
+   perubahan** (`Change`) dengan format yang sama seperti thread; author dan ref-nya menjadi asal-usul memory, dan di menu
+   Memori sumbernya tertulis *commit &lt;id&gt;*;
+3. dicatat sebagai `ThreadChange` (ditandai *ingested*), jadi status git, [environment](#environment), dan wiki per
+   environment memperlakukannya seperti thread;
+4. dirangkum ke **wiki bisnis** oleh penulis wiki AIT yang mengklaimnya, bersama thread berikutnya.
+
+Commit tanpa hal yang perlu diingat (format, versi, file hasil generate) dilewati model. Commit yang gagal dirangkum
+ditandai *gagal* dan tidak dicoba lagi otomatis. Daftar commit terbaru beserta statusnya tampil di kartu Git.
+
 ## Unit test
 
 Setiap project punya **katalog unit test** yang dipakai bersama semua developer project itu (scope `ProjectKey`,
