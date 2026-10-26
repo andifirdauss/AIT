@@ -1,6 +1,6 @@
 # Rancangan: Memory & wiki bisnis yang mengikuti git
 
-> Status: **rancangan**, implementasi bertahap (F1 → F4). Dokumen ini tidak tampil di menu Docs. Perilaku yang sudah
+> Status: **F1 sudah diimplementasikan** (2026-10-26), F2–F4 rancangan. Dokumen ini tidak tampil di menu Docs. Perilaku yang sudah
 > berlaku dipindah ke dokumen pengguna ([06-memory.md](../06-memory.md), [07-cara-kerja.md](../07-cara-kerja.md),
 > [09-referensi-api.md](../09-referensi-api.md)) setiap fase selesai.
 
@@ -144,7 +144,7 @@ digest wiki, dengan author dari author commit. Memakai token, jadi opt-in per pr
 
 | Fase | Isi |
 |---|---|
-| **F1** | Asal-usul di `ThreadRun` + memory (`GitAuthor`, `GitBranch`, `GitBaseCommit`); `AfterBlob`; `GitChangeTracker` status lokal (`Uncommitted`, `Staged`, `Committed`, `ModifiedOutside`, `Discarded`); watcher `.git`; badge status di thread & sumber di memory; API. |
+| **F1** ✓ | Asal-usul di `ThreadRun` + memory (`GitAuthor`, `GitBranch`, `GitBaseCommit`); `AfterBlob` (diambil `FileJournal` saat menulis, bukan saat thread selesai: developer bisa commit / pindah branch lebih dulu); `GitChangeTracker` status lokal (`Uncommitted`, `Staged`, `Committed`, `ModifiedOutside`, `Discarded`, `OnOtherBranch`); watcher `.git` (`GitWatchWorker`); kartu Git di thread & branch sumber di memory; API `git/refresh`; `SessionChanges` melewati `Discarded`/`OnOtherBranch`. |
 | **F2** | Tabel bersama `ThreadChanges` (status + commit per thread lintas developer); `Pushed`, `Stashed`, `Lost`; fallback `patch-id` / hunk; `git fetch` berkala; filter & peringkat planner per ancestry branch; `SessionChanges` melewati `Discarded`. |
 | **F3** | Environment per project, `CommitPresence`, halaman wiki per environment, compare, filter memory per environment. |
 | **F4** | Ingest commit di luar AIT. |

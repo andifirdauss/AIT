@@ -181,7 +181,7 @@ public sealed class LongMemoryStore(IDbContextFactory<AIThreadDbContext> mainFac
                 {
                     await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.LongMemories.AnyAsync(ct), cancellationToken);
                     await MemorySchema.EnsureColumnsAsync<LongMemory>(db, cancellationToken,
-                        [nameof(LongMemory.ProjectKey), nameof(LongMemory.ProjectName), .. MemorySchema.LabelColumns]);
+                        [nameof(LongMemory.ProjectKey), nameof(LongMemory.ProjectName), .. MemorySchema.LabelColumns, .. MemorySchema.GitColumns]);
                     _schemaReady = true;
                 }
                 return db;

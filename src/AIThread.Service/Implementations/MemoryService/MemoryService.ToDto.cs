@@ -27,6 +27,7 @@ public sealed partial class MemoryService
         return new MemoryItemDto(m.Id, MemoryLevel.Long, m.Type, projectId, projectName,
             labeled ? MemoryLabels.Display(m.Area, m.Module!, MemoryLabels.ParseLayers(m.Layers), m.Kind!.Value, extra) : m.Label,
             m.Description, m.SourceThreadId, m.CreatedAt, m.PromotedAt, m.HitCount, m.ProjectKey ?? projects.Find(m.ProjectId)?.Key,
-            m.Module, MemoryLabels.ParseLayers(m.Layers), m.Kind, m.Area, MemoryLabels.SplitCsv(m.Keywords), labeled, m.LegacyLabel, m.ReviewReason, extra);
+            m.Module, MemoryLabels.ParseLayers(m.Layers), m.Kind, m.Area, MemoryLabels.SplitCsv(m.Keywords), labeled, m.LegacyLabel, m.ReviewReason, extra,
+            m.GitAuthor, m.GitBranch, m.GitCommit);
     }
 }

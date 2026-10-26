@@ -139,7 +139,10 @@ public record MemoryExportItem(
     string? Area = null,
     IReadOnlyList<string>? Keywords = null,
     string? LegacyLabel = null,
-    IReadOnlyList<string>? ExtraModules = null);
+    IReadOnlyList<string>? ExtraModules = null,
+    string? GitAuthor = null,
+    string? GitBranch = null,
+    string? GitCommit = null);
 
 public enum MemoryImportMode
 {

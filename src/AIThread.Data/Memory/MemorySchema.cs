@@ -27,6 +27,13 @@ public static class MemorySchema
         nameof(LongMemory.ReviewReason), nameof(LongMemory.RelabelAttempts), nameof(LongMemory.ExtraModules)
     ];
 
+    // Git origin of the memory (the source thread's branch, commit and author), added to tables made before it.
+    public static readonly string[] GitColumns = [nameof(LongMemory.GitAuthor), nameof(LongMemory.GitBranch), nameof(LongMemory.GitCommit)];
+
+    public const int GitAuthorLength = 300;
+    public const int GitBranchLength = 250;
+    public const int GitCommitLength = 64;
+
     // Room for MemoryLabels.MaxExtraModules names of ModuleLength plus separators.
     public const int ExtraModulesLength = 310;
 
@@ -42,6 +49,14 @@ public static class MemorySchema
         e.Property(x => x.LegacyLabel).HasMaxLength(300);
         e.Property(x => x.ReviewReason).HasMaxLength(500);
         e.HasIndex(x => new { x.ProjectKey, x.Module });
+    }
+
+    // The git origin columns of long memory, the same in the main and in an external database.
+    public static void ConfigureGit(EntityTypeBuilder<LongMemory> e)
+    {
+        e.Property(x => x.GitAuthor).HasMaxLength(GitAuthorLength);
+        e.Property(x => x.GitBranch).HasMaxLength(GitBranchLength);
+        e.Property(x => x.GitCommit).HasMaxLength(GitCommitLength);
     }
 
     // Columns added to a memory table after a release created it: a table made by an older version gets the missing

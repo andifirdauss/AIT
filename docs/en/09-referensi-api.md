@@ -120,6 +120,7 @@ the others `projectFile` in the CLI list is `null`, `/projects` returns an empty
 | `GET` | `/api/projects/browse?path=` | without `path` = the drive list. Result: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (project roots in that folder: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
 | `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Result: `root`, `projects[]` (the same shape as `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
 | `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — a manual key (empty/`null` = remove); `.aithread/project.json` still wins. Memory under the old local key moves along (so do its module list & code map) |
+| `POST` | `/api/projects/{id}/git/refresh` | — → the number of threads whose state changed. Asks git again for the change state of every followed thread of the project (last 30 days); each change is sent over SSE `thread.git` |
 | `GET` | `/api/projects/{id}/codemap?search=&module=` | the code map: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (at most 500 rows) |
 | `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — a manual correction, never overwritten; a class/file name is looked up in the project files (400 when it does not exist or matches more than one) |
 | `POST` | `/api/projects/{id}/codemap/scan` | maps the source files not mapped yet (at most 3,000) → `files`, `mapped`, `modules` |
@@ -229,9 +230,14 @@ machine; pages are stored per project key.
 | `POST` | `/api/threads/{id}/follow-ups/{number}/run` | — → the thread id. Runs one follow-up test suggested by the Tester (the `followUps` part of `testingJson`) in the background: the scenarios of that suggestion, the project's test accounts, the remembered values (`values`). Its result is in `followUps[].lastRun`; new suggestions from that run are added. 400 for the same reasons as `/test`, or when the suggestion number does not exist. |
 | `GET` | `/api/threads/{id}/rollback` | — → a preview `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Changes nothing. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. All or nothing: 400 without touching any file when there is a `conflict`. |
+| `POST` | `/api/threads/{id}/git/refresh` | — → the `git` part of the thread detail (see below) after asking git again |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
+
+The thread detail (`GET /api/threads/{id}`) also holds `git` (`null` outside a git repository): `branch`, `baseCommit`,
+`author` (the origin when the thread started), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`).
+The thread summary (`GET /api/threads`) holds `gitState`. See [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change).
 
 ### System
 
@@ -292,6 +298,7 @@ sent every 15 seconds when it is quiet.
 | `router.status` | the 9router status (sent every monitor interval; also when the connection opens without `threadId`) |
 | `thread.created` | `id`, `projectId`, `status` |
 | `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
+| `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`ModifiedOutside`/`Discarded`/`OnOtherBranch`), `commits[]` — the git state of a thread's change changed |
 | `thread.output` | planner activity: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | the full task object (status, node, duration, diff, error, …) |
 | `task.output` | a piece of executor model output: `taskId`, `taskKey`, `text` |

@@ -486,6 +486,18 @@ namespace AIThread.Data.Migrations
                         .HasMaxLength(310)
                         .HasColumnType("nvarchar(310)");
 
+                    b.Property<string>("GitAuthor")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("GitBranch")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("GitCommit")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<int>("HitCount")
                         .HasColumnType("int");
 
@@ -1292,6 +1304,10 @@ namespace AIThread.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AfterBlob")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("AfterHash")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
@@ -1306,6 +1322,14 @@ namespace AIThread.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(800)
                         .HasColumnType("nvarchar(800)");
+
+                    b.Property<string>("GitCommit")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("GitState")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<byte[]>("OriginalContent")
                         .HasColumnType("varbinary(max)");
@@ -1363,6 +1387,29 @@ namespace AIThread.Data.Migrations
 
                     b.Property<string>("FinalResponse")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GitAuthor")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("GitBaseCommit")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("GitBranch")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<DateTime?>("GitCheckedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("GitCommits")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("GitState")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("InvestigationJson")
                         .HasColumnType("nvarchar(max)");
