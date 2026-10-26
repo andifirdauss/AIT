@@ -16,7 +16,7 @@
 
   function renderRouter(status) {
     if (!status) {
-      setState('router', false, t('Belum dicek', 'Not checked yet'), t('Atur URL 9router di menu Setting.', 'Set the 9router URL in the Setting menu.'));
+      setState('router', false, t('Belum dicek', 'Not checked yet'), t('Atur URL 9router di menu Pengaturan.', 'Set the 9router URL in the Setting menu.'));
       return;
     }
     const [keyText, keyWarn] = routerKeyState(status);

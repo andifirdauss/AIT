@@ -1,10 +1,10 @@
 @{
-    ViewData["Title"] = "Setting";
+    ViewData["Title"] = Lang.T("Pengaturan", "Setting");
 }
 
 <div class="page-header">
     <div>
-        <h1>Setting</h1>
+        <h1>@Lang.T("Pengaturan", "Setting")</h1>
         <p class="page-subtitle">@Lang.T("Koneksi 9router, perilaku proxy, build & verifikasi, penyimpanan memory & business memory, Telegram, gudang skill, serta keamanan & privasi.", "9router connection, proxy behaviour, build & verification, memory storage & business memory, Telegram, the skill store, and security & privacy.")</p>
     </div>
 </div>
@@ -56,10 +56,10 @@
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestRouter">@Lang.T("Test koneksi", "Test connection")</button>
                     <span class="small" id="routerTestResult"></span>
                 </div>
-                <div class="form-text">@Html.Raw(Lang.T("Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan setting</strong> agar key dipakai AIT.", "Test connection uses the form without saving it. Click <strong>Save settings</strong> so AIT uses the key."))</div>
+                <div class="form-text">@Html.Raw(Lang.T("Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan pengaturan</strong> agar key dipakai AIT.", "Test connection uses the form without saving it. Click <strong>Save settings</strong> so AIT uses the key."))</div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting", "Save settings")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan pengaturan", "Save settings")</button>
             </div>
         </div>
     </div>
@@ -121,7 +121,7 @@
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting", "Save settings")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan pengaturan", "Save settings")</button>
             </div>
         </div>
     </div>
@@ -149,7 +149,7 @@
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting", "Save settings")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan pengaturan", "Save settings")</button>
             </div>
         </div>
     </div>
@@ -183,7 +183,7 @@
             <div class="card-header">@Lang.T("Business memory — penulis wiki bisnis", "Business memory — business wiki writer")</div>
             <div class="card-body">
                 <p class="small text-secondary">
-                    @Html.Raw(Lang.T("Secara berkala, thread yang selesai dirangkum AI menjadi halaman wiki bisnis per modul (menu <a href=\"/Memory#bisnis\">Memory → Business memory</a>). Planner membaca halaman ini sebelum mengubah perilaku modulnya. Setiap developer merangkum thread miliknya sendiri; halaman yang sama aman ditulis bersamaan.", "Periodically, finished threads are summarized by AI into business wiki pages per module (menu <a href=\"/Memory#bisnis\">Memory → Business memory</a>). The planner reads these pages before changing the behaviour of their module. Each developer summarizes their own threads; the same page is safe to write at the same time."))
+                    @Html.Raw(Lang.T("Secara berkala, thread yang selesai dirangkum AI menjadi halaman wiki bisnis per modul (menu <a href=\"/Memory#bisnis\">Memori → Business memory</a>). Planner membaca halaman ini sebelum mengubah perilaku modulnya. Setiap developer merangkum thread miliknya sendiri; halaman yang sama aman ditulis bersamaan.", "Periodically, finished threads are summarized by AI into business wiki pages per module (menu <a href=\"/Memory#bisnis\">Memory → Business memory</a>). The planner reads these pages before changing the behaviour of their module. Each developer summarizes their own threads; the same page is safe to write at the same time."))
                 </p>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" role="switch" id="bizEnabled" />
@@ -283,7 +283,7 @@
                             <div class="form-text">@Lang.T("Pilih model yang pandai menilai, mis. model planner. Dipakai saat menarik link dan saat mencari skill untuk node.", "Choose a model that judges well, e.g. the planner model. Used when pulling links and when finding skills for a node.")</div>
                         </div>
                         <div class="mb-2">
-                            <label class="form-label small" for="skillMaxChars">Batas karakter skill per node</label>
+                            <label class="form-label small" for="skillMaxChars">@Lang.T("Batas karakter skill per node", "Skill character limit per node")</label>
                             <input type="number" class="form-control" id="skillMaxChars" min="4000" max="200000" step="1000" required />
                             <div class="form-text">@Lang.T("Isi semua skill pada satu node dibagi rata dalam batas ini sebelum ditempel ke system prompt. Skill yang lebih panjang dipotong, dan modelnya diberi path ke file lengkap.", "The content of all skills of one node is shared evenly within this limit before it goes into the system prompt. Longer skills are cut, and the model gets the path to the full file.")</div>
                         </div>
@@ -354,7 +354,7 @@
             </div>
             <div class="card-body">
                 <p class="small text-secondary">
-                    @Html.Raw(Lang.T("Password, API key, token, JWT, private key, dan password di connection string diganti placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span> sebelum isi file, prompt, atau output tool dikirim ke model. Nilai aslinya hanya disimpan di memori AIT, lalu dipasang kembali saat AIT (atau Claude Code lewat hook) menulis ke file Anda. File kredensial seperti <span class=\"mono\">.pem</span>, <span class=\"mono\">.pfx</span>, kunci SSH, <span class=\"mono\">.npmrc</span>, dan <span class=\"mono\">/.aws</span> tidak pernah dibaca, apa pun setting di halaman ini.", "Passwords, API keys, tokens, JWTs, private keys and passwords in connection strings are replaced by the placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span> before file contents, prompts or tool output are sent to a model. The real values are kept only in AIT's memory, and put back when AIT (or Claude Code through the hook) writes to your files. Credential files such as <span class=\"mono\">.pem</span>, <span class=\"mono\">.pfx</span>, SSH keys, <span class=\"mono\">.npmrc</span> and <span class=\"mono\">/.aws</span> are never read, whatever the settings on this page."))
+                    @Html.Raw(Lang.T("Password, API key, token, JWT, private key, dan password di connection string diganti placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span> sebelum isi file, prompt, atau output tool dikirim ke model. Nilai aslinya hanya disimpan di memori AIT, lalu dipasang kembali saat AIT (atau Claude Code lewat hook) menulis ke file Anda. File kredensial seperti <span class=\"mono\">.pem</span>, <span class=\"mono\">.pfx</span>, kunci SSH, <span class=\"mono\">.npmrc</span>, dan <span class=\"mono\">/.aws</span> tidak pernah dibaca, apa pun pengaturan di halaman ini.", "Passwords, API keys, tokens, JWTs, private keys and passwords in connection strings are replaced by the placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span> before file contents, prompts or tool output are sent to a model. The real values are kept only in AIT's memory, and put back when AIT (or Claude Code through the hook) writes to your files. Credential files such as <span class=\"mono\">.pem</span>, <span class=\"mono\">.pfx</span>, SSH keys, <span class=\"mono\">.npmrc</span> and <span class=\"mono\">/.aws</span> are never read, whatever the settings on this page."))
                 </p>
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" role="switch" id="secMasking" />
@@ -376,13 +376,13 @@
   "secrets": {
     "deny":  ["config/production/**"],   // @Lang.T("file tambahan yang tidak boleh dibaca", "extra files that must not be read")
     "allow": ["tests/certs/test.pem"],   // @Lang.T("file kredensial yang boleh dibaca (fixture test)", "credential files that may be read (test fixtures)")
-    "keys":  ["LicenseCode"]             // @Lang.T("nama setting tambahan yang nilainya disamarkan", "extra setting names whose values are masked")
+    "keys":  ["LicenseCode"]             // @Lang.T("nama pengaturan tambahan yang nilainya disamarkan", "extra setting names whose values are masked")
   }
 }</pre>
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting keamanan", "Save security settings")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan pengaturan keamanan", "Save security settings")</button>
             </div>
         </form>
     </div>

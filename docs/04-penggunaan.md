@@ -5,7 +5,7 @@
 1. Pastikan 9router dan AIT berjalan (pill *9router* di sidebar AIT berwarna hijau).
 2. Buka CLI Anda (Claude Code, Codex, Gemini CLI, …) di folder project yang sudah diarahkan ke AIT.
 3. Ketik permintaan seperti biasa.
-4. Pantau progres di CLI, atau buka Dashboard → thread untuk detailnya.
+4. Pantau progres di CLI, atau buka Dasbor → thread untuk detailnya.
 5. Tinjau perubahan dengan `git diff`.
 6. Jalankan sendiri langkah lanjutan yang disebut ringkasan (build, script SQL/migrasi, restart).
 7. Lanjutkan dengan prompt berikutnya — percakapan sebelumnya dan memory ikut dibaca planner.
@@ -91,7 +91,7 @@ mencoba form-nya.
 
 Output terdiri dari tiga bagian:
 
-1. **Baris anchor** `**AIT** · project · thread …`: nama project yang terdeteksi dan id thread (cari di Dashboard). Baris
+1. **Baris anchor** `**AIT** · project · thread …`: nama project yang terdeteksi dan id thread (cari di Dasbor). Baris
    ini hanya muncul untuk sesi di dalam sebuah project (folder dengan `.git` atau file build), dan selalu tampil
    walaupun progres disembunyikan — AIT memakainya untuk mengenali thread sebelumnya di percakapan. Balasan lama yang
    masih bertuliskan `**AIThread**` tetap dikenali.
@@ -127,7 +127,7 @@ Jawaban akhir disusun sebagian oleh AIT sendiri (dari hasil, bukan dari model) d
 
 Footer menunggu ekstraksi memory selesai, paling lama 30 detik. Bila lebih lama, footer menulis
 *memory baru masih diproses* dan ekstraksi tetap berjalan di latar belakang. Yang disimpan sebagai jawaban thread
-(Dashboard, Telegram, context keeper) hanya teks Wrapper atau ringkasan otomatis.
+(Dasbor, Telegram, context keeper) hanya teks Wrapper atau ringkasan otomatis.
 
 **Sisa kuota** dibaca dari 9router (`/api/usage/{koneksi}`) dan hanya mencakup akun provider yang modelnya dipakai
 node aktif beserta node cadangannya (anggota combo ikut dihitung). Per akun 9router, tiap batas (mis. jendela 5 jam /
@@ -138,7 +138,7 @@ per model (mis. Antigravity) hanya model yang dipakai node yang tampil. Akun API
 tidak bisa dibaca 9router tidak tampil. Hasil di-cache 60 detik; bila 9router tidak menjawab dalam 10 detik atau
 dashboard-nya mewajibkan login, bagian ini dilewati — lihat [Troubleshooting](08-troubleshooting.md#9router).
 
-Progres bisa disembunyikan lewat Setting → *Tampilkan progres di CLI*; anchor dan jawaban akhir tetap tampil.
+Progres bisa disembunyikan lewat Pengaturan → *Tampilkan progres di CLI*; anchor dan jawaban akhir tetap tampil.
 
 ## Menulis prompt yang efektif
 
@@ -175,7 +175,7 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 ## Meninjau hasil
 
 - `git diff` / `git status` untuk melihat semua perubahan.
-- Dashboard → klik thread → klik baris tugas untuk melihat instruksi, ringkasan, **diff**, error, dan output
+- Dasbor → klik thread → klik baris tugas untuk melihat instruksi, ringkasan, **diff**, error, dan output
   model (output live hanya terlihat bila halaman sudah terbuka saat tugas berjalan).
 - Tugas gagal: baca alasan di baris `❌` atau di detail tugas. Gagal karena provider/model (503, rate limit): balas
   `ulangi` (lihat [Mengulang tugas yang gagal](#mengulang-tugas-yang-gagal)). Gagal karena isinya: ulangi dengan prompt
@@ -266,10 +266,10 @@ Contoh prompt:
 
 | Prompt | Yang terjadi |
 |---|---|
-| *"Tambahkan diskon member di OrderService, buatkan unit test-nya"* | Planner merancang kasus test (judul, skenario, nilai), executor menulis kode dan file test paralel, AIT menjalankan test baru setelah build, dan test baru masuk katalog dengan nomor `UT-…`. Tanpa kata "unit test", test baru hanya dibuat bila setting project *Otomatis untuk perubahan logika bisnis*. |
+| *"Tambahkan diskon member di OrderService, buatkan unit test-nya"* | Planner merancang kasus test (judul, skenario, nilai), executor menulis kode dan file test paralel, AIT menjalankan test baru setelah build, dan test baru masuk katalog dengan nomor `UT-…`. Tanpa kata "unit test", test baru hanya dibuat bila pengaturan project *Otomatis untuk perubahan logika bisnis*. |
 | *"Jalankan semua unit test"*, *"jalankan test modul order"* | Tanpa perubahan kode: AIT menjalankan test lalu Wrapper menjelaskan hasilnya. |
 | *"Kenapa UT-0012 gagal? perbaiki"* | Planner menjalankan test itu lewat `run_tests`, membaca kodenya, lalu merencanakan perbaikan. |
-| *"Hapus fitur export PDF"* | Test yang menguji fitur itu ditandai *obsolete* beserta alasannya dan tidak dijalankan lagi. Konfirmasi hapusnya di Project > Detail → Unit test. |
+| *"Hapus fitur export PDF"* | Test yang menguji fitur itu ditandai *obsolete* beserta alasannya dan tidak dijalankan lagi. Konfirmasi hapusnya di Proyek > Detail → Unit test. |
 
 - Test katalog yang belum ada di repository Anda (dibuat developer lain dan belum Anda pull, atau terhapus) dipulihkan
   otomatis sebelum planner berjalan dan muncul sebagai file baru di `git status`. Commit file itu, atau bila memang
@@ -316,7 +316,7 @@ Batasan:
 
 ## Menjalankan prompt tanpa CLI
 
-Kartu *Jalankan prompt* di Dashboard sedang disembunyikan. Untuk menguji konfigurasi node tanpa CLI, kirim
+Kartu *Jalankan prompt* di Dasbor sedang disembunyikan. Untuk menguji konfigurasi node tanpa CLI, kirim
 `POST /api/threads` dengan body `{ "projectId": <id project>, "prompt": "…" }`; balasannya id thread yang bisa
 dipantau di `/Thread/Detail/<id>`.
 
@@ -324,7 +324,7 @@ dipantau di `/Thread/Detail/<id>`.
 
 Saat laptop ditinggal menyala, kirim prompt dari HP lewat bot Telegram pribadi. Pilih project dengan `/projects`,
 lalu kirim pesan teks biasa: bot menampilkan status thread yang diperbarui live (rencana, tiap tugas, tombol
-*Batalkan*) dan mengirim ringkasan wrapper saat selesai; `/diff` menampilkan perubahan file. Setup dan daftar perintah
+*Batalkan*) dan mengirim ringkasan wrapper saat selesai; `/diff` menampilkan perubahan file. Penyiapan dan daftar perintah
 ada di [Prompt dari Telegram](11-telegram.md).
 
 ## Sesi di luar project
@@ -341,7 +341,7 @@ Pada prompt pertama sebuah sesi, AIT memeriksa working directory-nya:
 
 Folder induk yang hanya berisi beberapa project (mis. 4 repo berdampingan) juga diabaikan karena ambigu; log menyebut
 nama project di dalamnya. Buka sesi CLI di dalam salah satunya. Ingin folder tanpa marker tetap diorkestrasi
-dan punya memory? Daftarkan manual lewat menu Project (*Daftarkan manual*).
+dan punya memory? Daftarkan manual lewat menu Proyek (*Daftarkan manual*).
 
 Keputusan untuk sesi yang diabaikan dicek ulang setelah sekitar 5 detik, jadi begitu Anda menambahkan `.git` atau file
 build, prompt berikutnya langsung dikenali.

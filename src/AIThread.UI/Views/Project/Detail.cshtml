@@ -98,7 +98,7 @@
         <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCheckModules" title="@Lang.T("Cari modul yang sama tapi terpisah (beda tulisan, terjemahan, nama lain)", "Find modules that are the same but kept apart (different spelling, translation, other name)")">@Lang.T("Cek modul ganda", "Check duplicate modules")</button>
     </div>
     <div class="card-body small text-secondary border-bottom">
-        @Html.Raw(Lang.T("Bagian pertama label memory dan modul wiki bisnis. Nama lain dan terjemahan (alias) diarahkan ke modul yang sama. Modul ganda dengan keyakinan tinggi digabung otomatis; yang ragu menunggu di <a href=\"/Memory#review\">Memory → Perlu review</a>.", "The first part of memory labels and of business wiki modules. Other names and translations (aliases) lead to the same module. Duplicate modules with high confidence are merged automatically; doubtful ones wait in <a href=\"/Memory#review\">Memory → Needs review</a>."))
+        @Html.Raw(Lang.T("Bagian pertama label memory dan modul wiki bisnis. Nama lain dan terjemahan (alias) diarahkan ke modul yang sama. Modul ganda dengan keyakinan tinggi digabung otomatis; yang ragu menunggu di <a href=\"/Memory#review\">Memori → Perlu review</a>.", "The first part of memory labels and of business wiki modules. Other names and translations (aliases) lead to the same module. Duplicate modules with high confidence are merged automatically; doubtful ones wait in <a href=\"/Memory#review\">Memory → Needs review</a>."))
     </div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
@@ -122,7 +122,7 @@
             <option value="Failing">@Lang.T("Gagal terakhir", "Failed last run")</option>
         </select>
         <select class="form-select form-select-sm w-auto" id="unitTestModuleFilter" aria-label="@Lang.T("Filter modul unit test", "Filter unit tests by module")"><option value="">@Lang.T("Semua modul", "All modules")</option></select>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnUnitTestSettings">Setting</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnUnitTestSettings">@Lang.T("Pengaturan", "Settings")</button>
         <button type="button" class="btn btn-outline-primary btn-sm" id="btnUnitTestScan" title="@Lang.T("Cari test di kode, daftarkan yang baru, dan beri judul serta tujuan dengan model murah", "Search the code for tests, register new ones, and give them a title and purpose with a cheap model")">@Lang.T("Scan test", "Scan tests")</button>
         <button type="button" class="btn btn-primary btn-sm" id="btnUnitTestRunAll" title="@Lang.T("Jalankan semua test aktif sekarang", "Run all active tests now")">@Lang.T("Jalankan semua", "Run all")</button>
     </div>
@@ -286,7 +286,7 @@
         <form class="modal-content" id="unitTestSettingsForm" autocomplete="off">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="unitTestSettingsTitle">@Lang.T("Setting unit test", "Unit test settings")</h5>
+                <h5 class="modal-title" id="unitTestSettingsTitle">@Lang.T("Pengaturan unit test", "Unit test settings")</h5>
             </div>
             <div class="modal-body">
                 <p class="small text-secondary">@Lang.T("Berlaku untuk semua developer project ini (disimpan bersama katalog, mengikuti penyimpanan long memory).", "Applies to every developer of this project (stored with the catalog, following the long memory storage).")</p>

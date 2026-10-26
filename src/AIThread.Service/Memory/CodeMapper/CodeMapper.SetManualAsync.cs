@@ -9,7 +9,7 @@ public sealed partial class CodeMapper
     // A developer's (or the planner's) decision; never overwritten by rules or the model.
     public async Task<CodeMapHit> SetManualAsync(ProjectContext project, string path, string module, MemoryLayer? layer, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(project.Key)) throw new AppValidationException(Lang.T("Project belum punya key; buka lagi menu Project sebentar lagi.", "The project has no key yet; open the Project menu again in a moment."));
+        if (string.IsNullOrEmpty(project.Key)) throw new AppValidationException(Lang.T("Project belum punya key; buka lagi menu Proyek sebentar lagi.", "The project has no key yet; open the Project menu again in a moment."));
         var relative = Normalize(project, [path]).FirstOrDefault()
                        ?? throw new AppValidationException(Lang.T($"File '{path}' tidak ditemukan di project.", $"File '{path}' not found in the project."));
         var (name, _) = await registry.EnsureAsync(project.Key, module, cancellationToken: cancellationToken);

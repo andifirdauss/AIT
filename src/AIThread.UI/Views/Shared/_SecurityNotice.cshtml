@@ -54,7 +54,7 @@
                             <div class="security-point-icon" aria-hidden="true">🔒</div>
                             <div>
                                 <h6>@Lang.T("Secret disamarkan sebelum sampai ke model", "Secrets are masked before they reach a model")</h6>
-                                <p>@Html.Raw(Lang.T("Password, API key, token, JWT, private key, dan password di connection string atau URL diganti placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span>. Model tetap tahu nama setting-nya, tetapi tidak melihat nilainya. Ini berlaku untuk file yang dibaca, prompt, riwayat chat, output build/test, dan respons aplikasi saat testing.", "Passwords, API keys, tokens, JWTs, private keys, and passwords in connection strings or URLs are replaced by the placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span>. The model still knows the setting name, but does not see its value. This applies to files read, prompts, chat history, build/test output, and application responses while testing."))</p>
+                                <p>@Html.Raw(Lang.T("Password, API key, token, JWT, private key, dan password di connection string atau URL diganti placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span>. Model tetap tahu nama pengaturannya, tetapi tidak melihat nilainya. Ini berlaku untuk file yang dibaca, prompt, riwayat chat, output build/test, dan respons aplikasi saat testing.", "Passwords, API keys, tokens, JWTs, private keys, and passwords in connection strings or URLs are replaced by the placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span>. The model still knows the setting name, but does not see its value. This applies to files read, prompts, chat history, build/test output, and application responses while testing."))</p>
                             </div>
                         </div>
                     </div>
@@ -106,13 +106,13 @@
                 </div>
 
                 <div class="alert alert-secondary small mt-3 mb-2">
-                    @Html.Raw(Lang.T("<strong>Batasannya:</strong> penyamaran ini mengenali secret dari pola dan nama setting. Secret dengan format tidak lazim, atau yang ditulis langsung di kode tanpa nama setting yang jelas, bisa lolos. Simpan secret di user-secrets atau environment variable, dan tambahkan nama setting khusus project Anda di <span class=\"mono\">.aithread/project.json</span> (<span class=\"mono\">\"secrets\": { \"keys\": [...] }</span>).", "<strong>Limits:</strong> the masking recognizes secrets by pattern and setting name. Secrets with an unusual format, or written straight into code without a clear setting name, can slip through. Keep secrets in user-secrets or environment variables, and add your project's own setting names in <span class=\"mono\">.aithread/project.json</span> (<span class=\"mono\">\"secrets\": { \"keys\": [...] }</span>)."))
+                    @Html.Raw(Lang.T("<strong>Batasannya:</strong> penyamaran ini mengenali secret dari pola dan nama setting. Secret dengan format tidak lazim, atau yang ditulis langsung di kode tanpa nama pengaturan yang jelas, bisa lolos. Simpan secret di user-secrets atau environment variable, dan tambahkan nama pengaturan khusus project Anda di <span class=\"mono\">.aithread/project.json</span> (<span class=\"mono\">\"secrets\": { \"keys\": [...] }</span>).", "<strong>Limits:</strong> the masking recognizes secrets by pattern and setting name. Secrets with an unusual format, or written straight into code without a clear setting name, can slip through. Keep secrets in user-secrets or environment variables, and add your project's own setting names in <span class=\"mono\">.aithread/project.json</span> (<span class=\"mono\">\"secrets\": { \"keys\": [...] }</span>)."))
                 </div>
                 <p class="small text-secondary mb-0" id="securityNoticeStatus"></p>
             </div>
             <div class="modal-footer justify-content-between">
                 <div class="d-flex flex-wrap gap-2">
-                    <a class="btn btn-sm btn-outline-secondary" asp-controller="Setting" asp-action="Index" asp-fragment="keamanan">@Lang.T("Atur di Setting", "Set it in Setting")</a>
+                    <a class="btn btn-sm btn-outline-secondary" asp-controller="Setting" asp-action="Index" asp-fragment="keamanan">@Lang.T("Atur di Pengaturan", "Set it in Setting")</a>
                     <a class="btn btn-sm btn-outline-secondary" href="~/Docs/12-keamanan">@Lang.T("Baca selengkapnya", "Read more")</a>
                 </div>
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">@Lang.T("Saya mengerti", "I understand")</button>

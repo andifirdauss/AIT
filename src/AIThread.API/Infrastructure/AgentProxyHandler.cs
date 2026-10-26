@@ -5,6 +5,7 @@ using System.Text;
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
+using AIThread.Service.Memory;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Proxy;
@@ -98,6 +99,9 @@ public sealed class AgentProxyHandler(
             ? ClaudeRequestInspector.HistoryAfter(canonical, packIndex)
             : info.ConversationContext;
 
+        // Also for the errors below: the CLI gets them in the language of its prompt.
+        using var language = Lang.Use(TextLanguage.LangOfPrompt(info.Prompt, conversation));
+
         var request = new ThreadRequest(
             ThreadSource.ClaudeCode,
             info.Prompt,
@@ -163,7 +167,7 @@ public sealed class AgentProxyHandler(
         if (model is null)
         {
             await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status503ServiceUnavailable, "api_error",
-                Lang.T("AIT: passthrough model belum diatur (menu Setting) dan tidak ada node aktif yang bisa dipakai.", "AIT: no passthrough model is set (Setting menu) and there is no active node to use."));
+                Lang.T("AIT: passthrough model belum diatur (menu Pengaturan) dan tidak ada node aktif yang bisa dipakai.", "AIT: no passthrough model is set (Setting menu) and there is no active node to use."));
             return;
         }
 

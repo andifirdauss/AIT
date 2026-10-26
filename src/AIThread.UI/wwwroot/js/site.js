@@ -289,7 +289,7 @@
     return `<span class="badge text-bg-${color}">${spinner}${escapeHtml(label)}</span>`;
   }
 
-  const sourceLabels = { ClaudeCode: 'CLI', Dashboard: 'Dashboard', Telegram: 'Telegram' };
+  const sourceLabels = { ClaudeCode: 'CLI', Dashboard: t('Dasbor', 'Dashboard'), Telegram: 'Telegram' };
 
   function sourceLabel(source) {
     return sourceLabels[source] || source;
@@ -691,7 +691,7 @@
   function securityStatusText(s) {
     const masking = s.maskingEnabled
       ? (isEn ? `Secret masking on${s.passthroughMasking ? ', including passthrough requests' : ', except passthrough requests'}` : `Penyamaran secret aktif${s.passthroughMasking ? ', termasuk request passthrough' : ', kecuali request passthrough'}`)
-      : t('Penyamaran secret NONAKTIF, aktifkan lagi di Setting → Keamanan & privasi', 'Secret masking OFF, turn it back on in Setting → Security & privacy');
+      : t('Penyamaran secret NONAKTIF, aktifkan lagi di Pengaturan → Keamanan & privasi', 'Secret masking OFF, turn it back on in Setting → Security & privacy');
     const count = n => Number(n || 0).toLocaleString(locale);
     return (isEn ? `${masking}. Since AIT started: ${count(s.masked)} secrets masked, ${count(s.restored)} put back when writing, ` : `${masking}. Sejak AIT berjalan: ${count(s.masked)} secret disamarkan, ${count(s.restored)} dipasang kembali saat menulis, `)
       + (isEn ? `${count(s.blockedReads)} reads of credential files blocked.` : `${count(s.blockedReads)} akses ke file kredensial ditolak.`);

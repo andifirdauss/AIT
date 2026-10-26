@@ -140,7 +140,7 @@ public static partial class FinalReport
         if (report.AppStarted is not null) builder.Append(Lang.T(" · dijalankan AIT ", " · started by AIT ")).Append(Code(report.AppStarted));
         builder.Append('\n');
         if (report.DefaultDevPassword)
-            builder.Append(Lang.T($"\nℹ️ Login akun uji memakai password dev bawaan {Code(TestingSettings.DefaultDevPassword)}. Bila aplikasi memakai password lain di dev, isi di Project > Detail → Akun uji.\n", $"\nℹ️ Test accounts log in with the default dev password {Code(TestingSettings.DefaultDevPassword)}. If the application uses another password in dev, set it in Project > Detail → Test accounts.\n"));
+            builder.Append(Lang.T($"\nℹ️ Login akun uji memakai password dev bawaan {Code(TestingSettings.DefaultDevPassword)}. Bila aplikasi memakai password lain di dev, isi di Proyek > Detail → Akun uji.\n", $"\nℹ️ Test accounts log in with the default dev password {Code(TestingSettings.DefaultDevPassword)}. If the application uses another password in dev, set it in Project > Detail → Test accounts.\n"));
         if (report.Error is not null)
         {
             // The URL the sentence starts with and the command AIT tried as code; the command holds the URL too, so only
@@ -254,7 +254,7 @@ public static partial class FinalReport
         }
         if (listed.Count > MaxReportedUnitTests) builder.Append(Lang.T($"- … {listed.Count - MaxReportedUnitTests} lainnya ada di halaman thread\n", $"- … {listed.Count - MaxReportedUnitTests} more are on the thread page\n"));
         foreach (var retired in report.Tests.Where(t => t.Verdict == UnitTestReportItem.Retired))
-            builder.Append(Lang.T($"- 🗃️ **{retired.Number}** {OneLine(retired.Title)} — ditandai obsolete, menunggu konfirmasi hapus di Project > Detail\n", $"- 🗃️ **{retired.Number}** {OneLine(retired.Title)} — marked obsolete, waiting for the deletion to be confirmed in Project > Detail\n"));
+            builder.Append(Lang.T($"- 🗃️ **{retired.Number}** {OneLine(retired.Title)} — ditandai obsolete, menunggu konfirmasi hapus di Proyek > Detail\n", $"- 🗃️ **{retired.Number}** {OneLine(retired.Title)} — marked obsolete, waiting for the deletion to be confirmed in Project > Detail\n"));
         foreach (var restored in report.Restored.Take(MaxReportedUnitTests))
             builder.Append($"- ♻️ **{restored.Number}** `{restored.File}` — {UnitTestStage.RestoreLabel(restored)}\n");
         foreach (var note in report.Notes) builder.Append($"- ℹ️ {OneLine(note)}\n");

@@ -13,7 +13,7 @@ public sealed partial class ThreadOrchestrator
     private async Task<PreparedThread> PrepareAsync(ThreadRequest request, CancellationToken cancellationToken)
     {
         var project = await projectService.GetContextAsync(request.ProjectId, cancellationToken)
-                      ?? throw new AppValidationException(Lang.T("Project tidak ditemukan. Daftarkan ulang di menu Project.", "Project not found. Register it again in the Project menu."));
+                      ?? throw new AppValidationException(Lang.T("Project tidak ditemukan. Daftarkan ulang di menu Proyek.", "Project not found. Register it again in the Project menu."));
 
         var thread = new ThreadRun
         {
