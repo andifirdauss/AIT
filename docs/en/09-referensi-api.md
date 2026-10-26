@@ -67,6 +67,10 @@ Validation error → `400`, 9router error → `502`, not found → `404`, with `
 | `GET` | `/api/security` | security status: `maskingEnabled`, `passthroughMasking`, `noticeAcknowledgedAt`, `masked`, `knownSecrets`, `restored`, `blockedReads` |
 | `PUT` | `/api/security` | `{ "maskingEnabled": true, "passthroughMasking": true }` |
 | `POST` | `/api/security/acknowledge` | the Security & privacy popup has been read (once per installation) |
+| `GET` | `/api/security/secrets` | secrets detected since AIT started + the not-secret list: `items[]` (`id`, `label`, `preview`, `length`, `count`, `firstSeen`, `lastSeen`, `allowed`, `allowedAt`), `total` |
+| `POST` | `/api/security/secrets/{id}/allow` | mark as not secret (the 10-character placeholder id); 404 when AIT no longer knows that id |
+| `DELETE` | `/api/security/secrets/{id}/allow` | mask again |
+| `GET` | `/api/security/secrets/{id}/value` | the real value (`id`, `value`); only from this computer (loopback), 404 after a restart |
 | `GET` | `/api/router/status?refresh=true` | the 9router status (without `refresh` the last monitor result is used) |
 | `GET` | `/api/router/models?refresh=true` | 9router models & combos (60-second cache) |
 

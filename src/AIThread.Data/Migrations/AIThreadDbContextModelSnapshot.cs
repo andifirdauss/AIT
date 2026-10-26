@@ -981,6 +981,9 @@ namespace AIThread.Data.Migrations
                     b.Property<int>("RequestTimeoutSeconds")
                         .HasColumnType("int");
 
+                    b.Property<string>("SecretAllowListJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("SecretMaskingEnabled")
                         .HasColumnType("bit");
 
