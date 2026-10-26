@@ -140,7 +140,9 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
 **Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), kartu **Git** (hanya
 untuk repository git: interval `git fetch` otomatis dalam menit (kosong = bawaan 15, 0 = mati), fetch terakhir dan
 errornya, jumlah thread yang diikuti, tombol *Fetch sekarang* dan *Sinkronkan*; lihat
-[Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread)), daftar file solution/build yang ditemukan
+[Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread); lalu daftar **Environment** bersama tim:
+nama, ref, tanda *prod*, jumlah perubahan yang sudah masuk, *Simpan environment* dan *Cek sekarang*; lihat
+[Environment](07-cara-kerja.md#environment)), daftar file solution/build yang ditemukan
 di dalam project, sesi CLI (id sesi, jumlah thread, terakhir aktif), thread
 project ini, dan tautan ke memory-nya. Tabel sesi, thread, modul, peta kode, dan riwayat gabung modul tampil
 10 baris per halaman (*‹ Sebelumnya* / *Berikutnya ›*; navigasi hanya muncul bila isinya lebih dari 10). Halaman yang
@@ -254,7 +256,8 @@ Tab *Short & long memory*:
 - **Statistik**: jumlah short & long memory, project & knowledge, belum berlabel (dan yang perlu review), status store
   short memory.
 - **Filter**: level, tipe, project, pencarian label/deskripsi, modul (project terpilih + knowledge), layer, jenis,
-  berlabel/belum. Datang dari halaman project? Filter project sudah terisi.
+  berlabel/belum, dan *Di &lt;environment&gt;* (project terpilih yang punya environment: hanya memory yang perubahannya
+  sudah masuk environment itu). Datang dari halaman project? Filter project sudah terisi.
 - **Tabel**: level (short menampilkan perkiraan sisa jam sebelum pindah ke DB), tipe, project, label
   sebagai satu tag bersegmen `Modul | Modul lain | Layer | Jenis` diikuti `#keyword` (memory lama: tanda *belum
   berlabel* + label lamanya) dan cuplikan
@@ -288,6 +291,10 @@ Tab *Business memory* — lihat [Business memory](06-memory.md#business-memory-w
   (Ctrl+V) atau *Sisipkan gambar* — gambar diunggah ke store dan disisipkan di posisi kursor. Bila halaman sudah diubah
   orang lain sejak dibuka, penyimpanan ditolak (editor tetap terbuka) supaya perubahan siapa pun tidak tertimpa.
 - **Perbarui sekarang**: merangkum thread project ini yang belum masuk wiki tanpa menunggu jadwal.
+- **Environment**: *Wiki kerja* (bawaan) atau salah satu environment project — membaca wiki seperti yang berlaku di
+  environment itu (hanya baca); lihat [Wiki per environment](06-memory.md#wiki-per-environment).
+- **Bandingkan**: pilih dua sisi (environment atau wiki kerja) → halaman yang berbeda (diff baris), halaman yang hanya
+  ada di satu sisi, dan perubahan yang hanya ada di satu sisi beserta author, branch, dan commit-nya.
 
 ## Node
 

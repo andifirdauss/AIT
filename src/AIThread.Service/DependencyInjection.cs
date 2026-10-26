@@ -70,6 +70,8 @@ public static class DependencyInjection
         services.AddSingleton<IFunctionCallStore, FunctionCallStore>();
         services.AddSingleton<IFunctionCallQueue, FunctionCallQueue>();
         services.AddSingleton<IGitChangeTracker, GitChangeTracker>();
+        services.AddSingleton<IGitEnvironmentTracker, GitEnvironmentTracker>();
+        services.AddSingleton<IBusinessEnvService, BusinessEnvService>();
         services.AddSingleton<IFunctionCallScanner, FunctionCallScanner>();
         services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
         services.AddSingleton<IMemoryTransferService, MemoryTransferService>();

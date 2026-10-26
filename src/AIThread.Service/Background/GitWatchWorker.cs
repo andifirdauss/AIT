@@ -18,6 +18,7 @@ namespace AIThread.Service.Background;
 public sealed class GitWatchWorker(
     IDbContextFactory<AIThreadDbContext> dbFactory,
     IGitChangeTracker tracker,
+    IGitEnvironmentTracker environments,
     ILogger<GitWatchWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan SyncInterval = TimeSpan.FromMinutes(1);
@@ -96,7 +97,12 @@ public sealed class GitWatchWorker(
                 var projects = await FollowedProjectsAsync(stoppingToken);
                 await SyncWatchesAsync(projects, stoppingToken);
                 if (tick++ % SweepEveryTicks == SweepEveryTicks - 1)
-                    foreach (var project in projects.Keys) tracker.ProjectChanged(project);
+                    foreach (var project in projects.Keys)
+                    {
+                        tracker.ProjectChanged(project);
+                        // Manual wiki edits and changes seen by other developers' AIT reach the environment pages here too.
+                        await environments.RefreshAsync(project, stoppingToken);
+                    }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -117,7 +123,8 @@ public sealed class GitWatchWorker(
                 foreach (var (id, minutes) in await FetchableProjectsAsync(stoppingToken))
                 {
                     if (tracker.LastFetch(id) is { } last && DateTime.UtcNow - last.At < TimeSpan.FromMinutes(minutes)) continue;
-                    await tracker.FetchAsync(id, stoppingToken);
+                    // What arrived with the fetch may have reached an environment.
+                    if (await tracker.FetchAsync(id, stoppingToken) is { Error: null }) await environments.RefreshAsync(id, stoppingToken);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

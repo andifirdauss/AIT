@@ -909,6 +909,32 @@ commits or all of its blobs (a squash merge).
   machine) is still read, but marked `(not in this branch: …)` and put after the other memory; the planner is asked to
   check the files before relying on it. See [Memory and git](06-memory.md#memory-and-git).
 
+## Environments
+
+Remote branches can be made **environments** (dev, staging, staging2, prod, …) in
+[Projects > Detail → Git](05-menu.md#project): a name, a ref (e.g. `origin/develop`) and a *prod* mark. The list is
+**shared** by every developer of the project key (kept in the long memory database), so one person sets it up.
+
+After every `git fetch` (automatic or *Fetch now*), every 5 minutes, or with *Check now*, AIT looks for every change the
+team shares (`ThreadChanges`, from any developer) in each environment's ref of this clone. A change **reached** an
+environment when:
+
+1. the environment's history holds one of its commits (merge, fast-forward); or
+2. the environment's tree holds the blob of every file it wrote and no longer holds the files it removed (squash merge,
+   cherry-pick); or
+3. the environment's history once held those blobs (the file changed again since; at most 50 changes per environment per
+   pass).
+
+What is seen goes to the shared `ChangePresences` table (thread, environment, the environment commit that brought it,
+who saw it). Once there it stays; any developer's AIT that fetches adds to it. Changing an environment's ref or removing
+it forgets what was seen in it. The name `work` cannot be used (AIT uses it for the working wiki).
+
+Its effects:
+
+- **The business wiki per environment** — see [Wiki per environment](06-memory.md#wiki-per-environment).
+- **The Memory menu**: the *In &lt;environment&gt;* filter shows only memory whose change reached that environment
+  (memory without a thread still shows).
+
 ## Unit tests
 
 Every project has a **unit test catalog** shared by every developer of that project (scope `ProjectKey`, stored with
