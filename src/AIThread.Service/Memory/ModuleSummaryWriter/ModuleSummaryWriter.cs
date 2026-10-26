@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AIThread.Common.Entities;
+using AIThread.Data.Cache;
 using AIThread.Data.Memory;
 using AIThread.Data.Messaging;
 using AIThread.Service.Interfaces;
@@ -17,6 +18,7 @@ namespace AIThread.Service.Memory;
 // waits for the next consolidation round.
 public sealed partial class ModuleSummaryWriter(
     LongMemoryStore longStore,
+    IShortMemoryStore shortStore,
     IMemoryAi ai,
     IMemoryTransferService transfer,
     IEventBus eventBus,
@@ -38,6 +40,14 @@ public sealed partial class ModuleSummaryWriter(
     };
 
     private readonly SemaphoreSlim _gate = new(1, 1);
+
+    // The pass in progress (modules done of the modules taken) and the last outcome, for GetStatusAsync.
+    private volatile string? _module;
+    private volatile string? _lastMessage;
+    private volatile string? _backupPath;
+    private int _done;
+    private int _total;
+    private DateTime? _lastRunAt;
 
     public static string BackupPrefix => "memory-before-changelog-";
 

@@ -56,3 +56,20 @@ public record MemoryRelabelStatusDto(
     string? Detail = null);
 
 public record CodeMapScanResultDto(int Files, int Mapped, int Modules);
+
+// Progress of the migration of older project facts (Rule, Flow, Pitfall, …) into the module summaries.
+// PendingFacts/PendingModules: labeled facts in long memory still to fold; ShortFacts: facts still in short memory, folded
+// once they reach long memory; Running/Done/Total/Module: the pass in progress.
+public record MemoryChangelogStatusDto(
+    bool Running,
+    int PendingFacts,
+    int PendingModules,
+    int ShortFacts,
+    int Summaries,
+    int Done,
+    int Total,
+    string? Module,
+    DateTime? LastRunAt,
+    string? LastMessage,
+    string? BackupPath,
+    bool AiAvailable);

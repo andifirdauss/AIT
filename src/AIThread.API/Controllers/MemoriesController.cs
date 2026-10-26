@@ -9,7 +9,8 @@ namespace AIThread.API.Controllers;
 
 [ApiController]
 [Route("api/memory")]
-public class MemoriesController(IMemoryService memoryService, IMemoryTransferService transferService, IMemoryCatalogService catalog) : ControllerBase
+public class MemoriesController(IMemoryService memoryService, IMemoryTransferService transferService, IMemoryCatalogService catalog,
+    IModuleSummaryWriter summaryWriter) : ControllerBase
 {
     private static readonly JsonSerializerOptions ExportJson = new(JsonSerializerDefaults.Web)
     {
@@ -137,6 +138,11 @@ public class MemoriesController(IMemoryService memoryService, IMemoryTransferSer
     [HttpGet("relabel")]
     public async Task<ActionResult<ApiResponse<MemoryRelabelStatusDto>>> RelabelStatus(CancellationToken cancellationToken) =>
         ApiResponse<MemoryRelabelStatusDto>.Ok(await catalog.GetRelabelStatusAsync(cancellationToken));
+
+    // The migration of older project facts into the module summaries.
+    [HttpGet("changelog")]
+    public async Task<ActionResult<ApiResponse<MemoryChangelogStatusDto>>> ChangelogStatus(CancellationToken cancellationToken) =>
+        ApiResponse<MemoryChangelogStatusDto>.Ok(await summaryWriter.GetStatusAsync(cancellationToken));
 
     [HttpPost("relabel")]
     public ActionResult<ApiResponse<bool>> StartRelabel()
