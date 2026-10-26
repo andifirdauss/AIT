@@ -51,6 +51,7 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
         {
             e.ToTable("SystemSettings");
             e.Property(x => x.NineRouterBaseUrl).HasMaxLength(500).IsRequired();
+            e.Property(x => x.UiLanguage).HasMaxLength(10).IsRequired().HasDefaultValue("id");
             e.Property(x => x.ProxyApiKey).HasMaxLength(200);
             e.Property(x => x.PassthroughModel).HasMaxLength(200);
             e.Property(x => x.SkillOrchestratorModel).HasMaxLength(200);

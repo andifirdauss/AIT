@@ -18,7 +18,10 @@ public record SystemSettingDto(
     int BuildTimeoutSeconds,
     int MaxFixRounds,
     string ProxyBaseUrl,
-    bool PlannerCanAsk = true);
+    bool PlannerCanAsk = true,
+    string UiLanguage = "id");
+
+public record UpdateLanguageRequest(string Language);
 
 public record UpdateSystemSettingRequest(
     string NineRouterBaseUrl,
