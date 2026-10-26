@@ -29,7 +29,7 @@ public record MemoryItemDto(
     IReadOnlyList<string>? ExtraModules = null);
 
 // What the planner scans to pick topics without reading descriptions. Labeled entries carry the structured label;
-// unlabeled ones (older memory waiting for relabeling) only Label.
+// unlabeled ones (older memory waiting for relabeling) only Label. Change entries also carry their title.
 public record MemoryIndexEntry(
     Guid Id,
     MemoryLevel Level,
@@ -42,7 +42,9 @@ public record MemoryIndexEntry(
     string? Area = null,
     IReadOnlyList<string>? Keywords = null,
     int HitCount = 0,
-    IReadOnlyList<string>? ExtraModules = null)
+    IReadOnlyList<string>? ExtraModules = null,
+    // The headline of a change entry (MemoryKind.Change), so a label line tells which change it is.
+    string? Title = null)
 {
     public bool Labeled => Module is not null && Kind is not null;
 

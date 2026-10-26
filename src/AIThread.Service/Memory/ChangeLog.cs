@@ -105,6 +105,14 @@ public static class ChangeLog
         return Clip(builder.ToString().TrimEnd(), MaxSummaryChars);
     }
 
+    // The "### " headline Render writes on the first line of a change entry; null for other text.
+    public static string? Title(string? description)
+    {
+        if (description is null || !description.StartsWith("### ", StringComparison.Ordinal)) return null;
+        var end = description.IndexOf('\n');
+        return Line(end < 0 ? description[4..] : description[4..end], MaxTitleChars);
+    }
+
     public static bool IsEmpty(ChangeLogState state) =>
         state.Features.Count + state.Files.Count + state.Validation.Count + state.Flow.Count + state.Notes.Count == 0;
 
