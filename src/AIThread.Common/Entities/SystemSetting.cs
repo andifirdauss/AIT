@@ -68,6 +68,10 @@ public class SystemSetting : BaseEntity
     public bool SecretMaskingEnabled { get; set; } = true;
     public bool PassthroughSecretMasking { get; set; } = true;
 
+    // Values a developer marked as not secret (Setting → Keamanan & privasi), as JSON: their placeholder ids (HMAC under
+    // this machine's key, never the value), label and a short preview for the list. They are no longer masked here.
+    public string? SecretAllowListJson { get; set; }
+
     // Language of the text AIT shows its user (Lang): "id" (default) or "en".
     public string UiLanguage { get; set; } = "id";
 

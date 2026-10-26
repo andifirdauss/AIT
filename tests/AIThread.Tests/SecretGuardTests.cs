@@ -171,6 +171,55 @@ public sealed class SecretGuardTests : IDisposable
     }
 
     [Fact]
+    public void A_value_marked_as_not_secret_is_left_alone_and_its_old_placeholders_still_come_back()
+    {
+        var guard = Guard();
+        var placeholder = Placeholder(guard.Redact("ref_token: \"Rate9Header\""));
+        guard.Redact("pakai Rate9Header lagi");
+
+        var seen = Assert.Single(guard.GetSightings());
+        Assert.Equal("ref_token", seen.Label);
+        Assert.Equal(2, seen.Count);
+        Assert.Equal(11, seen.Length);
+        Assert.DoesNotContain("Rate9Header", seen.Preview);
+        Assert.Equal("Rate9Header", guard.Reveal(seen.Id));
+
+        guard.SetAllowed([seen.Id]);
+        Assert.Equal("ref_token: \"Rate9Header\"", guard.Redact("ref_token: \"Rate9Header\""));
+        Assert.Equal("pakai Rate9Header lagi", guard.Redact("pakai Rate9Header lagi"));
+        Assert.Equal("src/Rate9Header.cs", guard.Restore($"src/{placeholder}.cs").Text);
+
+        guard.SetAllowed([]);
+        Assert.Equal(placeholder, Placeholder(guard.Redact("ref_token: \"Rate9Header\"")));
+    }
+
+    [Fact]
+    public async Task The_not_secret_list_is_stored_and_applied_again_with_the_settings()
+    {
+        await using var harness = await ThreadOrchestratorTests.CreateAsync();
+        var guard = harness.Service<ISecretGuard>();
+        var security = harness.Service<ISecurityService>();
+        guard.Redact("ref_token: \"Rate9Header\"");
+        var detected = Assert.Single((await security.GetSecretsAsync()).Items);
+        Assert.False(detected.Allowed);
+
+        Assert.True(await security.AllowSecretAsync(detected.Id));
+        Assert.False(await security.AllowSecretAsync("0123456789"));
+        var allowed = Assert.Single((await security.GetSecretsAsync()).Items);
+        Assert.True(allowed.Allowed);
+        Assert.Equal("ref_token", allowed.Label);
+
+        // As after a restart: the list comes back from the database with the settings.
+        guard.SetAllowed([]);
+        await harness.Service<ISettingService>().GetRuntimeAsync();
+        Assert.Equal("ref_token: \"Rate9Header\"", guard.Redact("ref_token: \"Rate9Header\""));
+
+        Assert.True(await security.DisallowSecretAsync(detected.Id));
+        Assert.DoesNotContain("Rate9Header", guard.Redact("ref_token: \"Rate9Header\""));
+        Assert.False(Assert.Single((await security.GetSecretsAsync()).Items).Allowed);
+    }
+
+    [Fact]
     public void Unknown_placeholders_are_reported_instead_of_written()
     {
         var restore = Guard().Restore("Password={{AIT_SECRET:Password:0123456789}}");

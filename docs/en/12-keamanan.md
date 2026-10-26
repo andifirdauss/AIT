@@ -147,6 +147,25 @@ This tab also shows counts since AIT started: secrets masked, distinct secrets t
 were put back, and refused credential file accesses. At the end of every thread, the report footer shows `🔒 N secrets
 masked` and the activity log records it in the `keamanan` category.
 
+### Detected secrets (not secret)
+
+The **Detected secrets** card on the same tab lists the values masked since AIT started: the label of where each was
+found (a setting name such as `ref_token`, or a kind of token such as `jwt`), a preview of a few characters at both ends,
+its length, how many times it was masked, and when it was last seen. **Show** displays the real value, only from a
+browser on this computer.
+
+When a masked value turns out not to be a secret, for example a class name, a file name or a piece of code, click
+**Not secret**:
+
+- That value is no longer masked on this machine, wherever it appears (prompts, file contents, tool output,
+  passthrough).
+- Only the placeholder id (an HMAC with this machine's key), the label and the preview are stored in the database, not
+  the real value. The list applies per machine and stays after a restart.
+- Placeholders sent before can still be restored.
+- **Mask again** brings back the old behaviour.
+
+After AIT restarts, values that were not marked only show up in the list again once they are masked again.
+
 ## Data stored and sent
 
 - **Stored locally**: the AIT database (SQL Server), short memory (Garnet inside the process), logs in
