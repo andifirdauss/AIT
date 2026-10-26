@@ -476,7 +476,7 @@ thread selesai (tiap developer) ──► menunggu dirangkum (lokal)
 
 ### Mengedit manual
 
-Menu **Memory → Bisnis (wiki)**: pilih project, buka halaman, lalu *Edit*, atau buat *Halaman baru*. Tempel screenshot
+Menu **Memory → Business Memory**: pilih project, buka halaman, lalu *Edit*, atau buat *Halaman baru*. Tempel screenshot
 langsung ke editor (Ctrl+V) atau pakai *Sisipkan gambar*; gambar (PNG/JPEG/GIF/WebP, maks 5 MB) disimpan di store dan
 ditulis sebagai `![keterangan](asset:<id>)`. *Pratinjau* menampilkan halaman persis seperti setelah disimpan. HTML mentah
 tidak dirender, dan tautan hanya boleh ke `http(s)`, `mailto`, atau dalam aplikasi — wiki bisa ditulis siapa saja yang
@@ -502,7 +502,7 @@ berbagi store, jadi isinya tidak dipercaya mentah-mentah.
 - **Hapus**: hapus memory yang salah atau usang.
 - **Konsolidasi sekarang**: jalankan pemindahan short → long tanpa menunggu worker.
 - **Export / Import**: simpan memory ke file atau masukkan dari file — lihat [Export & import](#export--import).
-- Tab **Bisnis (wiki)**: halaman wiki bisnis per project — lihat [Business memory](#business-memory-wiki-bisnis).
+- Tab **Business Memory**: halaman wiki bisnis per project — lihat [Business memory](#business-memory-wiki-bisnis).
 
 ### Export & import
 

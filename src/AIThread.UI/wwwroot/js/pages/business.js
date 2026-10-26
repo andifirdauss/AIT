@@ -1,4 +1,4 @@
-// Memory → Bisnis: the business wiki of a project (business memory). Pages are shared by every developer whose
+// Memory → Business Memory: the business wiki of a project (business memory). Pages are shared by every developer whose
 // AIThread points at the same business memory store, so saves carry the page version and a conflict is reported
 // instead of overwriting someone else's change.
 (() => {

@@ -83,7 +83,7 @@ Kartu di bawah penyimpanan memory (`/Setting#memory`), disimpan lewat **Simpan b
 
 | Field | Default | Keterangan |
 |---|---|---|
-| Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memory → Bisnis tetap bisa dipakai saat nonaktif. |
+| Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memory → Business Memory tetap bisa dipakai saat nonaktif. |
 | Interval (jam) | 6 | 1–168. Jeda antar rangkuman otomatis. |
 | Model penulis wiki | otomatis | Model 9router penulis wiki; kosong = model node Planner aktif. Pilih model yang teliti dan bisa membaca gambar agar screenshot dari prompt ikut masuk halaman. |
 | Nama developer | `git config user.name` | Dicatat pada halaman dan riwayat revisi, supaya tim tahu siapa (AIT siapa) yang mengubah. Kosong = `user.name` dari git config global (dibaca langsung dari `~/.gitconfig`); bila git juga tidak punya, AIT menanyakannya sekali lewat popup saat UI pertama dibuka. |
