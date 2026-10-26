@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, winFrame } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, winFrame } = window.AIThread;
   const el = id => document.getElementById(id);
 
   let clis = [];
@@ -38,7 +38,16 @@
   }
 
   function cardShell(cli) {
-    return `<div class="col-md-6 col-xl-4">
+    return (isEn ? `<div class="col-md-6 col-xl-4">
+      <div class="card h-100 cli-card" id="card-${cli.id}" data-cli-brand="${escapeHtml(cli.id)}">
+        <div class="card-header d-flex align-items-center gap-2">
+          ${logoHtml(cli)}
+          <span>${escapeHtml(cli.name)}</span>
+          <span class="ms-auto small" id="summary-${cli.id}"></span>
+        </div>
+        <div class="card-body" id="body-${cli.id}"><span class="text-secondary small">Loading…</span></div>
+      </div>
+    </div>` : `<div class="col-md-6 col-xl-4">
       <div class="card h-100 cli-card" id="card-${cli.id}" data-cli-brand="${escapeHtml(cli.id)}">
         <div class="card-header d-flex align-items-center gap-2">
           ${logoHtml(cli)}
@@ -47,7 +56,7 @@
         </div>
         <div class="card-body" id="body-${cli.id}"><span class="text-secondary small">Memuat…</span></div>
       </div>
-    </div>`;
+    </div>`);
   }
 
   // Global status and per-project statuses of one CLI, then redraw its card.
@@ -62,10 +71,10 @@
       box.innerHTML = cardBody(cli, global, statuses);
       const enabledProjects = statuses.filter(s => s.enabled).length;
       el(`summary-${cli.id}`).innerHTML = global.enabled
-        ? '<span class="badge text-bg-success">Global aktif</span>'
+        ? t('<span class="badge text-bg-success">Global aktif</span>', '<span class="badge text-bg-success">Global on</span>')
         : enabledProjects
-          ? `<span class="badge text-bg-primary">${enabledProjects} project aktif</span>`
-          : '<span class="badge text-bg-secondary">Nonaktif</span>';
+          ? (isEn ? `<span class="badge text-bg-primary">${enabledProjects} project(s) on</span>` : `<span class="badge text-bg-primary">${enabledProjects} project aktif</span>`)
+          : t('<span class="badge text-bg-secondary">Nonaktif</span>', '<span class="badge text-bg-secondary">Off</span>');
       if (cli.id === CLAUDE) await refreshHooks();
     } catch (error) {
       box.innerHTML = `<div class="alert alert-warning small mb-0">${escapeHtml(error.message)}</div>`;
@@ -89,9 +98,9 @@
 
   function stateHtml(enabled, currentBaseUrl, error) {
     if (error) return `<span class="text-danger small">${escapeHtml(error)}</span>`;
-    if (enabled) return '<span class="badge text-bg-success">Aktif</span>';
-    if (currentBaseUrl) return `<span class="badge text-bg-warning" title="${escapeHtml(currentBaseUrl)}">Mengarah ke alamat lain</span>`;
-    return '<span class="badge text-bg-secondary">Nonaktif</span>';
+    if (enabled) return t('<span class="badge text-bg-success">Aktif</span>', '<span class="badge text-bg-success">On</span>');
+    if (currentBaseUrl) return (isEn ? `<span class="badge text-bg-warning" title="${escapeHtml(currentBaseUrl)}">Points to another address</span>` : `<span class="badge text-bg-warning" title="${escapeHtml(currentBaseUrl)}">Mengarah ke alamat lain</span>`);
+    return t('<span class="badge text-bg-secondary">Nonaktif</span>', '<span class="badge text-bg-secondary">Off</span>');
   }
 
   function cardBody(cli, global, statuses) {
@@ -104,12 +113,36 @@
           return `<tr>
             <td style="width:3rem">${switchHtml(cli, 'Project', p.id, s?.enabled, !usable)}</td>
             <td>${escapeHtml(p.name)}<div class="small text-secondary mono">${escapeHtml(s?.path || p.rootPath)}</div></td>
-            <td class="text-end text-nowrap">${p.exists ? stateHtml(s?.enabled, s?.currentBaseUrl, s?.error) : '<span class="text-danger small">Folder tidak ada</span>'}</td>
+            <td class="text-end text-nowrap">${p.exists ? stateHtml(s?.enabled, s?.currentBaseUrl, s?.error) : t('<span class="text-danger small">Folder tidak ada</span>', '<span class="text-danger small">Folder missing</span>')}</td>
           </tr>`;
         }).join('')
-      : '<tr><td colspan="3" class="text-secondary small">Belum ada project terdaftar — daftarkan di menu Project.</td></tr>';
+      : t('<tr><td colspan="3" class="text-secondary small">Belum ada project terdaftar — daftarkan di menu Project.</td></tr>', '<tr><td colspan="3" class="text-secondary small">No project registered yet — register one in the Project menu.</td></tr>');
 
-    return `
+    return (isEn ? `
+      <p class="small text-secondary mb-2">${escapeHtml(cli.description)}</p>
+
+      <div class="d-flex align-items-center gap-3 border rounded p-2 mb-2">
+        ${switchHtml(cli, 'Global', null, global.enabled, false)}
+        <div class="flex-grow-1">
+          <div>Global <span class="text-secondary small">— every ${escapeHtml(cli.name)} session on this computer</span></div>
+          <div class="small text-secondary mono">${escapeHtml(global.path)}</div>
+        </div>
+        ${stateHtml(global.enabled, global.currentBaseUrl)}
+      </div>
+
+      ${cli.projectFile
+        ? sectionHtml(`cli-projects-${cli.id}`, `Per project <span class="fw-normal text-secondary">· ${activeCount} of ${projects.length} on</span>`, `<div class="table-responsive"><table class="table table-sm align-middle mb-0"><tbody>${rows}</tbody></table></div>`)
+        : '<p class="small text-secondary mb-2">Global only — this CLI has no per-project configuration file.</p>'}
+
+      ${winFrame({
+        id: `cli-preview-${cli.id}`,
+        title: `What will be written · ${global.path}`,
+        minimized: true,
+        className: 'mb-2',
+        body: `<pre class="code-block">${escapeHtml(global.preview)}</pre>`
+      })}
+      ${cli.note ? `<p class="small text-secondary mb-0">${escapeHtml(cli.note)}</p>` : ''}
+      ${cli.id === CLAUDE ? sectionHtml('cli-hooks', 'Hooks: Context Keeper <span class="mono">/clear</span> &amp; secret restorer', hooksShell()) : ''}` : `
       <p class="small text-secondary mb-2">${escapeHtml(cli.description)}</p>
 
       <div class="d-flex align-items-center gap-3 border rounded p-2 mb-2">
@@ -133,7 +166,7 @@
         body: `<pre class="code-block">${escapeHtml(global.preview)}</pre>`
       })}
       ${cli.note ? `<p class="small text-secondary mb-0">${escapeHtml(cli.note)}</p>` : ''}
-      ${cli.id === CLAUDE ? sectionHtml('cli-hooks', 'Hook: Context Keeper <span class="mono">/clear</span> &amp; pemulih secret', hooksShell()) : ''}`;
+      ${cli.id === CLAUDE ? sectionHtml('cli-hooks', 'Hook: Context Keeper <span class="mono">/clear</span> &amp; pemulih secret', hooksShell()) : ''}`);
   }
 
   el('cliCards').addEventListener('toggle', event => {
@@ -150,7 +183,7 @@
 
     // A CLI without project files only gains an extra provider; nothing is redirected, so no confirmation.
     if (input.dataset.scope === 'Global' && enabled && cli.projectFile
-        && !confirm(`Semua sesi ${cli.name} di komputer ini akan melewati AIT. Lanjutkan?`)) {
+        && !confirm((isEn ? `Every ${cli.name} session on this computer will go through AIT. Continue?` : `Semua sesi ${cli.name} di komputer ini akan melewati AIT. Lanjutkan?`))) {
       input.checked = false;
       return;
     }
@@ -163,7 +196,7 @@
         enabled,
         proxyBaseUrl: proxyUrl()
       });
-      toast(enabled ? `${cli.name} diarahkan ke AIT. ${cli.note || ''}` : `${cli.name} tidak lagi diarahkan ke AIT.`, enabled ? 'success' : 'info');
+      toast(enabled ? (isEn ? `${cli.name} now points to AIT. ${cli.note || ''}` : `${cli.name} diarahkan ke AIT. ${cli.note || ''}`) : (isEn ? `${cli.name} no longer points to AIT.` : `${cli.name} tidak lagi diarahkan ke AIT.`), enabled ? 'success' : 'info');
     } catch (error) {
       input.checked = !enabled;
       toast(error.message, 'error');
@@ -178,7 +211,33 @@
   function hooksShell() {
     const options = ['<option value="">Global — ~/.claude/settings.json</option>']
       .concat(projects.filter(p => p.exists).map(p => `<option value="${p.id}">${escapeHtml(p.name)} — .claude/settings.local.json</option>`));
-    return `<p class="small text-secondary">
+    return (isEn ? `<p class="small text-secondary">
+        Official Claude Code HTTP hooks (<span class="mono">SessionEnd</span> + <span class="mono">SessionStart</span>). When you run
+        <span class="mono">/clear</span>, AIT summarizes the old session and puts the summary into the new one. It also works for sessions
+        <em>not</em> routed through the proxy.
+      </p>
+      <p class="small text-secondary">
+        The <span class="mono">PreToolUse</span> hook restores secrets: the model only sees the placeholder <span class="mono">{{AIT_SECRET:…}}</span>,
+        and before Claude Code runs Edit/Write/Bash, AIT replaces that placeholder with the real value (you are still asked to confirm).
+        Placeholders it does not know are refused, so they are never written to a file as they are.
+      </p>
+      <select class="form-select form-select-sm mb-2" id="hooksTarget">${options.join('')}</select>
+      <div class="alert small" id="hooksStatus">Loading status…</div>
+      ${winFrame({
+        id: 'cli-hooks-preview',
+        title: 'Hook block that will be written',
+        minimized: true,
+        className: 'mb-2',
+        body: '<pre class="code-block" id="hooksPreview"></pre>'
+      })}
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-primary btn-sm" id="btnApplyHooks">Install hooks</button>
+        <button type="button" class="btn btn-outline-danger btn-sm" id="btnRevertHooks">Remove hooks</button>
+      </div>
+      <p class="small text-secondary mt-2 mb-0">
+        After <span class="mono">/clear</span>, Claude Code waits at most about 40 seconds for the summary. AIT must be running;
+        if it is not, the new session still starts, without a summary.
+      </p>` : `<p class="small text-secondary">
         Hook HTTP resmi Claude Code (<span class="mono">SessionEnd</span> + <span class="mono">SessionStart</span>). Saat Anda menjalankan
         <span class="mono">/clear</span>, AIT meringkas sesi lama dan menyisipkannya ke sesi baru. Berlaku juga untuk sesi yang
         <em>tidak</em> diarahkan ke proxy.
@@ -204,7 +263,7 @@
       <p class="small text-secondary mt-2 mb-0">
         Setelah <span class="mono">/clear</span>, Claude Code menunggu ringkasan maksimal ±40 detik. AIT harus berjalan;
         bila tidak, sesi baru tetap dimulai tanpa ringkasan.
-      </p>`;
+      </p>`);
   }
 
   const hooksTarget = () => el('hooksTarget')?.value || '';
@@ -220,13 +279,13 @@
     box.classList.remove('alert-success', 'alert-secondary', 'alert-warning');
     if (status.installed) {
       box.classList.add('alert-success');
-      box.innerHTML = `✓ Hook /clear dan pemulih secret terpasang.<br><span class="mono">${escapeHtml(status.path)}</span>`;
+      box.innerHTML = (isEn ? `✓ /clear hook and secret restorer installed.<br><span class="mono">${escapeHtml(status.path)}</span>` : `✓ Hook /clear dan pemulih secret terpasang.<br><span class="mono">${escapeHtml(status.path)}</span>`);
     } else if (status.installedBaseUrl) {
       box.classList.add('alert-warning');
-      box.innerHTML = `Hook versi lama atau ke alamat lain: <span class="mono">${escapeHtml(status.installedBaseUrl)}</span> — pasang ulang untuk memperbarui.<br><span class="mono">${escapeHtml(status.path)}</span>`;
+      box.innerHTML = (isEn ? `Hook of an older version or to another address: <span class="mono">${escapeHtml(status.installedBaseUrl)}</span> — install again to update it.<br><span class="mono">${escapeHtml(status.path)}</span>` : `Hook versi lama atau ke alamat lain: <span class="mono">${escapeHtml(status.installedBaseUrl)}</span> — pasang ulang untuk memperbarui.<br><span class="mono">${escapeHtml(status.path)}</span>`);
     } else {
       box.classList.add('alert-secondary');
-      box.innerHTML = `Belum terpasang: <span class="mono">${escapeHtml(status.path)}</span>`;
+      box.innerHTML = (isEn ? `Not installed: <span class="mono">${escapeHtml(status.path)}</span>` : `Belum terpasang: <span class="mono">${escapeHtml(status.path)}</span>`);
     }
     el('hooksPreview').textContent = status.previewJson;
   }
@@ -254,7 +313,7 @@
     const apply = button.id === 'btnApplyHooks';
     try {
       renderHooks(await api.post(`/api/settings/claude/hooks/${apply ? 'apply' : 'revert'}`, hooksBody()));
-      toast(apply ? 'Hook /clear terpasang. Berlaku untuk sesi Claude Code berikutnya.' : 'Hook /clear AIT dilepas.', apply ? 'success' : 'info');
+      toast(apply ? t('Hook /clear terpasang. Berlaku untuk sesi Claude Code berikutnya.', '/clear hook installed. It applies to the next Claude Code sessions.') : (isEn ? 'AIT /clear hook removed.' : 'Hook /clear AIT dilepas.'), apply ? 'success' : 'info');
     } catch (error) {
       toast(error.message, 'error');
     }

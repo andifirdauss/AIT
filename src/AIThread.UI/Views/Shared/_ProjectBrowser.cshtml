@@ -5,14 +5,14 @@
         <div class="modal-content">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="browseModalTitle">Telusuri folder project</h5>
+                <h5 class="modal-title" id="browseModalTitle">@Lang.T("Telusuri folder project", "Browse project folders")</h5>
             </div>
             <div class="modal-body">
                 <div class="d-flex flex-wrap gap-1 mb-2" id="quickLocations"></div>
                 <div class="input-group mb-3">
-                    <button class="btn btn-outline-secondary" type="button" id="btnUp" title="Folder induk">↑ Naik</button>
-                    <input type="text" class="form-control mono" id="browsePath" placeholder="Pilih drive/lokasi di atas atau ketik path folder, lalu Enter" />
-                    <button class="btn btn-outline-secondary" type="button" id="btnOpen">Buka</button>
+                    <button class="btn btn-outline-secondary" type="button" id="btnUp" title="@Lang.T("Folder induk", "Parent folder")">@Lang.T("↑ Naik", "↑ Up")</button>
+                    <input type="text" class="form-control mono" id="browsePath" placeholder="@Lang.T("Pilih drive/lokasi di atas atau ketik path folder, lalu Enter", "Choose a drive/location above or type a folder path, then Enter")" />
+                    <button class="btn btn-outline-secondary" type="button" id="btnOpen">@Lang.T("Buka", "Open")</button>
                 </div>
 
                 <div class="row g-3">
@@ -21,12 +21,12 @@
                         <div class="list-group browse-list" id="folderList"></div>
                     </div>
                     <div class="col-lg-7">
-                        <div class="small text-secondary mb-1">Project di folder ini</div>
+                        <div class="small text-secondary mb-1">@Lang.T("Project di folder ini", "Projects in this folder")</div>
                         <div class="list-group mb-3" id="projectList"></div>
 
                         <div class="border rounded p-2">
                             <div class="d-flex flex-wrap align-items-center gap-2">
-                                <span class="small">Cari di semua sub-folder, kedalaman</span>
+                                <span class="small">@Lang.T("Cari di semua sub-folder, kedalaman", "Search all sub-folders, depth")</span>
                                 <select class="form-select form-select-sm" id="scanDepth" style="width:auto">
                                     <option value="2">2</option>
                                     <option value="3">3</option>
@@ -35,19 +35,19 @@
                                     <option value="8">8</option>
                                 </select>
                                 <button type="button" class="btn btn-sm btn-outline-primary" id="btnScan">Scan</button>
-                                <button type="button" class="btn btn-sm btn-link d-none" id="btnSelectAllNew">Pilih semua yang belum terdaftar</button>
+                                <button type="button" class="btn btn-sm btn-link d-none" id="btnSelectAllNew">@Lang.T("Pilih semua yang belum terdaftar", "Select everything not registered yet")</button>
                             </div>
-                            <div class="small text-secondary mt-1" id="scanInfo">Folder build, VCS, tersembunyi, dan junction dilewati.</div>
+                            <div class="small text-secondary mt-1" id="scanInfo">@Lang.T("Folder build, VCS, tersembunyi, dan junction dilewati.", "Build, VCS, hidden and junction folders are skipped.")</div>
                             <div class="list-group browse-list mt-2" id="scanResults"></div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer justify-content-between">
-                <span class="small text-secondary" id="selectionInfo">Belum ada project dipilih.</span>
+                <span class="small text-secondary" id="selectionInfo">@Lang.T("Belum ada project dipilih.", "No project chosen yet.")</span>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                    <button type="button" class="btn btn-primary" id="btnRegisterSelected" disabled>Daftarkan terpilih</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                    <button type="button" class="btn btn-primary" id="btnRegisterSelected" disabled>@Lang.T("Daftarkan terpilih", "Register chosen")</button>
                 </div>
             </div>
         </div>

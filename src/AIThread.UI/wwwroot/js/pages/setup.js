@@ -2,14 +2,14 @@
 // live state); each card completes its step in place through the same APIs the other menus use.
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill } = window.AIThread;
   const el = id => document.getElementById(id);
   const roleLabels = {
     Planner: 'Planner', ToolsNode: 'Tools Node', Executor: 'Executor', Reviewer: 'Reviewer', Tester: 'Tester', Wrapper: 'Wrapper',
     ContextKeeper: 'Context Keeper'
   };
   const sectionLabels = {
-    Router: 'Koneksi 9router', Orchestration: 'Proxy & orkestrasi', Nodes: 'Node', Memory: 'Penyimpanan memory', Business: 'Business memory', Skills: 'Skill'
+    Router: t('Koneksi 9router', '9router connection'), Orchestration: (isEn ? 'Proxy & orchestration' : 'Proxy & orkestrasi'), Nodes: 'Node', Memory: t('Penyimpanan memory', 'Memory storage'), Business: 'Business memory', Skills: 'Skill'
   };
   // Names of the nodes the preset creates (SetupService.PresetNames).
   const presetNames = {
@@ -31,15 +31,15 @@
   // --- Status ---
 
   function stateBadge(step) {
-    if (step.done) return '<span class="badge text-bg-success">✓ Selesai</span>';
-    return step.required ? '<span class="badge text-bg-warning">Belum</span>' : '<span class="badge text-bg-secondary">Opsional</span>';
+    if (step.done) return t('<span class="badge text-bg-success">✓ Selesai</span>', '<span class="badge text-bg-success">✓ Done</span>');
+    return step.required ? t('<span class="badge text-bg-warning">Belum</span>', '<span class="badge text-bg-warning">Not yet</span>') : (isEn ? '<span class="badge text-bg-secondary">Optional</span>' : '<span class="badge text-bg-secondary">Opsional</span>');
   }
 
   function renderStatus(previous) {
     const { steps, requiredCount, requiredDone, isComplete } = status;
     el('setupSummary').textContent = isComplete
-      ? `Semua ${requiredCount} langkah wajib selesai.`
-      : `${requiredDone} dari ${requiredCount} langkah wajib selesai.`;
+      ? (isEn ? `All ${requiredCount} required steps done.` : `Semua ${requiredCount} langkah wajib selesai.`)
+      : (isEn ? `${requiredDone} of ${requiredCount} required steps done.` : `${requiredDone} dari ${requiredCount} langkah wajib selesai.`);
     el('setupChecked').textContent = `diperiksa ${fmt.time(new Date())}`;
     const percent = requiredCount ? Math.round(requiredDone * 100 / requiredCount) : 0;
     el('setupBar').style.width = `${percent}%`;
@@ -92,8 +92,8 @@
       el('setupRouterKey').value = '';
       el('setupRouterKey').placeholder = s.hasNineRouterApiKey ? s.nineRouterApiKeyMasked : '';
       el('setupRouterKeyHint').textContent = s.hasNineRouterApiKey
-        ? 'Tersimpan terenkripsi. Kosongkan untuk tetap memakainya.'
-        : 'Belum ada key tersimpan. Kosongkan bila 9router tidak mewajibkannya.';
+        ? t('Tersimpan terenkripsi. Kosongkan untuk tetap memakainya.', 'Stored encrypted. Leave empty to keep using it.')
+        : t('Belum ada key tersimpan. Kosongkan bila 9router tidak mewajibkannya.', 'No key stored yet. Leave empty when 9router does not require one.');
       el('routerDashboard').href = s.nineRouterBaseUrl;
     } catch (error) {
       el('routerResult').innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
@@ -104,8 +104,8 @@
     event.preventDefault();
     const button = el('btnSaveRouter');
     button.disabled = true;
-    button.textContent = 'Menguji…';
-    el('routerResult').innerHTML = '<span class="text-secondary">Menghubungi 9router…</span>';
+    button.textContent = (isEn ? 'Testing…' : 'Menguji…');
+    el('routerResult').innerHTML = (isEn ? '<span class="text-secondary">Contacting 9router…</span>' : '<span class="text-secondary">Menghubungi 9router…</span>');
     try {
       const r = await api.post('/api/setup/router', { baseUrl: el('setupRouterUrl').value.trim(), apiKey: el('setupRouterKey').value.trim() || null });
       el('routerResult').innerHTML = r.saved
@@ -118,7 +118,7 @@
       el('routerResult').innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
     } finally {
       button.disabled = false;
-      button.textContent = 'Test & simpan';
+      button.textContent = t('Test & simpan', 'Test & save');
     }
   });
 
@@ -126,7 +126,7 @@
   el('btnStartRouter').addEventListener('click', async () => {
     const button = el('btnStartRouter');
     button.disabled = true;
-    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menjalankan…';
+    button.innerHTML = t('<span class="spinner-border spinner-border-sm me-1"></span>Menjalankan…', '<span class="spinner-border spinner-border-sm me-1"></span>Starting…');
     try {
       const r = await api.post('/api/router/start');
       toast(r.message, r.isOnline ? 'success' : 'warning');
@@ -135,7 +135,7 @@
       toast(error.message, 'error');
     } finally {
       button.disabled = false;
-      button.textContent = 'Jalankan 9router';
+      button.textContent = t('Jalankan 9router', 'Start 9router');
     }
   });
 
@@ -197,7 +197,7 @@
       html += `<option value="${escapeHtml(m.id)}" ${m.id === selected ? 'selected' : ''}>${escapeHtml(m.id)}</option>`;
     }
     if (group !== null) html += '</optgroup>';
-    if (selected && !models.some(m => m.id === selected)) html = `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} (tidak ada di 9router)</option>${html}`;
+    if (selected && !models.some(m => m.id === selected)) html = (isEn ? `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} (not in 9router)</option>${html}` : `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} (tidak ada di 9router)</option>${html}`);
     return html;
   }
 
@@ -215,7 +215,7 @@
 
     const noModels = !models.length;
     el('presetNoModels').classList.toggle('d-none', !noModels);
-    el('presetNoModels').textContent = noModels ? 'Belum ada model dari 9router. Selesaikan langkah 9router dulu (provider terhubung di dashboard 9router).' : '';
+    el('presetNoModels').textContent = noModels ? t('Belum ada model dari 9router. Selesaikan langkah 9router dulu (provider terhubung di dashboard 9router).', 'No models from 9router yet. Finish the 9router step first (providers connected in the 9router dashboard).') : '';
     el('btnPreset').disabled = !strong;
 
     // Running the preset again starts from what it set up last time.
@@ -232,11 +232,11 @@
   function presetRow(item) {
     const n = item.node;
     const state = n.isActive
-      ? '<span class="text-secondary">Menguji…</span>'
-      : '<span class="text-secondary">Dinonaktifkan (tidak dicentang)</span>';
+      ? (isEn ? '<span class="text-secondary">Testing…</span>' : '<span class="text-secondary">Menguji…</span>')
+      : t('<span class="text-secondary">Dinonaktifkan (tidak dicentang)</span>', '<span class="text-secondary">Turned off (not ticked)</span>');
     return `<tr>
       <td class="text-nowrap">${escapeHtml(roleLabels[n.role] || n.role)}</td>
-      <td>${escapeHtml(n.name)} ${item.created ? '<span class="badge text-bg-primary">baru</span>' : '<span class="badge text-bg-secondary">diperbarui</span>'}</td>
+      <td>${escapeHtml(n.name)} ${item.created ? t('<span class="badge text-bg-primary">baru</span>', '<span class="badge text-bg-primary">new</span>') : t('<span class="badge text-bg-secondary">diperbarui</span>', '<span class="badge text-bg-secondary">updated</span>')}</td>
       <td class="mono small">${escapeHtml(n.model)}</td>
       <td class="small" data-preset-test="${n.id}">${state}</td>
     </tr>`;
@@ -247,7 +247,7 @@
     try {
       const r = await api.post(`/api/nodes/${node.id}/test`);
       cell.innerHTML = r.success
-        ? `<span class="text-success">✓ ${fmt.ms(r.latencyMs)} · balasan "${escapeHtml((r.reply || '').substring(0, 30))}"</span>`
+        ? (isEn ? `<span class="text-success">✓ ${fmt.ms(r.latencyMs)} · reply "${escapeHtml((r.reply || '').substring(0, 30))}"</span>` : `<span class="text-success">✓ ${fmt.ms(r.latencyMs)} · balasan "${escapeHtml((r.reply || '').substring(0, 30))}"</span>`)
         : `<span class="text-danger">✕ ${escapeHtml(r.error)}</span>`;
       return r.success;
     } catch (error) {
@@ -259,10 +259,10 @@
   el('presetForm').addEventListener('submit', async event => {
     event.preventDefault();
     const strongModel = el('presetStrong').value;
-    if (!strongModel) return toast('Pilih model kuat untuk planner.', 'warning');
+    if (!strongModel) return toast(t('Pilih model kuat untuk planner.', 'Choose a strong model for the planner.'), 'warning');
     const button = el('btnPreset');
     button.disabled = true;
-    button.textContent = 'Membuat node…';
+    button.textContent = (isEn ? 'Creating nodes…' : 'Membuat node…');
     try {
       const result = await api.post('/api/setup/preset', {
         strongModel,
@@ -272,22 +272,25 @@
         tester: el('presetTester').checked,
         contextKeeper: el('presetContext').checked
       });
-      el('presetResult').innerHTML = `<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+      el('presetResult').innerHTML = (isEn ? `<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Role</th><th>Node</th><th>Model</th><th>Test</th></tr></thead>
+          <tbody>${result.nodes.map(presetRow).join('')}</tbody>
+        </table></div>` : `<div class="table-responsive"><table class="table table-sm align-middle mb-0">
           <thead><tr><th>Peran</th><th>Node</th><th>Model</th><th>Uji</th></tr></thead>
           <tbody>${result.nodes.map(presetRow).join('')}</tbody>
-        </table></div>`;
-      button.textContent = 'Menguji node…';
+        </table></div>`);
+      button.textContent = (isEn ? 'Testing nodes…' : 'Menguji node…');
       const active = result.nodes.map(i => i.node).filter(n => n.isActive);
       const passed = (await Promise.all(active.map(testNode))).filter(Boolean).length;
       toast(passed === active.length
-        ? `${active.length} node siap dan menjawab.`
-        : `${active.length - passed} node gagal diuji. Periksa provider di 9router atau pilih model lain.`, passed === active.length ? 'success' : 'warning');
+        ? (isEn ? `${active.length} node(s) ready and answering.` : `${active.length} node siap dan menjawab.`)
+        : (isEn ? `${active.length - passed} node(s) failed the test. Check the provider in 9router or choose another model.` : `${active.length - passed} node gagal diuji. Periksa provider di 9router atau pilih model lain.`), passed === active.length ? 'success' : 'warning');
       await Promise.all([loadStatus(), loadNodesStep()]);
     } catch (error) {
       toast(error.message, 'error');
     } finally {
       button.disabled = false;
-      button.textContent = 'Buat node & uji';
+      button.textContent = t('Buat node & uji', 'Create nodes & test');
     }
   });
 
@@ -299,7 +302,7 @@
       const shown = list.slice(0, 12);
       el('setupProjects').innerHTML = list.length
         ? `<div class="d-flex flex-wrap gap-1">${shown.map(p => `<a class="badge text-bg-secondary text-decoration-none" href="/Project/Detail/${p.id}" title="${escapeHtml(p.rootPath)}">${escapeHtml(p.name)}</a>`).join('')}${list.length > shown.length ? `<span class="text-secondary ms-1">+${list.length - shown.length} lainnya</span>` : ''}</div>`
-        : '<span class="text-secondary">Belum ada project terdaftar.</span>';
+        : t('<span class="text-secondary">Belum ada project terdaftar.</span>', '<span class="text-secondary">No project registered yet.</span>');
     } catch (error) {
       el('setupProjects').innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
     }
@@ -309,10 +312,10 @@
 
   el('btnSetupRegister').addEventListener('click', async () => {
     const path = el('setupProjectPath').value.trim();
-    if (!path) return toast('Isi path folder project, atau klik Telusuri….', 'warning');
+    if (!path) return toast(t('Isi path folder project, atau klik Telusuri….', 'Fill in the project folder path, or click Browse….'), 'warning');
     try {
       const project = await api.post('/api/projects', { path });
-      toast(`Project ${project.name} terdaftar.`);
+      toast((isEn ? `Project ${project.name} registered.` : `Project ${project.name} terdaftar.`));
       el('setupProjectPath').value = '';
       await projectsChanged();
     } catch (error) {
@@ -329,11 +332,11 @@
   let clis = [];
 
   function cliBadge(row) {
-    if (!row.global) return '<span class="badge text-bg-secondary">Status tidak terbaca</span>';
-    if (row.global.enabled) return '<span class="badge text-bg-success">Global aktif</span>';
-    if (row.projectCount) return `<span class="badge text-bg-primary">${row.projectCount} project aktif</span>`;
-    if (row.global.currentBaseUrl) return `<span class="badge text-bg-warning" title="${escapeHtml(row.global.currentBaseUrl)}">Mengarah ke alamat lain</span>`;
-    return '<span class="badge text-bg-secondary">Nonaktif</span>';
+    if (!row.global) return t('<span class="badge text-bg-secondary">Status tidak terbaca</span>', '<span class="badge text-bg-secondary">Status unreadable</span>');
+    if (row.global.enabled) return t('<span class="badge text-bg-success">Global aktif</span>', '<span class="badge text-bg-success">Global on</span>');
+    if (row.projectCount) return (isEn ? `<span class="badge text-bg-primary">${row.projectCount} project(s) on</span>` : `<span class="badge text-bg-primary">${row.projectCount} project aktif</span>`);
+    if (row.global.currentBaseUrl) return (isEn ? `<span class="badge text-bg-warning" title="${escapeHtml(row.global.currentBaseUrl)}">Points to another address</span>` : `<span class="badge text-bg-warning" title="${escapeHtml(row.global.currentBaseUrl)}">Mengarah ke alamat lain</span>`);
+    return t('<span class="badge text-bg-secondary">Nonaktif</span>', '<span class="badge text-bg-secondary">Off</span>');
   }
 
   function cliRow(row) {
@@ -375,7 +378,7 @@
     const enabled = input.checked;
 
     // Same rule as the CLI menu: a CLI with project files redirects every session, so it is confirmed.
-    if (enabled && cli.projectFile && !confirm(`Semua sesi ${cli.name} di komputer ini akan melewati AIT. Lanjutkan?`)) {
+    if (enabled && cli.projectFile && !confirm((isEn ? `Every ${cli.name} session on this computer will go through AIT. Continue?` : `Semua sesi ${cli.name} di komputer ini akan melewati AIT. Lanjutkan?`))) {
       input.checked = false;
       return;
     }
@@ -383,7 +386,7 @@
     input.disabled = true;
     try {
       await api.put(`/api/cli/${cli.id}/toggle`, { scope: 'Global', projectId: null, enabled, proxyBaseUrl: proxyUrl });
-      toast(enabled ? `${cli.name} diarahkan ke AIT. ${cli.note || ''}` : `${cli.name} tidak lagi diarahkan ke AIT.`, enabled ? 'success' : 'info');
+      toast(enabled ? (isEn ? `${cli.name} now points to AIT. ${cli.note || ''}` : `${cli.name} diarahkan ke AIT. ${cli.note || ''}`) : (isEn ? `${cli.name} no longer points to AIT.` : `${cli.name} tidak lagi diarahkan ke AIT.`), enabled ? 'success' : 'info');
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -406,11 +409,11 @@
     try {
       profileDocument = JSON.parse(await file.text());
     } catch {
-      toast('File bukan JSON yang valid.', 'error');
+      toast(t('File bukan JSON yang valid.', 'The file is not valid JSON.'), 'error');
       return;
     }
     el('profileInfo').textContent = `${file.name}`
-      + (profileDocument?.exportedAt ? ` · diekspor ${fmt.dateTime(profileDocument.exportedAt)}` : '')
+      + (profileDocument?.exportedAt ? (isEn ? ` · exported ${fmt.dateTime(profileDocument.exportedAt)}` : ` · diekspor ${fmt.dateTime(profileDocument.exportedAt)}`) : '')
       + (profileDocument?.appVersion ? ` · AIT ${profileDocument.appVersion}` : '');
     selectedSections = null;
     applied = false;
@@ -419,8 +422,8 @@
     el('profileSecretsBox').classList.add('d-none');
     el('profileNodeMode').value = 'Merge';
     el('profileCopy').checked = true;
-    el('btnProfileApply').textContent = 'Terapkan profil';
-    el('btnProfileClose').textContent = 'Batal';
+    el('btnProfileApply').textContent = (isEn ? 'Apply profile' : 'Terapkan profil');
+    el('btnProfileClose').textContent = t('Batal', 'Cancel');
     profileModal.show();
     previewProfile();
   });
@@ -451,7 +454,7 @@
     el('profileSections').innerHTML = sections.map(s => `<div class="form-check mb-0">
         <input class="form-check-input" type="checkbox" id="section-${s}" data-section="${s}" ${selectedSections.includes(s) ? 'checked' : ''} />
         <label class="form-check-label small" for="section-${s}">${escapeHtml(sectionLabels[s] || s)}</label>
-      </div>`).join('') || '<span class="small text-secondary">Profil ini kosong.</span>';
+      </div>`).join('') || t('<span class="small text-secondary">Profil ini kosong.</span>', '<span class="small text-secondary">This profile is empty.</span>');
     el('profileNodeModeBox').classList.toggle('d-none', !selectedSections.includes('Nodes'));
     el('profileCopyBox').classList.toggle('d-none', !selectedSections.includes('Memory'));
   }
@@ -463,7 +466,7 @@
     el('profileSecrets').innerHTML = secrets.map(s => `<div class="col-md-6">
         <label class="form-label small mb-1" for="secret-${s.id}">${escapeHtml(s.label)}</label>
         <input type="password" class="form-control form-control-sm mono" id="secret-${s.id}" data-secret autocomplete="new-password"
-          placeholder="${s.stored ? 'tersimpan — kosongkan untuk tetap memakai' : 'belum ada'}" />
+          placeholder="${s.stored ? t('tersimpan — kosongkan untuk tetap memakai', 'stored — leave empty to keep using it') : t('belum ada', 'none yet')}" />
       </div>`).join('');
     for (const [key, value] of Object.entries(typed)) {
       if (value && el(`secret-${key}`)) el(`secret-${key}`).value = value;
@@ -473,9 +476,9 @@
   function changesHtml(r) {
     const parts = [];
     if (!r.changes.length) {
-      parts.push(`<div class="alert alert-secondary small mb-2">${r.dryRun ? 'Tidak ada perubahan: komputer ini sudah sesuai dengan profil.' : 'Tidak ada yang perlu diubah.'}</div>`);
+      parts.push(`<div class="alert alert-secondary small mb-2">${r.dryRun ? t('Tidak ada perubahan: komputer ini sudah sesuai dengan profil.', 'No changes: this computer already matches the profile.') : t('Tidak ada yang perlu diubah.', 'Nothing needs to change.')}</div>`);
     } else {
-      parts.push(`<div class="small fw-semibold mb-1">${r.dryRun ? 'Yang akan berubah' : 'Yang diterapkan'}</div>`);
+      parts.push(`<div class="small fw-semibold mb-1">${r.dryRun ? t('Yang akan berubah', 'What will change') : t('Yang diterapkan', 'What was applied')}</div>`);
       for (const section of Object.keys(sectionLabels)) {
         const items = r.changes.filter(c => c.section === section);
         if (!items.length) continue;
@@ -487,8 +490,9 @@
       parts.push(`<div class="alert alert-warning small mb-2"><ul class="mb-0 ps-3">${r.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>`);
     }
     if (r.errors.length) {
-      parts.push(`<div class="alert alert-danger small mb-0"><div class="fw-semibold">Belum diterapkan</div><ul class="mb-0 ps-3">${r.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
-        <div class="mt-1">Perbaiki (mis. password), lalu klik <em>Coba lagi</em>; bagian yang sudah diterapkan tidak berubah lagi.</div></div>`);
+      parts.push((isEn ? `<div class="alert alert-danger small mb-0"><div class="fw-semibold">Not applied yet</div><ul class="mb-0 ps-3">${r.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
+        <div class="mt-1">Fix it (e.g. the password), then click <em>Try again</em>; the parts already applied do not change again.</div></div>` : `<div class="alert alert-danger small mb-0"><div class="fw-semibold">Belum diterapkan</div><ul class="mb-0 ps-3">${r.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}</ul>
+        <div class="mt-1">Perbaiki (mis. password), lalu klik <em>Coba lagi</em>; bagian yang sudah diterapkan tidak berubah lagi.</div></div>`));
     }
     return parts.join('');
   }
@@ -496,7 +500,7 @@
   async function previewProfile() {
     if (!profileDocument) return;
     el('btnProfileApply').disabled = true;
-    el('profilePreview').innerHTML = '<span class="small text-secondary">Memeriksa profil…</span>';
+    el('profilePreview').innerHTML = t('<span class="small text-secondary">Memeriksa profil…</span>', '<span class="small text-secondary">Checking the profile…</span>');
     try {
       const r = await api.post('/api/setup/profile/import', importBody(true));
       renderSections(r.sections);
@@ -522,23 +526,23 @@
     if (applied) return profileModal.hide();
     const button = el('btnProfileApply');
     button.disabled = true;
-    button.textContent = 'Menerapkan…';
+    button.textContent = (isEn ? 'Applying…' : 'Menerapkan…');
     try {
       const r = await api.post('/api/setup/profile/import', importBody(false));
       el('profilePreview').innerHTML = changesHtml(r);
       if (r.errors.length) {
-        toast(`Profil diterapkan sebagian: ${r.errors.length} bagian gagal.`, 'warning');
-        button.textContent = 'Coba lagi';
+        toast((isEn ? `Profile partly applied: ${r.errors.length} part(s) failed.` : `Profil diterapkan sebagian: ${r.errors.length} bagian gagal.`), 'warning');
+        button.textContent = t('Coba lagi', 'Try again');
       } else {
-        toast(`Profil diterapkan: ${r.changes.length} perubahan.`);
+        toast((isEn ? `Profile applied: ${r.changes.length} change(s).` : `Profil diterapkan: ${r.changes.length} perubahan.`));
         applied = true;
-        button.textContent = 'Tutup';
-        el('btnProfileClose').textContent = 'Tutup';
+        button.textContent = t('Tutup', 'Close');
+        el('btnProfileClose').textContent = t('Tutup', 'Close');
       }
       await loadAll(true);
     } catch (error) {
       toast(error.message, 'error');
-      button.textContent = 'Terapkan profil';
+      button.textContent = (isEn ? 'Apply profile' : 'Terapkan profil');
     } finally {
       button.disabled = false;
     }

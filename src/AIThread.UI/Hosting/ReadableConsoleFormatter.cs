@@ -1,4 +1,5 @@
 using System.Text;
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
@@ -113,7 +114,7 @@ public sealed class ReadableConsoleFormatter : ConsoleFormatter, IDisposable
             }
 
             if (repeat is { Suppressed: > 0 })
-                repeatNote = $"({repeat.Suppressed}x serupa disembunyikan sejak {repeat.FirstAt:HH:mm:ss})";
+                repeatNote = Lang.T($"({repeat.Suppressed}x serupa disembunyikan sejak {repeat.FirstAt:HH:mm:ss})", $"({repeat.Suppressed}x similar hidden since {repeat.FirstAt:HH:mm:ss})");
 
             if (_repeats.Count >= MaxRepeatEntries)
                 foreach (var stale in _repeats.Where(r => now - r.Value.FirstAt >= window).Select(r => r.Key).ToList())

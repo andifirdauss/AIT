@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill, routerKeyState, pager } = window.AIThread;
+  const { locale, isEn, t, api, toast, escapeHtml, fmt, stream, debounce, renderRouterPill, routerKeyState, pager } = window.AIThread;
   const el = id => document.getElementById(id);
   let settings = null;
 
@@ -10,8 +10,8 @@
     el('routerKey').value = '';
     el('routerKeyClear').checked = false;
     el('routerKeyHint').textContent = s.hasNineRouterApiKey
-      ? `Tersimpan terenkripsi: ${s.nineRouterApiKeyMasked}`
-      : 'Belum ada key. Salin dari dashboard 9router (menu API Keys) bila "Require API key" aktif.';
+      ? (isEn ? `Stored encrypted: ${s.nineRouterApiKeyMasked}` : `Tersimpan terenkripsi: ${s.nineRouterApiKeyMasked}`)
+      : t('Belum ada key. Salin dari dashboard 9router (menu API Keys) bila "Require API key" aktif.', 'No key yet. Copy it from the 9router dashboard (API Keys menu) when "Require API key" is on.');
     el('proxyKey').value = s.proxyApiKey || '';
     el('orchestrationEnabled').checked = s.orchestrationEnabled;
     el('streamProgress').checked = s.streamProgressToClient;
@@ -27,7 +27,7 @@
 
   async function loadModels(selected) {
     const select = el('passthroughModel');
-    let html = '<option value="">Otomatis — model node Wrapper</option>';
+    let html = t('<option value="">Otomatis — model node Wrapper</option>', '<option value="">Automatic — the Wrapper node model</option>');
     try {
       const models = await api.get('/api/router/models');
       if (selected && !models.some(m => m.id === selected)) html += `<option value="${escapeHtml(selected)}">${escapeHtml(selected)}</option>`;
@@ -63,13 +63,13 @@
     const [keyText, keyProblem] = routerKeyState(r);
     const key = keyProblem ? `<span class="text-danger">${keyText}</span>` : keyText;
     const unsaved = keyTypedButNotSaved && !keyProblem
-      ? ' · <span class="text-warning">key ini belum disimpan — klik Simpan setting</span>'
+      ? t(' · <span class="text-warning">key ini belum disimpan — klik Simpan setting</span>', ' · <span class="text-warning">this key is not saved yet — click Save settings</span>')
       : '';
     return `<span class="text-success">✓ Online</span> · ${r.latencyMs} ms · ${r.modelCount} model · ${r.comboCount} combo · ${key}${unsaved}`;
   }
 
   el('btnTestRouter').addEventListener('click', async () => {
-    el('routerTestResult').innerHTML = '<span class="text-secondary">Menguji…</span>';
+    el('routerTestResult').innerHTML = (isEn ? '<span class="text-secondary">Testing…</span>' : '<span class="text-secondary">Menguji…</span>');
     const typedKey = el('routerKey').value.trim() || null;
     try {
       const r = await api.post('/api/settings/test-router', { baseUrl: el('routerUrl').value.trim(), apiKey: typedKey });
@@ -83,7 +83,7 @@
     const bytes = new Uint8Array(24);
     crypto.getRandomValues(bytes);
     el('proxyKey').value = 'ait-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-    toast('Key baru dibuat. Simpan setting, lalu matikan dan aktifkan lagi CLI di menu CLI agar key baru tertulis.', 'info');
+    toast(t('Key baru dibuat. Simpan setting, lalu matikan dan aktifkan lagi CLI di menu CLI agar key baru tertulis.', 'New key created. Save the settings, then turn the CLI off and on again in the CLI menu so the new key is written.'), 'info');
   });
 
   // --- Tabs ---
@@ -134,7 +134,7 @@
     };
     try {
       fill(await api.put('/api/settings', body));
-      toast('Setting tersimpan.');
+      toast(t('Setting tersimpan.', 'Settings saved.'));
       try {
         // The save already re-checked 9router with the stored key; show that instead of the stale test result.
         const status = await api.get('/api/router/status');
@@ -158,34 +158,34 @@
     Default: {
       fields: [],
       help: {
-        stm: 'Server Garnet (protokol Redis) yang berjalan di dalam AIT — tanpa instalasi apa pun.',
-        ltm: 'Tabel LongMemories di database utama AIT (ConnectionStrings:Default) — hanya di komputer ini.',
-        bzm: 'Tabel BusinessPages di database utama AIT — hanya di komputer ini. Pilih database bersama agar wiki dibangun dari semua developer.'
+        stm: t('Server Garnet (protokol Redis) yang berjalan di dalam AIT — tanpa instalasi apa pun.', 'A Garnet server (Redis protocol) running inside AIT — nothing to install.'),
+        ltm: t('Tabel LongMemories di database utama AIT (ConnectionStrings:Default) — hanya di komputer ini.', 'The LongMemories table in the main AIT database (ConnectionStrings:Default) — on this computer only.'),
+        bzm: t('Tabel BusinessPages di database utama AIT — hanya di komputer ini. Pilih database bersama agar wiki dibangun dari semua developer.', 'The BusinessPages table in the main AIT database — on this computer only. Choose a shared database so the wiki is built from every developer.')
       }
     },
     Redis: {
-      fields: sqlFields, port: 6379, database: ['Database (indeks, opsional)', '0'], options: 'ssl=true',
-      help: 'Redis, Valkey, atau server berprotokol Redis lain. Username hanya untuk ACL Redis 6+; kosongkan bila tidak dipakai.'
+      fields: sqlFields, port: 6379, database: [(isEn ? 'Database (index, optional)' : 'Database (indeks, opsional)'), '0'], options: 'ssl=true',
+      help: t('Redis, Valkey, atau server berprotokol Redis lain. Username hanya untuk ACL Redis 6+; kosongkan bila tidak dipakai.', 'Redis, Valkey or another Redis-protocol server. Username is only for Redis 6+ ACL; leave it empty when not used.')
     },
     SqlServer: {
       fields: sqlFields, port: 1433, database: ['Database', 'AIThreadMemory'], options: 'Encrypt=True',
-      help: 'Username kosong = Windows authentication. Port kosong = port default; untuk named instance tulis host\\INSTANCE dan kosongkan port.'
+      help: t('Username kosong = Windows authentication. Port kosong = port default; untuk named instance tulis host\\INSTANCE dan kosongkan port.', 'Empty username = Windows authentication. Empty port = default port; for a named instance write host\\INSTANCE and leave the port empty.')
     },
     PostgreSql: {
       fields: sqlFields, port: 5432, database: ['Database', 'aithread'], options: 'SSL Mode=Require',
-      help: 'Database dibuat otomatis bila belum ada dan user punya hak CREATEDB.'
+      help: t('Database dibuat otomatis bila belum ada dan user punya hak CREATEDB.', 'The database is created automatically when missing and the user has the CREATEDB right.')
     },
     MySql: {
       fields: sqlFields, port: 3306, database: ['Database', 'aithread'], options: 'SslMode=Required',
-      help: 'MySQL 8+. Database dibuat otomatis bila belum ada dan user punya hak CREATE.'
+      help: t('MySQL 8+. Database dibuat otomatis bila belum ada dan user punya hak CREATE.', 'MySQL 8+. The database is created automatically when missing and the user has the CREATE right.')
     },
     Oracle: {
       fields: sqlFields, port: 1521, database: ['Service name', 'FREEPDB1'], options: 'Pooling=false',
-      help: 'Easy Connect host:port/service. Tabel dibuat di schema milik user yang login.'
+      help: t('Easy Connect host:port/service. Tabel dibuat di schema milik user yang login.', 'Easy Connect host:port/service. Tables are created in the schema of the logged-in user.')
     },
     Sqlite: {
-      fields: ['database'], database: ['File database', '%LOCALAPPDATA%\\AIThread\\memory.db'],
-      help: 'File lokal, dibuat otomatis. Kosongkan untuk lokasi default. Cocok bila AIT hanya dipakai di satu komputer.'
+      fields: ['database'], database: [(isEn ? 'Database file' : 'File database'), '%LOCALAPPDATA%\\AIThread\\memory.db'],
+      help: t('File lokal, dibuat otomatis. Kosongkan untuk lokasi default. Cocok bila AIT hanya dipakai di satu komputer.', 'Local file, created automatically. Leave empty for the default location. Fits when AIT is used on one computer only.')
     }
   };
   let memoryStorage = null;
@@ -206,15 +206,15 @@
     }
     memEl(prefix, 'Options').placeholder = info.options || '';
     memEl(prefix, 'OptionsHint').textContent = provider === 'Redis'
-      ? 'Opsi StackExchange.Redis, dipisah koma.'
-      : 'Keyword connection string, dipisah titik koma. Menimpa isian di atas.';
+      ? (isEn ? 'StackExchange.Redis options, comma separated.' : 'Opsi StackExchange.Redis, dipisah koma.')
+      : t('Keyword connection string, dipisah titik koma. Menimpa isian di atas.', 'Connection string keywords, separated by semicolons. They override the fields above.');
     memEl(prefix, 'TestResult').innerHTML = '';
   }
 
   function memoryStatusHtml(status) {
     return status.connected
-      ? `<span class="badge text-bg-success">Terhubung</span> <span class="text-secondary">${escapeHtml(status.description)}</span>`
-      : `<span class="badge text-bg-danger">Tidak terhubung</span> <span class="text-secondary">${escapeHtml(status.description)}</span>`;
+      ? (isEn ? `<span class="badge text-bg-success">Connected</span> <span class="text-secondary">${escapeHtml(status.description)}</span>` : `<span class="badge text-bg-success">Terhubung</span> <span class="text-secondary">${escapeHtml(status.description)}</span>`)
+      : (isEn ? `<span class="badge text-bg-danger">Not connected</span> <span class="text-secondary">${escapeHtml(status.description)}</span>` : `<span class="badge text-bg-danger">Tidak terhubung</span> <span class="text-secondary">${escapeHtml(status.description)}</span>`);
   }
 
   function fillMemoryStorage(m) {
@@ -229,7 +229,7 @@
       memEl(prefix, 'Username').value = store.username || '';
       memEl(prefix, 'Password').value = '';
       memEl(prefix, 'PasswordClear').checked = false;
-      memEl(prefix, 'PasswordHint').textContent = store.hasPassword ? 'Password tersimpan terenkripsi.' : 'Belum ada password tersimpan.';
+      memEl(prefix, 'PasswordHint').textContent = store.hasPassword ? t('Password tersimpan terenkripsi.', 'Password stored encrypted.') : t('Belum ada password tersimpan.', 'No password stored yet.');
       memEl(prefix, 'Options').value = store.options || '';
       memEl(prefix, 'Status').innerHTML = memoryStatusHtml(status);
       applyMemoryProvider(prefix);
@@ -263,7 +263,7 @@
   document.querySelectorAll('[data-memory-test]').forEach(button => button.addEventListener('click', async () => {
     const prefix = button.dataset.memoryTest;
     const result = memEl(prefix, 'TestResult');
-    result.innerHTML = '<span class="text-secondary">Menguji…</span>';
+    result.innerHTML = (isEn ? '<span class="text-secondary">Testing…</span>' : '<span class="text-secondary">Menguji…</span>');
     button.disabled = true;
     try {
       const r = await api.post('/api/settings/memory-storage/test', {
@@ -290,20 +290,20 @@
     };
     const button = el('btnSaveMemoryStorage');
     button.disabled = true;
-    button.textContent = 'Menguji & menyimpan…';
+    button.textContent = t('Menguji & menyimpan…', 'Testing & saving…');
     try {
       const result = await api.put('/api/settings/memory-storage', body);
       fillMemoryStorage(result.settings);
       const copied = result.copiedShort + result.copiedLong + result.copiedBusiness > 0
-        ? ` ${result.copiedShort} short, ${result.copiedLong} long memory & ${result.copiedBusiness} halaman bisnis disalin.`
+        ? (isEn ? ` ${result.copiedShort} short, ${result.copiedLong} long memories & ${result.copiedBusiness} business pages copied.` : ` ${result.copiedShort} short, ${result.copiedLong} long memory & ${result.copiedBusiness} halaman bisnis disalin.`)
         : '';
-      toast(`Penyimpanan memory tersimpan.${copied}`);
+      toast((isEn ? `Memory storage saved.${copied}` : `Penyimpanan memory tersimpan.${copied}`));
       result.warnings.forEach(warning => toast(warning, 'warning'));
     } catch (error) {
       toast(error.message, 'error');
     } finally {
       button.disabled = false;
-      button.textContent = 'Simpan penyimpanan memory';
+      button.textContent = t('Simpan penyimpanan memory', 'Save memory storage');
     }
   });
 
@@ -311,7 +311,7 @@
 
   async function loadBusinessModels(selected) {
     const select = el('bizModel');
-    let html = '<option value="">Otomatis — model node Planner</option>';
+    let html = t('<option value="">Otomatis — model node Planner</option>', '<option value="">Automatic — the Planner node model</option>');
     try {
       const models = await api.get('/api/router/models');
       if (selected && !models.some(m => m.id === selected)) html += `<option value="${escapeHtml(selected)}">${escapeHtml(selected)}</option>`;
@@ -352,7 +352,7 @@
     };
     try {
       await fillBusinessSettings(await api.put('/api/business/settings', body));
-      toast('Setting business memory tersimpan.');
+      toast(t('Setting business memory tersimpan.', 'Business memory settings saved.'));
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -365,12 +365,12 @@
     el('secPassthrough').checked = s.passthroughMasking;
     el('secPassthrough').disabled = !s.maskingEnabled;
     const stat = (value, label) =>
-      `<div class="security-stat"><div class="security-stat-value">${Number(value || 0).toLocaleString('id-ID')}</div><div class="small text-secondary">${escapeHtml(label)}</div></div>`;
+      `<div class="security-stat"><div class="security-stat-value">${Number(value || 0).toLocaleString(locale)}</div><div class="small text-secondary">${escapeHtml(label)}</div></div>`;
     el('securityStats').innerHTML = [
-      stat(s.masked, 'secret disamarkan sejak AIT berjalan'),
-      stat(s.knownSecrets, 'secret berbeda yang bisa dipasang kembali'),
-      stat(s.restored, 'dipasang kembali saat menulis'),
-      stat(s.blockedReads, 'akses file kredensial ditolak')
+      stat(s.masked, t('secret disamarkan sejak AIT berjalan', 'secrets masked since AIT started')),
+      stat(s.knownSecrets, t('secret berbeda yang bisa dipasang kembali', 'distinct secrets that can be put back')),
+      stat(s.restored, t('dipasang kembali saat menulis', 'put back when writing')),
+      stat(s.blockedReads, t('akses file kredensial ditolak', 'reads of credential files blocked'))
     ].join('');
   }
 
@@ -387,10 +387,10 @@
   el('securityForm').addEventListener('submit', async event => {
     event.preventDefault();
     const body = { maskingEnabled: el('secMasking').checked, passthroughMasking: el('secPassthrough').checked };
-    if (!body.maskingEnabled && !confirm('Matikan penyamaran secret? Isi file, prompt, dan output tool akan dikirim ke model apa adanya, termasuk password dan API key.')) return;
+    if (!body.maskingEnabled && !confirm(t('Matikan penyamaran secret? Isi file, prompt, dan output tool akan dikirim ke model apa adanya, termasuk password dan API key.', 'Turn secret masking off? File contents, prompts and tool output will be sent to the model as they are, passwords and API keys included.'))) return;
     try {
       fillSecurity(await api.put('/api/security', body));
-      toast('Setting keamanan tersimpan.');
+      toast(t('Setting keamanan tersimpan.', 'Security settings saved.'));
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -404,10 +404,10 @@
   // --- Telegram ---
 
   const telegramStates = {
-    Disabled: ['secondary', 'Nonaktif'],
-    Starting: ['info', 'Menghubungkan…'],
-    Running: ['success', 'Aktif'],
-    Error: ['danger', 'Bermasalah']
+    Disabled: ['secondary', t('Nonaktif', 'Off')],
+    Starting: ['info', (isEn ? 'Connecting…' : 'Menghubungkan…')],
+    Running: ['success', t('Aktif', 'On')],
+    Error: ['danger', (isEn ? 'Has problems' : 'Bermasalah')]
   };
 
   let telegramEmpty = '';
@@ -422,19 +422,19 @@
       el('telegramTokenClear').checked = false;
     }
     el('telegramTokenHint').textContent = t.hasBotToken
-      ? `Tersimpan terenkripsi: ${t.botTokenMasked}`
-      : 'Belum ada token. Buat bot lewat @BotFather (/newbot) lalu tempel tokennya di sini.';
+      ? (isEn ? `Stored encrypted: ${t.botTokenMasked}` : `Tersimpan terenkripsi: ${t.botTokenMasked}`)
+      : (isEn ? 'No token yet. Create a bot with @BotFather (/newbot) and paste its token here.' : 'Belum ada token. Buat bot lewat @BotFather (/newbot) lalu tempel tokennya di sini.');
 
     const [color, label] = telegramStates[t.state] || ['secondary', t.state];
     const bot = t.botUsername
       ? ` <a class="mono" href="https://t.me/${encodeURIComponent(t.botUsername)}" target="_blank" rel="noopener">@${escapeHtml(t.botUsername)}</a>`
       : '';
-    const polled = t.state === 'Running' && t.lastPollAt ? ` <span class="text-secondary">· cek terakhir ${fmt.relative(t.lastPollAt)}</span>` : '';
+    const polled = t.state === 'Running' && t.lastPollAt ? (isEn ? ` <span class="text-secondary">· last checked ${fmt.relative(t.lastPollAt)}</span>` : ` <span class="text-secondary">· cek terakhir ${fmt.relative(t.lastPollAt)}</span>`) : '';
     const error = t.error ? `<div class="text-danger mt-1">${escapeHtml(t.error)}</div>` : '';
     el('telegramState').innerHTML = `<span class="badge text-bg-${color}">${label}</span>${bot}${polled}${error}`;
 
-    const start = t.botUsername ? `kirim <span class="mono">/start</span> ke @${escapeHtml(t.botUsername)}` : 'aktifkan bot lalu kirim <span class="mono">/start</span> ke bot Anda';
-    telegramEmpty = `<tr><td colspan="5" class="text-secondary small">Belum ada chat — ${start} dari Telegram.</td></tr>`;
+    const start = t.botUsername ? (isEn ? `send <span class="mono">/start</span> to @${escapeHtml(t.botUsername)}` : `kirim <span class="mono">/start</span> ke @${escapeHtml(t.botUsername)}`) : (isEn ? 'enable the bot, then send <span class="mono">/start</span> to your bot' : 'aktifkan bot lalu kirim <span class="mono">/start</span> ke bot Anda');
+    telegramEmpty = (isEn ? `<tr><td colspan="5" class="text-secondary small">No chat yet — ${start} from Telegram.</td></tr>` : `<tr><td colspan="5" class="text-secondary small">Belum ada chat — ${start} dari Telegram.</td></tr>`);
     telegramChatPager.set(t.chats);
   }
 
@@ -442,12 +442,13 @@
     const name = `${escapeHtml(c.displayName)}${c.username ? ` <span class="text-secondary">@${escapeHtml(c.username)}</span>` : ''}
       <div class="small text-secondary mono">ID ${escapeHtml(c.chatId)}</div>`;
     const status = c.isAllowed
-      ? '<span class="badge text-bg-success">Diizinkan</span>'
-      : '<span class="badge text-bg-warning">Menunggu izin</span>';
+      ? t('<span class="badge text-bg-success">Diizinkan</span>', '<span class="badge text-bg-success">Allowed</span>')
+      : t('<span class="badge text-bg-warning">Menunggu izin</span>', '<span class="badge text-bg-warning">Waiting for approval</span>');
     const actions = c.isAllowed
-      ? `<button type="button" class="btn btn-outline-danger btn-sm" data-tg-revoke="${c.id}">Cabut</button>`
-      : `<button type="button" class="btn btn-primary btn-sm me-1" data-tg-allow="${c.id}">Izinkan</button>
-         <button type="button" class="btn btn-outline-secondary btn-sm" data-tg-delete="${c.id}">Hapus</button>`;
+      ? (isEn ? `<button type="button" class="btn btn-outline-danger btn-sm" data-tg-revoke="${c.id}">Revoke</button>` : `<button type="button" class="btn btn-outline-danger btn-sm" data-tg-revoke="${c.id}">Cabut</button>`)
+      : (isEn ? `<button type="button" class="btn btn-primary btn-sm me-1" data-tg-allow="${c.id}">Allow</button>
+         <button type="button" class="btn btn-outline-secondary btn-sm" data-tg-delete="${c.id}">Delete</button>` : `<button type="button" class="btn btn-primary btn-sm me-1" data-tg-allow="${c.id}">Izinkan</button>
+         <button type="button" class="btn btn-outline-secondary btn-sm" data-tg-delete="${c.id}">Hapus</button>`);
     return `<tr>
       <td>${name}</td>
       <td>${status}</td>
@@ -475,7 +476,7 @@
     };
     try {
       renderTelegram(await api.put('/api/telegram', body));
-      toast(body.enabled ? 'Setting Telegram tersimpan. Bot sedang dihubungkan…' : 'Bot Telegram dinonaktifkan.');
+      toast(body.enabled ? t('Setting Telegram tersimpan. Bot sedang dihubungkan…', 'Telegram settings saved. Connecting the bot…') : (isEn ? 'Telegram bot turned off.' : 'Bot Telegram dinonaktifkan.'));
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -485,15 +486,15 @@
     const button = event.target.closest('button[data-tg-allow], button[data-tg-delete], button[data-tg-revoke]');
     if (!button) return;
     const { tgAllow, tgDelete, tgRevoke } = button.dataset;
-    if (tgRevoke && !confirm('Cabut akses chat ini? Chat tidak bisa lagi mengirim prompt ke AIT.')) return;
+    if (tgRevoke && !confirm(t('Cabut akses chat ini? Chat tidak bisa lagi mengirim prompt ke AIT.', 'Revoke the access of this chat? It can no longer send prompts to AIT.'))) return;
     button.disabled = true;
     try {
       if (tgAllow) {
         await api.post(`/api/telegram/chats/${tgAllow}/allow`);
-        toast('Chat diizinkan. Bot mengirim pesan konfirmasi ke chat tersebut.');
+        toast(t('Chat diizinkan. Bot mengirim pesan konfirmasi ke chat tersebut.', 'Chat allowed. The bot sends a confirmation message to that chat.'));
       } else {
         await api.del(`/api/telegram/chats/${tgDelete || tgRevoke}`);
-        toast(tgRevoke ? 'Akses chat dicabut.' : 'Chat dihapus.', 'info');
+        toast(tgRevoke ? t('Akses chat dicabut.', 'Chat access revoked.') : t('Chat dihapus.', 'Chat deleted.'), 'info');
       }
       await loadTelegram(true);
     } catch (error) {
@@ -505,18 +506,18 @@
   // --- Skill ---
 
   const skillStates = {
-    Queued: ['secondary', 'Antre'],
-    Fetching: ['info', 'Mengunduh…'],
-    Analyzing: ['info', 'Dianalisis AI…'],
-    Ready: ['success', 'Siap'],
-    Failed: ['danger', 'Gagal']
+    Queued: ['secondary', (isEn ? 'Queued' : 'Antre')],
+    Fetching: ['info', (isEn ? 'Downloading…' : 'Mengunduh…')],
+    Analyzing: ['info', (isEn ? 'Analysed by AI…' : 'Dianalisis AI…')],
+    Ready: ['success', (isEn ? 'Ready' : 'Siap')],
+    Failed: ['danger', t('Gagal', 'Failed')]
   };
   const skillKinds = { GitHub: 'GitHub', GitLab: 'GitLab', Git: 'git', RawFile: 'file', Web: 'web' };
   const skillModal = bootstrap.Modal.getOrCreateInstance(el('skillModal'));
 
   async function loadSkillModels(selected) {
     const select = el('skillModel');
-    let html = '<option value="">Otomatis — model node Planner</option>';
+    let html = t('<option value="">Otomatis — model node Planner</option>', '<option value="">Automatic — the Planner node model</option>');
     try {
       const models = await api.get('/api/router/models');
       if (selected && !models.some(m => m.id === selected)) html += `<option value="${escapeHtml(selected)}">${escapeHtml(selected)}</option>`;
@@ -547,7 +548,21 @@
     const busy = ['Queued', 'Fetching', 'Analyzing'].includes(s.status);
     const error = s.error ? `<div class="small text-danger text-wrap">${escapeHtml(s.error)}</div>` : '';
     const progress = busy && s.progress ? `<div class="small text-secondary text-nowrap">${escapeHtml(s.progress)}</div>` : '';
-    return `<tr>
+    return (isEn ? `<tr>
+      <td>
+        <div class="fw-semibold text-truncate" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
+        <div class="small text-secondary mono text-truncate"><span class="badge text-bg-light">${skillKinds[s.kind] || s.kind}</span>
+          <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.url)}</a></div>
+        ${error}
+      </td>
+      <td><span class="badge text-bg-${color}">${label}</span>${progress}</td>
+      <td>${s.skillCount}</td>
+      <td class="text-nowrap small">${s.lastPulledAt ? fmt.relative(s.lastPulledAt) : '–'}</td>
+      <td class="text-end text-nowrap">
+        <button type="button" class="btn btn-outline-secondary btn-sm me-1" data-skill-sync="${s.id}" ${busy ? 'disabled' : ''}>Sync</button>
+        <button type="button" class="btn btn-outline-danger btn-sm" data-skill-delete="${s.id}" data-name="${escapeHtml(s.name)}">Delete</button>
+      </td>
+    </tr>` : `<tr>
       <td>
         <div class="fw-semibold text-truncate" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</div>
         <div class="small text-secondary mono text-truncate"><span class="badge text-bg-light">${skillKinds[s.kind] || s.kind}</span>
@@ -561,13 +576,13 @@
         <button type="button" class="btn btn-outline-secondary btn-sm me-1" data-skill-sync="${s.id}" ${busy ? 'disabled' : ''}>Sync</button>
         <button type="button" class="btn btn-outline-danger btn-sm" data-skill-delete="${s.id}" data-name="${escapeHtml(s.name)}">Hapus</button>
       </td>
-    </tr>`;
+    </tr>`);
   }
 
   const skillSourcePager = pager('skillSourcePager', rows => {
     el('skillSourceRows').innerHTML = rows.length
       ? rows.map(skillSourceRow).join('')
-      : '<tr><td colspan="5" class="text-secondary small">Belum ada sumber — tempel link repository skill di atas, mis. https://github.com/anthropics/skills.</td></tr>';
+      : t('<tr><td colspan="5" class="text-secondary small">Belum ada sumber — tempel link repository skill di atas, mis. https://github.com/anthropics/skills.</td></tr>', '<tr><td colspan="5" class="text-secondary small">No source yet — paste a skill repository link above, e.g. https://github.com/anthropics/skills.</td></tr>');
   });
 
   async function loadSkillSources() {
@@ -575,7 +590,7 @@
       const sources = await api.get('/api/skills/sources');
       skillSourcePager.set(sources);
       const busy = sources.filter(s => ['Queued', 'Fetching', 'Analyzing'].includes(s.status)).length;
-      el('skillSourceSummary').textContent = `${sources.length} sumber${busy ? ` · ${busy} sedang diproses` : ''}`;
+      el('skillSourceSummary').textContent = `${sources.length} sumber${busy ? (isEn ? ` · ${busy} being processed` : ` · ${busy} sedang diproses`) : ''}`;
     } catch (error) {
       skillSourcePager.set([]);
       el('skillSourceRows').innerHTML = `<tr><td colspan="5" class="text-danger small">${escapeHtml(error.message)}</td></tr>`;
@@ -584,7 +599,16 @@
 
   function skillRow(s) {
     const tags = s.tags ? `<div class="small text-secondary text-truncate" title="${escapeHtml(s.tags)}">🏷️ ${escapeHtml(s.tags)}</div>` : '';
-    return `<tr>
+    return (isEn ? `<tr>
+      <td>
+        <div class="fw-semibold">${escapeHtml(s.name)}</div>
+        <div class="small text-secondary">${escapeHtml(s.description)}</div>
+        ${tags}
+      </td>
+      <td class="small text-nowrap">${escapeHtml(s.sourceName)}</td>
+      <td class="small text-nowrap">${s.nodeCount ? `${s.nodeCount} node` : '–'}</td>
+      <td class="text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-skill-view="${s.id}">View</button></td>
+    </tr>` : `<tr>
       <td>
         <div class="fw-semibold">${escapeHtml(s.name)}</div>
         <div class="small text-secondary">${escapeHtml(s.description)}</div>
@@ -593,14 +617,14 @@
       <td class="small text-nowrap">${escapeHtml(s.sourceName)}</td>
       <td class="small text-nowrap">${s.nodeCount ? `${s.nodeCount} node` : '–'}</td>
       <td class="text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-skill-view="${s.id}">Lihat</button></td>
-    </tr>`;
+    </tr>`);
   }
 
   let skillQuery = '';
   const skillPager = pager('skillPager', rows => {
     el('skillRows').innerHTML = rows.length
       ? rows.map(skillRow).join('')
-      : `<tr><td colspan="4" class="text-secondary small">${skillQuery ? 'Tidak ada skill yang cocok.' : 'Gudang masih kosong.'}</td></tr>`;
+      : `<tr><td colspan="4" class="text-secondary small">${skillQuery ? t('Tidak ada skill yang cocok.', 'No matching skill.') : t('Gudang masih kosong.', 'The store is still empty.')}</td></tr>`;
   });
 
   async function loadSkills() {
@@ -618,23 +642,30 @@
   }
 
   async function showSkill(id) {
-    el('skillModalTitle').textContent = 'Memuat…';
+    el('skillModalTitle').textContent = t('Memuat…', 'Loading…');
     el('skillModalBody').innerHTML = '';
     skillModal.show();
     try {
       const s = await api.get(`/api/skills/${id}`);
       el('skillModalTitle').textContent = s.name;
       const files = s.files.length
-        ? `<details class="mb-2"><summary class="small">${s.files.length} file di folder skill</summary><div class="small mono">${s.files.map(escapeHtml).join('<br>')}</div></details>`
+        ? (isEn ? `<details class="mb-2"><summary class="small">${s.files.length} file(s) in the skill folder</summary><div class="small mono">${s.files.map(escapeHtml).join('<br>')}</div></details>` : `<details class="mb-2"><summary class="small">${s.files.length} file di folder skill</summary><div class="small mono">${s.files.map(escapeHtml).join('<br>')}</div></details>`)
         : '';
-      el('skillModalBody').innerHTML = `
+      el('skillModalBody').innerHTML = (isEn ? `
+        <p class="mb-1">${escapeHtml(s.description)}</p>
+        <div class="small text-secondary mb-1">Source: <a href="${escapeHtml(s.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(s.sourceName)}</a></div>
+        ${s.tags ? `<div class="small text-secondary mb-1">🏷️ ${escapeHtml(s.tags)}</div>` : ''}
+        <div class="small text-secondary mb-1">Used by nodes: ${s.nodeNames.length ? s.nodeNames.map(escapeHtml).join(', ') : '–'}</div>
+        <div class="small text-secondary mono mb-2">${escapeHtml(s.folder)}</div>
+        ${files}
+        <pre class="border rounded p-2 small mb-0" style="white-space: pre-wrap">${escapeHtml(s.content)}</pre>` : `
         <p class="mb-1">${escapeHtml(s.description)}</p>
         <div class="small text-secondary mb-1">Sumber: <a href="${escapeHtml(s.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(s.sourceName)}</a></div>
         ${s.tags ? `<div class="small text-secondary mb-1">🏷️ ${escapeHtml(s.tags)}</div>` : ''}
         <div class="small text-secondary mb-1">Dipakai node: ${s.nodeNames.length ? s.nodeNames.map(escapeHtml).join(', ') : '–'}</div>
         <div class="small text-secondary mono mb-2">${escapeHtml(s.folder)}</div>
         ${files}
-        <pre class="border rounded p-2 small mb-0" style="white-space: pre-wrap">${escapeHtml(s.content)}</pre>`;
+        <pre class="border rounded p-2 small mb-0" style="white-space: pre-wrap">${escapeHtml(s.content)}</pre>`);
     } catch (error) {
       el('skillModalTitle').textContent = 'Skill';
       el('skillModalBody').innerHTML = `<span class="text-danger">${escapeHtml(error.message)}</span>`;
@@ -646,7 +677,7 @@
     const body = { model: el('skillModel').value || null, maxPromptChars: Number(el('skillMaxChars').value) };
     try {
       await fillSkillSettings(await api.put('/api/skills/settings', body));
-      toast('Setting Skill tersimpan.');
+      toast(t('Setting Skill tersimpan.', 'Skill settings saved.'));
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -659,7 +690,7 @@
     try {
       await api.post('/api/skills/sources', { url: el('skillSourceUrl').value.trim() });
       el('skillSourceUrl').value = '';
-      toast('Link ditambahkan — Skill Orchestrator sedang memeriksa dan menarik skill-nya.', 'info');
+      toast(t('Link ditambahkan — Skill Orchestrator sedang memeriksa dan menarik skill-nya.', 'Link added — the Skill Orchestrator is checking it and pulling its skills.'), 'info');
       await loadSkillSources();
     } catch (error) {
       toast(error.message, 'error');
@@ -672,15 +703,15 @@
     const button = event.target.closest('button[data-skill-sync], button[data-skill-delete]');
     if (!button) return;
     const { skillSync, skillDelete, name } = button.dataset;
-    if (skillDelete && !confirm(`Hapus sumber "${name}" beserta semua skill-nya? Skill ini juga dilepas dari node yang memakainya.`)) return;
+    if (skillDelete && !confirm((isEn ? `Delete source "${name}" with all its skills? They are also detached from the nodes using them.` : `Hapus sumber "${name}" beserta semua skill-nya? Skill ini juga dilepas dari node yang memakainya.`))) return;
     button.disabled = true;
     try {
       if (skillSync) {
         await api.post(`/api/skills/sources/${skillSync}/sync`);
-        toast('Sumber masuk antrean untuk ditarik ulang.', 'info');
+        toast(t('Sumber masuk antrean untuk ditarik ulang.', 'Source queued to be pulled again.'), 'info');
       } else {
         await api.del(`/api/skills/sources/${skillDelete}`);
-        toast('Sumber skill dihapus.', 'info');
+        toast(t('Sumber skill dihapus.', 'Skill source deleted.'), 'info');
       }
       await Promise.all([loadSkillSources(), loadSkills()]);
     } catch (error) {

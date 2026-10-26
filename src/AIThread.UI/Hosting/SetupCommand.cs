@@ -1,7 +1,8 @@
 using System.Runtime.Versioning;
-using System.Text;
 using System.Text.Json;
+using System.Text;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 
 namespace AIThread.UI.Hosting;
 
@@ -11,13 +12,14 @@ namespace AIThread.UI.Hosting;
 [SupportedOSPlatform("windows")]
 public static class SetupCommand
 {
-    public const string Usage = "Pemakaian: AIThread.exe setup [export <file> | import <file> [--yes]]";
+    public static string Usage => Lang.T("Pemakaian: AIThread.exe setup [export <file> | import <file> [--yes]]",
+        "Usage: AIThread.exe setup [export <file> | import <file> [--yes]]");
 
     private static readonly Dictionary<SetupProfileSection, string> SectionLabels = new()
     {
-        [SetupProfileSection.Router] = "Koneksi 9router",
-        [SetupProfileSection.Orchestration] = "Proxy & orkestrasi",
-        [SetupProfileSection.Memory] = "Penyimpanan memory",
+        [SetupProfileSection.Router] = Lang.T("Koneksi 9router", "9router connection"),
+        [SetupProfileSection.Orchestration] = Lang.T("Proxy & orkestrasi", "Proxy & orchestration"),
+        [SetupProfileSection.Memory] = Lang.T("Penyimpanan memory", "Memory storage"),
         [SetupProfileSection.Skills] = "Skill",
         [SetupProfileSection.Nodes] = "Node",
         [SetupProfileSection.Business] = "Business memory"
@@ -29,7 +31,7 @@ public static class SetupCommand
         using var client = new ServerClient(port);
         if (await client.GetInfoAsync() is null)
         {
-            Console.Error.WriteLine($"AIT tidak berjalan di {client.BaseUrl}. Jalankan 'AIThread.exe tray' dulu.");
+            Console.Error.WriteLine(Lang.T($"AIT tidak berjalan di {client.BaseUrl}. Jalankan 'AIThread.exe tray' dulu.", $"AIT is not running at {client.BaseUrl}. Run 'AIThread.exe tray' first."));
             return 1;
         }
 
@@ -52,7 +54,7 @@ public static class SetupCommand
     {
         var full = Path.GetFullPath(path);
         await File.WriteAllTextAsync(full, await client.ExportProfileAsync());
-        Console.WriteLine($"Profil setup ditulis ke {full}. API key dan password tidak ikut.");
+        Console.WriteLine(Lang.T($"Profil setup ditulis ke {full}. API key dan password tidak ikut.", $"Setup profile written to {full}. API keys and passwords are not included."));
         return 0;
     }
 
@@ -65,12 +67,12 @@ public static class SetupCommand
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
-            Console.Error.WriteLine($"Profil tidak bisa dibaca: {ex.Message}");
+            Console.Error.WriteLine(Lang.T($"Profil tidak bisa dibaca: {ex.Message}", $"The profile cannot be read: {ex.Message}"));
             return 1;
         }
         if (profile is null)
         {
-            Console.Error.WriteLine("File profil kosong.");
+            Console.Error.WriteLine(Lang.T("File profil kosong.", "The profile file is empty."));
             return 1;
         }
 
@@ -85,12 +87,12 @@ public static class SetupCommand
         var secrets = Console.IsInputRedirected ? null : AskSecrets(preview.Data.Secrets);
         if (preview.Data.Changes.Count == 0 && secrets is null)
         {
-            Console.WriteLine("Tidak ada perubahan: komputer ini sudah sesuai dengan profil.");
+            Console.WriteLine(Lang.T("Tidak ada perubahan: komputer ini sudah sesuai dengan profil.", "No changes: this computer already matches the profile."));
             return 0;
         }
-        if (!yes && !Confirm("Terapkan profil ini? [y/N] "))
+        if (!yes && !Confirm(Lang.T("Terapkan profil ini? [y/N] ", "Apply this profile? [y/N] ")))
         {
-            Console.WriteLine("Dibatalkan.");
+            Console.WriteLine(Lang.T("Dibatalkan.", "Cancelled."));
             return 1;
         }
 
@@ -102,15 +104,15 @@ public static class SetupCommand
         }
         Print(result.Data);
         Console.WriteLine(result.Data.Errors.Count > 0
-            ? "Sebagian belum diterapkan. Perbaiki lalu jalankan perintah yang sama lagi; bagian yang sudah diterapkan tidak berubah."
-            : $"Profil diterapkan. Cek langkah yang tersisa di {client.BaseUrl}/Setup (AIThread.exe setup).");
+            ? Lang.T("Sebagian belum diterapkan. Perbaiki lalu jalankan perintah yang sama lagi; bagian yang sudah diterapkan tidak berubah.", "Some parts are not applied yet. Fix them, then run the same command again; the parts already applied do not change.")
+            : Lang.T($"Profil diterapkan. Cek langkah yang tersisa di {client.BaseUrl}/Setup (AIThread.exe setup).", $"Profile applied. Check the remaining steps at {client.BaseUrl}/Setup (AIThread.exe setup)."));
         return result.Data.Errors.Count > 0 ? 1 : 0;
     }
 
     private static void Print(SetupProfileImportResultDto result)
     {
         Console.WriteLine();
-        Console.WriteLine(result.Changes.Count == 0 ? "Tidak ada perubahan." : result.DryRun ? "Yang akan berubah:" : "Yang diterapkan:");
+        Console.WriteLine(result.Changes.Count == 0 ? Lang.T("Tidak ada perubahan.", "No changes.") : result.DryRun ? Lang.T("Yang akan berubah:", "What will change:") : Lang.T("Yang diterapkan:", "What was applied:"));
         foreach (var group in result.Changes.GroupBy(c => c.Section))
         {
             Console.WriteLine($"  {SectionLabels.GetValueOrDefault(group.Key, group.Key.ToString())}");
@@ -125,11 +127,11 @@ public static class SetupCommand
     private static SetupProfileSecrets? AskSecrets(IReadOnlyList<SetupProfileSecretDto> secrets)
     {
         if (secrets.Count == 0) return null;
-        Console.WriteLine("Secret di komputer ini (tidak ada di file; ketikan disembunyikan):");
+        Console.WriteLine(Lang.T("Secret di komputer ini (tidak ada di file; ketikan disembunyikan):", "Secrets on this computer (not in the file; typing is hidden):"));
         var typed = new Dictionary<string, string?>();
         foreach (var secret in secrets)
         {
-            Console.Write($"  {secret.Label} [{(secret.Stored ? "Enter = tetap memakai yang tersimpan" : "Enter = lewati")}]: ");
+            Console.Write(Lang.T($"  {secret.Label} [{(secret.Stored ? "Enter = tetap memakai yang tersimpan" : "Enter = lewati")}]: ", $"  {secret.Label} [{(secret.Stored ? "Enter = keep the stored one" : "Enter = skip")}]: "));
             typed[secret.Id] = ReadHidden();
         }
         Console.WriteLine();
