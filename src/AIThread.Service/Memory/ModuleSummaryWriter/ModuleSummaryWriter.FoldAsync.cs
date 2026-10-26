@@ -36,7 +36,7 @@ public sealed partial class ModuleSummaryWriter
         var changes = Batch(due);
 
         // Kind is stored as text, so the facts are named one by one rather than compared as a range.
-        var facts = !withFacts ? [] : (await db.LongMemories.AsNoTracking()
+        var facts = !withFacts ? [] : (await db.LongMemories
                 .Where(m => m.Type == MemoryType.Project && m.ProjectKey == key && (m.Kind == MemoryKind.Pitfall || m.Kind == MemoryKind.Rule
                     || m.Kind == MemoryKind.Flow || m.Kind == MemoryKind.Convention || m.Kind == MemoryKind.Architecture || m.Kind == MemoryKind.Pattern)
                     && m.LabelVersion != null && m.ReviewReason == null && m.Module != null)
@@ -78,14 +78,10 @@ public sealed partial class ModuleSummaryWriter
         summary.PromotedAt = changes.Count == 0 ? watermark : changes[^1].PromotedAt;
         if (current is null) db.LongMemories.Add(summary);
         foreach (var other in others) db.LongMemories.Remove(other);
+        // The facts live on in the summary now (and in the backup). One save: a process stopped halfway never leaves
+        // a summary that holds facts still waiting to be folded again.
+        db.LongMemories.RemoveRange(facts);
         await db.SaveChangesAsync(cancellationToken);
-
-        // The facts live on in the summary now (and in the backup).
-        if (facts.Count > 0)
-        {
-            var ids = facts.Select(f => f.Id).ToList();
-            await db.LongMemories.Where(m => ids.Contains(m.Id)).ExecuteDeleteAsync(cancellationToken);
-        }
         return new Folded(summary, changes.Count, facts.Count);
     }
 }

@@ -59,7 +59,8 @@ public record CodeMapScanResultDto(int Files, int Mapped, int Modules);
 
 // Progress of the migration of older project facts (Rule, Flow, Pitfall, …) into the module summaries.
 // PendingFacts/PendingModules: labeled facts in long memory still to fold; ShortFacts: facts still in short memory, folded
-// once they reach long memory; Running/Done/Total/Module: the pass in progress.
+// once they reach long memory; Running/Done/Total/Module: the pass in progress. TotalFacts/MigratedFacts: the whole
+// migration since it started, kept across restarts (ModuleSummaryWriter.ProgressFile).
 public record MemoryChangelogStatusDto(
     bool Running,
     int PendingFacts,
@@ -72,4 +73,6 @@ public record MemoryChangelogStatusDto(
     DateTime? LastRunAt,
     string? LastMessage,
     string? BackupPath,
-    bool AiAvailable);
+    bool AiAvailable,
+    int TotalFacts,
+    int MigratedFacts);
