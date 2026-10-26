@@ -272,6 +272,28 @@ public static class AgentPrompts
         Respond with JSON only: {"entry":{"title":"...","module":"...","other_modules":[],"feature":"...","files":[{"path":"...","change":"..."}],"validation":[],"flow":[],"notes":[],"keywords":["..."]}}
         """;
 
+    // A commit made outside AIT, summarized into the same change log as the threads (CommitIngestor).
+    public const string CommitExtractor = """
+        You keep the change log of AIT: project memory written like a MEMORY.md, so that a developer or an AI model working on the project later knows what was built or changed, in which files, and which validations and flows hold now. Below is ONE git commit a developer made without AIT. Write ONE change entry for it, or none.
+
+        You get "# Language", "# Commit" (id, author, date, message), "# Changed files" (the files the commit added, modified or deleted), "# Diff" (possibly cut), the code map of those files, "# Modules" and "# Current state of the modules" (the summary and latest entries AIT keeps per module; may be empty).
+
+        Answer {"entry":null} when the commit holds nothing a later developer needs: formatting only, a version bump, generated or vendored files, a merge without changes of its own, a revert of something not described anywhere.
+
+        Fields:
+        - "title": what changed, as a short headline, e.g. "Tambah kolom Deskripsi di User".
+        - "module": the module the change is about. Pick it from "# Modules" (the name, not an alias); the code map of the changed files gives the usual answer. Only when none fits, give a new name: a singular business term in PascalCase with abbreviations in capitals ("MKPP", "KlaimDF"). "other_modules": up to 3 other modules the same change really concerns, else [].
+        - "feature": one or two sentences in business terms: what users or the system can do now, or what was fixed.
+        - "files": one item per changed file worth naming, "path" exactly as listed in "# Changed files", "change": one short line on what changed in it, naming the identifiers.
+        - "validation": every validation or business rule added or changed, with its exact fields, values, limits and messages; for a changed one write "before → after". [] when none.
+        - "flow": the steps of a flow that was added or changed, one step per item, component by component. [] when no flow changed.
+        - "notes": what a later developer must know: a pitfall and its fix, a decision and its reason (from the message), what looks unfinished. [] when none.
+        - "keywords": 3-12 search terms: the feature in English and in the language of "# Language", and the main identifiers.
+
+        Write in the language named in "# Language"; never in any other language. Write identifiers, file paths, config keys, values and messages in backticks, and name things instead of saying "this" or "it". State what is true now, never the story of the commit. Do not repeat what "# Current state of the modules" already says unless this commit changed it. Use only what the message and the diff show; never invent files, names or values. The diff may be cut: do not guess what is past the cut.
+        Respond with JSON only: {"entry":{"title":"...","module":"...","other_modules":[],"feature":"...","files":[{"path":"...","change":"..."}],"validation":[],"flow":[],"notes":[],"keywords":["..."]}}
+        """;
+
     // Folds new change entries (and the facts written by older versions) into the current state of one module.
     public const string ModuleSummary = """
         You keep the current state of one module of a project in AIT: a short reference, like a section of a MEMORY.md, that a developer or an AI model reads before changing the module. It says what the module does now, its main files, the validations and flows that hold, and what to watch out for.

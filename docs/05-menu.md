@@ -142,7 +142,9 @@ untuk repository git: interval `git fetch` otomatis dalam menit (kosong = bawaan
 errornya, jumlah thread yang diikuti, tombol *Fetch sekarang* dan *Sinkronkan*; lihat
 [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread); lalu daftar **Environment** bersama tim:
 nama, ref, tanda *prod*, jumlah perubahan yang sudah masuk, *Simpan environment* dan *Cek sekarang*; lihat
-[Environment](07-cara-kerja.md#environment)), daftar file solution/build yang ditemukan
+[Environment](07-cara-kerja.md#environment); lalu *Commit di luar AIT*: aktif/mati (memakai token), ref, commit per
+putaran, jumlah dirangkum/dilewati/gagal, commit terbaru, *Rangkum sekarang*; lihat
+[Commit di luar AIT](07-cara-kerja.md#commit-di-luar-ait)), daftar file solution/build yang ditemukan
 di dalam project, sesi CLI (id sesi, jumlah thread, terakhir aktif), thread
 project ini, dan tautan ke memory-nya. Tabel sesi, thread, modul, peta kode, dan riwayat gabung modul tampil
 10 baris per halaman (*‹ Sebelumnya* / *Berikutnya ›*; navigasi hanya muncul bila isinya lebih dari 10). Halaman yang

@@ -15,10 +15,12 @@ public sealed partial class MemoryService
         {
             await using var db = await longStore.CreateGitAsync(cancellationToken);
             var states = await db.ThreadChanges.AsNoTracking()
-                .Where(c => ids.Contains(c.Id) && c.State != null)
-                .Select(c => new { c.Id, c.State })
-                .ToDictionaryAsync(c => c.Id, c => c.State, cancellationToken);
-            return items.Select(i => i.SourceThreadId is { } id && states.TryGetValue(id, out var state) ? i with { GitState = state } : i).ToList();
+                .Where(c => ids.Contains(c.Id))
+                .Select(c => new { c.Id, c.State, c.Ingested })
+                .ToDictionaryAsync(c => c.Id, cancellationToken);
+            return items.Select(i => i.SourceThreadId is { } id && states.TryGetValue(id, out var row)
+                ? i with { GitState = row.State, FromCommit = row.Ingested }
+                : i).ToList();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

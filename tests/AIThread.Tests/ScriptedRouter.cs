@@ -19,6 +19,7 @@ public enum ScriptedAgent
     UnitTestLabeler,
     Wrapper,
     MemoryExtractor,
+    CommitExtractor,
     BusinessRouter,
     BusinessWriter,
     CodeMapper,
@@ -81,6 +82,7 @@ public sealed class ScriptedRouter : INineRouterService
                     ?? call.Agent switch
                     {
                         ScriptedAgent.MemoryExtractor => _ => Text("""{"entry": null}"""),
+                        ScriptedAgent.CommitExtractor => _ => Text("""{"entry": null}"""),
                         ScriptedAgent.MemoryRelabeler => _ => Text("""{"memories": []}"""),
                         ScriptedAgent.ModuleSummary => _ => Text("""{"features": []}"""),
                         ScriptedAgent.CodeMapper => _ => Text("""{"groups": []}"""),
@@ -168,6 +170,7 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.UnitTestLabeler, StringComparison.Ordinal)) return ScriptedAgent.UnitTestLabeler;
         if (system.StartsWith(AgentPrompts.Wrapper, StringComparison.Ordinal)) return ScriptedAgent.Wrapper;
         if (system.StartsWith(AgentPrompts.MemoryExtractor, StringComparison.Ordinal)) return ScriptedAgent.MemoryExtractor;
+        if (system.StartsWith(AgentPrompts.CommitExtractor, StringComparison.Ordinal)) return ScriptedAgent.CommitExtractor;
         if (system.StartsWith(AgentPrompts.BusinessRouter, StringComparison.Ordinal)) return ScriptedAgent.BusinessRouter;
         if (system.StartsWith(AgentPrompts.BusinessWriter, StringComparison.Ordinal)) return ScriptedAgent.BusinessWriter;
         if (system.StartsWith(AgentPrompts.CodeMapper, StringComparison.Ordinal)) return ScriptedAgent.CodeMapper;
