@@ -67,6 +67,10 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `GET` | `/api/security` | status keamanan: `maskingEnabled`, `passthroughMasking`, `noticeAcknowledgedAt`, `masked`, `knownSecrets`, `restored`, `blockedReads` |
 | `PUT` | `/api/security` | `{ "maskingEnabled": true, "passthroughMasking": true }` |
 | `POST` | `/api/security/acknowledge` | popup Keamanan & privasi sudah dibaca (sekali per instalasi) |
+| `GET` | `/api/security/secrets` | secret yang terdeteksi sejak AIT berjalan + daftar bukan secret: `items[]` (`id`, `label`, `preview`, `length`, `count`, `firstSeen`, `lastSeen`, `allowed`, `allowedAt`), `total` |
+| `POST` | `/api/security/secrets/{id}/allow` | tandai bukan secret (id placeholder 10 karakter); 404 bila AIT tidak lagi mengenal id itu |
+| `DELETE` | `/api/security/secrets/{id}/allow` | samarkan lagi |
+| `GET` | `/api/security/secrets/{id}/value` | nilai asli (`id`, `value`); hanya dari komputer ini (loopback), 404 setelah restart |
 | `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
 | `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
 

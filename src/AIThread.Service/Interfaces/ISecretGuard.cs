@@ -35,4 +35,12 @@ public interface ISecretGuard
     IDisposable BeginTally();
 
     SecurityCounters GetCounters();
+
+    // The values masked since AIT started, for the list in Setting → Keamanan & privasi.
+    IReadOnlyList<SecretSighting> GetSightings();
+
+    // Values marked as not secret, by placeholder id: no longer masked.
+    void SetAllowed(IEnumerable<string> ids);
+
+    string? Reveal(string id);
 }
