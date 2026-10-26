@@ -27,7 +27,7 @@ protokol Redis dari Microsoft) di dalam prosesnya sendiri, di port dari `Connect
   tersebut (format StackExchange.Redis, mis. `myhost:6379,password=rahasia`).
 
 **Pindah dari Docker Redis.** Short memory yang masih ada di container lama tidak dipindahkan otomatis. Sebelum
-mematikan container, buka menu **Memory** dan klik **→ DB** pada short memory yang ingin disimpan (atau biarkan
+mematikan container, buka menu **Memori** dan klik **→ DB** pada short memory yang ingin disimpan (atau biarkan
 container hidup ±24 jam agar worker memindahkannya). Setelah itu: `docker rm -f aithread-redis` dan
 `docker volume rm ai-multi-agent_aithread-redis` (cek nama volume dengan `docker volume ls`).
 
@@ -43,11 +43,11 @@ saat start AIT menyalakan 9router sendiri bila belum berjalan.
 
 | Perilaku | Penjelasan |
 |---|---|
-| Kapan dinyalakan | Sekali saat AIT start, bila 9router *Offline* dan Base URL di Setting alamat lokal (`localhost`, `127.0.0.1`, `[::1]`). Port diambil dari URL itu. Bila 9router mati belakangan, AIT hanya melaporkannya (mungkin sengaja ditutup); klik **Jalankan 9router** di Dashboard untuk menyalakan ulang. |
+| Kapan dinyalakan | Sekali saat AIT start, bila 9router *Offline* dan Base URL di Pengaturan alamat lokal (`localhost`, `127.0.0.1`, `[::1]`). Port diambil dari URL itu. Bila 9router mati belakangan, AIT hanya melaporkannya (mungkin sengaja ditutup); klik **Jalankan 9router** di Dasbor untuk menyalakan ulang. |
 | 9router mana | Urutan: `NineRouter:CliPath` → 9router global npm (`npm i -g 9router`, biasanya versi terbaru) → salinan di dalam paket `aithread`. Jadi menghapus 9router global tidak mematikan fitur ini. |
 | Cara jalan | `node cli.js --tray --no-browser --skip-update -p <port>`, sama dengan *Hide to Tray* milik 9router: tanpa jendela, ikon tray 9router muncul. Output ke `%LOCALAPPDATA%\AIThread\logs\9router.log`. Tetap hidup walau AIT berhenti, kecuali `NineRouter:StopOnExit` = `true`. |
 | Port terpakai | Saat start, 9router mematikan proses lain di port-nya. Karena itu AIT tidak menyalakan 9router bila port itu sudah dipakai program lain yang tidak menjawab sebagai 9router. |
-| Belum terpasang | Tidak ada 9router sama sekali (mis. exe standalone tanpa npm): tombol **Jalankan 9router** di Dashboard menjalankan `npm install -g 9router` lalu menyalakannya. Saat start, pemasangan otomatis hanya bila `NineRouter:AutoInstall` = `true` (sekali per proses). Butuh Node.js + npm dan internet. |
+| Belum terpasang | Tidak ada 9router sama sekali (mis. exe standalone tanpa npm): tombol **Jalankan 9router** di Dasbor menjalankan `npm install -g 9router` lalu menyalakannya. Saat start, pemasangan otomatis hanya bila `NineRouter:AutoInstall` = `true` (sekali per proses). Butuh Node.js + npm dan internet. |
 
 1. Buka dashboard http://localhost:20128.
 2. Hubungkan minimal satu provider (menu *Providers*). Idealnya satu provider kuat untuk planner dan satu yang
@@ -116,8 +116,8 @@ bila port sudah dipakai dan menyebutkan prosesnya.
 | Hal | Keterangan |
 |---|---|
 | Lokasi aplikasi | `%LOCALAPPDATA%\AIThread\app` (hasil `dotnet publish -c Release`). Build memakai folder sendiri (`%LOCALAPPDATA%\AIThread\build`), jadi tidak bentrok dengan `bin/` yang sedang dikunci Visual Studio. Bila publish gagal, versi lama tetap dipakai. |
-| Log | `%LOCALAPPDATA%\AIThread\logs\aithread-<waktu>.log` (dan `.err.log`); 10 run terakhir disimpan. Log aktivitas thread tetap ada di Dashboard. Satu baris per entri (`jam level kategori: pesan`); warning hanya menampilkan pesan error (`→ Tipe: pesan`) tanpa stack trace, dan warning yang sama persis dalam 5 menit dicetak sekali lalu diberi catatan *Nx serupa disembunyikan*. Error tetap dengan stack trace lengkap. |
-| Konfigurasi | `appsettings.json` ikut ter-publish: ubah `src/AIThread.UI/appsettings.json` lalu `restart`. Environment `Production`. Setting dari UI (database) tetap sama dengan saat development. |
+| Log | `%LOCALAPPDATA%\AIThread\logs\aithread-<waktu>.log` (dan `.err.log`); 10 run terakhir disimpan. Log aktivitas thread tetap ada di Dasbor. Satu baris per entri (`jam level kategori: pesan`); warning hanya menampilkan pesan error (`→ Tipe: pesan`) tanpa stack trace, dan warning yang sama persis dalam 5 menit dicetak sekali lalu diberi catatan *Nx serupa disembunyikan*. Error tetap dengan stack trace lengkap. |
+| Konfigurasi | `appsettings.json` ikut ter-publish: ubah `src/AIThread.UI/appsettings.json` lalu `restart`. Environment `Production`. Pengaturan dari UI (database) tetap sama dengan saat development. |
 | Port lain | `-Port 6000` — pakai `-Port` yang sama untuk semua perintah, lalu terapkan ulang integrasi CLI di menu CLI. |
 | Autostart | Task Scheduler `AIThread`, 30 detik setelah login, berjalan sebagai akun Anda sendiri (tanpa admin). Karena itu LocalDB dan API key 9router yang terenkripsi tetap berlaku. Memakai hasil publish terakhir tanpa build ulang. |
 | Stop | Lewat `POST /api/system/shutdown`: thread yang sedang berjalan dibatalkan dan dicatat (maks. ±15 detik), lalu proses keluar. Bila tidak berhenti dalam 45 detik, proses dihentikan paksa. |
@@ -136,7 +136,7 @@ Untuk dipakai tanpa .NET SDK atau `dotnet run`, buat `AIThread.exe` self-contain
 
 Folder `dist\AIThread` berisi `AIThread.exe`, `appsettings.json` (boleh diubah, mis. connection string),
 `wwwroot\` dan `docs\`; salin seluruh folder ke komputer lain. SQL Server (LocalDB) dan Node.js tetap diperlukan;
-9router dipasang dengan `npm i -g 9router` atau tombol **Jalankan 9router** di Dashboard.
+9router dipasang dengan `npm i -g 9router` atau tombol **Jalankan 9router** di Dasbor.
 Jalankan `AIThread.exe` tanpa argumen untuk **menu interaktif**; server berjalan di jendela itu, lognya ke file:
 
 | Menu | Fungsi |
@@ -193,8 +193,8 @@ isi hanya kunci yang diganti); file ini menimpa `appsettings.json` di samping ex
 
 ## 7. Verifikasi
 
-Buka menu **Setup**: tiap langkah menampilkan statusnya dari kondisi AIT saat itu, dan langkah yang belum selesai bisa
-langsung dikerjakan di sana (lihat [Panduan menu → Setup](05-menu.md#setup)). Di **Dashboard**, empat kartu status teratas harus:
+Buka menu **Penyiapan**: tiap langkah menampilkan statusnya dari kondisi AIT saat itu, dan langkah yang belum selesai bisa
+langsung dikerjakan di sana (lihat [Panduan menu → Penyiapan](05-menu.md#penyiapan)). Di **Dasbor**, empat kartu status teratas harus:
 
 | Kartu | Kondisi normal |
 |---|---|
@@ -205,7 +205,7 @@ langsung dikerjakan di sana (lihat [Panduan menu → Setup](05-menu.md#setup)). 
 
 ## Konfigurasi `appsettings.json`
 
-Bagian `AIThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di menu Setting):
+Bagian `AIThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di menu Pengaturan):
 
 | Kunci | Default | Fungsi |
 |---|---|---|
@@ -216,7 +216,7 @@ Bagian `AIThread` mengatur hal-hal infrastruktur (pengaturan runtime lain ada di
 | `RouterMonitorIntervalSeconds` | `15` | Interval cek kesehatan 9router untuk dashboard. |
 | `ActivityLogRetentionDays` | `14` | Log dashboard yang lebih tua dihapus otomatis. |
 | `ExecutorFullFileMaxLines` | `400` | File sampai sepanjang ini dikirim utuh ke executor; file lebih besar dikirim sebagai potongan. |
-| `Telegram:ApiBaseUrl` | `https://api.telegram.org` | Endpoint Bot API untuk [prompt dari Telegram](11-telegram.md) (token bot diatur di menu Setting). |
+| `Telegram:ApiBaseUrl` | `https://api.telegram.org` | Endpoint Bot API untuk [prompt dari Telegram](11-telegram.md) (token bot diatur di menu Pengaturan). |
 | `Telegram:PollTimeoutSeconds` | `50` | Lama satu long poll `getUpdates` menunggu pesan baru (1–50). |
 | `EmbeddedRedis:Enabled` | `true` | Jalankan Garnet di dalam AIT untuk short memory. `false` = pakai Redis eksternal di `ConnectionStrings:Redis`. |
 | `EmbeddedRedis:DataDirectory` | *(kosong)* | Lokasi data Garnet. Kosong = `%LOCALAPPDATA%\AIThread\garnet\<port>`. |

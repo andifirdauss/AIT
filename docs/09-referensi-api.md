@@ -30,7 +30,7 @@ Respons orkestrasi berupa satu blok teks. Versi stream memakai event standar for
 
 ## Hook Claude Code
 
-Dipanggil oleh HTTP hook yang dipasang dari Setting (lihat
+Dipanggil oleh HTTP hook yang dipasang dari Pengaturan (lihat
 [Context Keeper untuk /clear](03-integrasi-cli.md#context-keeper-untuk-clear)). Body = input hook Claude Code
 (JSON); respons **tidak** dibungkus `ApiResponse`. Tidak dialihkan ke HTTPS.
 
@@ -50,7 +50,7 @@ Semua respons dibungkus:
 
 Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, dengan `success: false` dan `message`.
 
-### Setting & 9router
+### Pengaturan & 9router
 
 | Method | Path | Body / query |
 |---|---|---|
@@ -70,13 +70,13 @@ Error validasi → `400`, error 9router → `502`, tidak ditemukan → `404`, de
 | `GET` | `/api/router/status?refresh=true` | status 9router (tanpa `refresh` memakai hasil monitor terakhir) |
 | `GET` | `/api/router/models?refresh=true` | model & combo 9router (cache 60 detik) |
 
-### Setup
+### Penyiapan
 
 | Method | Path | Body / query |
 |---|---|---|
 | `GET` | `/api/setup/status?refresh=true` | langkah setup dari kondisi saat ini: `steps[]` (`id` = `system`/`router`/`nodes`/`project`/`cli`/`memory`, `title`, `required`, `done`, `detail`), `requiredCount`, `requiredDone`, `isComplete`. `refresh` = cek 9router sekarang (tanpa itu memakai hasil monitor terakhir) |
 | `POST` | `/api/setup/router` | `{ "baseUrl": "...", "apiKey"?: "..." }` → `status` (bentuk `/api/router/status`), `saved`, `message`. Diuji dulu; disimpan hanya bila 9router online dan key diterima. `apiKey` kosong = pakai key tersimpan |
-| `POST` | `/api/setup/preset` | `{ "strongModel": "...", "cheapModel"?: "...", "toolsNode": true, "reviewer": false, "tester": false, "contextKeeper": true }` → `nodes[]` (`node`, `created`). Membuat/memperbarui node `AIT …` (lihat [Setup](05-menu.md#setup)); `cheapModel` kosong = model kuat |
+| `POST` | `/api/setup/preset` | `{ "strongModel": "...", "cheapModel"?: "...", "toolsNode": true, "reviewer": false, "tester": false, "contextKeeper": true }` → `nodes[]` (`node`, `created`). Membuat/memperbarui node `AIT …` (lihat [Penyiapan](05-menu.md#penyiapan)); `cheapModel` kosong = model kuat |
 | `GET` | `/api/setup/profile` | file profil setup tim `aithread-setup` v1 (unduhan JSON, enum berupa nama, field kosong tidak ditulis) |
 | `POST` | `/api/setup/profile/import` | `{ "profile": { … }, "sections"?: ["Router", "Orchestration", "Nodes", "Memory", "Business", "Skills"], "nodeMode": "Merge"\|"Replace", "secrets"?: { "nineRouterApiKey", "shortPassword", "longPassword", "businessPassword" }, "copyExistingMemory": true, "dryRun": true }` → `dryRun`, `sections` (yang ada di file), `changes[]` (`section`, `text`), `secrets[]` (`id`, `label`, `stored`), `warnings[]`, `errors[]`. `sections` kosong = semua; `dryRun` default `true` |
 
@@ -155,7 +155,7 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `POST` | `/api/projects/{id}/test-scenarios/import` | multipart `file` (.xlsx, maks 5 MB; sheet dalam bahasa mana pun) → `scenario`, `accountsAdded[]`, `warnings[]`. 400 dengan daftar baris yang salah |
 | `POST` | `/api/projects/{id}/test-scenarios/{scenarioId}/run` | `{ "acknowledge": true }` → id thread asal (kemajuan lewat SSE di thread itu). 400 bila peran belum punya akun, tanpa thread asal, atau efek samping belum dikonfirmasi (`acknowledge` false) |
 | `DELETE` | `/api/projects/{id}/test-scenarios/{scenarioId}` | — → `true` |
-| `POST` | `/api/projects/{id}/unit-tests/{testId}/confirm-removal` | `{ "removeCode": true }` → `test`, `threadId`. Hanya test obsolete: status `Removed`, snapshot dihapus, dan bila `removeCode` serta file test-nya ada, thread Dashboard dimulai untuk menghapus kode test itu (`threadId`) |
+| `POST` | `/api/projects/{id}/unit-tests/{testId}/confirm-removal` | `{ "removeCode": true }` → `test`, `threadId`. Hanya test obsolete: status `Removed`, snapshot dihapus, dan bila `removeCode` serta file test-nya ada, thread Dasbor dimulai untuk menghapus kode test itu (`threadId`) |
 
 ### Memory
 
@@ -239,7 +239,7 @@ Dipakai `scripts/aithread.ps1` untuk instance background.
 
 ### Telegram
 
-Kartu Telegram di halaman Setting — lihat [Prompt dari Telegram](11-telegram.md).
+Kartu Telegram di halaman Pengaturan — lihat [Prompt dari Telegram](11-telegram.md).
 
 | Method | Path | Body / query |
 |---|---|---|
@@ -253,7 +253,7 @@ Kartu Telegram di halaman Setting — lihat [Prompt dari Telegram](11-telegram.m
 
 ### Skill
 
-Tab Skill di halaman Setting dan saran skill di modal Node — lihat [Skill pada node](07-cara-kerja.md#skill-pada-node).
+Tab Skill di halaman Pengaturan dan saran skill di modal Node — lihat [Skill pada node](07-cara-kerja.md#skill-pada-node).
 
 | Method | Path | Body / query |
 |---|---|---|

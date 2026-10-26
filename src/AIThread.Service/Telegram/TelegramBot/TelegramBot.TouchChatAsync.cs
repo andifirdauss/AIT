@@ -40,7 +40,7 @@ public sealed partial class TelegramBot
         {
             eventBus.Publish(AppEvent.Create(AppEventTypes.TelegramChanged, new { chat.Id, action = "created" }));
             activityLog.Warn("telegram",
-                Lang.T($"Chat Telegram baru menunggu izin: {chat.DisplayName}{(chat.Username is null ? "" : $" (@{chat.Username})")}, ID {chat.ChatId}. Izinkan di menu Setting bila ini Anda.", $"New Telegram chat waiting for approval: {chat.DisplayName}{(chat.Username is null ? "" : $" (@{chat.Username})")}, ID {chat.ChatId}. Allow it in the Setting menu if it is you."));
+                Lang.T($"Chat Telegram baru menunggu izin: {chat.DisplayName}{(chat.Username is null ? "" : $" (@{chat.Username})")}, ID {chat.ChatId}. Izinkan di menu Pengaturan bila ini Anda.", $"New Telegram chat waiting for approval: {chat.DisplayName}{(chat.Username is null ? "" : $" (@{chat.Username})")}, ID {chat.ChatId}. Allow it in the Setting menu if it is you."));
         }
         return chat;
     }

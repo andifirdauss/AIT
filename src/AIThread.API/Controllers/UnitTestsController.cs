@@ -16,7 +16,7 @@ public class UnitTestsController(IUnitTestService unitTests) : ControllerBase
 
     [HttpPut("settings")]
     public async Task<ActionResult<ApiResponse<UnitTestSettingsDto>>> SaveSettings(Guid projectId, SaveUnitTestSettingsRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<UnitTestSettingsDto>.Ok(await unitTests.SaveSettingsAsync(projectId, request, cancellationToken), Lang.T("Setting unit test disimpan.", "Unit test settings saved."));
+        ApiResponse<UnitTestSettingsDto>.Ok(await unitTests.SaveSettingsAsync(projectId, request, cancellationToken), Lang.T("Pengaturan unit test disimpan.", "Unit test settings saved."));
 
     // Finds the tests in the code and labels the new ones with a cheap model.
     [HttpPost("scan")]

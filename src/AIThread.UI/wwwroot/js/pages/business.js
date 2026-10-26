@@ -56,7 +56,7 @@
 
   async function loadOverview() {
     if (!projectId()) {
-      el('bizPages').innerHTML = t('<div class="list-group-item text-secondary">Daftarkan project dulu di menu Project.</div>', '<div class="list-group-item text-secondary">Register a project first in the Project menu.</div>');
+      el('bizPages').innerHTML = t('<div class="list-group-item text-secondary">Daftarkan project dulu di menu Proyek.</div>', '<div class="list-group-item text-secondary">Register a project first in the Project menu.</div>');
       return;
     }
     try {

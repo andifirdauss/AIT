@@ -20,14 +20,14 @@ bahasa.
 
 - AIT berjalan di laptop, dan laptop tetap menyala serta terhubung internet (lihat
   [Agar laptop tetap bisa dihubungi](#agar-laptop-tetap-bisa-dihubungi)).
-- Node Planner, Executor, dan Wrapper sudah dikonfigurasi; minimal satu project terdaftar di menu **Project**.
+- Node Planner, Executor, dan Wrapper sudah dikonfigurasi; minimal satu project terdaftar di menu **Proyek**.
 - Akun Telegram.
 
-## Setup (sekali, di depan laptop)
+## Penyiapan (sekali, di depan laptop)
 
 1. **Buat bot.** Di Telegram buka `@BotFather` → `/newbot` → isi nama dan username (harus berakhiran `bot`) →
    salin **token** (format `123456789:AAE…`). Perlakukan token seperti password.
-2. **Setting → tab Telegram** (langsung: http://localhost:5225/Setting#telegram): tempel token, centang *Aktifkan bot Telegram*, klik **Simpan Telegram**. Token
+2. **Pengaturan → tab Telegram** (langsung: http://localhost:5225/Setting#telegram): tempel token, centang *Aktifkan bot Telegram*, klik **Simpan Telegram**. Token
    diverifikasi ke Telegram sebelum disimpan; badge berubah menjadi **Aktif · @nama_bot**.
 3. Di HP, buka bot Anda (klik `@nama_bot` di kartu, atau cari di Telegram) lalu tekan **Start**. Bot membalas bahwa
    chat belum diizinkan, beserta ID chat Anda.
@@ -64,8 +64,8 @@ diperbarui terus (pembaruan tidak memunculkan notifikasi):
 Pertanyaan yang tidak butuh perubahan file (mis. "jelaskan alur login di project ini") dijawab langsung oleh planner.
 Satu chat menjalankan **satu thread pada satu waktu**; prompt berikutnya ditolak sampai thread selesai atau dibatalkan.
 
-Thread dari Telegram tercatat seperti thread lain: sumber **Telegram** di Dashboard, sesi `telegram:<id chat>` di
-halaman Project, dan memory diekstrak seperti biasa.
+Thread dari Telegram tercatat seperti thread lain: sumber **Telegram** di Dasbor, sesi `telegram:<id chat>` di
+halaman Proyek, dan memory diekstrak seperti biasa.
 
 ## Perintah
 
@@ -94,7 +94,7 @@ pilihan atau jawaban Anda sebagai pesan biasa; thread yang sama dilanjutkan. Lih
 
 ## Keamanan
 
-- Hanya **chat pribadi yang diizinkan** di menu Setting yang bisa menjalankan prompt. Pesan dari grup dan channel
+- Hanya **chat pribadi yang diizinkan** di menu Pengaturan yang bisa menjalankan prompt. Pesan dari grup dan channel
   diabaikan.
 - Izinkan hanya akun Telegram Anda sendiri: sama seperti di CLI, prompt dapat mengubah file project di laptop.
 - Chat asing yang mengirim pesan ke bot tercatat sebagai *Menunggu izin* (20 terbaru disimpan) dan log dashboard
@@ -132,7 +132,7 @@ langsung ketika chat baru masuk.
 
 ## Konfigurasi `appsettings.json`
 
-Bagian `AIThread:Telegram` (token dan aktif/nonaktif diatur dari menu Setting, bukan di sini):
+Bagian `AIThread:Telegram` (token dan aktif/nonaktif diatur dari menu Pengaturan, bukan di sini):
 
 | Kunci | Default | Fungsi |
 |---|---|---|
@@ -149,7 +149,7 @@ HTTP proxy sistem Windows ikut dipakai secara otomatis.
 | Simpan: *Token tidak dapat diverifikasi: … tidak dapat dihubungi* | Jaringan memblokir `api.telegram.org`. | Periksa internet/proxy kantor; atur `ApiBaseUrl` bila harus lewat proxy. |
 | Bermasalah: *Token ini sedang dipakai program lain…* | Instance AIT lain (atau program lain) menerima pesan dengan token yang sama. | Hentikan instance lain, atau buat bot terpisah untuk tiap instance. |
 | Bot tidak membalas sama sekali | AIT tidak berjalan, laptop sleep/mati, atau bot nonaktif. | Periksa laptop. Setelah hidup kembali, kirim ulang prompt. |
-| Bot membalas *Chat ini belum diizinkan* | Chat belum diizinkan. | Setting → Telegram → **Izinkan**. |
+| Bot membalas *Chat ini belum diizinkan* | Chat belum diizinkan. | Pengaturan → Telegram → **Izinkan**. |
 | *Thread … masih berjalan* | Satu chat hanya menjalankan satu thread. | Tunggu sampai selesai, atau `/cancel`. |
 | Pesan status berhenti diperbarui | Pesan status dihapus, atau jaringan sempat putus. | Hasil akhir tetap dikirim sebagai pesan baru; cek `/status`. |
 | *AIT berhenti saat thread … berjalan* | AIT dimatikan atau di-restart dengan rapi saat thread berjalan. | Setelah AIT hidup lagi, tinjau tugas yang sempat selesai dengan `/diff <id>`, lalu kirim ulang prompt bila perlu. |

@@ -11,7 +11,7 @@ CLI coding mengirim banyak request, tidak hanya prompt Anda, ke salah satu endpo
 bentuk internal (`ProtocolAdapter`), jadi aturan di bawah sama untuk semua format. AIT **mengorkestrasi**
 sebuah request hanya bila semua syarat terpenuhi:
 
-- *Orkestrasi aktif* menyala di Setting;
+- *Orkestrasi aktif* menyala di Pengaturan;
 - request membawa daftar `tools` (ciri request agen utama);
 - pesan terakhir berasal dari user, **bukan** `tool_result`;
 - teks prompt tidak kosong setelah blok `<system-reminder>` dibuang;
@@ -119,7 +119,7 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `search_text(query, glob?, regex?, path?)` | tidak peka huruf besar/kecil; file ≤ 1 MB; maks 80 hasil; `path` seperti `find_files` |
 | `find_symbol(name, kind?, path?)` | lokasi deklarasi (class, method, property, field, enum, function, …) sebagai `file:baris: jenis signature (in Tipe)`; `name` boleh `Tipe.Member`; C# lewat Roslyn (syntax, tanpa build), JS/TS/Python/Java lewat pola regex (akurasi lebih rendah); maks 60 hasil |
 | `find_references(name, path?)` | semua pemakaian identifier, komentar diabaikan (C#: string literal juga), baris deklarasi ditandai `[declaration]`; cocok berdasarkan nama saja; maks 120 hasil |
-| `code_outline(path?, name?)` | kerangka kode tanpa isi, dari [Struktur kode](05-menu.md#project): **file** → setiap class/member/function dengan `baris-awal-baris-akhir` dan signature, dibaca dari disk saat itu; function yang panggilannya sudah tercatat diberi `[calls: N]` (`, changed since` bila isinya berubah sejak dibaca). **Folder** (`.` = seluruh project) → satu baris per file: class (jumlah member) dan function. **`name` saja** → class itu di seluruh project, termasuk semua file class `partial` (lebih dari 6 file → daftar lokasinya saja). C#, PHP, JS/TS, Python, Java, Kotlin; file ≤ 2 MB; maks 24.000 karakter, folder maks 300 file |
+| `code_outline(path?, name?)` | kerangka kode tanpa isi, dari [Struktur kode](05-menu.md#proyek): **file** → setiap class/member/function dengan `baris-awal-baris-akhir` dan signature, dibaca dari disk saat itu; function yang panggilannya sudah tercatat diberi `[calls: N]` (`, changed since` bila isinya berubah sejak dibaca). **Folder** (`.` = seluruh project) → satu baris per file: class (jumlah member) dan function. **`name` saja** → class itu di seluruh project, termasuk semua file class `partial` (lebih dari 6 file → daftar lokasinya saja). C#, PHP, JS/TS, Python, Java, Kotlin; file ≤ 2 MB; maks 24.000 karakter, folder maks 300 file |
 | `function_calls(path, name)` | panggilan satu function/method (`name` atau `Tipe.Member`) yang sudah dicatat [Panggilan function](#panggilan-function): baris, jenis, target, dan lokasi deklarasinya, plus **pemanggilnya** yang tercatat (maks 40). Belum tercatat atau isinya berubah → dimasukkan antrean Tools Node. Hanya file di dalam project; maks 5 overload |
 | `read_file(path, startLine?, endLine?)` | bernomor baris; maks 600 baris per panggilan; file ≤ 2 MB |
 | `search_memory(query)` | maks 25 label |
@@ -191,8 +191,8 @@ Batasan:
   sebagai *Dibatalkan* dan pesan berikutnya dijalankan sebagai thread baru (riwayat chat yang berisi pertanyaan tetap
   terbaca planner). Tombol *Batalkan* di detail thread juga menutup thread yang menunggu jawaban.
 - Sesi dikenali dari id sesi klien (Claude Code, Codex, Telegram, …); klien yang tidak mengirim id sesi, dan prompt
-  dari Dashboard, tidak pernah ditanya. Prompt di project lain dalam sesi yang sama menutup pertanyaan yang tertunda.
-- Matikan lewat Setting → *Planner boleh bertanya* bila Anda ingin planner selalu memutuskan sendiri.
+  dari Dasbor, tidak pernah ditanya. Prompt di project lain dalam sesi yang sama menutup pertanyaan yang tertunda.
+- Matikan lewat Pengaturan → *Planner boleh bertanya* bila Anda ingin planner selalu memutuskan sendiri.
 
 ### Merujuk perubahan sebelumnya
 
@@ -204,7 +204,7 @@ anchor `**AIT** · thread …` di riwayat chat, jadi dua tab = dua sesi yang tid
 - Satu modul, atau permintaan menyebut modul/file/fitur → langsung dipakai.
 - Lebih dari satu modul → planner [bertanya](#pertanyaan-dari-planner) dulu: satu pilihan per modul (maks 3 terbaru,
   dengan thread dan jumlah file-nya) plus *semua*. Anda juga boleh menjawab modul lain atau beberapa nomor sekaligus.
-- Tanpa kemungkinan bertanya (Dashboard, Telegram, atau *Planner boleh bertanya* mati) → modul terbaru dipakai dan
+- Tanpa kemungkinan bertanya (Dasbor, Telegram, atau *Planner boleh bertanya* mati) → modul terbaru dipakai dan
   asumsi itu disebut di ringkasan.
 
 ### Bentuk rencana
@@ -282,7 +282,7 @@ Path dinormalisasi (`\` → `/`, relatif terhadap root). Penolakan tercatat di l
 - Sebelum menulis file untuk pertama kali, isi asli file dicatat agar thread bisa dibatalkan
   ([rollback](04-penggunaan.md#membatalkan-perubahan-file-rollback)).
   Setelah setiap penulisan, hash isi yang ditulis juga dicatat.
-- Waktu eksekusi = rantai tugas terpanjang. Dashboard membandingkannya dengan total waktu kerja executor (speedup).
+- Waktu eksekusi = rantai tugas terpanjang. Dasbor membandingkannya dengan total waktu kerja executor (speedup).
 
 ### Hapus, pindah file, dan pindah member C#
 
@@ -371,7 +371,7 @@ Diff yang ditampilkan di detail thread dibangun dari blok-blok tersebut.
 Setelah eksekusi, bila minimal satu tugas berhasil, AIT memeriksa hasilnya (status thread *Verifikasi*). Tahap ini
 berjalan bila ada salah satu dari:
 
-- **perintah build**: *Build & verifikasi otomatis* menyala di Setting dan project punya perintah build;
+- **perintah build**: *Build & verifikasi otomatis* menyala di Pengaturan dan project punya perintah build;
 - **node Reviewer** aktif (yang prioritasnya terkecil dipakai);
 - **unit test**: project punya [katalog unit test](#unit-test) aktif dan suite yang dikenali.
 
@@ -644,7 +644,7 @@ Penanganan password:
 - Riwayat chat berisi balasan `login …` ikut terkirim bersama setiap prompt berikutnya; AIT menyamarkan password itu
   sebelum riwayat sampai ke planner atau model lain.
 - Balasan Anda tetap tercatat di riwayat chat CLI (mis. transcript Claude Code). Pakai **akun uji**, bukan akun pribadi.
-- Pertanyaan menunggu 2 jam. Thread dari Dashboard atau Telegram tidak bisa ditanya; isi username & password di modal
+- Pertanyaan menunggu 2 jam. Thread dari Dasbor atau Telegram tidak bisa ditanya; isi username & password di modal
   **🧪 Ulangi testing** detail thread (juga tidak disimpan).
 - **Captcha**: di lingkungan pengembangan captcha biasanya tidak diperiksa asal terisi, jadi tester mengisi field captcha
   dengan nilai apa saja (mis. `1234`) dan lanjut; widget centang (reCAPTCHA, hCaptcha, Turnstile) diklik sekali. Bila
@@ -656,7 +656,7 @@ Penanganan password:
 ### Akun uji (berganti user)
 
 Alur bisnis jarang selesai di satu user: pengaju submit, atasan level 1 meng-approve, HR level 2, dan seterusnya. Untuk
-itu tiap project punya **akun uji** (Project > Detail → *Akun uji*), dibagi ke semua developer project lewat project
+itu tiap project punya **akun uji** (Proyek > Detail → *Akun uji*), dibagi ke semua developer project lewat project
 key dan ikut store long memory seperti katalog unit test.
 
 - Tiap akun: **username**, **peran** (*Pengaju*, *Atasan*, *HR*, *Administrator*, …), **atribut bebas** (NIK, Unit,
@@ -745,7 +745,7 @@ dibaca balik.
      diharapkan. Baris boleh ditambah, dihapus, atau diurutkan ulang (maks 30 langkah);
    - sheet tersembunyi `_AIT` berisi id dan versi skenario. Jangan ubah nama sheet.
 3. **Jalankan**: balas `jalankan skenario <nama>`. AIT membaca file `.aithread/testing/<nama>.xlsx` dulu (versi naik bila
-   isinya berubah), lalu menjalankan skenario di thread asalnya. Dari Web UI: Project > Detail → *Skenario test* →
+   isinya berubah), lalu menjalankan skenario di thread asalnya. Dari Web UI: Proyek > Detail → *Skenario test* →
    **Unggah Excel**, lalu **Jalankan**.
 4. **Pertama kali per project** AIT meminta konfirmasi efek samping: submit dan approve sungguhan membuat data dan bisa
    mengirim email/notifikasi bila database dev berisi salinan data production. Balas `jalankan skenario <nama> setuju`
@@ -789,7 +789,7 @@ oleh model: baris status (tugas, build, reviewer, unit test, testing) dan daftar
 [Membaca output di CLI](04-penggunaan.md#membaca-output-di-cli). Teks Wrapper di-stream ke CLI.
 
 Jika tidak ada wrapper aktif atau wrapper gagal, CLI menampilkan ringkasan rencana sebagai pengganti teksnya;
-yang disimpan sebagai jawaban thread (Dashboard, Telegram) adalah ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
+yang disimpan sebagai jawaban thread (Dasbor, Telegram) adalah ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
 verifikasi).
 
 Setelah itu ekstraksi memory dijalankan dan ditunggu paling lama 30 detik agar footer bisa menyebut jumlah memory
@@ -800,7 +800,7 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 - Status akhir: *Selesai* bila ada tugas yang berhasil (atau jawaban langsung), *Gagal* bila tidak ada. Thread yang
   berhenti pada pertanyaan planner berstatus *Menunggu jawaban* sampai dijawab, dibatalkan, atau kedaluwarsa.
 - Waktu (termasuk verifikasi, unit test, dan testing; waktu menunggu jawaban tidak dihitung), token per peran (planner beserta porsi
-  cache-nya, executor termasuk tugas perbaikan dan pemulihan test, reviewer, tester termasuk triase unit test, wrapper), dan setiap tugas tersimpan di database dan tampil di Dashboard.
+  cache-nya, executor termasuk tugas perbaikan dan pemulihan test, reviewer, tester termasuk triase unit test, wrapper), dan setiap tugas tersimpan di database dan tampil di Dasbor.
 - Hasil unit test, test baru, dan keputusan obsolete dicatat ke katalog project — lihat
   [Saat thread selesai](#saat-thread-selesai).
 - Ekstraksi memory ditunggu sebelum footer jawaban (maks 30 detik, lalu lanjut di belakang) — lihat [Memory](06-memory.md).
@@ -816,7 +816,7 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 Setiap project punya **katalog unit test** yang dipakai bersama semua developer project itu (scope `ProjectKey`,
 disimpan bersama long memory, jadi ikut pindah ke DB eksternal). Tujuannya: developer yang bekerja di project yang
 asing ikut menjalankan test peninggalan developer sebelumnya, sehingga perubahannya tidak merusak perilaku yang sudah
-dijaga. Katalog dan setting-nya ada di [Project > Detail → Unit test](05-menu.md#unit-test).
+dijaga. Katalog dan pengaturannya ada di [Proyek > Detail → Unit test](05-menu.md#unit-test).
 
 Test dijalankan **oleh AIT sendiri, tanpa model**. Model hanya dipakai untuk memberi judul dan tujuan test hasil
 *Scan test* (node murah, seperti label memory), memutuskan nasib test per perubahan (planner), mendiagnosis test yang
@@ -881,7 +881,7 @@ disimpan di luar repository (snapshot yang ada ikut dihapus).
 
 - **Otomatis**: thread pertama sebuah project yang punya suite test tetapi katalognya masih kosong memindai kode dulu
   (tanpa model). Judulnya dibentuk dari nama method (`Save_WithoutName_IsRejected` → *Save without name is rejected*).
-- **Scan test** (Project > Detail): memindai lagi, mendaftarkan test baru, mengikuti test yang pindah file, dan memberi
+- **Scan test** (Proyek > Detail): memindai lagi, mendaftarkan test baru, mengikuti test yang pindah file, dan memberi
   judul, tujuan, skenario, modul, serta target dengan node murah (Tools → Wrapper → Planner, seperti label memory).
 - Deteksi statis: C# lewat Roslyn (`[Fact]`, `[Theory]`, `[Test]`, `[TestCase]`, `[TestMethod]`, …), stack lain lewat
   pola (`it(`/`test(`, `def test_`, `@Test`/`@ParameterizedTest`, `func TestX`, `#[test]`, method `test*` PHPUnit). Target ditebak dari nama
@@ -947,7 +947,7 @@ nomor, judul, tujuan, file → target, dan hasil terakhir. `submit_plan` mendapa
 | `obsolete` | Request menghapus fitur yang diuji | Wajib alasan. Test tidak dijalankan, berstatus *Obsolete* setelah thread selesai, dan menunggu konfirmasi hapus |
 | `new` | Test baru | Judul, skenario, file, nama test persis seperti di kode, target; wajib ada tugas create/edit file test itu |
 
-- Test baru dibuat **hanya bila developer memintanya**, kecuali setting *Buat unit test baru* = *Otomatis untuk
+- Test baru dibuat **hanya bila developer memintanya**, kecuali pengaturan *Buat unit test baru* = *Otomatis untuk
   perubahan logika bisnis* (layer Logic yang belum punya test) atau *Tidak pernah*. Dengan Auto Testing aktif, perubahan
   yang tidak bisa dicek Tester di aplikasi yang berjalan **selalu** dibuatkan test dry-run (kecuali *Tidak pernah*) —
   lihat [Background job dan sistem eksternal](#background-job-dan-sistem-eksternal).
@@ -1050,7 +1050,7 @@ build yang tidak bisa jalan di mesin ini (feed NuGet/npm yang butuh kredensial: 
 targeting pack tidak ada) tetap *dilewati* dengan alasannya, karena tidak ada perubahan di kode test yang bisa
 memperbaikinya. Tanpa pengecualian ini sebuah thread bisa selesai *lolos* tanpa satu pun test baru yang pernah jalan.
 
-Kebutuhan yang terdeteksi (`database`, `network`, `config`) dicatat di test itu. Menjalankan test dari Project > Detail
+Kebutuhan yang terdeteksi (`database`, `network`, `config`) dicatat di test itu. Menjalankan test dari Proyek > Detail
 selalu mencoba lagi. Test yang tidak dilaporkan runner sama sekali (nama atau file-nya berubah) tampil *tidak
 dilaporkan runner*; jalankan *Scan test* untuk mengikuti perubahannya.
 
@@ -1116,7 +1116,7 @@ kartu *Unit test* detail thread.
 katalog dan keputusan `obsolete`-nya dikembalikan ke *Aktif*.
 
 Batasan saat ini: **🔁 Ulangi yang gagal** tidak menjalankan unit test (hanya build/reviewer); jalankan test dari
-Project > Detail setelahnya.
+Proyek > Detail setelahnya.
 
 ## Panggilan function
 
@@ -1137,7 +1137,7 @@ AIT mencatat apa saja yang dipanggil tiap function, sedikit demi sedikit, hanya 
 - **Hemat**: function yang isinya sama dengan saat terakhir dibaca tidak dikirim lagi; yang gagal dicoba lagi paling
   cepat 1 jam kemudian. Antrean diproses satu file per waktu di belakang; planner dan executor tidak menunggu.
 - Hasil disimpan di database lokal (tabel `CodeFunctionScans` dan `CodeFunctionCalls`), mengikuti file clone di mesin
-  ini; tampil di Project → detail → *Struktur kode*.
+  ini; tampil di Proyek → detail → *Struktur kode*.
 - **Dipakai planner**: `function_calls` memberi panggilan sebuah function beserta pemanggilnya yang tercatat, dan
   `code_outline` menandai function yang sudah punya catatan dengan `[calls: N]`. Planner bisa mengikuti alur
   (layar → endpoint → action → logic) tanpa membaca setiap file di jalurnya, lalu memastikan dengan kode. Makin sering
@@ -1185,7 +1185,7 @@ lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integras
 Skill adalah instruksi siap pakai (folder dengan `SKILL.md`, gaya Claude Code / Agent Skills) yang membuat model
 lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offline dan menempelkannya ke node.
 
-1. **Menarik link** (Setting → Skill). Link dikenali lalu diunduh ke folder staging:
+1. **Menarik link** (Pengaturan → Skill). Link dikenali lalu diunduh ke folder staging:
    - GitHub/GitLab sebagai arsip ZIP, tanpa perlu git. Link `/tree/<ref>/<folder>` hanya mengambil folder itu.
    - URL `.git` atau host git lain lewat `git clone --depth 1`, yang juga menjadi cadangan bila unduhan ZIP gagal.
    - File `.md` diambil apa adanya.

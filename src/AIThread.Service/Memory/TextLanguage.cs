@@ -44,6 +44,60 @@ public static partial class TextLanguage
         return indonesian >= english * 1.5 ? Indonesian : english >= indonesian * 1.5 ? English : null;
     }
 
+    // Short words developers type in a request, on top of the lists above (requests are often a few words long).
+    private static readonly HashSet<string> IndonesianPromptWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "tolong", "buat", "buatkan", "bikin", "tambahkan", "ganti", "hapus", "hapuskan", "perbaiki", "cek", "cari", "kenapa",
+        "bagaimana", "gimana", "apa", "apakah", "dong", "saya", "aku", "kamu", "gak", "ga", "nggak", "enggak", "mau", "jadi",
+        "kalau", "kalo", "sama", "biar", "supaya", "gitu", "aja", "sih", "deh", "yg", "dgn", "utk", "jalankan", "ulangi",
+        "coba", "lagi", "skenario", "lanjutan", "setuju", "sekarang", "semua", "kok", "nih", "dulu", "terus", "lalu", "sudah",
+        "belum", "pakai", "pakailah", "tampilkan", "lihat", "jelaskan", "ini", "itu", "nya", "kan"
+    };
+
+    private static readonly HashSet<string> EnglishPromptWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "please", "make", "add", "change", "remove", "delete", "fix", "check", "find", "why", "how", "what", "does", "do",
+        "i", "you", "my", "me", "run", "retry", "again", "create", "scenario", "follow", "agree", "now", "all", "it", "an",
+        "show", "explain", "use", "let", "there", "should", "would", "could", "it's", "don't", "doesn't", "we", "our"
+    };
+
+    // The language a developer writes a request in, for AIT's own output to that chat: the words of the prompt, else of
+    // the earlier user turns of the conversation ("[user] …" parts), else null (the UI language applies). Pasted code,
+    // logs and attached documents do not count. Indonesian words weigh double: Indonesian requests are full of English
+    // technical words, English ones rarely hold Indonesian words.
+    public static string? OfPrompt(string? prompt, string? conversation = null)
+    {
+        if (Score(prompt) is { } fromPrompt) return fromPrompt;
+        if (string.IsNullOrWhiteSpace(conversation)) return null;
+        var userTurns = UserTurn().Matches(conversation).Select(m => m.Groups[1].Value).Reverse().Take(5);
+        return Score(string.Join('\n', userTurns));
+    }
+
+    // OfPrompt as a Lang code for Lang.Use: the UI language when the words do not tell.
+    public static string LangOfPrompt(string? prompt, string? conversation = null) => OfPrompt(prompt, conversation) switch
+    {
+        English => Lang.English,
+        Indonesian => Lang.Indonesian,
+        _ => Lang.Current
+    };
+
+    private static string? Score(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        text = Markup().Replace(Fenced().Replace(text, " "), " ");
+        int indonesian = 0, english = 0;
+        foreach (var line in text.Split('\n'))
+        {
+            if (CodeLine().IsMatch(line)) continue;
+            foreach (Match word in Words().Matches(Prose(line)))
+            {
+                if (IndonesianWords.Contains(word.Value) || IndonesianPromptWords.Contains(word.Value)) indonesian += 2;
+                else if (EnglishWords.Contains(word.Value) || EnglishPromptWords.Contains(word.Value)) english++;
+            }
+        }
+        return indonesian > english ? Indonesian : english > indonesian ? English : null;
+    }
+
     // Prose written in another script or in a language with its own letters (ă, ơ, ư, đ, ạ, …): more than a few of
     // its letters are outside ASCII. Accented names (José, Müller) stay well below that.
     public static bool IsForeign(string text)
@@ -65,4 +119,18 @@ public static partial class TextLanguage
 
     [GeneratedRegex(@"\p{L}+")]
     private static partial Regex Words();
+
+    [GeneratedRegex(@"```.*?(```|$)", RegexOptions.Singleline)]
+    private static partial Regex Fenced();
+
+    // Attached documents, system reminders and the like: <tag …>…</tag>.
+    [GeneratedRegex(@"<([A-Za-z][\w-]*)[^>]*>.*?</\1>", RegexOptions.Singleline)]
+    private static partial Regex Markup();
+
+    // A line of pasted code or a log: braces, a statement end, a lambda, a stack frame, an exception.
+    [GeneratedRegex(@"[{};]|=>|^\s*at\s|Exception\b|^\s*(//|#|\$|>)")]
+    private static partial Regex CodeLine();
+
+    [GeneratedRegex(@"(?:^|\n\n)\[user\] (.*?)(?=\n\n\[(?:user|assistant)\] |$)", RegexOptions.Singleline)]
+    private static partial Regex UserTurn();
 }

@@ -32,7 +32,7 @@ public sealed partial class ThreadOrchestrator
         catch (Exception ex)
         {
             registry.Complete(thread.Id);
-            return await FailAsync(recorder, new ClientProgress(observer, true), total, Lang.T($"Setting tidak dapat dibaca: {ex.Message}", $"Settings cannot be read: {ex.Message}"));
+            return await FailAsync(recorder, new ClientProgress(observer, true), total, Lang.T($"Pengaturan tidak dapat dibaca: {ex.Message}", $"Settings cannot be read: {ex.Message}"));
         }
 
         var progress = new ClientProgress(observer, settings.StreamProgressToClient);

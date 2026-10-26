@@ -1,10 +1,10 @@
 @{
-    ViewData["Title"] = "Project";
+    ViewData["Title"] = Lang.T("Proyek", "Project");
 }
 
 <div class="page-header">
     <div>
-        <h1>Project</h1>
+        <h1>@Lang.T("Proyek", "Project")</h1>
         <p class="page-subtitle">@Html.Raw(Lang.T("Codebase yang dikenal AIT. Identitas unik = folder root project (berisi <span class=\"mono\">.git</span> atau file build seperti <span class=\"mono\">.sln</span>, <span class=\"mono\">pom.xml</span>, <span class=\"mono\">package.json</span>), sehingga banyak sesi dari project berbeda tidak saling tercampur.", "Codebases AIT knows. The unique identity = the project root folder (with <span class=\"mono\">.git</span> or a build file such as <span class=\"mono\">.sln</span>, <span class=\"mono\">pom.xml</span>, <span class=\"mono\">package.json</span>), so many sessions of different projects never get mixed up."))</p>
     </div>
 </div>

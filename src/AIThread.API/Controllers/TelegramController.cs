@@ -16,7 +16,7 @@ public class TelegramController(ITelegramService telegramService) : ControllerBa
 
     [HttpPut]
     public async Task<ActionResult<ApiResponse<TelegramStatusDto>>> Update(UpdateTelegramSettingsRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<TelegramStatusDto>.Ok(await telegramService.UpdateSettingsAsync(request, cancellationToken), Lang.T("Setting Telegram tersimpan.", "Telegram settings saved."));
+        ApiResponse<TelegramStatusDto>.Ok(await telegramService.UpdateSettingsAsync(request, cancellationToken), Lang.T("Pengaturan Telegram tersimpan.", "Telegram settings saved."));
 
     [HttpPost("chats/{id:guid}/allow")]
     public async Task<ActionResult<ApiResponse<TelegramChatDto>>> Allow(Guid id, CancellationToken cancellationToken) =>

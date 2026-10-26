@@ -99,7 +99,7 @@ teknologi atau domain (`EFCore`, `Redis`, `Auth`). Modul diambil dari [daftar mo
 yang sama dengan modul wiki bisnis, dan untuk project memory diturunkan dari [peta kode](#peta-kode) file yang dibahas.
 
 Satu memory punya satu **modul utama** dan boleh punya sampai 3 **modul lain** bila fakta yang sama memang membahas
-beberapa modul (mis. alur posting `Order` yang membuat `Invoice`). Filter modul di menu Memory, pencarian planner, peta
+beberapa modul (mis. alur posting `Order` yang membuat `Invoice`). Filter modul di menu Memori, pencarian planner, peta
 memory, dan jumlah memory per modul ikut menghitung modul lain itu. Modul utama tersimpan di kolom `Module` (dibaca juga
 oleh AIT versi lama), modul lain di kolom `ExtraModules`.
 
@@ -177,7 +177,7 @@ thread selesai ─► entri Change (model wrapper) ─► short memory (Garnet)
 - **Long memory tidak tersedia** (mis. server PostgreSQL eksternal mati): thread tetap berjalan, planner hanya tidak
   melihat long memory. Log aktivitas mencatat `Long memory (…) tidak dapat dihubungi` paling sering sekali per 10
   menit. Konsolidasi menunda pemindahan: short memory yang sudah jatuh tempo tetap di short memory sampai database
-  kembali, dan statistik menu Memory menampilkan store long memory sebagai *tidak terhubung*.
+  kembali, dan statistik menu Memori menampilkan store long memory sebagai *tidak terhubung*.
 - Short memory dari project yang sudah dihapus berubah menjadi knowledge memory saat dipindah.
 
 ## Berbagi memory antar developer (project key)
@@ -188,7 +188,7 @@ tidak diikat ke folder, melainkan ke **project key** yang sama untuk semua clone
 1. file `.aithread/project.json` di root repository, mis. `{ "key": "eep" }` — di-commit tim, selalu menang (file yang
    sama bisa memuat `"run"`, perintah menjalankan aplikasi untuk testing; lihat
    [Menjalankan aplikasi](07-cara-kerja.md#menjalankan-aplikasi));
-2. **key manual** di menu Project → detail project (untuk repository tanpa remote);
+2. **key manual** di menu Proyek → detail project (untuk repository tanpa remote);
 3. **git remote** `origin` (atau remote pertama), dinormalisasi: `https://user:token@gitlab.com/Org/EEP.git`,
    `git@gitlab.com:org/eep.git`, dan `ssh://git@gitlab.com:22/org/eep` semuanya menjadi `gitlab.com/org/eep`
    (kredensial tidak pernah ikut). Worktree dan submodule (`.git` berupa file) mengikuti repository utamanya;
@@ -197,11 +197,11 @@ tidak diikat ke folder, melainkan ke **project key** yang sama untuk semua clone
 
 AIT membaca file itu langsung (tidak menjalankan `git`) dan menghitung ulang key setiap kali project terlihat,
 juga sekali saat start. Supaya long memory dari semua developer terkumpul di satu tempat, arahkan **Long memory**
-(dan **Business memory**) semua developer ke database yang sama di Setting → Penyimpanan memory. Short memory boleh
+(dan **Business memory**) semua developer ke database yang sama di Pengaturan → Penyimpanan memory. Short memory boleh
 tetap lokal: setelah 24 jam ia pindah ke long memory bersama.
 
 - Memory baru menyimpan key dan nama project-nya, sehingga tetap bernama walau project itu belum terdaftar di mesin
-  Anda. Di menu Memory, memory dari developer lain ditampilkan atas nama clone project yang sama di mesin Anda.
+  Anda. Di menu Memori, memory dari developer lain ditampilkan atas nama clone project yang sama di mesin Anda.
 - Memory dari versi lama (tanpa key) otomatis diberi key project-nya saat AIT start. Di store bersama, setiap
   developer mengisi baris miliknya sendiri, jadi lama-lama semuanya terkunci ke key.
 - Saat key project berubah dari **lokal** menjadi key bersama (remote, file, atau key manual ditambahkan), memory-nya
@@ -214,7 +214,7 @@ tetap lokal: setelah 24 jam ia pindah ke long memory bersama.
 
 ## Penyimpanan memory
 
-Menu **Setting → Penyimpanan memory** (`/Setting#memory`) menentukan di mana tiap level disimpan. Perubahan langsung
+Menu **Pengaturan → Penyimpanan memory** (`/Setting#memory`) menentukan di mana tiap level disimpan. Perubahan langsung
 berlaku tanpa restart.
 
 | Provider | Short | Long | Business | Field yang dipakai |
@@ -236,7 +236,7 @@ berlaku tanpa restart.
   ikut tinggal di database long memory, jadi store bersama juga berbagi daftar modulnya. Begitu juga
   [katalog unit test](07-cara-kerja.md#unit-test) (`UnitTestCases`, `UnitTestRuns`, `UnitTestSettings`): developer yang
   memakai store bersama menjalankan test yang sama. Store yang tidak bisa dihubungi
-  ditolak, jadi setting lama tetap berlaku. Database eksternal tidak memakai migrasi EF; tabel dibuat sendiri pada
+  ditolak, jadi pengaturan lama tetap berlaku. Database eksternal tidak memakai migrasi EF; tabel dibuat sendiri pada
   pemakaian pertama, dan tabel dari versi lama otomatis mendapat kolom baru (`ProjectKey`, `ProjectName`, kolom label
   `Module`, `Layers`, `Kind`, `Area`, `Keywords`, `LabelVersion`, `LegacyLabel`, `ReviewReason`, `RelabelAttempts`) —
   user perlu hak `ALTER TABLE` sekali itu.
@@ -308,7 +308,7 @@ Project memory berformat lama (`Pitfall`, `Rule`, `Flow`, `Convention`, `Archite
 dan punya project key dimigrasi otomatis oleh worker yang sama:
 
 1. **Backup** sekali: semua long project memory ke
-   `%LOCALAPPDATA%\AIThread\backup\memory-before-changelog-<waktu>.json` (format import menu Memory). Bila backup gagal,
+   `%LOCALAPPDATA%\AIThread\backup\memory-before-changelog-<waktu>.json` (format import menu Memori). Bila backup gagal,
    migrasi ditunda (ringkasan dari entri `Change` tetap jalan).
 2. Per modul, fakta lama (maks 40 per panggilan) dilipat ke `Summary` modul itu bersama entri `Change` yang menunggu:
    `Rule` → validasi, `Flow` → flow, `Pitfall`/`Convention`/`Architecture` → catatan, dst.
@@ -324,7 +324,7 @@ yang berbagi store ikut terhitung. File itu dihapus setelah semua memory lama se
 Memory lama yang belum berlabel dilabeli dulu oleh [migrasi label](#migrasi-label-memory-lama), lalu ikut dimigrasi.
 Memory yang menunggu review tidak disentuh. Knowledge memory tidak dimigrasi.
 
-Banner **Migrasi memory lama ke ringkasan modul** di menu Memory tampil selama masih ada memory lama yang menunggu:
+Banner **Migrasi memory lama ke ringkasan modul** di menu Memori tampil selama masih ada memory lama yang menunggu:
 progres keseluruhan `120/300 dimigrasi (40%)` dengan progress bar (bertahan setelah restart), yang menunggu dan di
 berapa modul, jumlah ringkasan modul, yang masih di short memory, status (putaran yang berjalan `modul 3/12 (User)`,
 menunggu node model, atau waktu putaran terakhir), pesan terakhir (mis. backup gagal), dan path backup. Banner diperbarui lewat SSE setiap modul selesai dan hilang sendiri setelah semuanya dimigrasi.
@@ -384,7 +384,7 @@ file disebut prompt / disentuh tugas
 - Sebelum planner hanya ① dan ② yang ditunggu; ③ berjalan paralel, dan ekstraksi memory menunggu hasilnya.
 - File plumbing tanpa fitur (startup, konfigurasi, layout, helper) masuk modul `Core`.
 - Tanpa node model aktif, modul diambil dari nama file.
-- **Koreksi manual** dari menu Project → detail → *Peta kode* (*Atur file* / *Ubah*), atau lewat prompt: planner
+- **Koreksi manual** dari menu Proyek → detail → *Peta kode* (*Atur file* / *Ubah*), atau lewat prompt: planner
   punya tool `set_module` ("anggap `UserBL` modul Account"). Koreksi manual tidak pernah ditimpa aturan atau model.
 - **Scan** memetakan semua file sumber yang belum terpetakan (maks 3.000 file per scan; `bin`, `obj`, `node_modules`,
   `wwwroot/lib`, dsb. dilewati). Setiap file pasti mendapat entri (dari model atau nama file), jadi scan yang terputus
@@ -407,14 +407,14 @@ modul ganda*:
 |---|---|
 | Nama sama dengan penulisan berbeda (huruf besar/kecil, pemisah, jamak) | Digabung otomatis ke modul yang lebih banyak dipakai |
 | Model menilai sama dengan keyakinan ≥ 85% (terjemahan, nama lebih panjang, typo) | Digabung otomatis, tercatat, bisa dibatalkan |
-| Model ragu | Saran di **Memory → Perlu review** (*Gabungkan* / *Bukan duplikat*) |
+| Model ragu | Saran di **Memori → Perlu review** (*Gabungkan* / *Bukan duplikat*) |
 
 Menggabungkan modul memindahkan memory (short & long, label ikut ditulis ulang), peta kode, dan halaman wiki bisnis;
 nama dan alias modul asal menjadi alias modul tujuan. Halaman wiki yang judulnya sudah ada di modul tujuan tidak
-dipindah (dilaporkan di log). **Batalkan** di riwayat gabung modul (Project → detail) mengembalikan tepat baris yang
+dipindah (dilaporkan di log). **Batalkan** di riwayat gabung modul (Proyek → detail) mengembalikan tepat baris yang
 dipindah. Saran yang ditolak tidak diusulkan lagi.
 
-**Ganti nama modul** (form memory: tombol *Ubah nama* di samping dropdown modul; Project → detail: field *Nama* di
+**Ganti nama modul** (form memory: tombol *Ubah nama* di samping dropdown modul; Proyek → detail: field *Nama* di
 *Atur*) juga bisa hanya mengganti huruf besar/kecil, mis. `Klaimdf` → `KlaimDF`. Memory (modul utama maupun modul
 lain, label ikut ditulis ulang), peta kode, halaman wiki bisnis, pengalih modul yang sudah digabung, dan riwayat gabung
 ikut berganti nama. Nama lama yang berbeda (bukan hanya huruf besar/kecil) disimpan sebagai alias. Nama yang sudah
@@ -437,7 +437,7 @@ otomatis oleh worker saat AIT start lalu tiap `MemoryRelabelIntervalMinutes` (de
      lama*. Setiap baris diklaim dulu (update bersyarat), jadi beberapa mesin yang berbagi store tidak memproses baris
      yang sama.
 4. **Relabel sisa**: knowledge memory, memory project yang terdaftar di mesin lain, dan memory tanpa project key.
-5. Memory yang modulnya tidak bisa ditentukan, atau gagal 3 kali, masuk **Memory → Perlu review**.
+5. Memory yang modulnya tidak bisa ditentukan, atau gagal 3 kali, masuk **Memori → Perlu review**.
 6. **Peta kode lengkap**: scan penuh semua project terdaftar (yang punya memory lebih dulu), setelah semua label
    selesai. Sekali per proses AIT; scan yang terputus dilanjutkan.
 7. **Cek modul ganda** dan daftar **kandidat memory duplikat** (modul & jenis sama, keyword sangat mirip; hanya saran).
@@ -494,19 +494,19 @@ thread selesai (tiap developer) ──► menunggu dirangkum (lokal)
   di jalan berikutnya.
 - **Banyak developer**: setiap AIT merangkum thread miliknya sendiri ke store yang sama. Setiap halaman punya
   nomor versi; penyimpanan atas versi yang sudah berubah ditolak (penulis wiki membaca ulang lalu menulis ulang sekali,
-  editor di menu Memory menampilkan pesan *sudah diubah …*). Setiap simpan membuat revisi baru yang bisa dipulihkan.
+  editor di menu Memori menampilkan pesan *sudah diubah …*). Setiap simpan membuat revisi baru yang bisa dipulihkan.
 - Halaman yang **dikunci** (*Diperbarui AI* dimatikan) tidak pernah diubah penulis wiki — cocok untuk halaman yang
   sudah dikurasi manual.
 
 ### Mengedit manual
 
-Menu **Memory → Business memory**: pilih project, buka halaman, lalu *Edit*, atau buat *Halaman baru*. Tempel screenshot
+Menu **Memori → Business memory**: pilih project, buka halaman, lalu *Edit*, atau buat *Halaman baru*. Tempel screenshot
 langsung ke editor (Ctrl+V) atau pakai *Sisipkan gambar*; gambar (PNG/JPEG/GIF/WebP, maks 5 MB) disimpan di store dan
 ditulis sebagai `![keterangan](asset:<id>)`. *Pratinjau* menampilkan halaman persis seperti setelah disimpan. HTML mentah
 tidak dirender, dan tautan hanya boleh ke `http(s)`, `mailto`, atau dalam aplikasi — wiki bisa ditulis siapa saja yang
 berbagi store, jadi isinya tidak dipercaya mentah-mentah.
 
-## Mengelola dari menu Memory
+## Mengelola dari menu Memori
 
 - **Tambah memory**: tulis pengetahuan yang ingin selalu diingat planner, mis. perubahan yang dikerjakan di luar AIT
   atau keputusan tim. Jenis bawaan `Change`; deskripsi kosong menampilkan contoh formatnya. Isi modul (saran dari daftar
@@ -520,7 +520,7 @@ berbagi store, jadi isinya tidak dipercaya mentah-mentah.
 - **Filter** modul, layer, jenis, dan *berlabel / belum berlabel* di atas tabel; banner *Migrasi label memory* tampil
   selama masih ada memory yang menunggu label (tombol *Jalankan sekarang*).
 - Tab **Perlu review**: memory tanpa label (*Beri label*), saran gabung modul, dan kandidat memory duplikat.
-- Menu **Project → detail**: daftar modul (deskripsi, alias, gabung ke modul lain, *Cek modul ganda*), peta kode
+- Menu **Proyek → detail**: daftar modul (deskripsi, alias, gabung ke modul lain, *Cek modul ganda*), peta kode
   (cari, *Atur file*, *Scan*), dan riwayat gabung modul (*Batalkan*).
 - **→ DB**: pindahkan short memory ke long memory sekarang.
 - **Hapus**: hapus memory yang salah atau usang.
@@ -540,7 +540,7 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
   bersama tetap berbagi katalog: judul, skenario, status, alasan obsolete, hasil terakhir, dan **snapshot** isi file test
   (kecuali project yang mematikan *Simpan snapshot test*). Tidak ikut bila filter memakai pencarian teks atau tipe
   *Knowledge*. Riwayat run tidak ikut.
-- **Akun uji**, **skenario test** (langkah, peran, kolom form; tanpa hasil run), dan setting testing project (password
+- **Akun uji**, **skenario test** (langkah, peran, kolom form; tanpa hasil run), dan pengaturan testing project (password
   dev, hasil deteksi *login as*) ikut dengan aturan yang sama (bagian `testing`). Password dev ikut karena isinya hanya password bypass di dev yang terlihat seluruh tim.
 - Project ditulis dengan **project key**-nya (memory lama tanpa key memakai key project-nya di mesin ini), jadi di
   mesin lain memory masuk ke clone project yang sama walau folder root-nya berbeda.
@@ -550,7 +550,7 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
   key-nya di mesin tujuan. Item tanpa label (file v1) masuk sebagai *belum berlabel* dan dimigrasi worker. Format v3
   menambah bagian `unitTests`, v4 (saat ini) bagian `testing`; file v1–v3 tetap diterima.
 - **Akun uji** dari file dicocokkan per id, lalu per project key + username (tidak peka huruf besar/kecil), dan
-  setting testing per project key. Yang sudah ada diperbarui hanya bila salinan di file lebih baru. Ringkasan import
+  pengaturan testing per project key. Yang sudah ada diperbarui hanya bila salinan di file lebih baru. Ringkasan import
   menampilkan jumlah akun uji baru, diperbarui, dan dilewati.
 - **Unit test** dari file dicocokkan per id, lalu per project key + nama test. Yang sudah ada diperbarui hanya bila
   salinan di file lebih baru (diubah atau dijalankan lebih akhir), terlepas dari pilihan *lewati/timpa*. Test baru
@@ -566,7 +566,7 @@ mesin yang sama, pakai *Salin memory yang ada* di [Penyimpanan memory](#penyimpa
   Project memory tanpa key dan tanpa project terdaftar menjadi knowledge memory. Key **lokal** (`local:…`) dari mesin
   lain tidak akan cocok dengan project mana pun — beri project key bersama di mesin asal sebelum mengekspor.
 - File berisi teks biasa (deskripsi bisa memuat path, potongan kode, atau info internal; snapshot unit test berisi kode
-  test project). Setting koneksi store dan password tidak pernah ikut. Maksimal 100.000 memory per import.
+  test project). Pengaturan koneksi store dan password tidak pernah ikut. Maksimal 100.000 memory per import.
 
 Tips menulis memory manual:
 
@@ -588,7 +588,7 @@ Tips menulis memory manual:
 
 Dua kunci terakhir hanya dipakai saat short memory memakai provider *Bawaan*.
 
-Business memory diatur di menu Setting (aktif, interval, model, nama developer) — lihat
+Business memory diatur di menu Pengaturan (aktif, interval, model, nama developer) — lihat
 [Konfigurasi](02-konfigurasi.md#business-memory).
 
 Perkiraan "±N jam lagi ke long memory" di tabel Memory selalu dihitung dari 24 jam.

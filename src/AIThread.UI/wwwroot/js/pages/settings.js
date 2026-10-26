@@ -63,7 +63,7 @@
     const [keyText, keyProblem] = routerKeyState(r);
     const key = keyProblem ? `<span class="text-danger">${keyText}</span>` : keyText;
     const unsaved = keyTypedButNotSaved && !keyProblem
-      ? t(' · <span class="text-warning">key ini belum disimpan — klik Simpan setting</span>', ' · <span class="text-warning">this key is not saved yet — click Save settings</span>')
+      ? t(' · <span class="text-warning">key ini belum disimpan — klik Simpan pengaturan</span>', ' · <span class="text-warning">this key is not saved yet — click Save settings</span>')
       : '';
     return `<span class="text-success">✓ Online</span> · ${r.latencyMs} ms · ${r.modelCount} model · ${r.comboCount} combo · ${key}${unsaved}`;
   }
@@ -83,7 +83,7 @@
     const bytes = new Uint8Array(24);
     crypto.getRandomValues(bytes);
     el('proxyKey').value = 'ait-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-    toast(t('Key baru dibuat. Simpan setting, lalu matikan dan aktifkan lagi CLI di menu CLI agar key baru tertulis.', 'New key created. Save the settings, then turn the CLI off and on again in the CLI menu so the new key is written.'), 'info');
+    toast(t('Key baru dibuat. Simpan pengaturan, lalu matikan dan aktifkan lagi CLI di menu CLI agar key baru tertulis.', 'New key created. Save the settings, then turn the CLI off and on again in the CLI menu so the new key is written.'), 'info');
   });
 
   // --- Tabs ---
@@ -134,7 +134,7 @@
     };
     try {
       fill(await api.put('/api/settings', body));
-      toast(t('Setting tersimpan.', 'Settings saved.'));
+      toast(t('Pengaturan tersimpan.', 'Settings saved.'));
       try {
         // The save already re-checked 9router with the stored key; show that instead of the stale test result.
         const status = await api.get('/api/router/status');
@@ -352,7 +352,7 @@
     };
     try {
       await fillBusinessSettings(await api.put('/api/business/settings', body));
-      toast(t('Setting business memory tersimpan.', 'Business memory settings saved.'));
+      toast(t('Pengaturan business memory tersimpan.', 'Business memory settings saved.'));
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -390,7 +390,7 @@
     if (!body.maskingEnabled && !confirm(t('Matikan penyamaran secret? Isi file, prompt, dan output tool akan dikirim ke model apa adanya, termasuk password dan API key.', 'Turn secret masking off? File contents, prompts and tool output will be sent to the model as they are, passwords and API keys included.'))) return;
     try {
       fillSecurity(await api.put('/api/security', body));
-      toast(t('Setting keamanan tersimpan.', 'Security settings saved.'));
+      toast(t('Pengaturan keamanan tersimpan.', 'Security settings saved.'));
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -476,7 +476,7 @@
     };
     try {
       renderTelegram(await api.put('/api/telegram', body));
-      toast(body.enabled ? t('Setting Telegram tersimpan. Bot sedang dihubungkan…', 'Telegram settings saved. Connecting the bot…') : (isEn ? 'Telegram bot turned off.' : 'Bot Telegram dinonaktifkan.'));
+      toast(body.enabled ? t('Pengaturan Telegram tersimpan. Bot sedang dihubungkan…', 'Telegram settings saved. Connecting the bot…') : (isEn ? 'Telegram bot turned off.' : 'Bot Telegram dinonaktifkan.'));
     } catch (error) {
       toast(error.message, 'error');
     }
@@ -677,7 +677,7 @@
     const body = { model: el('skillModel').value || null, maxPromptChars: Number(el('skillMaxChars').value) };
     try {
       await fillSkillSettings(await api.put('/api/skills/settings', body));
-      toast(t('Setting Skill tersimpan.', 'Skill settings saved.'));
+      toast(t('Pengaturan Skill tersimpan.', 'Skill settings saved.'));
     } catch (error) {
       toast(error.message, 'error');
     }
