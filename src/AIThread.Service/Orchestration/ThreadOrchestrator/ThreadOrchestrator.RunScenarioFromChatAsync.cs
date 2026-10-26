@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -25,31 +26,31 @@ public sealed partial class ThreadOrchestrator
         {
             if (await testScenarios.ImportFromProjectAsync(project, scenario, cancellationToken) is { } imported)
             {
-                await progress.StepAsync($"📄 File skenario dibaca: versi {imported.Scenario.Version}, {imported.Scenario.Steps.Count} langkah" +
-                                         (imported.AccountsAdded.Count == 0 ? string.Empty : $" · akun uji baru: {string.Join(", ", imported.AccountsAdded)}"), cancellationToken, hang: 3);
+                await progress.StepAsync(Lang.T($"📄 File skenario dibaca: versi {imported.Scenario.Version}, {imported.Scenario.Steps.Count} langkah", $"📄 Scenario file read: version {imported.Scenario.Version}, {imported.Scenario.Steps.Count} steps") +
+                                         (imported.AccountsAdded.Count == 0 ? string.Empty : Lang.T($" · akun uji baru: {string.Join(", ", imported.AccountsAdded)}", $" · new test accounts: {string.Join(", ", imported.AccountsAdded)}")), cancellationToken, hang: 3);
                 foreach (var warning in imported.Warnings) await progress.StepAsync($"🟡 {warning}", cancellationToken, hang: 3);
                 scenario = await testScenarios.GetAsync(scenario.Id, cancellationToken) ?? scenario;
             }
             if (await ScenarioBlockerAsync(scenario, agreed, settings.EffectiveDeveloperName, cancellationToken) is { } blocked)
             {
-                var ask = blocked == SideEffectsWarning ? $"\n\nBalas `jalankan skenario {scenario.Slug} setuju` untuk melanjutkan." : string.Empty;
-                await progress.FinalAsync($"🧩 **Skenario {scenario.Slug} belum dijalankan.** {blocked}{ask}", cancellationToken);
+                var ask = blocked == SideEffectsWarning ? Lang.T($"\n\nBalas `jalankan skenario {scenario.Slug} setuju` untuk melanjutkan.", $"\n\nReply `run scenario {scenario.Slug} agree` to continue.") : string.Empty;
+                await progress.FinalAsync(Lang.T($"🧩 **Skenario {scenario.Slug} belum dijalankan.** {blocked}{ask}", $"🧩 **Scenario {scenario.Slug} not run yet.** {blocked}{ask}"), cancellationToken);
                 return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, 0);
             }
 
             var prepared = await PrepareRetestAsync(threadId, cancellationToken, cancellationToken);
             await progress.AnchorAsync(ThreadAnchor.Line(prepared.Project.Name, threadId), cancellationToken);
-            activityLog.Info("thread", $"Skenario {scenario.Slug} dijalankan dari chat.", threadId, project.ProjectId);
+            activityLog.Info("thread", Lang.T($"Skenario {scenario.Slug} dijalankan dari chat.", $"Scenario {scenario.Slug} started from the chat."), threadId, project.ProjectId);
             var result = await RunScenarioAsync(prepared, scenario, progress, canAskLogin: !string.IsNullOrEmpty(request.SessionId));
             await progress.FinalAsync(result is null
-                ? "🟡 Skenario berhenti sebelum selesai (lihat aktivitas di detail thread)."
+                ? Lang.T("🟡 Skenario berhenti sebelum selesai (lihat aktivitas di detail thread).", "🟡 The scenario stopped before it finished (see the activity in the thread detail).")
                 : FinalReport.Testing(result.Report).TrimStart('\n'), cancellationToken);
             await progress.FinalAsync(FinalReport.Footer(total.Elapsed, result?.Tokens ?? 0, 0, null, false, null, request.DashboardUrl, threadId), cancellationToken);
             return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, result?.Tokens ?? 0);
         }
         catch (AppValidationException ex)
         {
-            await progress.FinalAsync($"🧩 **Skenario {scenario.Slug} belum dijalankan.** {ex.Message}", cancellationToken);
+            await progress.FinalAsync(Lang.T($"🧩 **Skenario {scenario.Slug} belum dijalankan.** {ex.Message}", $"🧩 **Scenario {scenario.Slug} not run yet.** {ex.Message}"), cancellationToken);
             return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, 0);
         }
     }

@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Telegram;
@@ -14,7 +15,7 @@ public sealed partial class TelegramService
         if (!string.IsNullOrEmpty(token))
         {
             if (!TelegramApi.IsValidTokenFormat(token))
-                throw new AppValidationException("Format bot token tidak valid. Salin token lengkap dari @BotFather, contoh 123456789:AAE…");
+                throw new AppValidationException(Lang.T("Format bot token tidak valid. Salin token lengkap dari @BotFather, contoh 123456789:AAE…", "Invalid bot token format. Copy the full token from @BotFather, e.g. 123456789:AAE…"));
             try
             {
                 botUsername = (await api.GetMeAsync(token, cancellationToken)).Username;
@@ -22,16 +23,16 @@ public sealed partial class TelegramService
             catch (TelegramApiException ex)
             {
                 throw new AppValidationException(ex.IsUnauthorized
-                    ? "Token ditolak Telegram. Salin ulang token dari @BotFather."
-                    : $"Token tidak dapat diverifikasi: {ex.Message}");
+                    ? Lang.T("Token ditolak Telegram. Salin ulang token dari @BotFather.", "Telegram rejected the token. Copy the token from @BotFather again.")
+                    : Lang.T($"Token tidak dapat diverifikasi: {ex.Message}", $"The token cannot be verified: {ex.Message}"));
             }
         }
 
         await settingService.UpdateTelegramAsync(request with { BotToken = token }, cancellationToken);
         runtime.Reload();
         activityLog.Info("telegram", request.Enabled
-            ? $"Setting Telegram disimpan{(botUsername is null ? "" : $" (bot @{botUsername})")}."
-            : "Bot Telegram dinonaktifkan.");
+            ? Lang.T($"Setting Telegram disimpan{(botUsername is null ? "" : $" (bot @{botUsername})")}.", $"Telegram settings saved{(botUsername is null ? "" : $" (bot @{botUsername})")}.")
+            : Lang.T("Bot Telegram dinonaktifkan.", "Telegram bot turned off."));
         return await GetStatusAsync(cancellationToken);
     }
 }

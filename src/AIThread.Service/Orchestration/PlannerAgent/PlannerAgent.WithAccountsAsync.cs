@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -15,7 +16,7 @@ public sealed partial class PlannerAgent
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            recorder.Log(ActivityLevel.Warning, $"Akun uji project tidak bisa dibaca, planner tanpa daftar akun: {ex.Message}");
+            recorder.Log(ActivityLevel.Warning, Lang.T($"Akun uji project tidak bisa dibaca, planner tanpa daftar akun: {ex.Message}", $"The project's test accounts cannot be read, the planner works without the account list: {ex.Message}"));
             return input;
         }
     }

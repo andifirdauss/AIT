@@ -87,7 +87,7 @@ public class ProjectKeyMemoryTests
 
         var read = Assert.Single(await memory.Service.GetManyAsync([page.Id]));
         Assert.Equal("TO — Transfer Order", read.Label);
-        Assert.Contains("[gambar: Form TO]", read.Description);
+        Assert.Contains("[image: Form TO]", read.Description);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ public sealed partial class TestScenarioService
 {
     public async Task<IReadOnlyList<TestingScenarioDto>> ListAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
-        var project = await projectService.GetContextAsync(projectId, cancellationToken) ?? throw new AppValidationException("Project tidak ditemukan.");
+        var project = await projectService.GetContextAsync(projectId, cancellationToken) ?? throw new AppValidationException(Lang.T("Project tidak ditemukan.", "Project not found."));
         if (string.IsNullOrEmpty(project.Key)) return [];
         await using var db = await longStore.CreateTestingAsync(cancellationToken);
         var key = project.Key;

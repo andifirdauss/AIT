@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Skills;
 
@@ -12,8 +13,8 @@ public sealed partial class SetupProfileService
         var current = await skillService.GetSettingsAsync(cancellationToken);
         var model = Clean(s.Model);
         var diffs = new List<string>();
-        Diff(diffs, "Model Skill Orchestrator", current.Model ?? "otomatis", model ?? "otomatis");
-        Diff(diffs, "Maks karakter skill", current.MaxPromptChars, s.MaxPromptChars);
+        Diff(diffs, "Model Skill Orchestrator", current.Model ?? Lang.T("otomatis", "automatic"), model ?? Lang.T("otomatis", "automatic"));
+        Diff(diffs, Lang.T("Maks karakter skill", "Max skill characters"), current.MaxPromptChars, s.MaxPromptChars);
         if (diffs.Count > 0)
         {
             plan.Change(SetupProfileSection.Skills, string.Join(" · ", diffs));
@@ -31,12 +32,12 @@ public sealed partial class SetupProfileService
             }
             catch (AppValidationException ex)
             {
-                plan.Warn($"Sumber skill {url} dilewati: {ex.Message}");
+                plan.Warn(Lang.T($"Sumber skill {url} dilewati: {ex.Message}", $"Skill source {url} skipped: {ex.Message}"));
                 continue;
             }
             if (!known.Add(normalized)) continue;
 
-            plan.Change(SetupProfileSection.Skills, $"Sumber skill ditambah: {normalized} (ditarik di latar belakang).");
+            plan.Change(SetupProfileSection.Skills, Lang.T($"Sumber skill ditambah: {normalized} (ditarik di latar belakang).", $"Skill source added: {normalized} (fetched in the background)."));
             plan.Actions.Add((SetupProfileSection.Skills, () => skillService.AddSourceAsync(new AddSkillSourceRequest(normalized), cancellationToken)));
         }
     }

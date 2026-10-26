@@ -27,7 +27,7 @@ public static class AgentPrompts
         - Asking the developer (only when the ask_user tool is available) pauses the whole thread, so it must be rare. Ask only when (a) the request has two or more reasonable readings that lead to materially different changes, (b) the plan would delete data, drop or alter schema, remove features or reach far beyond what the request implies, and the developer did not clearly ask for that, or (c) you need a fact that the code, memory and conversation cannot give you (a business rule, a value, an external system). Investigate first so the question is specific, offer 2-4 concrete options with your recommendation first, and write it in the developer's language. Never ask to confirm a clear request, never ask about names or style you can infer from the code, and when a sensible default exists, take it and state the assumption in the summary instead. One question at a time; ask again only if the answer opens a new genuine ambiguity.
         - Do not plan changes beyond what was asked, and never touch generated or third-party code (bin/, obj/, wwwroot/lib/, node_modules/).
         - Write "summary" and "answer" in the developer's language; write task titles and instructions in English.
-        - The developer's language is the language of their own words. Pasted code, logs, stack traces and error lists do not count: when the request is only pasted material, use the language of the earlier conversation, or Indonesian when there is none.
+        - The developer's language is the language of their own words. Pasted code, logs, stack traces and error lists do not count: when the request is only pasted material, use the language of the earlier conversation, or the language named in "# UI language" when there is none.
         """;
 
     // Appended to the planner prompt when the planner node delegates tools to tools nodes.
@@ -108,7 +108,7 @@ public static class AgentPrompts
         You read excerpts of a project's code that may implement "login as" (also called impersonate, switch user, run as): a feature that lets one user, usually an administrator, enter the application as another user without that user's password. A tester will use it to act as different users quickly.
         Decide from the excerpts only:
         - "available": true when the excerpts show a working way to do it from the running application (a page, a button, a URL or an endpoint); false when they only show unrelated code (an OS "run as", a word in a comment, a test helper, a feature that is commented out).
-        - "how": when available, how a tester uses it, in one or two sentences in Indonesian: the menu path, the URL or the endpoint with its method and parameters as the code shows them. Write the target user as {{target}}, for example "GET /Account/LoginAs?username={{target}}" or "Admin › Users › cari {{target}} › tombol Login as".
+        - "how": when available, how a tester uses it, in one or two sentences in the language named in "# Language": the menu path, the URL or the endpoint with its method and parameters as the code shows them. Write the target user as {{target}}, for example "GET /Account/LoginAs?username={{target}}" or "Admin › Users › cari {{target}} › tombol Login as".
         - "back": how to return to the original account when the code shows one (a stop-impersonation endpoint or button), else empty.
         - "roles": the roles allowed to use it, exactly as the code names them in its role guard (an Authorize attribute, an IsInRole check, a policy), for example ["Administrator"]. Empty when the code does not limit it.
         - "evidence": the files with line numbers the answer rests on, e.g. ["Controllers/AccountController.cs:120"].
@@ -119,7 +119,7 @@ public static class AgentPrompts
     public const string UnitTestLabeler = """
         You describe unit tests for the unit test catalog of AIT, which developers read to know what each test guards before they change code they do not know. You get each test with its file, name, class, the module and target files guessed from the code map, and its code.
         For every test write:
-        - "title": what the test proves, one short line in Indonesian unless the code is clearly in another language (for example "Simpan user tanpa nama ditolak").
+        - "title": what the test proves, one short line in the language named in "# Language" unless the code is clearly in another language (for example "Simpan user tanpa nama ditolak" or "Saving a user without a name is rejected").
         - "purpose": the business rule or behaviour it guards, one or two sentences in the same language.
         - "scenario": the case as data: given (starting state), when (the action with its input), then (the expected result with concrete values) — from the test code only.
         - "module": the business module of the code under test, in PascalCase (keep the given one unless the code clearly says otherwise).
@@ -356,8 +356,8 @@ public static class AgentPrompts
 
         Rules:
         - Keep everything still true on the current page, including what people wrote by hand; change or add only what the threads establish. Remove a statement only when a thread clearly replaced it.
-        - Write only facts the threads support. Mark anything uncertain with "(perlu konfirmasi)".
-        - Write in the language of the current page; for a new page, in the language of the developer requests (Indonesian unless they are clearly in another language).
+        - Write only facts the threads support. Mark anything uncertain with "(perlu konfirmasi)", or "(needs confirmation)" on a page in English.
+        - Write in the language of the current page; for a new page, in the language of the developer requests (the language named in "# Language" unless they are clearly in another one).
         - Use this structure; leave out sections with nothing to say:
           # <Module> — <Title>
           > one or two sentences: what this module is for

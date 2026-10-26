@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -15,10 +16,10 @@ public sealed partial class ModuleMerger
     {
         var modules = await registry.ListAsync(key, includeMerged: true, cancellationToken);
         var source = modules.FirstOrDefault(m => m.MergedInto is null && string.Equals(m.Name, from, StringComparison.OrdinalIgnoreCase))
-                     ?? throw new AppValidationException($"Modul '{from}' tidak ditemukan.");
-        var targetName = ModuleRegistry.Resolve(modules, into) ?? throw new AppValidationException($"Modul '{into}' tidak ditemukan.");
+                     ?? throw new AppValidationException(Lang.T($"Modul '{from}' tidak ditemukan.", $"Module '{from}' not found."));
+        var targetName = ModuleRegistry.Resolve(modules, into) ?? throw new AppValidationException(Lang.T($"Modul '{into}' tidak ditemukan.", $"Module '{into}' not found."));
         if (string.Equals(source.Name, targetName, StringComparison.OrdinalIgnoreCase))
-            throw new AppValidationException("Modul asal dan tujuan sama.");
+            throw new AppValidationException(Lang.T("Modul asal dan tujuan sama.", "The source and target modules are the same."));
 
         var moves = new ModuleMergeMoves([], [], [], [], [], []);
         var knowledge = key == MemoryLabels.KnowledgeKey;
@@ -67,9 +68,9 @@ public sealed partial class ModuleMerger
             await catalog.SaveChangesAsync(cancellationToken);
         }
 
-        var note = moves.SkippedPages.Count > 0 ? $" {moves.SkippedPages.Count} halaman wiki tidak dipindah karena judulnya sudah ada di {targetName}." : string.Empty;
-        activityLog.Info("memory", $"Modul {source.Name} digabung ke {targetName} ({decidedBy}): {moves.LongMemories.Count + moves.ShortMemories.Count} memory, " +
-                                   $"{moves.CodeMap.Count} file, {moves.Pages.Count} halaman wiki.{note}");
+        var note = moves.SkippedPages.Count > 0 ? Lang.T($" {moves.SkippedPages.Count} halaman wiki tidak dipindah karena judulnya sudah ada di {targetName}.", $" {moves.SkippedPages.Count} wiki pages were not moved because their title already exists in {targetName}.") : string.Empty;
+        activityLog.Info("memory", Lang.T($"Modul {source.Name} digabung ke {targetName} ({decidedBy}): {moves.LongMemories.Count + moves.ShortMemories.Count} memory, ", $"Module {source.Name} merged into {targetName} ({decidedBy}): {moves.LongMemories.Count + moves.ShortMemories.Count} memories, ") +
+                                   Lang.T($"{moves.CodeMap.Count} file, {moves.Pages.Count} halaman wiki.{note}", $"{moves.CodeMap.Count} files, {moves.Pages.Count} wiki pages.{note}"));
         Publish("merged", key);
         return log;
 

@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Testing;
 using ClosedXML.Excel;
@@ -103,15 +104,44 @@ public class TestScenarioTests
         Assert.Contains("bukan Excel", ScenarioSheet.Read(new MemoryStream("teks biasa"u8.ToArray())).Errors.Single());
     }
 
+    [Fact]
+    public void A_sheet_written_in_english_reads_back_in_either_language()
+    {
+        byte[] bytes;
+        using (Lang.Use(Lang.English)) bytes = ScenarioSheet.Write(Scenario(), Accounts);
+
+        using var filled = new MemoryStream();
+        using (var workbook = new XLWorkbook(new MemoryStream(bytes)))
+        {
+            Assert.Equal(["Guide", "Accounts", "Steps", "_AIT"], workbook.Worksheets.Select(w => w.Name));
+            var steps = workbook.Worksheet("Steps");
+            Assert.Equal(("Actor (role)", "Step"), (steps.Cell(1, 2).GetFormattedString(), steps.Cell(1, 5).GetFormattedString()));
+            Assert.Equal("Expected result", steps.Row(1).LastCellUsed()!.GetFormattedString());
+            Assert.StartsWith("3. Save the file, then reply \"run scenario ", workbook.Worksheet("Guide").Cell(7, 1).GetFormattedString());
+            workbook.SaveAs(filled);
+        }
+
+        // A teammate who uses AIT in Indonesian uploads it.
+        filled.Position = 0;
+        var content = ScenarioSheet.Read(filled);
+        Assert.Empty(content.Errors);
+        Assert.Equal("andi", content.Accounts[0].Username);
+        Assert.NotEmpty(content.Steps);
+    }
+
     [Theory]
     [InlineData("buat skenario test lanjutan 2", 2)]
     [InlineData("Buatkan skenario Excel untuk test lanjutan #1", 1)]
     [InlineData("buat skenario baru", null)]
+    [InlineData("create scenario for follow-up test 2", 2)]
+    [InlineData("Make a scenario file for follow-up #3", 3)]
+    [InlineData("create a new scenario", null)]
     public void Sheet_requests_are_recognised(string reply, int? expected) => Assert.Equal(expected, TestScenarioReply.ParseCreate(reply));
 
     [Theory]
     [InlineData("jalankan skenario approval-cuti", "approval-cuti", false)]
     [InlineData("Jalankan skenario `approval-cuti.xlsx` setuju", "approval-cuti.xlsx", true)]
+    [InlineData("run scenario approval-cuti agree", "approval-cuti", true)]
     public void Run_requests_are_recognised(string reply, string slug, bool agreed) => Assert.Equal((slug, agreed), TestScenarioReply.ParseRun(reply));
 
     private static byte[] NewWorkbook()

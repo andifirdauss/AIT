@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations;
@@ -13,7 +14,7 @@ public sealed partial class MemoryService
         await InsertLongAsync(record, cancellationToken);
         await shortStore.DeleteAsync(id);
         Publish("promoted", id);
-        activityLog.Info("memory", $"Memory '{record.Label}' dipindah ke long memory secara manual.", record.SourceThreadId, record.ProjectId);
+        activityLog.Info("memory", Lang.T($"Memory '{record.Label}' dipindah ke long memory secara manual.", $"Memory '{record.Label}' moved to long memory manually."), record.SourceThreadId, record.ProjectId);
         return true;
     }
 }

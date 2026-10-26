@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,13 +23,13 @@ public sealed partial class SessionHandoff
             await db.SessionPacks.Where(p => p.Id == packId)
                 .ExecuteUpdateAsync(s => s.SetProperty(p => p.Pack, pack).SetProperty(p => p.UpdatedAt, DateTime.UtcNow), cancellationToken);
             activityLog.Info("context",
-                $"Sesi Claude Code di {workingDirectory} di-/clear: {transcript.Entries} entri transcript diringkas oleh {author} ({pack.Length} karakter).");
+                Lang.T($"Sesi Claude Code di {workingDirectory} di-/clear: {transcript.Entries} entri transcript diringkas oleh {author} ({pack.Length} karakter).", $"Claude Code session in {workingDirectory} was /cleared: {transcript.Entries} transcript entries summarized by {author} ({pack.Length} characters)."));
             return pack;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Could not summarize cleared session transcript {Path}", transcriptPath);
-            activityLog.Warn("context", $"Ringkasan sesi untuk /clear gagal: {ex.Message}");
+            activityLog.Warn("context", Lang.T($"Ringkasan sesi untuk /clear gagal: {ex.Message}", $"Session summary for /clear failed: {ex.Message}"));
             return null;
         }
     }

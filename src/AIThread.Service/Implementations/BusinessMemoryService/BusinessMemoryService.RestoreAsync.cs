@@ -1,6 +1,7 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Business;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -24,10 +25,10 @@ public sealed partial class BusinessMemoryService
         var page = await pages.SaveAsync(new BusinessPageDraft(
             pageId, current.ProjectKey, current.ProjectName, current.Module, revision.Title, current.Summary, current.Labels,
             revision.Content, current.AutoUpdate, current.Version, BusinessEditKind.Restore, settings.EffectiveDeveloperName,
-            $"Dipulihkan dari versi {version}", []), cancellationToken);
+            Lang.T($"Dipulihkan dari versi {version}", $"Restored from version {version}"), []), cancellationToken);
 
         Publish("updated", page);
-        activityLog.Info("business", $"Halaman bisnis '{page.Module} — {page.Title}' dipulihkan ke versi {version} oleh {page.UpdatedBy}.");
+        activityLog.Info("business", Lang.T($"Halaman bisnis '{page.Module} — {page.Title}' dipulihkan ke versi {version} oleh {page.UpdatedBy}.", $"Business page '{page.Module} — {page.Title}' restored to version {version} by {page.UpdatedBy}."));
         return ToDto(page);
     }
 }

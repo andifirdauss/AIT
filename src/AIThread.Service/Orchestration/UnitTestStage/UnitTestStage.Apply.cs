@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.UnitTests;
 
 namespace AIThread.Service.Orchestration;
@@ -14,7 +15,7 @@ public sealed partial class UnitTestStage
         test.LastRunBy = by;
         test.LastDurationMs = verdict.DurationMs;
         test.LastMessage = verdict.Message is null ? null : UnitTestText.Clip(verdict.Message, 2_000);
-        test.LastSkipReason = verdict.Result == UnitTestResult.Skipped ? UnitTestText.Clip(verdict.SkipReason ?? "Dilewati tanpa alasan.", 500) : null;
+        test.LastSkipReason = verdict.Result == UnitTestResult.Skipped ? UnitTestText.Clip(verdict.SkipReason ?? Lang.T("Dilewati tanpa alasan.", "Skipped without a reason."), 500) : null;
         test.LastInputHash = inputHash;
         if (verdict.Requirement is { } requirement) test.Requires = UnitTestText.JoinCsv(UnitTestText.Lines(test.Requires).Append(requirement));
     }

@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Skills;
@@ -21,8 +22,8 @@ public static partial class SkillSourceLocator
     public static SkillSourceLocation Locate(string? input)
     {
         var text = (input ?? string.Empty).Trim();
-        if (text.Length == 0) throw new AppValidationException("Link skill wajib diisi.");
-        if (text.Length > 800) throw new AppValidationException("Link skill maksimal 800 karakter.");
+        if (text.Length == 0) throw new AppValidationException(Lang.T("Link skill wajib diisi.", "The skill link is required."));
+        if (text.Length > 800) throw new AppValidationException(Lang.T("Link skill maksimal 800 karakter.", "The skill link is at most 800 characters."));
 
         // "owner/repo" is shorthand for a GitHub repository.
         if (ShorthandRepo().IsMatch(text)) text = $"https://github.com/{text}";
@@ -32,7 +33,7 @@ public static partial class SkillSourceLocator
             return new SkillSourceLocation(SkillSourceKind.Git, text, Limit(TrimGit(scp.Groups["path"].Value)), null, null, null, text);
 
         if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            throw new AppValidationException("Link skill tidak valid. Contoh: https://github.com/anthropics/skills");
+            throw new AppValidationException(Lang.T("Link skill tidak valid. Contoh: https://github.com/anthropics/skills", "Invalid skill link. Example: https://github.com/anthropics/skills"));
 
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.UnescapeDataString).ToArray();
         var host = uri.Host.ToLowerInvariant();

@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -25,7 +26,7 @@ public sealed partial class ModuleMerger
             var (from, into) = Keep(a, b, usage);
             try
             {
-                await MergeAsync(key, from.Name, into.Name, "Nama sama dengan penulisan berbeda.", 1.0, AutoDecider, cancellationToken);
+                await MergeAsync(key, from.Name, into.Name, Lang.T("Nama sama dengan penulisan berbeda.", "The same name written differently."), 1.0, AutoDecider, cancellationToken);
                 count++;
             }
             catch (AppValidationException)
@@ -75,7 +76,7 @@ public sealed partial class ModuleMerger
                     Reason = Clip(reason, 1000), Confidence = confidence, CreatedAt = DateTime.UtcNow
                 });
                 await catalog.SaveChangesAsync(cancellationToken);
-                activityLog.Info("memory", $"Saran merge modul {from} → {into} (keyakinan {confidence:P0}) menunggu review di menu Memory.");
+                activityLog.Info("memory", Lang.T($"Saran merge modul {from} → {into} (keyakinan {confidence:P0}) menunggu review di menu Memory.", $"Module merge suggestion {from} → {into} (confidence {confidence:P0}) awaits review in the Memory menu."));
                 Publish("suggested", key);
             }
             decided.Add(PairKey(from, into));

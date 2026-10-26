@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
@@ -37,7 +38,7 @@ public sealed partial class ThreadOrchestrator
             t.WrapperModel = wrapper?.Model;
         });
 
-        if (wrapper is not null) await progress.PhaseAsync("📦", $"Rangkuman · {wrapper.Model}", cancellationToken);
+        if (wrapper is not null) await progress.PhaseAsync("📦", Lang.T($"Rangkuman · {wrapper.Model}", $"Summary · {wrapper.Model}"), cancellationToken);
         await progress.FinalAsync(FinalReport.Status(execution, verification?.Report, testing?.Report, unitReport,
             retryHint: request.Source == ThreadSource.ClaudeCode), cancellationToken);
 
@@ -72,7 +73,7 @@ public sealed partial class ThreadOrchestrator
             }
             catch (NineRouterException ex)
             {
-                recorder.Log(ActivityLevel.Warning, $"Wrapper gagal ({ex.Message}); memakai ringkasan otomatis.");
+                recorder.Log(ActivityLevel.Warning, Lang.T($"Wrapper gagal ({ex.Message}); memakai ringkasan otomatis.", $"Wrapper failed ({ex.Message}); using an automatic summary."));
                 finalText = WrapperAgent.FallbackSummary(plan, execution, verification?.Report, testing?.Report, unitReport);
                 if (!narrated) await progress.FinalAsync(plan.Summary, cancellationToken);
             }
@@ -85,7 +86,7 @@ public sealed partial class ThreadOrchestrator
         var succeeded = execution.Results.Count(r => r.Status == ThreadTaskStatus.Succeeded);
         var status = succeeded == 0 ? ThreadStatus.Failed : ThreadStatus.Completed;
         var notes = new List<string>();
-        if (succeeded < execution.Results.Count) notes.Add($"{execution.Results.Count - succeeded} tugas tidak berhasil.");
+        if (succeeded < execution.Results.Count) notes.Add(Lang.T($"{execution.Results.Count - succeeded} tugas tidak berhasil.", $"{execution.Results.Count - succeeded} task(s) did not succeed."));
         if (verification?.Report.Outcome == VerificationReport.Failed) notes.Add(VerificationNote(verification.Report));
         if (testing?.Report.Outcome == TestingReport.Failed) notes.Add(TestingNote(testing.Report));
         if (unitReport?.Outcome == UnitTestReport.Failed) notes.Add(UnitTestNote(unitReport));
@@ -93,7 +94,7 @@ public sealed partial class ThreadOrchestrator
         if (succeeded > 0) CodeChanged(pipeline.Project.ProjectId, thread.Id);
 
         recorder.Log(status == ThreadStatus.Completed ? ActivityLevel.Success : ActivityLevel.Error,
-            $"Thread selesai: {succeeded}/{execution.Results.Count} tugas berhasil dalam {Seconds(pipeline.Total.ElapsedMilliseconds)}.");
+            Lang.T($"Thread selesai: {succeeded}/{execution.Results.Count} tugas berhasil dalam {Seconds(pipeline.Total.ElapsedMilliseconds)}.", $"Thread finished: {succeeded}/{execution.Results.Count} tasks succeeded in {Seconds(pipeline.Total.ElapsedMilliseconds)}."));
 
         MemoryExtraction? memory = null;
         var memoryPending = false;

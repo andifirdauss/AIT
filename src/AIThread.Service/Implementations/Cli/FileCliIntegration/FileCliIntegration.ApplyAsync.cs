@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations.Cli;
@@ -8,7 +9,7 @@ public abstract partial class FileCliIntegration
 {
     public async Task<CliStatusDto> ApplyAsync(CliScope scope, Guid? projectId, string proxyBaseUrl, CancellationToken cancellationToken = default)
     {
-        if (!Uri.TryCreate(proxyBaseUrl, UriKind.Absolute, out _)) throw new AppValidationException("URL proxy tidak valid.");
+        if (!Uri.TryCreate(proxyBaseUrl, UriKind.Absolute, out _)) throw new AppValidationException(Lang.T("URL proxy tidak valid.", "Invalid proxy URL."));
 
         var (path, projectRoot) = await ResolveAsync(scope, projectId, cancellationToken);
         var updated = Apply(await ReadAsync(path, cancellationToken), await EntryAsync(proxyBaseUrl, projectRoot, cancellationToken));

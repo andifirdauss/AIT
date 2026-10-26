@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Common.Enums;
 using AIThread.Data.Context;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,7 @@ public sealed class BusinessMemoryStore(IDbContextFactory<AIThreadDbContext> mai
     public bool IsExternal => _current.Options is not null;
 
     public string Description => _current.Connection.Provider == MemoryStoreProvider.Default
-        ? "Database utama AIT"
+        ? Lang.T("Database utama AIT", "Main AIT database")
         : _current.Connection.Describe();
 
     public Task<IBusinessMemoryDb> CreateAsync(CancellationToken cancellationToken = default) => _current.OpenAsync(mainFactory, cancellationToken);

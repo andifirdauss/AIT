@@ -1,6 +1,7 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using Microsoft.EntityFrameworkCore;
 
 namespace AIThread.Service.Orchestration;
@@ -24,9 +25,9 @@ public sealed partial class ThreadRollback
         var restored = files.Where(f => f.Action == Restore).Select(f => f.FilePath).ToList();
         var deleted = files.Where(f => f.Action == Delete).Select(f => f.FilePath).ToList();
         var parts = new List<string>();
-        if (restored.Count > 0) parts.Add($"{restored.Count} file dikembalikan ({string.Join(", ", restored)})");
-        if (deleted.Count > 0) parts.Add($"{deleted.Count} file buatan thread dihapus ({string.Join(", ", deleted)})");
-        activityLog.Write(ActivityLevel.Warning, "thread", $"Perubahan thread dibatalkan: {(parts.Count == 0 ? "tidak ada file yang perlu dikembalikan" : string.Join("; ", parts))}.",
+        if (restored.Count > 0) parts.Add(Lang.T($"{restored.Count} file dikembalikan ({string.Join(", ", restored)})", $"{restored.Count} file(s) restored ({string.Join(", ", restored)})"));
+        if (deleted.Count > 0) parts.Add(Lang.T($"{deleted.Count} file buatan thread dihapus ({string.Join(", ", deleted)})", $"{deleted.Count} file(s) created by the thread deleted ({string.Join(", ", deleted)})"));
+        activityLog.Write(ActivityLevel.Warning, "thread", Lang.T($"Perubahan thread dibatalkan: {(parts.Count == 0 ? "tidak ada file yang perlu dikembalikan" : string.Join("; ", parts))}.", $"Thread changes rolled back: {(parts.Count == 0 ? "no file needed restoring" : string.Join("; ", parts))}."),
             thread.Id, thread.ProjectId);
     }
 }

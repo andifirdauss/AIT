@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,7 @@ public sealed partial class SessionHandoff
         var transcript = ValidTranscriptPath(transcriptPath);
         if (transcript is null)
         {
-            activityLog.Warn("context", $"Hook /clear diabaikan: transcript di luar folder Claude Code ({transcriptPath}).");
+            activityLog.Warn("context", Lang.T($"Hook /clear diabaikan: transcript di luar folder Claude Code ({transcriptPath}).", $"/clear hook ignored: the transcript is outside the Claude Code folder ({transcriptPath})."));
             return;
         }
 

@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -48,7 +49,7 @@ public sealed partial class MemoryStorageService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "The unit test catalog could not be copied to the new store.");
-            warnings.Add($"Katalog unit test tidak dapat disalin (bisa diisi ulang lewat Scan test atau import memory): {MemoryStoreTester.ErrorMessage(ex)}");
+            warnings.Add(Lang.T($"Katalog unit test tidak dapat disalin (bisa diisi ulang lewat Scan test atau import memory): {MemoryStoreTester.ErrorMessage(ex)}", $"The unit test catalog cannot be copied (it can be filled again with Scan tests or a memory import): {MemoryStoreTester.ErrorMessage(ex)}"));
         }
     }
 }

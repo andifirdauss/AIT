@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,7 +42,7 @@ public sealed partial class BusinessMemoryWriter
                     page?.Module ?? target.Module, page?.Title ?? target.Title,
                     answer.Summary ?? page?.Summary, answer.Labels ?? page?.Labels ?? string.Empty, content,
                     page?.AutoUpdate ?? true, page?.Version, BusinessEditKind.Ai, author,
-                    answer.ChangeNote ?? "Diperbarui dari pekerjaan developer", threads.Select(t => t.ThreadId).ToList()), cancellationToken);
+                    answer.ChangeNote ?? Lang.T("Diperbarui dari pekerjaan developer", "Updated from developer work"), threads.Select(t => t.ThreadId).ToList()), cancellationToken);
                 return (page is null, used);
             }
             catch (BusinessPageConflictException) when (attempt == 1 && page is not null)

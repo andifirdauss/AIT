@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Service.Memory;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
@@ -13,6 +14,7 @@ public sealed partial class PlannerAgent
         CancellationToken cancellationToken) =>
         ChatMessages.System(await prompts.BuildAsync(
             AgentPrompts.Planner + (groups.Count == 0 ? string.Empty : AgentPrompts.PlannerDelegation(groups)) + (autoTesting ? AgentPrompts.PlannerTesting : string.Empty)
-            + (unitTests is { } authoring ? AgentPrompts.PlannerUnitTests(authoring, autoTesting) : string.Empty),
+            + (unitTests is { } authoring ? AgentPrompts.PlannerUnitTests(authoring, autoTesting) : string.Empty)
+            + "\n\n# UI language\n" + TextLanguage.Ui,
             node, cancellationToken, canReadFiles: true));
 }

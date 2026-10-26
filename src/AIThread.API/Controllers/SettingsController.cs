@@ -72,7 +72,7 @@ public class SettingsController(
     public async Task<ActionResult<ApiResponse<ClaudeHooksStatusDto>>> ApplyClaudeHooks(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken)
     {
         var status = await claudeSettings.ApplyHooksAsync(request, cancellationToken);
-        activityLog.Success("setting", $"Hook /clear Context Keeper dipasang ({status.Path}).");
+        activityLog.Success("setting", Lang.T($"Hook /clear Context Keeper dipasang ({status.Path}).", $"Context Keeper /clear hook installed ({status.Path})."));
         return ApiResponse<ClaudeHooksStatusDto>.Ok(status, Lang.T("Hook /clear terpasang. Berlaku untuk sesi Claude Code yang dibuka setelah ini.", "/clear hook installed. It applies to Claude Code sessions opened after this."));
     }
 
@@ -80,7 +80,7 @@ public class SettingsController(
     public async Task<ActionResult<ApiResponse<ClaudeHooksStatusDto>>> RevertClaudeHooks(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken)
     {
         var status = await claudeSettings.RevertHooksAsync(request.Scope, request.ProjectId, request.ProxyBaseUrl, cancellationToken);
-        activityLog.Info("setting", $"Hook /clear Context Keeper dilepas ({status.Path}).");
+        activityLog.Info("setting", Lang.T($"Hook /clear Context Keeper dilepas ({status.Path}).", $"Context Keeper /clear hook removed ({status.Path})."));
         return ApiResponse<ClaudeHooksStatusDto>.Ok(status, Lang.T("Hook /clear AIT dihapus dari settings Claude Code.", "AIT /clear hook removed from the Claude Code settings."));
     }
 }

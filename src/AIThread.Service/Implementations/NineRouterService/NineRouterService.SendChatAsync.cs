@@ -1,7 +1,8 @@
-using System.Net;
 using System.Net.Http.Headers;
-using System.Text;
+using System.Net;
 using System.Text.Json.Nodes;
+using System.Text;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.Extensions.Logging;
 
@@ -69,7 +70,7 @@ public sealed partial class NineRouterService
                     ? " — " + (string.IsNullOrEmpty(settings.NineRouterApiKey) ? KeyMissingMessage : KeyRejectedMessage)
                     : string.Empty;
                 throw new NineRouterException(
-                    $"9router HTTP {(int)response.StatusCode} untuk model '{request.Model}': {error}{hint}",
+                    Lang.T($"9router HTTP {(int)response.StatusCode} untuk model '{request.Model}': {error}{hint}", $"9router HTTP {(int)response.StatusCode} for model '{request.Model}': {error}{hint}"),
                     (int)response.StatusCode,
                     retryAfter: RetryAfterOf(response));
             }
@@ -85,11 +86,11 @@ public sealed partial class NineRouterService
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new NineRouterException($"Model '{request.Model}' tidak merespons dalam {settings.RequestTimeoutSeconds} detik.", 408);
+            throw new NineRouterException(Lang.T($"Model '{request.Model}' tidak merespons dalam {settings.RequestTimeoutSeconds} detik.", $"Model '{request.Model}' did not respond within {settings.RequestTimeoutSeconds} seconds."), 408);
         }
         catch (HttpRequestException ex)
         {
-            throw new NineRouterException($"9router tidak dapat dihubungi di {settings.NineRouterBaseUrl}: {ex.Message}", null, ex);
+            throw new NineRouterException(Lang.T($"9router tidak dapat dihubungi di {settings.NineRouterBaseUrl}: {ex.Message}", $"9router cannot be reached at {settings.NineRouterBaseUrl}: {ex.Message}"), null, ex);
         }
     }
 }

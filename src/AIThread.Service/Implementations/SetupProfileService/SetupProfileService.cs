@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations;
@@ -27,12 +28,12 @@ public sealed partial class SetupProfileService(
         [NodeRole.Tester] = "Tester"
     };
 
-    private static readonly IReadOnlyDictionary<SetupProfileSection, string> SectionLabels = new Dictionary<SetupProfileSection, string>
+    private static IReadOnlyDictionary<SetupProfileSection, string> SectionLabels => new Dictionary<SetupProfileSection, string>
     {
-        [SetupProfileSection.Router] = "Koneksi 9router",
-        [SetupProfileSection.Orchestration] = "Proxy & orkestrasi",
+        [SetupProfileSection.Router] = Lang.T("Koneksi 9router", "9router connection"),
+        [SetupProfileSection.Orchestration] = Lang.T("Proxy & orkestrasi", "Proxy & orchestration"),
         [SetupProfileSection.Nodes] = "Node",
-        [SetupProfileSection.Memory] = "Penyimpanan memory",
+        [SetupProfileSection.Memory] = Lang.T("Penyimpanan memory", "Memory storage"),
         [SetupProfileSection.Business] = "Business memory",
         [SetupProfileSection.Skills] = "Skill"
     };

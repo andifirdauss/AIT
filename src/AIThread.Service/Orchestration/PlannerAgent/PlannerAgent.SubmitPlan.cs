@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Orchestration;
@@ -17,7 +18,7 @@ public sealed partial class PlannerAgent
         var errors = PlanValidator.Validate(plan, scope, requireTest, unitTests, actors);
         if (errors.Count > 0)
         {
-            recorder.Log(ActivityLevel.Warning, $"Rencana ditolak validator: {string.Join("; ", errors)}");
+            recorder.Log(ActivityLevel.Warning, Lang.T($"Rencana ditolak validator: {string.Join("; ", errors)}", $"Plan rejected by the validator: {string.Join("; ", errors)}"));
             return new PlannerToolOutcome($"Plan rejected. Fix these problems and call submit_plan again:\n- {string.Join("\n- ", errors)}", null, true);
         }
 

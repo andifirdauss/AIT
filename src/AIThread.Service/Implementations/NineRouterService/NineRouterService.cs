@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using Microsoft.Extensions.Logging;
@@ -24,8 +25,8 @@ public sealed partial class NineRouterService(
     ILogger<NineRouterService> logger) : INineRouterService
 {
     public const string HttpClientName = "NineRouter";
-    public const string KeyMissingMessage = "9router mewajibkan API key, tetapi belum ada API key tersimpan. Isi API key di menu Setting lalu klik Simpan.";
-    public const string KeyRejectedMessage = "API key ditolak oleh 9router. Periksa atau ganti API key di menu Setting.";
+    public static string KeyMissingMessage => Lang.T("9router mewajibkan API key, tetapi belum ada API key tersimpan. Isi API key di menu Setting lalu klik Simpan.", "9router requires an API key, but no API key is stored yet. Fill in the API key in the Setting menu, then click Save.");
+    public static string KeyRejectedMessage => Lang.T("API key ditolak oleh 9router. Periksa atau ganti API key di menu Setting.", "The API key was rejected by 9router. Check or replace the API key in the Setting menu.");
 
     private static readonly TimeSpan ModelCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan KeyCheckCacheDuration = TimeSpan.FromMinutes(5);

@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,9 +36,9 @@ public sealed partial class NodeService
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { node.Id, action = "updated" }));
         var names = await FallbackNamesAsync(db, node, cancellationToken);
-        activityLog.Info("node", $"Node {node.Role} '{node.Name}' diperbarui ({node.Model}){SkillNote(node)}{DelegationNote(node)}{FallbackNote(node, names)}." +
-                                 (released > 0 ? $" {released} node lain tidak lagi memakainya sebagai cadangan karena role berubah." : string.Empty) +
-                                 (toolsReleased > 0 ? $" {toolsReleased} delegasi tool planner dilepas dan kembali dijalankan planner." : string.Empty));
+        activityLog.Info("node", Lang.T($"Node {node.Role} '{node.Name}' diperbarui ({node.Model}){SkillNote(node)}{DelegationNote(node)}{FallbackNote(node, names)}.", $"{node.Role} node '{node.Name}' updated ({node.Model}){SkillNote(node)}{DelegationNote(node)}{FallbackNote(node, names)}.") +
+                                 (released > 0 ? Lang.T($" {released} node lain tidak lagi memakainya sebagai cadangan karena role berubah.", $" {released} other nodes no longer use it as a fallback because the role changed.") : string.Empty) +
+                                 (toolsReleased > 0 ? Lang.T($" {toolsReleased} delegasi tool planner dilepas dan kembali dijalankan planner.", $" {toolsReleased} planner tool delegations released; the planner runs them again.") : string.Empty));
         return ToDto(node, names);
     }
 }

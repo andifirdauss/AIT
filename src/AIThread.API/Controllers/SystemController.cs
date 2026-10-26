@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
@@ -28,7 +29,7 @@ public class SystemController(IHostApplicationLifetime lifetime, IHostEnvironmen
         var remote = HttpContext.Connection.RemoteIpAddress;
         if (remote is { IsIPv4MappedToIPv6: true }) remote = remote.MapToIPv4();
         if (remote is null || !IPAddress.IsLoopback(remote) || !Request.Headers.ContainsKey(ShutdownHeader))
-            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<bool>.Fail("Shutdown hanya boleh dari komputer ini lewat scripts/aithread.ps1 atau AIThread.exe."));
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<bool>.Fail(Lang.T("Shutdown hanya boleh dari komputer ini lewat scripts/aithread.ps1 atau AIThread.exe.", "Shutdown is only allowed from this computer through scripts/aithread.ps1 or AIThread.exe.")));
 
         // Stop after the response is sent; stopping right away would abort this request.
         Response.OnCompleted(() =>
@@ -36,6 +37,6 @@ public class SystemController(IHostApplicationLifetime lifetime, IHostEnvironmen
             lifetime.StopApplication();
             return Task.CompletedTask;
         });
-        return ApiResponse<bool>.Ok(true, "AIT dimatikan.");
+        return ApiResponse<bool>.Ok(true, Lang.T("AIT dimatikan.", "AIT stopped."));
     }
 }

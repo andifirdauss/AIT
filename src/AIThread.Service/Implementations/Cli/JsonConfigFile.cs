@@ -1,5 +1,6 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations.Cli;
@@ -24,7 +25,7 @@ public static class JsonConfigFile
         }
         catch (AppValidationException)
         {
-            throw new AppValidationException($"{fileName} berisi komentar. AIT tidak bisa menulisnya tanpa menghapus komentar Anda; hapus komentarnya dulu atau tambahkan entri secara manual.");
+            throw new AppValidationException(Lang.T($"{fileName} berisi komentar. AIT tidak bisa menulisnya tanpa menghapus komentar Anda; hapus komentarnya dulu atau tambahkan entri secara manual.", $"{fileName} contains comments. AIT cannot write it without removing your comments; remove the comments first or add the entry manually."));
         }
         return root;
     }
@@ -47,11 +48,11 @@ public static class JsonConfigFile
         try
         {
             return JsonNode.Parse(content, documentOptions: options) as JsonObject
-                   ?? throw new AppValidationException($"{fileName} bukan objek JSON.");
+                   ?? throw new AppValidationException(Lang.T($"{fileName} bukan objek JSON.", $"{fileName} is not a JSON object."));
         }
         catch (JsonException ex)
         {
-            throw new AppValidationException($"{fileName} tidak dapat dibaca sebagai JSON: {ex.Message}");
+            throw new AppValidationException(Lang.T($"{fileName} tidak dapat dibaca sebagai JSON: {ex.Message}", $"{fileName} cannot be read as JSON: {ex.Message}"));
         }
     }
 }

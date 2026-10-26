@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 
 namespace AIThread.Service.UnitTests;
@@ -10,7 +11,7 @@ public sealed partial class UnitTestExecutor
     {
         var tail = TestResultParser.Clip(Tail(result.OutputTail));
         if (result.StartError is not null) return new TestVerdict(UnitTestResult.Skipped, null, null, result.StartError);
-        if (result.TimedOut) return new TestVerdict(UnitTestResult.Error, result.DurationMs, $"Run test melewati batas waktu ({result.DurationMs / 1000} detik) dan dihentikan.\n{tail}", null);
+        if (result.TimedOut) return new TestVerdict(UnitTestResult.Error, result.DurationMs, Lang.T($"Run test melewati batas waktu ({result.DurationMs / 1000} detik) dan dihentikan.\n{tail}", $"The test run exceeded the time limit ({result.DurationMs / 1000} seconds) and was stopped.\n{tail}"), null);
         if (TestEnvironment.Classify(result.OutputTail) is { } environment && result.ExitCode != 0)
             return new TestVerdict(UnitTestResult.Skipped, result.DurationMs, tail, environment.Reason, environment.Requirement);
 
@@ -18,11 +19,11 @@ public sealed partial class UnitTestExecutor
         if (suite.Format == TestReportFormat.ExitCode)
             return result.ExitCode == 0
                 ? new TestVerdict(UnitTestResult.Passed, result.DurationMs, null, null)
-                : new TestVerdict(UnitTestResult.Failed, result.DurationMs, $"`{result.Command.Display}` gagal (exit code {result.ExitCode}); runner ini tidak memberi hasil per test.\n{tail}", null);
+                : new TestVerdict(UnitTestResult.Failed, result.DurationMs, Lang.T($"`{result.Command.Display}` gagal (exit code {result.ExitCode}); runner ini tidak memberi hasil per test.\n{tail}", $"`{result.Command.Display}` failed (exit code {result.ExitCode}); this runner gives no results per test.\n{tail}"), null);
 
         return result.ExitCode == 0
-            ? new TestVerdict(UnitTestResult.Skipped, result.DurationMs, null, result.ReportError ?? "Runner tidak memberi hasil per test.")
+            ? new TestVerdict(UnitTestResult.Skipped, result.DurationMs, null, result.ReportError ?? Lang.T("Runner tidak memberi hasil per test.", "The runner gives no results per test."))
             // Usually the test project no longer compiles: that is a failure of every test in it.
-            : new TestVerdict(UnitTestResult.Error, result.DurationMs, $"Test tidak bisa dijalankan (exit code {result.ExitCode}): {result.ReportError}\n{tail}", null);
+            : new TestVerdict(UnitTestResult.Error, result.DurationMs, Lang.T($"Test tidak bisa dijalankan (exit code {result.ExitCode}): {result.ReportError}\n{tail}", $"The tests cannot run (exit code {result.ExitCode}): {result.ReportError}\n{tail}"), null);
     }
 }

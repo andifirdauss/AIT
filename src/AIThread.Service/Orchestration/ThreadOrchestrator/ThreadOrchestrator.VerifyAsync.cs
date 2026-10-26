@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 using Microsoft.Extensions.Logging;
 
@@ -31,7 +32,7 @@ public sealed partial class ThreadOrchestrator
             t.ReviewerModel = reviewer?.Model;
         });
         var what = string.Join(" + ", new[] { build?.Display, reviewer is null ? null : $"reviewer {reviewer.Model}", pipeline.UnitTests is null ? null : "unit test" }.OfType<string>());
-        await progress.PhaseAsync("🔍", $"Verifikasi · {what}", cancellationToken);
+        await progress.PhaseAsync("🔍", Lang.T($"Verifikasi · {what}", $"Verification · {what}"), cancellationToken);
 
         var clock = Stopwatch.StartNew();
         try
@@ -57,9 +58,9 @@ public sealed partial class ThreadOrchestrator
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Verification of thread {ThreadId} crashed", recorder.Thread.Id);
-            recorder.Log(ActivityLevel.Error, $"Verifikasi gagal: {ex.Message}");
-            await progress.StepAsync($"🟡 Verifikasi gagal: {ex.Message}", cancellationToken, hang: 3);
-            await progress.StepAsync("verifikasi dihentikan", cancellationToken, last: true);
+            recorder.Log(ActivityLevel.Error, Lang.T($"Verifikasi gagal: {ex.Message}", $"Verification failed: {ex.Message}"));
+            await progress.StepAsync(Lang.T($"🟡 Verifikasi gagal: {ex.Message}", $"🟡 Verification failed: {ex.Message}"), cancellationToken, hang: 3);
+            await progress.StepAsync(Lang.T("verifikasi dihentikan", "verification stopped"), cancellationToken, last: true);
             await recorder.UpdateThreadAsync(t => t.VerificationMs = clock.ElapsedMilliseconds);
             return null;
         }

@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
@@ -8,7 +9,7 @@ public sealed partial class PlannerAgent
 {
     public async Task<PlanningResult> PlanAsync(PlannerInput input, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
-        if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
+        if (input.Nodes.Count == 0) throw new OrchestrationException(Lang.T("Belum ada node Planner aktif. Tambahkan di menu Node.", "No active Planner node yet. Add one in the Node menu."));
 
         input = await WithAccountsAsync(input, recorder, cancellationToken);
         var tools = new WorkspaceTools(input.Scope, secrets);

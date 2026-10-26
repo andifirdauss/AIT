@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Common.Options;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -97,7 +98,7 @@ public sealed class TelegramPollingWorker(
             _handledOrder.Clear();
         }
         runtime.Report(TelegramBotStatus.Running, me.Username);
-        activityLog.Success("telegram", $"Bot Telegram @{me.Username} aktif — menunggu pesan.");
+        activityLog.Success("telegram", Lang.T($"Bot Telegram @{me.Username} aktif — menunggu pesan.", $"Telegram bot @{me.Username} on — waiting for messages."));
         _lastLoggedError = null;
 
         var startedAt = DateTime.UtcNow;
@@ -123,7 +124,7 @@ public sealed class TelegramPollingWorker(
                 if (failures >= 2 || ex.IsConflict)
                 {
                     var message = ex.IsConflict
-                        ? "Token ini sedang dipakai program lain untuk menerima pesan. Pastikan hanya satu AIT yang memakai bot ini."
+                        ? Lang.T("Token ini sedang dipakai program lain untuk menerima pesan. Pastikan hanya satu AIT yang memakai bot ini.", "This token is in use by another program to receive messages. Make sure only one AIT uses this bot.")
                         : ex.Message;
                     runtime.Report(TelegramBotStatus.Error, me.Username, message);
                     LogOnce(message);
@@ -139,7 +140,7 @@ public sealed class TelegramPollingWorker(
                 if (_lastLoggedError is not null)
                 {
                     runtime.Report(TelegramBotStatus.Running, me.Username);
-                    activityLog.Success("telegram", "Koneksi ke Telegram pulih.");
+                    activityLog.Success("telegram", Lang.T("Koneksi ke Telegram pulih.", "The connection to Telegram recovered."));
                     _lastLoggedError = null;
                 }
             }
@@ -165,7 +166,7 @@ public sealed class TelegramPollingWorker(
     // A rejected token only changes on the Setting page, so wait for that; anything else is retried.
     private async Task ReportFailureAsync(string? botUsername, TelegramApiException ex, CancellationToken token)
     {
-        var message = ex.IsUnauthorized ? "Token bot ditolak Telegram. Periksa atau ganti token di menu Setting." : ex.Message;
+        var message = ex.IsUnauthorized ? Lang.T("Token bot ditolak Telegram. Periksa atau ganti token di menu Setting.", "Telegram rejected the bot token. Check or replace the token in the Setting menu.") : ex.Message;
         runtime.Report(TelegramBotStatus.Error, botUsername, message);
         LogOnce(message);
         await Task.Delay(ex.IsUnauthorized ? Timeout.InfiniteTimeSpan : RetryDelay, token);
@@ -176,7 +177,7 @@ public sealed class TelegramPollingWorker(
     {
         if (message == _lastLoggedError) return;
         _lastLoggedError = message;
-        activityLog.Error("telegram", $"Bot Telegram bermasalah: {message}");
+        activityLog.Error("telegram", Lang.T($"Bot Telegram bermasalah: {message}", $"Telegram bot problem: {message}"));
     }
 
     private bool MarkHandled(long updateId)

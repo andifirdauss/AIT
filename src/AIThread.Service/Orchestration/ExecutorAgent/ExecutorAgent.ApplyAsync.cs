@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Orchestration;
@@ -23,7 +24,7 @@ public sealed partial class ExecutorAgent
         if (journal is not null) await journal.AfterWriteAsync(fullPath);
         // The diff keeps the placeholders: it is shown in the report and stored with the thread.
         var diff = DiffBuilder.Build(job.Task.File, parsed.Blocks, applied.CreatesFile);
-        var summary = parsed.Summary ?? $"{(applied.CreatesFile ? "Membuat" : "Mengubah")} {job.Task.File} ({parsed.Blocks.Count} blok).";
+        var summary = parsed.Summary ?? Lang.T($"{(applied.CreatesFile ? "Membuat" : "Mengubah")} {job.Task.File} ({parsed.Blocks.Count} blok).", $"{(applied.CreatesFile ? "Creating" : "Changing")} {job.Task.File} ({parsed.Blocks.Count} block(s)).");
         return (new ExecutorOutcome(true, summary, diff, null, 0, 0), []);
     }
 }

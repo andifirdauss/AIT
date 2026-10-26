@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -14,7 +15,7 @@ public sealed partial class PlannerAgent
         ClientProgress progress,
         CancellationToken cancellationToken)
     {
-        if (input.Nodes.Count == 0) throw new OrchestrationException("Belum ada node Planner aktif. Tambahkan di menu Node.");
+        if (input.Nodes.Count == 0) throw new OrchestrationException(Lang.T("Belum ada node Planner aktif. Tambahkan di menu Node.", "No active Planner node yet. Add one in the Node menu."));
 
         input = await WithAccountsAsync(input, recorder, cancellationToken);
         // The planner that asked, when it is still active; otherwise the preferred one takes the conversation over.

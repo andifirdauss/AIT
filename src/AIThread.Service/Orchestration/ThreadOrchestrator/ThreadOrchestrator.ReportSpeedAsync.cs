@@ -1,5 +1,6 @@
 using System.Globalization;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -11,7 +12,7 @@ public sealed partial class ThreadOrchestrator
     {
         var succeeded = execution.Results.Count(r => r.Status == ThreadTaskStatus.Succeeded);
         var speedup = execution.WallMs > 0 ? (double)execution.SumMs / execution.WallMs : 1;
-        var gain = speedup >= 1.1 ? $" ({speedup.ToString("0.0", CultureInfo.InvariantCulture)}x lebih cepat dari sekuensial)" : string.Empty;
-        await progress.StepAsync($"{succeeded}/{execution.Results.Count} berhasil · {Seconds(execution.WallMs)}{gain}", cancellationToken, last: true);
+        var gain = speedup >= 1.1 ? Lang.T($" ({speedup.ToString("0.0", CultureInfo.InvariantCulture)}x lebih cepat dari sekuensial)", $" ({speedup.ToString("0.0", CultureInfo.InvariantCulture)}x faster than sequential)") : string.Empty;
+        await progress.StepAsync(Lang.T($"{succeeded}/{execution.Results.Count} berhasil · {Seconds(execution.WallMs)}{gain}", $"{succeeded}/{execution.Results.Count} succeeded · {Seconds(execution.WallMs)}{gain}"), cancellationToken, last: true);
     }
 }

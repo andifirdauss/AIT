@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations;
 
@@ -13,17 +14,17 @@ public sealed partial class SetupProfileService
         if (!string.Equals(current.Model, node.Model, StringComparison.Ordinal)) diffs.Add($"model {current.Model} → {node.Model}");
         if (current.Temperature != node.Temperature) diffs.Add("temperature");
         if (current.MaxTokens != node.MaxTokens) diffs.Add("max token");
-        if (current.MaxConcurrency != node.MaxConcurrency) diffs.Add("paralel");
-        if (current.Priority != node.Priority) diffs.Add("prioritas");
-        if (!string.Equals(Clean(current.SystemPrompt), Clean(node.SystemPrompt), StringComparison.Ordinal)) diffs.Add("instruksi tambahan");
-        if (current.IsActive != node.IsActive) diffs.Add(node.IsActive ? "diaktifkan" : "dinonaktifkan");
-        if (!string.Equals(current.FallbackNodeName, target.Fallback, StringComparison.OrdinalIgnoreCase)) diffs.Add("node cadangan");
+        if (current.MaxConcurrency != node.MaxConcurrency) diffs.Add(Lang.T("paralel", "parallel"));
+        if (current.Priority != node.Priority) diffs.Add(Lang.T("prioritas", "priority"));
+        if (!string.Equals(Clean(current.SystemPrompt), Clean(node.SystemPrompt), StringComparison.Ordinal)) diffs.Add(Lang.T("instruksi tambahan", "extra instructions"));
+        if (current.IsActive != node.IsActive) diffs.Add(node.IsActive ? Lang.T("diaktifkan", "activated") : Lang.T("dinonaktifkan", "deactivated"));
+        if (!string.Equals(current.FallbackNodeName, target.Fallback, StringComparison.OrdinalIgnoreCase)) diffs.Add(Lang.T("node cadangan", "fallback node"));
 
         var currentDelegations = (current.ToolDelegations ?? []).Select(d => $"{d.Tool}→{d.ToolsNodeName}".ToLowerInvariant()).Order();
         var targetDelegations = target.Delegations.Select(d => $"{d.Tool}→{d.ToolsNode}".ToLowerInvariant()).Order();
-        if (current.Role == NodeRole.Planner && !currentDelegations.SequenceEqual(targetDelegations)) diffs.Add("delegasi tool");
+        if (current.Role == NodeRole.Planner && !currentDelegations.SequenceEqual(targetDelegations)) diffs.Add(Lang.T("delegasi tool", "tool delegation"));
         if (current.Role == NodeRole.Planner && node.AutoTesting is { } autoTesting && autoTesting != current.AutoTesting)
-            diffs.Add(autoTesting ? "Auto Testing dinyalakan" : "Auto Testing dimatikan");
+            diffs.Add(autoTesting ? Lang.T("Auto Testing dinyalakan", "Auto Testing turned on") : Lang.T("Auto Testing dimatikan", "Auto Testing turned off"));
 
         var currentSkills = (current.Skills ?? []).Select(s => s.Id).Order();
         if (!currentSkills.SequenceEqual(target.SkillIds.Order())) diffs.Add("skill");

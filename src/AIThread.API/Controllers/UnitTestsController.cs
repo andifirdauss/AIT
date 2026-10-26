@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,14 +16,14 @@ public class UnitTestsController(IUnitTestService unitTests) : ControllerBase
 
     [HttpPut("settings")]
     public async Task<ActionResult<ApiResponse<UnitTestSettingsDto>>> SaveSettings(Guid projectId, SaveUnitTestSettingsRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<UnitTestSettingsDto>.Ok(await unitTests.SaveSettingsAsync(projectId, request, cancellationToken), "Setting unit test disimpan.");
+        ApiResponse<UnitTestSettingsDto>.Ok(await unitTests.SaveSettingsAsync(projectId, request, cancellationToken), Lang.T("Setting unit test disimpan.", "Unit test settings saved."));
 
     // Finds the tests in the code and labels the new ones with a cheap model.
     [HttpPost("scan")]
     public async Task<ActionResult<ApiResponse<UnitTestScanResultDto>>> Scan(Guid projectId, CancellationToken cancellationToken)
     {
         var result = await unitTests.ScanAsync(projectId, cancellationToken);
-        return ApiResponse<UnitTestScanResultDto>.Ok(result, $"{result.Found} test ditemukan: {result.Added} baru, {result.Moved} pindah file, {result.Labeled} diberi label.");
+        return ApiResponse<UnitTestScanResultDto>.Ok(result, Lang.T($"{result.Found} test ditemukan: {result.Added} baru, {result.Moved} pindah file, {result.Labeled} diberi label.", $"{result.Found} tests found: {result.Added} new, {result.Moved} moved, {result.Labeled} labeled."));
     }
 
     // Runs the chosen tests now (all=true: every active test).
@@ -30,7 +31,7 @@ public class UnitTestsController(IUnitTestService unitTests) : ControllerBase
     public async Task<ActionResult<ApiResponse<UnitTestRunResultDto>>> Run(Guid projectId, RunUnitTestsRequest request, CancellationToken cancellationToken)
     {
         var result = await unitTests.RunAsync(projectId, request, cancellationToken);
-        return ApiResponse<UnitTestRunResultDto>.Ok(result, $"{result.Ran} test: {result.Passed} lolos, {result.Failed} gagal, {result.Skipped} dilewati.");
+        return ApiResponse<UnitTestRunResultDto>.Ok(result, Lang.T($"{result.Ran} test: {result.Passed} lolos, {result.Failed} gagal, {result.Skipped} dilewati.", $"{result.Ran} tests: {result.Passed} passed, {result.Failed} failed, {result.Skipped} skipped."));
     }
 
     [HttpGet("{testId:guid}/history")]
@@ -42,7 +43,7 @@ public class UnitTestsController(IUnitTestService unitTests) : ControllerBase
     public async Task<ActionResult<ApiResponse<UnitTestCaseDto>>> Reactivate(Guid projectId, Guid testId, CancellationToken cancellationToken)
     {
         var test = await unitTests.ReactivateAsync(projectId, testId, cancellationToken);
-        return ApiResponse<UnitTestCaseDto>.Ok(test, $"{test.DisplayNumber} aktif lagi.");
+        return ApiResponse<UnitTestCaseDto>.Ok(test, Lang.T($"{test.DisplayNumber} aktif lagi.", $"{test.DisplayNumber} active again."));
     }
 
     // The developer confirms an obsolete test is gone; removeCode starts a thread that deletes its code.
@@ -52,7 +53,7 @@ public class UnitTestsController(IUnitTestService unitTests) : ControllerBase
     {
         var result = await unitTests.ConfirmRemovalAsync(projectId, testId, request, cancellationToken);
         return ApiResponse<ConfirmUnitTestRemovalResultDto>.Ok(result, result.ThreadId is null
-            ? $"{result.Test.DisplayNumber} dihapus dari katalog."
-            : $"{result.Test.DisplayNumber} dihapus dari katalog; thread penghapus kodenya sedang berjalan.");
+            ? Lang.T($"{result.Test.DisplayNumber} dihapus dari katalog.", $"{result.Test.DisplayNumber} deleted from the catalog.")
+            : Lang.T($"{result.Test.DisplayNumber} dihapus dari katalog; thread penghapus kodenya sedang berjalan.", $"{result.Test.DisplayNumber} deleted from the catalog; a thread deleting its code is running."));
     }
 }

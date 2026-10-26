@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,7 @@ public sealed partial class ThreadOrchestrator
         catch (Exception ex)
         {
             registry.Complete(thread.Id);
-            return await FailAsync(recorder, new ClientProgress(observer, true), total, $"Setting tidak dapat dibaca: {ex.Message}");
+            return await FailAsync(recorder, new ClientProgress(observer, true), total, Lang.T($"Setting tidak dapat dibaca: {ex.Message}", $"Settings cannot be read: {ex.Message}"));
         }
 
         var progress = new ClientProgress(observer, settings.StreamProgressToClient);
@@ -40,7 +41,7 @@ public sealed partial class ThreadOrchestrator
             var project = prepared.Project;
             await progress.AnchorAsync(ThreadAnchor.Line(project.Name, thread.Id), cancellationToken);
             var executors = await nodeService.GetActiveAsync(NodeRole.Executor, cancellationToken);
-            if (executors.Count == 0) throw new OrchestrationException("Belum ada node Executor aktif. Tambahkan di menu Node.");
+            if (executors.Count == 0) throw new OrchestrationException(Lang.T("Belum ada node Executor aktif. Tambahkan di menu Node.", "No active Executor node yet. Add one in the Node menu."));
             var wrapper = (await nodeService.GetActiveAsync(NodeRole.Wrapper, cancellationToken)).FirstOrDefault();
             var planner = (await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken)).FirstOrDefault();
             var memoryNode = wrapper ?? planner;
@@ -58,9 +59,9 @@ public sealed partial class ThreadOrchestrator
                 t.CompletedAt = null;
             });
             recorder.Log(ActivityLevel.Info,
-                $"Percobaan ulang ke-{thread.RetryCount}: {retryIds.Count} tugas dijalankan lagi dari rencana tersimpan ({string.Join(", ", retryIds)}); planner tidak dipanggil.");
-            await progress.PhaseAsync("🔁", $"Percobaan ulang · {retryIds.Count} tugas", cancellationToken);
-            await progress.StepAsync($"mengulang yang belum berhasil: {string.Join(", ", retryIds)}", cancellationToken, last: true);
+                Lang.T($"Percobaan ulang ke-{thread.RetryCount}: {retryIds.Count} tugas dijalankan lagi dari rencana tersimpan ({string.Join(", ", retryIds)}); planner tidak dipanggil.", $"Retry #{thread.RetryCount}: {retryIds.Count} task(s) run again from the stored plan ({string.Join(", ", retryIds)}); the planner is not called."));
+            await progress.PhaseAsync("🔁", Lang.T($"Percobaan ulang · {retryIds.Count} tugas", $"Retry · {retryIds.Count} task(s)"), cancellationToken);
+            await progress.StepAsync(Lang.T($"mengulang yang belum berhasil: {string.Join(", ", retryIds)}", $"repeating what did not succeed: {string.Join(", ", retryIds)}"), cancellationToken, last: true);
 
             // Fix tasks of the earlier verification that did not succeed: the new verification replaces them.
             foreach (var stale in prepared.Rows.Where(r => !planIds.Contains(r.TaskKey) && r.Status != ThreadTaskStatus.Succeeded))
@@ -68,7 +69,7 @@ public sealed partial class ThreadOrchestrator
                 await recorder.UpdateTaskAsync(stale, e =>
                 {
                     e.Status = ThreadTaskStatus.Skipped;
-                    e.Error = "Digantikan oleh percobaan ulang: verifikasi dijalankan lagi.";
+                    e.Error = Lang.T("Digantikan oleh percobaan ulang: verifikasi dijalankan lagi.", "Replaced by a retry: verification runs again.");
                 });
             }
 
@@ -112,7 +113,7 @@ public sealed partial class ThreadOrchestrator
 
             var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
             var journal = new FileJournal(dbFactory, thread.Id, scope);
-            await progress.PhaseAsync("🚀", $"Eksekusi · {executors.Count} executor paralel", cancellationToken);
+            await progress.PhaseAsync("🚀", Lang.T($"Eksekusi · {executors.Count} executor paralel", $"Execution · {executors.Count} parallel executors"), cancellationToken);
             var execution = await executionEngine.RunAsync(new ExecutionRequest(retryPlan, entities, executors, scope, settings, journal), recorder, progress, cancellationToken);
             await recorder.UpdateThreadAsync(t =>
             {

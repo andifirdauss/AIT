@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+
 namespace AIThread.Service.Orchestration;
 
 public sealed partial class PlannerAgent
@@ -8,15 +10,15 @@ public sealed partial class PlannerAgent
     {
         var parts = new List<string> { "🔖 Label" };
         if (fromSession is not null)
-            parts.Add(fromSession.ThreadId is { } threadId ? $"dari sesi (thread {ThreadAnchor.ShortId(threadId)})" : "dari sesi");
+            parts.Add(fromSession.ThreadId is { } threadId ? Lang.T($"dari sesi (thread {ThreadAnchor.ShortId(threadId)})", $"from the session (thread {ThreadAnchor.ShortId(threadId)})") : Lang.T("dari sesi", "from the session"));
         if (codeMap is { Count: > 0 })
         {
             var labels = codeMap.Select(h => $"{h.Module}·{h.Layer}").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             var shown = string.Join(", ", labels.Take(MaxLabelsShown));
-            if (labels.Count > MaxLabelsShown) shown += $", +{labels.Count - MaxLabelsShown} lainnya";
+            if (labels.Count > MaxLabelsShown) shown += Lang.T($", +{labels.Count - MaxLabelsShown} lainnya", $", +{labels.Count - MaxLabelsShown} more");
             parts.Add($"{codeMap.Count} file → {shown}");
         }
-        parts.Add(relevant > 0 ? $"{relevant} memory relevan" : "belum ada memory relevan");
+        parts.Add(relevant > 0 ? Lang.T($"{relevant} memory relevan", $"{relevant} relevant memories") : Lang.T("belum ada memory relevan", "no relevant memory yet"));
         return string.Join(" · ", parts);
     }
 }

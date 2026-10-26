@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,8 +13,8 @@ public sealed partial class TestAccountStore
         var (username, role, attributes, notes) = TestAccountText.Validate(request);
         await using var db = await store.CreateTestingAsync(cancellationToken);
         var usernames = await db.TestAccounts.AsNoTracking().Where(a => a.ProjectKey == projectKey).Select(a => a.Username).ToListAsync(cancellationToken);
-        if (usernames.Count >= TestAccountText.MaxAccounts) throw new AppValidationException($"Maksimal {TestAccountText.MaxAccounts} akun uji per project.");
-        if (usernames.Contains(username, StringComparer.OrdinalIgnoreCase)) throw new AppValidationException($"Akun uji \"{username}\" sudah ada di project ini.");
+        if (usernames.Count >= TestAccountText.MaxAccounts) throw new AppValidationException(Lang.T($"Maksimal {TestAccountText.MaxAccounts} akun uji per project.", $"At most {TestAccountText.MaxAccounts} test accounts per project."));
+        if (usernames.Contains(username, StringComparer.OrdinalIgnoreCase)) throw new AppValidationException(Lang.T($"Akun uji \"{username}\" sudah ada di project ini.", $"Test account \"{username}\" already exists in this project."));
 
         var account = new TestAccount
         {

@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -12,14 +13,14 @@ public sealed record NodeSwitch(AiNode From, AiNode To, NineRouterException Erro
         429 => "rate limit 429",
         408 => "timeout",
         { } code => $"HTTP {code}",
-        null => "tidak dapat dihubungi"
+        null => Lang.T("tidak dapat dihubungi", "cannot be reached")
     };
 
     // agent: how the developer knows the role ("Planner", "Executor T2", ...).
     public async Task ReportAsync(string agent, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
-        recorder.Log(ActivityLevel.Warning, $"{agent} `{From.Model}` gagal ({Error.Message}); dialihkan ke node cadangan '{To.Name}' (`{To.Model}`).");
-        await progress.StepAsync($"🟡 {agent} {From.Model} tidak tersedia ({Reason}) → pindah ke {To.Model}", cancellationToken, hang: 3);
+        recorder.Log(ActivityLevel.Warning, Lang.T($"{agent} `{From.Model}` gagal ({Error.Message}); dialihkan ke node cadangan '{To.Name}' (`{To.Model}`).", $"{agent} `{From.Model}` failed ({Error.Message}); switched to the fallback node '{To.Name}' (`{To.Model}`)."));
+        await progress.StepAsync(Lang.T($"🟡 {agent} {From.Model} tidak tersedia ({Reason}) → pindah ke {To.Model}", $"🟡 {agent} {From.Model} not available ({Reason}) → switching to {To.Model}"), cancellationToken, hang: 3);
     }
 }
 

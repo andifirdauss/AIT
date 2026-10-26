@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 namespace AIThread.Service.Implementations;
 
@@ -7,6 +8,6 @@ public sealed partial class TestAccountService
     {
         var (project, _) = await ContextAsync(projectId, cancellationToken);
         await store.DeleteAsync(project.Key, accountId, cancellationToken);
-        activityLog.Info(LogCategory, $"Satu akun uji dihapus dari {project.Name}.", projectId: projectId);
+        activityLog.Info(LogCategory, Lang.T($"Satu akun uji dihapus dari {project.Name}.", $"One test account deleted from {project.Name}."), projectId: projectId);
     }
 }

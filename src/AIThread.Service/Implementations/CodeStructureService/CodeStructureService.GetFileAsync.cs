@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace.Structure;
 
@@ -9,7 +10,7 @@ public sealed partial class CodeStructureService
     public async Task<StructureFileDto> GetFileAsync(Guid projectId, string path, CancellationToken cancellationToken = default)
     {
         var snapshot = await SnapshotAsync(projectId, false, cancellationToken);
-        var file = snapshot.Files.GetValueOrDefault(Normalize(path)) ?? throw new AppValidationException($"File '{path}' tidak ada di hasil scan.");
+        var file = snapshot.Files.GetValueOrDefault(Normalize(path)) ?? throw new AppValidationException(Lang.T($"File '{path}' tidak ada di hasil scan.", $"File '{path}' is not in the scan result."));
         var outline = file.Outline ?? FileOutline.Empty;
         var types = outline.Types.Select(t => (Type: t, Members: t.Members.Select(m => WithKey(ToDto(m), m, file.Path, t.Name, t.Container)).ToList())).ToList();
         var functions = outline.Functions.Select(f => WithKey(ToDto(f), f, file.Path, null, null)).ToList();

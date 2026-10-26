@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Testing;
 
@@ -10,7 +11,7 @@ public sealed partial class TestAccountService
     {
         var (project, by) = await ContextAsync(projectId, cancellationToken);
         var info = await impersonation.DetectAsync(project, by, cancellationToken);
-        activityLog.Info(LogCategory, $"Deteksi login as {project.Name}: {info?.Status ?? ImpersonationInfo.Unknown}.", projectId: projectId);
+        activityLog.Info(LogCategory, Lang.T($"Deteksi login as {project.Name}: {info?.Status ?? ImpersonationInfo.Unknown}.", $"Login as detection for {project.Name}: {info?.Status ?? ImpersonationInfo.Unknown}."), projectId: projectId);
         return TestAccountText.ToDto((await store.GetAsync(project.Key, cancellationToken)).Settings);
     }
 }

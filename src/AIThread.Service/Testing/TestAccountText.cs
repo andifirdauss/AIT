@@ -1,7 +1,8 @@
-using System.Text;
 using System.Text.Json;
+using System.Text;
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Testing;
@@ -52,29 +53,29 @@ public static class TestAccountText
         return pairs.Count == 0 ? null : JsonSerializer.Serialize(pairs, Json);
     }
 
-    // Validates a request from the UI or an import; throws with the reason (Indonesian, for the developer).
+    // Validates a request from the UI or an import; throws with the reason (in the UI language, for the developer).
     public static (string Username, string? Role, string? Attributes, string? Notes) Validate(SaveTestAccountRequest request)
     {
         var username = (request.Username ?? string.Empty).Trim();
-        if (username.Length == 0) throw new AppValidationException("Username akun uji wajib diisi.");
-        if (username.Length > TestAccount.MaxUsernameLength) throw new AppValidationException($"Username maksimal {TestAccount.MaxUsernameLength} karakter.");
-        if (username.Any(char.IsWhiteSpace)) throw new AppValidationException("Username tidak boleh berisi spasi.");
+        if (username.Length == 0) throw new AppValidationException(Lang.T("Username akun uji wajib diisi.", "The test account username is required."));
+        if (username.Length > TestAccount.MaxUsernameLength) throw new AppValidationException(Lang.T($"Username maksimal {TestAccount.MaxUsernameLength} karakter.", $"The username is at most {TestAccount.MaxUsernameLength} characters."));
+        if (username.Any(char.IsWhiteSpace)) throw new AppValidationException(Lang.T("Username tidak boleh berisi spasi.", "The username must not contain spaces."));
 
         var role = string.IsNullOrWhiteSpace(request.Role) ? null : request.Role.Trim();
-        if (role?.Length > TestAccount.MaxRoleLength) throw new AppValidationException($"Peran maksimal {TestAccount.MaxRoleLength} karakter.");
+        if (role?.Length > TestAccount.MaxRoleLength) throw new AppValidationException(Lang.T($"Peran maksimal {TestAccount.MaxRoleLength} karakter.", $"The role is at most {TestAccount.MaxRoleLength} characters."));
 
         var pairs = Clean(request.Attributes);
-        if (pairs.Count > MaxAttributes) throw new AppValidationException($"Maksimal {MaxAttributes} atribut per akun.");
+        if (pairs.Count > MaxAttributes) throw new AppValidationException(Lang.T($"Maksimal {MaxAttributes} atribut per akun.", $"At most {MaxAttributes} attributes per account."));
         foreach (var (key, value) in pairs)
         {
-            if (key.Length > MaxAttributeKeyLength) throw new AppValidationException($"Nama atribut \"{key}\" maksimal {MaxAttributeKeyLength} karakter.");
-            if (value.Length > MaxAttributeValueLength) throw new AppValidationException($"Nilai atribut \"{key}\" maksimal {MaxAttributeValueLength} karakter.");
+            if (key.Length > MaxAttributeKeyLength) throw new AppValidationException(Lang.T($"Nama atribut \"{key}\" maksimal {MaxAttributeKeyLength} karakter.", $"The attribute name \"{key}\" is at most {MaxAttributeKeyLength} characters."));
+            if (value.Length > MaxAttributeValueLength) throw new AppValidationException(Lang.T($"Nilai atribut \"{key}\" maksimal {MaxAttributeValueLength} karakter.", $"The value of attribute \"{key}\" is at most {MaxAttributeValueLength} characters."));
         }
         var attributes = pairs.Count == 0 ? null : JsonSerializer.Serialize(pairs, Json);
-        if (attributes?.Length > TestAccount.MaxAttributesLength) throw new AppValidationException("Atribut akun terlalu panjang.");
+        if (attributes?.Length > TestAccount.MaxAttributesLength) throw new AppValidationException(Lang.T("Atribut akun terlalu panjang.", "The account attributes are too long."));
 
         var notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
-        if (notes?.Length > TestAccount.MaxNotesLength) throw new AppValidationException($"Catatan maksimal {TestAccount.MaxNotesLength} karakter.");
+        if (notes?.Length > TestAccount.MaxNotesLength) throw new AppValidationException(Lang.T($"Catatan maksimal {TestAccount.MaxNotesLength} karakter.", $"Notes are at most {TestAccount.MaxNotesLength} characters."));
         return (username, role, attributes, notes);
     }
 

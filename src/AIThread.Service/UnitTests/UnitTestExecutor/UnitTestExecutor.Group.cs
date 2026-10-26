@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 
 namespace AIThread.Service.UnitTests;
@@ -19,7 +20,7 @@ public sealed partial class UnitTestExecutor
                         ?? TestCommandResolver.SuiteFor(suites, root, test.TestFile);
             if (suite is null)
             {
-                verdicts[test.Id] = new TestVerdict(UnitTestResult.Skipped, null, null, "Tidak ada runner test untuk file ini di project (suite tidak ditemukan).");
+                verdicts[test.Id] = new TestVerdict(UnitTestResult.Skipped, null, null, Lang.T("Tidak ada runner test untuk file ini di project (suite tidak ditemukan).", "There is no test runner for this file in the project (suite not found)."));
                 continue;
             }
             if (!suite.CanRun)

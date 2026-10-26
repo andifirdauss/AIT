@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,7 +17,7 @@ public sealed partial class BusinessPageStore
         if (draft.Id is { } id)
         {
             page = await db.BusinessPages.FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
-                   ?? throw new AppValidationException("Halaman bisnis tidak ditemukan (mungkin sudah dihapus).");
+                   ?? throw new AppValidationException(Lang.T("Halaman bisnis tidak ditemukan (mungkin sudah dihapus).", "Business page not found (it may have been deleted)."));
             if (draft.ExpectedVersion is { } expected && expected != page.Version)
                 throw Conflict(page);
             page.Version++;

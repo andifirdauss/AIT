@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.UnitTests;
 
 namespace AIThread.Service.Orchestration;
@@ -22,21 +23,21 @@ public sealed partial class UnitTestStage
         session.Relevant.RemoveWhere(id => session.Tests.FirstOrDefault(t => t.Id == id) is { } test && retired.Contains(test.DisplayNumber));
         if (session.Relevant.Count == 0 && (plan.Tests?.New.Count ?? 0) == 0) return;
 
-        await progress.PhaseAsync("🧪", $"Unit test · baseline · {session.Relevant.Count} test terkait", cancellationToken);
+        await progress.PhaseAsync("🧪", Lang.T($"Unit test · baseline · {session.Relevant.Count} test terkait", $"Unit test · baseline · {session.Relevant.Count} related tests"), cancellationToken);
         var pending = session.Tests.Where(t => session.Relevant.Contains(t.Id) && !session.Baseline.ContainsKey(t.Id)).ToList();
         if (pending.Count > 0) await BaselineAsync(session, pending, recorder, cancellationToken);
 
         session.Report.BaselineCached = session.Cached.Count;
         if (session.Relevant.Count == 0)
         {
-            await progress.StepAsync("belum ada test terkait; test baru dari rencana dijalankan setelah build", cancellationToken, last: true);
+            await progress.StepAsync(Lang.T("belum ada test terkait; test baru dari rencana dijalankan setelah build", "no related test yet; new tests from the plan run after the build"), cancellationToken, last: true);
             return;
         }
         var verdicts = session.Relevant.Select(id => session.Baseline.GetValueOrDefault(id)).OfType<TestVerdict>().ToList();
-        var parts = new List<string> { $"{session.Report.BaselineRan} dijalankan, {session.Report.BaselineCached} dari hasil sebelumnya" };
-        parts.Add($"{verdicts.Count(v => v.Result == UnitTestResult.Passed)} lolos");
-        if (verdicts.Count(v => v.IsFailure) is > 0 and var failing) parts.Add($"{failing} sudah gagal sebelum perubahan");
-        if (verdicts.Count(v => v.Result is UnitTestResult.Skipped or UnitTestResult.NotFound) is > 0 and var skipped) parts.Add($"{skipped} dilewati");
+        var parts = new List<string> { Lang.T($"{session.Report.BaselineRan} dijalankan, {session.Report.BaselineCached} dari hasil sebelumnya", $"{session.Report.BaselineRan} run, {session.Report.BaselineCached} from earlier results") };
+        parts.Add(Lang.T($"{verdicts.Count(v => v.Result == UnitTestResult.Passed)} lolos", $"{verdicts.Count(v => v.Result == UnitTestResult.Passed)} passed"));
+        if (verdicts.Count(v => v.IsFailure) is > 0 and var failing) parts.Add(Lang.T($"{failing} sudah gagal sebelum perubahan", $"{failing} already failing before the change"));
+        if (verdicts.Count(v => v.Result is UnitTestResult.Skipped or UnitTestResult.NotFound) is > 0 and var skipped) parts.Add(Lang.T($"{skipped} dilewati", $"{skipped} skipped"));
         var seconds = session.Report.BaselineRan > 0 ? $" ({session.Report.BaselineMs / 1000.0:0.0}s)" : string.Empty;
         await progress.StepAsync(string.Join(" · ", parts) + seconds, cancellationToken, last: true);
     }

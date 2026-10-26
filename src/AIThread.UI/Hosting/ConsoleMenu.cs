@@ -95,7 +95,7 @@ public sealed class ConsoleMenu(int port)
         Out.WriteLine("  ------------------------------------------------------------");
         if (info is not null)
         {
-            var where = _owned ? Lang.T("proses ini", "this process") : "instance lain / tray";
+            var where = _owned ? Lang.T("proses ini", "this process") : Lang.T("instance lain / tray", "another instance / tray");
             Write("  Server    : ", ConsoleColor.Gray);
             Write(Lang.T($"Berjalan di {client.BaseUrl}", $"Running at {client.BaseUrl}"), ConsoleColor.Green);
             Out.WriteLine($"  (PID {info.ProcessId}, {where})");
@@ -114,7 +114,7 @@ public sealed class ConsoleMenu(int port)
         if (_owned)
         {
             Out.WriteLine(Lang.T("  [2] Sembunyikan ke Tray (background)", "  [2] Hide to the tray (background)"));
-            Out.WriteLine("  [3] Log langsung");
+            Out.WriteLine(Lang.T("  [3] Log langsung", "  [3] Live log"));
             Out.WriteLine("  [4] Restart server");
             Out.WriteLine(Lang.T($"  [5] Ganti port (sekarang {_port})", $"  [5] Change port (now {_port})"));
         }
