@@ -23,6 +23,7 @@ public enum ScriptedAgent
     BusinessWriter,
     CodeMapper,
     MemoryRelabeler,
+    ModuleSummary,
     ModuleDuplicates,
     FunctionCalls,
     ImpersonationDetector,
@@ -79,7 +80,9 @@ public sealed class ScriptedRouter : INineRouterService
         var reply = NextReply(call)
                     ?? call.Agent switch
                     {
-                        ScriptedAgent.MemoryExtractor or ScriptedAgent.MemoryRelabeler => _ => Text("""{"memories": []}"""),
+                        ScriptedAgent.MemoryExtractor => _ => Text("""{"entry": null}"""),
+                        ScriptedAgent.MemoryRelabeler => _ => Text("""{"memories": []}"""),
+                        ScriptedAgent.ModuleSummary => _ => Text("""{"features": []}"""),
                         ScriptedAgent.CodeMapper => _ => Text("""{"groups": []}"""),
                         ScriptedAgent.ModuleDuplicates => _ => Text("""{"merges": []}"""),
                         ScriptedAgent.FunctionCalls => _ => Text("""{"functions": []}"""),
@@ -169,6 +172,7 @@ public sealed class ScriptedRouter : INineRouterService
         if (system.StartsWith(AgentPrompts.BusinessWriter, StringComparison.Ordinal)) return ScriptedAgent.BusinessWriter;
         if (system.StartsWith(AgentPrompts.CodeMapper, StringComparison.Ordinal)) return ScriptedAgent.CodeMapper;
         if (system.StartsWith(AgentPrompts.MemoryRelabeler, StringComparison.Ordinal)) return ScriptedAgent.MemoryRelabeler;
+        if (system.StartsWith(AgentPrompts.ModuleSummary, StringComparison.Ordinal)) return ScriptedAgent.ModuleSummary;
         if (system.StartsWith(AgentPrompts.ModuleDuplicates, StringComparison.Ordinal)) return ScriptedAgent.ModuleDuplicates;
         if (system.StartsWith(AgentPrompts.FunctionCalls, StringComparison.Ordinal)) return ScriptedAgent.FunctionCalls;
         if (system.StartsWith(AgentPrompts.ImpersonationDetector, StringComparison.Ordinal)) return ScriptedAgent.ImpersonationDetector;

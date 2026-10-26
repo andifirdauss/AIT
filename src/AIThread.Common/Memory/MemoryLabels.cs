@@ -195,6 +195,8 @@ public static partial class MemoryLabels
             "convention" or "style" => MemoryKind.Convention,
             "architecture" or "design" or "structure" => MemoryKind.Architecture,
             "pattern" or "solution" or "technique" => MemoryKind.Pattern,
+            "change" or "changelog" or "change log" or "perubahan" => MemoryKind.Change,
+            "summary" or "state" or "ringkasan" => MemoryKind.Summary,
             _ => null
         };
         if (parsed is null) return false;
@@ -202,8 +204,12 @@ public static partial class MemoryLabels
         return true;
     }
 
-    // Knowledge memory is never project specific, so business rules, flows and conventions cannot be knowledge.
+    // Knowledge memory is never project specific, so business rules, flows, conventions, change entries and module
+    // summaries cannot be knowledge.
     public static bool KindAllowedFor(MemoryType type, MemoryKind kind) => type != MemoryType.Knowledge || KnowledgeKinds.Contains(kind);
+
+    // A single fact as older versions wrote it (Pitfall..Pattern), not a change entry or a module summary.
+    public static bool IsFact(MemoryKind? kind) => kind is >= MemoryKind.Pitfall and <= MemoryKind.Pattern;
 
     // "User · Logic/Entry · Rule", with the area in front for a repository that holds several apps; a memory of several
     // modules reads "Order+Invoice · Logic · Flow".
