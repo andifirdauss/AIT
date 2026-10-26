@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h1>Memory</h1>
-        <p class="page-subtitle">Pengetahuan yang disarikan dari thread. Planner menyaring lewat <strong>label</strong> (Modul · Layer · Jenis), memilih dengan <strong>keyword</strong>, lalu membaca deskripsi yang relevan saja. Memory project dibagi antar developer lewat <a href="/Project">project key</a>.</p>
+        <p class="page-subtitle">@Html.Raw(Lang.T("Pengetahuan yang disarikan dari thread. Planner menyaring lewat <strong>label</strong> (Modul · Layer · Jenis), memilih dengan <strong>keyword</strong>, lalu membaca deskripsi yang relevan saja. Memory project dibagi antar developer lewat <a href=\"/Project\">project key</a>.", "Knowledge distilled from threads. The planner narrows it by <strong>label</strong> (Module · Layer · Kind), picks by <strong>keyword</strong>, then reads only the relevant descriptions. Project memory is shared between developers through the <a href=\"/Project\">project key</a>."))</p>
     </div>
 </div>
 
@@ -15,7 +15,7 @@
         <button class="nav-link active" id="memory-list-tab" data-bs-toggle="tab" data-bs-target="#tab-memory-list" data-tab="" type="button" role="tab" aria-controls="tab-memory-list" aria-selected="true">Short &amp; long memory</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="review-tab" data-bs-toggle="tab" data-bs-target="#tab-review" data-tab="review" type="button" role="tab" aria-controls="tab-review" aria-selected="false">Perlu review <span class="badge text-bg-warning d-none" id="reviewBadge"></span></button>
+        <button class="nav-link" id="review-tab" data-bs-toggle="tab" data-bs-target="#tab-review" data-tab="review" type="button" role="tab" aria-controls="tab-review" aria-selected="false">@Html.Raw(Lang.T("Perlu review <span class=\"badge text-bg-warning d-none\" id=\"reviewBadge\"></span>", "Needs review <span class=\"badge text-bg-warning d-none\" id=\"reviewBadge\"></span>"))</button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="business-tab" data-bs-toggle="tab" data-bs-target="#tab-business" data-tab="bisnis" type="button" role="tab" aria-controls="tab-business" aria-selected="false">Business memory</button>
@@ -24,23 +24,23 @@
 
 <div class="alert alert-info d-none small" id="changelogBanner" role="status">
     <div id="changelogText"></div>
-    <div class="progress mt-2" id="changelogProgress" style="height: 6px;" role="progressbar" aria-label="Memory lama yang sudah dimigrasi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="progress mt-2" id="changelogProgress" style="height: 6px;" role="progressbar" aria-label="@Lang.T("Memory lama yang sudah dimigrasi", "Older memory migrated so far")" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div class="progress-bar" id="changelogBar" style="width: 0%"></div>
     </div>
 </div>
 <div class="alert alert-info d-none d-flex flex-wrap align-items-center gap-2 small" id="relabelBanner" role="status">
     <div class="me-auto" id="relabelText"></div>
-    <button type="button" class="btn btn-outline-primary btn-sm" id="btnRelabel">Jalankan sekarang</button>
+    <button type="button" class="btn btn-outline-primary btn-sm" id="btnRelabel">@Lang.T("Jalankan sekarang", "Run now")</button>
 </div>
 
 <div class="tab-content">
 <div class="tab-pane active" id="tab-memory-list" role="tabpanel" aria-labelledby="memory-list-tab" tabindex="0">
 <div class="d-flex justify-content-end gap-2 mb-3">
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnExport" title="Unduh memory sesuai filter di bawah sebagai file JSON">Export</button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnImport" title="Masukkan memory dari file export AIT">Import</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnExport" title="@Lang.T("Unduh memory sesuai filter di bawah sebagai file JSON", "Download the memory matching the filters below as a JSON file")">Export</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnImport" title="@Lang.T("Masukkan memory dari file export AIT", "Bring in memory from an AIT export file")">Import</button>
     <input type="file" class="d-none" id="importFile" accept="application/json,.json" />
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsolidate">Konsolidasi sekarang</button>
-    <button type="button" class="btn btn-primary btn-sm" id="btnAdd">Tambah memory</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnConsolidate">@Lang.T("Konsolidasi sekarang", "Consolidate now")</button>
+    <button type="button" class="btn btn-primary btn-sm" id="btnAdd">@Lang.T("Tambah memory", "Add memory")</button>
 </div>
 
 <div class="row g-3 mb-3">
@@ -48,16 +48,16 @@
         <div class="stat-label">Short memory</div><div class="stat-value" id="statShort">–</div><div class="stat-hint" id="statRedis">&nbsp;</div>
     </div></div></div>
     <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Long · Database</div><div class="stat-value" id="statLong">–</div><div class="stat-hint">hasil dump short &gt; 1 hari</div>
+        <div class="stat-label">Long · Database</div><div class="stat-value" id="statLong">–</div><div class="stat-hint">@Html.Raw(Lang.T("hasil dump short &gt; 1 hari", "dumped from short &gt; 1 day"))</div>
     </div></div></div>
     <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Project memory</div><div class="stat-value" id="statProject">–</div><div class="stat-hint">bisnis, validasi, flow</div>
+        <div class="stat-label">Project memory</div><div class="stat-value" id="statProject">–</div><div class="stat-hint">@Lang.T("bisnis, validasi, flow", "business, validation, flow")</div>
     </div></div></div>
     <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Knowledge memory</div><div class="stat-value" id="statKnowledge">–</div><div class="stat-hint">pola umum lintas project</div>
+        <div class="stat-label">Knowledge memory</div><div class="stat-value" id="statKnowledge">–</div><div class="stat-hint">@Lang.T("pola umum lintas project", "general patterns across projects")</div>
     </div></div></div>
     <div class="col-6 col-lg"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Belum berlabel</div><div class="stat-value" id="statUnlabeled">–</div><div class="stat-hint" id="statReview">&nbsp;</div>
+        <div class="stat-label">@Lang.T("Belum berlabel", "Unlabeled")</div><div class="stat-value" id="statUnlabeled">–</div><div class="stat-hint" id="statReview">&nbsp;</div>
     </div></div></div>
 </div>
 
@@ -66,53 +66,53 @@
         <div class="row g-2">
             <div class="col-md-2">
                 <select class="form-select form-select-sm" id="filterLevel">
-                    <option value="">Semua level</option><option value="Short">Short</option><option value="Long">Long</option>
+                    <option value="">@Lang.T("Semua level", "All levels")</option><option value="Short">Short</option><option value="Long">Long</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select class="form-select form-select-sm" id="filterType">
-                    <option value="">Semua tipe</option><option value="Project">Project</option><option value="Knowledge">Knowledge</option>
+                    <option value="">@Lang.T("Semua tipe", "All types")</option><option value="Project">Project</option><option value="Knowledge">Knowledge</option>
                 </select>
             </div>
             <div class="col-md-3">
-                <select class="form-select form-select-sm" id="filterProject"><option value="">Semua project</option></select>
+                <select class="form-select form-select-sm" id="filterProject"><option value="">@Lang.T("Semua project", "All projects")</option></select>
             </div>
             <div class="col-md-5">
-                <input type="search" class="form-control form-control-sm" id="filterSearch" placeholder="Cari label atau deskripsi…" />
+                <input type="search" class="form-control form-control-sm" id="filterSearch" placeholder="@Lang.T("Cari label atau deskripsi…", "Search label or description…")" />
             </div>
         </div>
         <div class="row g-2 mt-0">
             <div class="col-md-3">
-                <select class="form-select form-select-sm" id="filterModule" title="Modul dari project yang dipilih (dan knowledge)"><option value="">Semua modul</option></select>
+                <select class="form-select form-select-sm" id="filterModule" title="@Lang.T("Modul dari project yang dipilih (dan knowledge)", "Modules of the chosen project (and knowledge)")"><option value="">@Lang.T("Semua modul", "All modules")</option></select>
             </div>
             <div class="col-md-2">
                 <select class="form-select form-select-sm" id="filterLayer">
-                    <option value="">Semua layer</option><option>UI</option><option>Entry</option><option>Logic</option><option>Data</option><option>Infra</option><option>Test</option>
+                    <option value="">@Lang.T("Semua layer", "All layers")</option><option>UI</option><option>Entry</option><option>Logic</option><option>Data</option><option>Infra</option><option>Test</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select class="form-select form-select-sm" id="filterKind">
-                    <option value="">Semua jenis</option><option value="Change">Change (catatan perubahan)</option><option value="Summary">Summary (kondisi modul)</option><option>Pitfall</option><option>Rule</option><option>Flow</option><option>Convention</option><option>Architecture</option><option>Pattern</option>
+                    <option value="">@Lang.T("Semua jenis", "All kinds")</option><option value="Change">@Lang.T("Change (catatan perubahan)", "Change (change log)")</option><option value="Summary">@Lang.T("Summary (kondisi modul)", "Summary (module state)")</option><option>Pitfall</option><option>Rule</option><option>Flow</option><option>Convention</option><option>Architecture</option><option>Pattern</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select class="form-select form-select-sm" id="filterLabeled">
-                    <option value="">Berlabel &amp; belum</option><option value="true">Berlabel</option><option value="false">Belum berlabel</option>
+                    <option value="">@Html.Raw(Lang.T("Berlabel &amp; belum", "Labeled &amp; not"))</option><option value="true">@Lang.T("Berlabel", "Labeled")</option><option value="false">@Lang.T("Belum berlabel", "Unlabeled")</option>
                 </select>
             </div>
         </div>
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Level</th><th>Tipe</th><th>Project</th><th style="width:40%">Label</th><th>Dibuat</th><th>Dipakai</th><th></th></tr></thead>
-            <tbody id="memoryRows"><tr><td colspan="7" class="empty-state">Memuat…</td></tr></tbody>
+            <thead><tr><th>Level</th><th>@Lang.T("Tipe", "Type")</th><th>Project</th><th style="width:40%">Label</th><th>@Lang.T("Dibuat", "Created")</th><th>@Lang.T("Dipakai", "Used")</th><th></th></tr></thead>
+            <tbody id="memoryRows"><tr><td colspan="7" class="empty-state">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
         </table>
     </div>
     <div class="card-footer d-flex justify-content-between align-items-center small">
         <span class="text-secondary" id="pageInfo"></span>
         <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary" id="btnPrev">‹ Sebelumnya</button>
-            <button type="button" class="btn btn-outline-secondary" id="btnNext">Berikutnya ›</button>
+            <button type="button" class="btn btn-outline-secondary" id="btnPrev">@Lang.T("‹ Sebelumnya", "‹ Previous")</button>
+            <button type="button" class="btn btn-outline-secondary" id="btnNext">@Lang.T("Berikutnya ›", "Next ›")</button>
         </div>
     </div>
 </div>
@@ -124,26 +124,25 @@
             <div class="row g-2 align-items-end">
                 <div class="col-md-5 col-xl-4">
                     <label class="form-label small text-secondary" for="reviewProject">Project</label>
-                    <select class="form-select form-select-sm" id="reviewProject"><option value="">Semua project (memory saja)</option></select>
+                    <select class="form-select form-select-sm" id="reviewProject"><option value="">@Lang.T("Semua project (memory saja)", "All projects (memory only)")</option></select>
                 </div>
                 <div class="col small text-secondary">
-                    Memory yang tidak bisa dilabeli otomatis, saran gabung modul yang keyakinannya rendah, dan pasangan memory yang kemungkinan sama.
-                    Merge dengan keyakinan tinggi sudah diterapkan otomatis dan bisa dibatalkan di detail project.
+                    @Lang.T("Memory yang tidak bisa dilabeli otomatis, saran gabung modul yang keyakinannya rendah, dan pasangan memory yang kemungkinan sama. Merge dengan keyakinan tinggi sudah diterapkan otomatis dan bisa dibatalkan di detail project.", "Memory that could not be labeled automatically, module merge suggestions with low confidence, and memory pairs that are likely the same. Merges with high confidence were applied automatically and can be undone in the project detail.")
                 </div>
             </div>
         </div>
     </div>
     <div class="card mb-3">
-        <div class="card-header">Memory tanpa label <span class="text-secondary small" id="reviewMemoryCount"></span></div>
-        <div class="list-group list-group-flush" id="reviewMemories"><div class="list-group-item text-secondary small">Memuat…</div></div>
+        <div class="card-header">@Html.Raw(Lang.T("Memory tanpa label <span class=\"text-secondary small\" id=\"reviewMemoryCount\"></span>", "Memory without a label <span class=\"text-secondary small\" id=\"reviewMemoryCount\"></span>"))</div>
+        <div class="list-group list-group-flush" id="reviewMemories"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
     </div>
     <div class="card mb-3">
-        <div class="card-header">Saran gabung modul <span class="text-secondary small" id="reviewMergeCount"></span></div>
-        <div class="list-group list-group-flush" id="reviewMerges"><div class="list-group-item text-secondary small">Memuat…</div></div>
+        <div class="card-header">@Html.Raw(Lang.T("Saran gabung modul <span class=\"text-secondary small\" id=\"reviewMergeCount\"></span>", "Module merge suggestions <span class=\"text-secondary small\" id=\"reviewMergeCount\"></span>"))</div>
+        <div class="list-group list-group-flush" id="reviewMerges"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
     </div>
     <div class="card">
-        <div class="card-header">Kandidat memory duplikat <span class="text-secondary small" id="reviewDuplicateCount"></span></div>
-        <div class="list-group list-group-flush" id="reviewDuplicates"><div class="list-group-item text-secondary small">Memuat…</div></div>
+        <div class="card-header">@Html.Raw(Lang.T("Kandidat memory duplikat <span class=\"text-secondary small\" id=\"reviewDuplicateCount\"></span>", "Duplicate memory candidates <span class=\"text-secondary small\" id=\"reviewDuplicateCount\"></span>"))</div>
+        <div class="list-group list-group-flush" id="reviewDuplicates"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
     </div>
 </div>
 
@@ -156,8 +155,8 @@
                     <select class="form-select form-select-sm" id="bizProject"></select>
                 </div>
                 <div class="col-md-7 col-xl-8 d-flex flex-wrap gap-2 justify-content-md-end">
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnBizDigest" title="Rangkum thread yang belum masuk wiki sekarang">Perbarui sekarang</button>
-                    <button type="button" class="btn btn-primary btn-sm" id="btnBizNew">Halaman baru</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnBizDigest" title="@Lang.T("Rangkum thread yang belum masuk wiki sekarang", "Summarize the threads not in the wiki yet, now")">@Lang.T("Perbarui sekarang", "Update now")</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnBizNew">@Lang.T("Halaman baru", "New page")</button>
                 </div>
             </div>
             <div class="small text-secondary mt-2" id="bizInfo"></div>
@@ -168,82 +167,81 @@
         <div class="col-lg-4 col-xl-3">
             <div class="card">
                 <div class="card-header d-flex align-items-center">
-                    <span>Modul</span>
-                    <input type="search" class="form-control form-control-sm ms-auto w-50" id="bizFilter" placeholder="Cari…" aria-label="Cari halaman" />
+                    <span>@Lang.T("Modul", "Module")</span>
+                    <input type="search" class="form-control form-control-sm ms-auto w-50" id="bizFilter" placeholder="@Lang.T("Cari…", "Search…")" aria-label="@Lang.T("Cari halaman", "Search pages")" />
                 </div>
-                <div class="list-group list-group-flush small" id="bizPages"><div class="list-group-item text-secondary">Memuat…</div></div>
+                <div class="list-group list-group-flush small" id="bizPages"><div class="list-group-item text-secondary">@Lang.T("Memuat…", "Loading…")</div></div>
             </div>
         </div>
         <div class="col-lg-8 col-xl-9">
             <div class="card" id="bizView">
                 <div class="card-body empty-state" id="bizEmpty">
-                    Pilih halaman di kiri. Wiki bisnis dibangun otomatis dari pekerjaan developer (Setting → Penyimpanan memory → Business memory),
-                    dan bisa ditulis atau diperbaiki manual dengan <strong>Halaman baru</strong>.
+                    @Html.Raw(Lang.T("Pilih halaman di kiri. Wiki bisnis dibangun otomatis dari pekerjaan developer (Setting → Penyimpanan memory → Business memory), dan bisa ditulis atau diperbaiki manual dengan <strong>Halaman baru</strong>.", "Choose a page on the left. The business wiki is built automatically from the developers' work (Setting → Memory storage → Business memory), and can be written or corrected by hand with <strong>New page</strong>."))
                 </div>
                 <div class="d-none" id="bizPage">
                     <div class="card-header d-flex flex-wrap align-items-center gap-2">
                         <div class="me-auto small text-secondary" id="bizPageMeta"></div>
-                        <div class="form-check form-switch mb-0 small" title="Matikan untuk halaman yang dikurasi manual: penulis wiki AI tidak akan mengubahnya.">
+                        <div class="form-check form-switch mb-0 small" title="@Lang.T("Matikan untuk halaman yang dikurasi manual: penulis wiki AI tidak akan mengubahnya.", "Turn off for hand-curated pages: the AI wiki writer will not change them.")">
                             <input class="form-check-input" type="checkbox" role="switch" id="bizAutoUpdate" />
-                            <label class="form-check-label" for="bizAutoUpdate">Diperbarui AI</label>
+                            <label class="form-check-label" for="bizAutoUpdate">@Lang.T("Diperbarui AI", "Updated by AI")</label>
                         </div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBizHistory">Riwayat</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBizHistory">@Lang.T("Riwayat", "History")</button>
                         <button type="button" class="btn btn-outline-primary btn-sm" id="btnBizEdit">Edit</button>
-                        <button type="button" class="btn btn-outline-danger btn-sm" id="btnBizDelete">Hapus</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="btnBizDelete">@Lang.T("Hapus", "Delete")</button>
                     </div>
                     <div class="card-body docs-body" id="bizContent"></div>
                 </div>
             </div>
 
             <form class="card d-none" id="bizEditor" autocomplete="off" novalidate>
-                <div class="card-header" id="bizEditorTitle">Halaman baru</div>
+                <div class="card-header" id="bizEditorTitle">@Lang.T("Halaman baru", "New page")</div>
                 <div class="card-body">
                     <div class="row g-2 mb-2">
                         <div class="col-md-3">
-                            <label class="form-label small" for="bizModule">Modul</label>
-                            <input type="text" class="form-control" id="bizModule" maxlength="100" placeholder="TransferOrder" title="Modul yang sama dengan label memory; alias dan penulisan lain diarahkan ke modul yang sudah ada" required />
+                            <label class="form-label small" for="bizModule">@Lang.T("Modul", "Module")</label>
+                            <input type="text" class="form-control" id="bizModule" maxlength="100" placeholder="TransferOrder" title="@Lang.T("Modul yang sama dengan label memory; alias dan penulisan lain diarahkan ke modul yang sudah ada", "The same modules as the memory labels; aliases and other spellings lead to the existing module")" required />
                         </div>
                         <div class="col-md-9">
-                            <label class="form-label small" for="bizTitle">Judul</label>
+                            <label class="form-label small" for="bizTitle">@Lang.T("Judul", "Title")</label>
                             <input type="text" class="form-control" id="bizTitle" maxlength="200" placeholder="Transfer Order" required />
                         </div>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small" for="bizSummary">Ringkasan</label>
-                        <input type="text" class="form-control" id="bizSummary" maxlength="1000" placeholder="Satu-dua kalimat: modul ini untuk apa" />
+                        <label class="form-label small" for="bizSummary">@Lang.T("Ringkasan", "Summary")</label>
+                        <input type="text" class="form-control" id="bizSummary" maxlength="1000" placeholder="@Lang.T("Satu-dua kalimat: modul ini untuk apa", "One or two sentences: what this module is for")" />
                     </div>
                     <div class="mb-2">
-                        <label class="form-label small" for="bizLabels">Label (keyword dipisah koma untuk planner, disimpan PascalCase)</label>
-                        <input type="text" class="form-control" id="bizLabels" maxlength="500" placeholder="TransferOrder, Mutasi, Gudang" />
+                        <label class="form-label small" for="bizLabels">@Lang.T("Label (keyword dipisah koma untuk planner, disimpan PascalCase)", "Labels (comma-separated keywords for the planner, stored in PascalCase)")</label>
+                        <input type="text" class="form-control" id="bizLabels" maxlength="500" placeholder="@Lang.T("TransferOrder, Mutasi, Gudang", "TransferOrder, Transfer, Warehouse")" />
                     </div>
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <label class="form-label small mb-0" for="bizBody">Isi (Markdown — tabel didukung)</label>
-                        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="Mode editor">
-                            <button type="button" class="btn btn-outline-secondary active" id="btnBizWrite">Tulis</button>
-                            <button type="button" class="btn btn-outline-secondary" id="btnBizPreview">Pratinjau</button>
+                        <label class="form-label small mb-0" for="bizBody">@Lang.T("Isi (Markdown — tabel didukung)", "Content (Markdown — tables supported)")</label>
+                        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="@Lang.T("Mode editor", "Editor mode")">
+                            <button type="button" class="btn btn-outline-secondary active" id="btnBizWrite">@Lang.T("Tulis", "Write")</button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnBizPreview">@Lang.T("Pratinjau", "Preview")</button>
                         </div>
-                        <label class="btn btn-outline-secondary btn-sm mb-0" for="bizImageFile">Sisipkan gambar</label>
+                        <label class="btn btn-outline-secondary btn-sm mb-0" for="bizImageFile">@Lang.T("Sisipkan gambar", "Insert image")</label>
                         <input type="file" class="d-none" id="bizImageFile" accept="image/png,image/jpeg,image/gif,image/webp" />
                     </div>
                     <textarea class="form-control mono small" id="bizBody" rows="22" required></textarea>
                     <div class="card card-body docs-body d-none" id="bizPreview"></div>
-                    <div class="form-text">Tempel screenshot langsung (Ctrl+V) ke editor. Gambar disimpan di store business memory dan ditulis sebagai <span class="mono">![keterangan](asset:…)</span>.</div>
+                    <div class="form-text">@Html.Raw(Lang.T("Tempel screenshot langsung (Ctrl+V) ke editor. Gambar disimpan di store business memory dan ditulis sebagai <span class=\"mono\">![keterangan](asset:…)</span>.", "Paste screenshots straight into the editor (Ctrl+V). Images are stored in the business memory store and written as <span class=\"mono\">![caption](asset:…)</span>."))</div>
                     <div class="row g-2 mt-1">
                         <div class="col-md-8">
-                            <label class="form-label small" for="bizChangeNote">Catatan perubahan</label>
-                            <input type="text" class="form-control form-control-sm" id="bizChangeNote" maxlength="1000" placeholder="mis. Tambah aturan approval TO di atas 10 juta" />
+                            <label class="form-label small" for="bizChangeNote">@Lang.T("Catatan perubahan", "Change note")</label>
+                            <input type="text" class="form-control form-control-sm" id="bizChangeNote" maxlength="1000" placeholder="@Lang.T("mis. Tambah aturan approval TO di atas 10 juta", "e.g. Add the TO approval rule above 10 million")" />
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" role="switch" id="bizEditorAutoUpdate" checked />
-                                <label class="form-check-label small" for="bizEditorAutoUpdate">Boleh diperbarui AI</label>
+                                <label class="form-check-label small" for="bizEditorAutoUpdate">@Lang.T("Boleh diperbarui AI", "AI may update it")</label>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="card-footer d-flex justify-content-end gap-2">
-                    <button type="button" class="btn btn-outline-secondary" id="btnBizCancel">Batal</button>
-                    <button type="submit" class="btn btn-primary" id="btnBizSave">Simpan</button>
+                    <button type="button" class="btn btn-outline-secondary" id="btnBizCancel">@Lang.T("Batal", "Cancel")</button>
+                    <button type="submit" class="btn btn-primary" id="btnBizSave">@Lang.T("Simpan", "Save")</button>
                 </div>
             </form>
         </div>
@@ -256,7 +254,7 @@
         <div class="modal-content">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="bizHistoryTitle">Riwayat halaman</h5>
+                <h5 class="modal-title" id="bizHistoryTitle">@Lang.T("Riwayat halaman", "Page history")</h5>
             </div>
             <div class="modal-body">
                 <div class="row g-3">
@@ -264,9 +262,9 @@
                     <div class="col-md-8">
                         <div class="d-flex align-items-center mb-2">
                             <span class="small text-secondary" id="bizRevisionMeta"></span>
-                            <button type="button" class="btn btn-outline-primary btn-sm ms-auto d-none" id="btnBizRestore">Pulihkan versi ini</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm ms-auto d-none" id="btnBizRestore">@Lang.T("Pulihkan versi ini", "Restore this version")</button>
                         </div>
-                        <div class="docs-body border rounded p-3" id="bizRevisionContent"><span class="text-secondary">Pilih versi.</span></div>
+                        <div class="docs-body border rounded p-3" id="bizRevisionContent">@Html.Raw(Lang.T("<span class=\"text-secondary\">Pilih versi.</span>", "<span class=\"text-secondary\">Choose a version.</span>"))</div>
                     </div>
                 </div>
             </div>
@@ -286,10 +284,10 @@
                 <input type="hidden" id="memoryLevel" />
                 <div class="row g-2 mb-2">
                     <div class="col-md-4">
-                        <label class="form-label small" for="memoryType">Tipe</label>
+                        <label class="form-label small" for="memoryType">@Lang.T("Tipe", "Type")</label>
                         <select class="form-select" id="memoryType">
-                            <option value="Project">Project — spesifik project</option>
-                            <option value="Knowledge">Knowledge — umum</option>
+                            <option value="Project">@Lang.T("Project — spesifik project", "Project — specific to a project")</option>
+                            <option value="Knowledge">@Lang.T("Knowledge — umum", "Knowledge — general")</option>
                         </select>
                     </div>
                     <div class="col-md-8">
@@ -299,46 +297,46 @@
                 </div>
                 <div class="row g-2 mb-2">
                     <div class="col-md-5">
-                        <label class="form-label small" for="memoryModule">Modul</label>
+                        <label class="form-label small" for="memoryModule">@Lang.T("Modul", "Module")</label>
                         <div class="input-group">
                             <select class="form-select" id="memoryModule" required></select>
-                            <button type="button" class="btn btn-outline-secondary" id="btnModuleRename" title="Ubah nama atau huruf besar-kecil modul ini; semua memory, peta kode, dan wiki modul ini ikut berubah">Ubah nama</button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnModuleRename" title="@Lang.T("Ubah nama atau huruf besar-kecil modul ini; semua memory, peta kode, dan wiki modul ini ikut berubah", "Rename this module or change its case; all memory, code map and wiki of this module change along")">@Lang.T("Ubah nama", "Rename")</button>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small" for="memoryKind">Jenis</label>
+                        <label class="form-label small" for="memoryKind">@Lang.T("Jenis", "Kind")</label>
                         <select class="form-select" id="memoryKind" required>
-                            <option value="Change">Change — catatan perubahan (fitur, file, validasi, flow)</option>
-                            <option value="Summary">Summary — kondisi modul saat ini</option>
-                            <optgroup label="Format lama (project: dilipat ke ringkasan modul)">
-                                <option value="Pitfall">Pitfall — jebakan/bug &amp; solusinya</option>
-                                <option value="Rule">Rule — aturan bisnis &amp; validasi</option>
-                                <option value="Flow">Flow — urutan langkah</option>
-                                <option value="Convention">Convention — cara menulis kode di sini</option>
-                                <option value="Architecture">Architecture — susunan &amp; alasan desain</option>
-                                <option value="Pattern">Pattern — solusi teknis umum</option>
+                            <option value="Change">@Lang.T("Change — catatan perubahan (fitur, file, validasi, flow)", "Change — change log (feature, files, validation, flow)")</option>
+                            <option value="Summary">@Lang.T("Summary — kondisi modul saat ini", "Summary — current state of a module")</option>
+                            <optgroup label="@Lang.T("Format lama (project: dilipat ke ringkasan modul)", "Older format (project: folded into the module summary)")">
+                                <option value="Pitfall">@Html.Raw(Lang.T("Pitfall — jebakan/bug &amp; solusinya", "Pitfall — trap/bug &amp; its fix"))</option>
+                                <option value="Rule">@Html.Raw(Lang.T("Rule — aturan bisnis &amp; validasi", "Rule — business rule &amp; validation"))</option>
+                                <option value="Flow">@Lang.T("Flow — urutan langkah", "Flow — sequence of steps")</option>
+                                <option value="Convention">@Lang.T("Convention — cara menulis kode di sini", "Convention — how code is written here")</option>
+                                <option value="Architecture">@Html.Raw(Lang.T("Architecture — susunan &amp; alasan desain", "Architecture — structure &amp; design reasons"))</option>
+                                <option value="Pattern">@Lang.T("Pattern — solusi teknis umum", "Pattern — general technical solution")</option>
                             </optgroup>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small" for="memoryArea">Area <span class="text-secondary">(opsional)</span></label>
-                        <input type="text" class="form-control" id="memoryArea" maxlength="100" placeholder="Web" title="Aplikasi di repo multi-aplikasi" />
+                        <label class="form-label small" for="memoryArea">@Html.Raw(Lang.T("Area <span class=\"text-secondary\">(opsional)</span>", "Area <span class=\"text-secondary\">(optional)</span>"))</label>
+                        <input type="text" class="form-control" id="memoryArea" maxlength="100" placeholder="Web" title="@Lang.T("Aplikasi di repo multi-aplikasi", "App in a multi-app repository")" />
                     </div>
                 </div>
                 <div class="input-group input-group-sm mb-2 d-none" id="memoryModuleEdit">
-                    <span class="input-group-text" id="memoryModuleEditLabel">Modul baru</span>
+                    <span class="input-group-text" id="memoryModuleEditLabel">@Lang.T("Modul baru", "New module")</span>
                     <input type="text" class="form-control" id="memoryModuleName" maxlength="100" placeholder="KlaimDF" aria-labelledby="memoryModuleEditLabel" />
-                    <button type="button" class="btn btn-primary" id="btnModuleNameSave">Simpan</button>
-                    <button type="button" class="btn btn-outline-secondary" id="btnModuleNameCancel">Batal</button>
+                    <button type="button" class="btn btn-primary" id="btnModuleNameSave">@Lang.T("Simpan", "Save")</button>
+                    <button type="button" class="btn btn-outline-secondary" id="btnModuleNameCancel">@Lang.T("Batal", "Cancel")</button>
                 </div>
-                <div class="form-text mt-0 mb-2">Singkatan ditulis kapital: <span class="mono">MKPP</span>, <span class="mono">KlaimDF</span>.</div>
+                <div class="form-text mt-0 mb-2">@Html.Raw(Lang.T("Singkatan ditulis kapital: <span class=\"mono\">MKPP</span>, <span class=\"mono\">KlaimDF</span>.", "Abbreviations in capitals: <span class=\"mono\">MKPP</span>, <span class=\"mono\">KlaimDF</span>."))</div>
                 <div class="mb-2">
-                    <label class="form-label small" for="memoryExtraSelect">Modul lain <span class="text-secondary">(opsional, maksimal 3)</span></label>
+                    <label class="form-label small" for="memoryExtraSelect">@Html.Raw(Lang.T("Modul lain <span class=\"text-secondary\">(opsional, maksimal 3)</span>", "Other modules <span class=\"text-secondary\">(optional, at most 3)</span>"))</label>
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <div class="d-flex flex-wrap gap-1" id="memoryExtraModules"></div>
                         <select class="form-select form-select-sm w-auto" id="memoryExtraSelect"></select>
                     </div>
-                    <div class="form-text">Modul lain yang juga dibahas memory ini. Filter modul dan pencarian planner ikut menemukan memory ini lewat modul-modul tersebut.</div>
+                    <div class="form-text">@Lang.T("Modul lain yang juga dibahas memory ini. Filter modul dan pencarian planner ikut menemukan memory ini lewat modul-modul tersebut.", "Other modules this memory also covers. The module filter and the planner search find this memory through those modules too.")</div>
                 </div>
                 <div class="mb-2">
                     <span class="form-label small d-block">Layer</span>
@@ -353,26 +351,26 @@
                 </div>
                 <div class="mb-2">
                     <label class="form-label small" for="memoryKeywords">Keyword <span class="text-secondary" id="memoryKeywordCount"></span></label>
-                    <input type="text" class="form-control" id="memoryKeywords" placeholder="Description, Deskripsi, UserValidator" required />
-                    <div class="form-text">Dipisah koma, maksimal 16. Ditulis dalam PascalCase otomatis (singkatan seperti API, DTO, UI jadi kapital); nama class dari kode tetap seperti aslinya.</div>
+                    <input type="text" class="form-control" id="memoryKeywords" placeholder="@Lang.T("Description, Deskripsi, UserValidator", "Description, Deskripsi, UserValidator")" required />
+                    <div class="form-text">@Lang.T("Dipisah koma, maksimal 16. Ditulis dalam PascalCase otomatis (singkatan seperti API, DTO, UI jadi kapital); nama class dari kode tetap seperti aslinya.", "Comma separated, at most 16. Written in PascalCase automatically (abbreviations such as API, DTO, UI in capitals); class names from the code stay as they are.")</div>
                 </div>
                 <div class="small text-secondary mb-2 d-none" id="memoryLegacy"></div>
                 <div>
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <label class="form-label small mb-0" for="memoryDescription">Deskripsi (Markdown)</label>
-                        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="Mode deskripsi">
-                            <button type="button" class="btn btn-outline-secondary" id="btnMemoryWrite">Tulis</button>
-                            <button type="button" class="btn btn-outline-secondary active" id="btnMemoryPreview">Pratinjau</button>
+                        <label class="form-label small mb-0" for="memoryDescription">@Lang.T("Deskripsi (Markdown)", "Description (Markdown)")</label>
+                        <div class="ms-auto btn-group btn-group-sm" role="group" aria-label="@Lang.T("Mode deskripsi", "Description mode")">
+                            <button type="button" class="btn btn-outline-secondary" id="btnMemoryWrite">@Lang.T("Tulis", "Write")</button>
+                            <button type="button" class="btn btn-outline-secondary active" id="btnMemoryPreview">@Lang.T("Pratinjau", "Preview")</button>
                         </div>
                     </div>
                     <textarea class="form-control font-monospace small" id="memoryDescription" rows="12" required></textarea>
-                    <div class="card card-body docs-body small d-none memory-preview" id="memoryPreview" title="Klik dua kali untuk mengedit"></div>
+                    <div class="card card-body docs-body small d-none memory-preview" id="memoryPreview" title="@Lang.T("Klik dua kali untuk mengedit", "Double-click to edit")"></div>
                 </div>
                 <div class="small text-secondary mt-2" id="memoryMeta"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
     </div>
@@ -388,17 +386,17 @@
             <div class="modal-body">
                 <div class="small text-secondary mb-2" id="importFileInfo"></div>
                 <div class="mb-3">
-                    <label class="form-label small" for="importMode">Memory dengan id yang sudah ada</label>
+                    <label class="form-label small" for="importMode">@Lang.T("Memory dengan id yang sudah ada", "Memory whose id already exists")</label>
                     <select class="form-select form-select-sm" id="importMode">
-                        <option value="Skip">Lewati — biarkan yang sudah ada</option>
-                        <option value="Overwrite">Timpa — pakai tipe, project, label, dan deskripsi dari file</option>
+                        <option value="Skip">@Lang.T("Lewati — biarkan yang sudah ada", "Skip — keep the existing one")</option>
+                        <option value="Overwrite">@Lang.T("Timpa — pakai tipe, project, label, dan deskripsi dari file", "Overwrite — use the type, project, label and description from the file")</option>
                     </select>
                 </div>
-                <div id="importPreview"><span class="text-secondary small">Memeriksa file…</span></div>
-                <div class="form-text mt-3">Memory yang isinya sama (project, tipe, label, deskripsi) dengan memory yang sudah ada tidak digandakan. Import aman diulang. Short memory tetap short dan pindah ke long memory sesuai umurnya.</div>
+                <div id="importPreview">@Html.Raw(Lang.T("<span class=\"text-secondary small\">Memeriksa file…</span>", "<span class=\"text-secondary small\">Checking the file…</span>"))</div>
+                <div class="form-text mt-3">@Lang.T("Memory yang isinya sama (project, tipe, label, deskripsi) dengan memory yang sudah ada tidak digandakan. Import aman diulang. Short memory tetap short dan pindah ke long memory sesuai umurnya.", "Memory with the same content (project, type, label, description) as existing memory is not duplicated. Importing again is safe. Short memory stays short and moves to long memory by its age.")</div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
                 <button type="button" class="btn btn-primary" id="btnImportConfirm" disabled>Import</button>
             </div>
         </div>

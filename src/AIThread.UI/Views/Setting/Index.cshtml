@@ -5,22 +5,22 @@
 <div class="page-header">
     <div>
         <h1>Setting</h1>
-        <p class="page-subtitle">Koneksi 9router, perilaku proxy, build & verifikasi, penyimpanan memory & business memory, Telegram, gudang skill, serta keamanan & privasi.</p>
+        <p class="page-subtitle">@Lang.T("Koneksi 9router, perilaku proxy, build & verifikasi, penyimpanan memory & business memory, Telegram, gudang skill, serta keamanan & privasi.", "9router connection, proxy behaviour, build & verification, memory storage & business memory, Telegram, the skill store, and security & privacy.")</p>
     </div>
 </div>
 
 <ul class="nav nav-tabs mb-3" id="settingTabs" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="router-tab" data-bs-toggle="tab" data-bs-target="#tab-router" data-tab="router" type="button" role="tab" aria-controls="tab-router" aria-selected="true">Koneksi 9router</button>
+        <button class="nav-link active" id="router-tab" data-bs-toggle="tab" data-bs-target="#tab-router" data-tab="router" type="button" role="tab" aria-controls="tab-router" aria-selected="true">@Lang.T("Koneksi 9router", "9router connection")</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="proxy-tab" data-bs-toggle="tab" data-bs-target="#tab-proxy" data-tab="proxy" type="button" role="tab" aria-controls="tab-proxy" aria-selected="false">Proxy & orkestrasi</button>
+        <button class="nav-link" id="proxy-tab" data-bs-toggle="tab" data-bs-target="#tab-proxy" data-tab="proxy" type="button" role="tab" aria-controls="tab-proxy" aria-selected="false">@Lang.T("Proxy & orkestrasi", "Proxy & orchestration")</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="build-tab" data-bs-toggle="tab" data-bs-target="#tab-build" data-tab="build" type="button" role="tab" aria-controls="tab-build" aria-selected="false">Build & verifikasi</button>
+        <button class="nav-link" id="build-tab" data-bs-toggle="tab" data-bs-target="#tab-build" data-tab="build" type="button" role="tab" aria-controls="tab-build" aria-selected="false">@Lang.T("Build & verifikasi", "Build & verification")</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="memory-tab" data-bs-toggle="tab" data-bs-target="#tab-memory" data-tab="memory" type="button" role="tab" aria-controls="tab-memory" aria-selected="false">Penyimpanan memory</button>
+        <button class="nav-link" id="memory-tab" data-bs-toggle="tab" data-bs-target="#tab-memory" data-tab="memory" type="button" role="tab" aria-controls="tab-memory" aria-selected="false">@Lang.T("Penyimpanan memory", "Memory storage")</button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="telegram-tab" data-bs-toggle="tab" data-bs-target="#tab-telegram" data-tab="telegram" type="button" role="tab" aria-controls="tab-telegram" aria-selected="false">Telegram</button>
@@ -29,7 +29,7 @@
         <button class="nav-link" id="skills-tab" data-bs-toggle="tab" data-bs-target="#tab-skills" data-tab="skills" type="button" role="tab" aria-controls="tab-skills" aria-selected="false">Skill</button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="keamanan-tab" data-bs-toggle="tab" data-bs-target="#tab-keamanan" data-tab="keamanan" type="button" role="tab" aria-controls="tab-keamanan" aria-selected="false">Keamanan &amp; privasi</button>
+        <button class="nav-link" id="keamanan-tab" data-bs-toggle="tab" data-bs-target="#tab-keamanan" data-tab="keamanan" type="button" role="tab" aria-controls="tab-keamanan" aria-selected="false">@Html.Raw(Lang.T("Keamanan &amp; privasi", "Security &amp; privacy"))</button>
     </li>
 </ul>
 
@@ -41,25 +41,25 @@
                 <div class="mb-3">
                     <label class="form-label small" for="routerUrl">Base URL</label>
                     <input type="url" class="form-control mono" id="routerUrl" placeholder="http://localhost:20128" required />
-                    <div class="form-text">Endpoint 9router (dashboard default di port 20128). Akhiran <span class="mono">/v1</span> otomatis dibuang.</div>
+                    <div class="form-text">@Html.Raw(Lang.T("Endpoint 9router (dashboard default di port 20128). Akhiran <span class=\"mono\">/v1</span> otomatis dibuang.", "The 9router endpoint (default dashboard on port 20128). A trailing <span class=\"mono\">/v1</span> is dropped automatically."))</div>
                 </div>
                 <div class="mb-2">
                     <label class="form-label small" for="routerKey">API key</label>
-                    <input type="password" class="form-control mono" id="routerKey" placeholder="Kosongkan untuk mempertahankan key tersimpan" />
+                    <input type="password" class="form-control mono" id="routerKey" placeholder="@Lang.T("Kosongkan untuk mempertahankan key tersimpan", "Leave empty to keep the stored key")" />
                     <div class="form-text" id="routerKeyHint"></div>
                 </div>
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="routerKeyClear" />
-                    <label class="form-check-label small" for="routerKeyClear">Hapus API key tersimpan</label>
+                    <label class="form-check-label small" for="routerKeyClear">@Lang.T("Hapus API key tersimpan", "Delete the stored API key")</label>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestRouter">Test koneksi</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestRouter">@Lang.T("Test koneksi", "Test connection")</button>
                     <span class="small" id="routerTestResult"></span>
                 </div>
-                <div class="form-text">Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan setting</strong> agar key dipakai AIT.</div>
+                <div class="form-text">@Html.Raw(Lang.T("Test koneksi memakai isi form tanpa menyimpannya. Klik <strong>Simpan setting</strong> agar key dipakai AIT.", "Test connection uses the form without saving it. Click <strong>Save settings</strong> so AIT uses the key."))</div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">Simpan setting</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting", "Save settings")</button>
             </div>
         </div>
     </div>
@@ -69,61 +69,59 @@
             <div class="card-body">
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="orchestrationEnabled" />
-                    <label class="form-check-label" for="orchestrationEnabled">Orkestrasi aktif (planner → executor → wrapper)</label>
-                    <div class="form-text">Jika mati, AIT hanya meneruskan request CLI ke 9router.</div>
+                    <label class="form-check-label" for="orchestrationEnabled">@Lang.T("Orkestrasi aktif (planner → executor → wrapper)", "Orchestration on (planner → executor → wrapper)")</label>
+                    <div class="form-text">@Lang.T("Jika mati, AIT hanya meneruskan request CLI ke 9router.", "When off, AIT only forwards CLI requests to 9router.")</div>
                 </div>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="streamProgress" />
-                    <label class="form-check-label" for="streamProgress">Tampilkan progres (rencana, tugas, tool planner) di CLI</label>
+                    <label class="form-check-label" for="streamProgress">@Lang.T("Tampilkan progres (rencana, tugas, tool planner) di CLI", "Show progress (plan, tasks, planner tools) in the CLI")</label>
                 </div>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="plannerCanAsk" />
-                    <label class="form-check-label" for="plannerCanAsk">Planner boleh bertanya bila permintaan ambigu</label>
+                    <label class="form-check-label" for="plannerCanAsk">@Lang.T("Planner boleh bertanya bila permintaan ambigu", "The planner may ask when a request is ambiguous")</label>
                     <div class="form-text">
-                        Hanya untuk ambiguitas nyata, perubahan berisiko yang tidak diminta, atau fakta yang tidak ada di kode — bukan konfirmasi tiap prompt.
-                        Thread berhenti dengan pertanyaan bernomor; pesan berikutnya di sesi yang sama menjadi jawaban dan rencana dilanjutkan.
+                        @Lang.T("Hanya untuk ambiguitas nyata, perubahan berisiko yang tidak diminta, atau fakta yang tidak ada di kode — bukan konfirmasi tiap prompt. Thread berhenti dengan pertanyaan bernomor; pesan berikutnya di sesi yang sama menjadi jawaban dan rencana dilanjutkan.", "Only for real ambiguity, risky changes nobody asked for, or facts that are not in the code — not to confirm every prompt. The thread stops with a numbered question; the next message in the same session becomes the answer and the plan goes on.")
                     </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label small" for="passthroughModel">Model passthrough</label>
                     <select class="form-select" id="passthroughModel"></select>
-                    <div class="form-text">Untuk request pendukung CLI (judul sesi, compact, dsb.) yang tidak diorkestrasi.</div>
+                    <div class="form-text">@Lang.T("Untuk request pendukung CLI (judul sesi, compact, dsb.) yang tidak diorkestrasi.", "For CLI support requests (session titles, compact, etc.) that are not orchestrated.")</div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label small" for="proxyKey">Proxy API key (ANTHROPIC_AUTH_TOKEN / ANTHROPIC_API_KEY)</label>
                     <div class="input-group">
-                        <input type="text" class="form-control mono" id="proxyKey" placeholder="Kosong = terima semua request lokal" />
+                        <input type="text" class="form-control mono" id="proxyKey" placeholder="@Lang.T("Kosong = terima semua request lokal", "Empty = accept every local request")" />
                         <button type="button" class="btn btn-outline-secondary" id="btnGenerateKey">Generate</button>
                     </div>
                     <div class="form-text">
-                        Integrasi CLI (Claude Code, Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi) dan hook Context Keeper diatur di menu <a asp-controller="Cli" asp-action="Index">CLI</a>.
-                        Setelah key diganti, matikan lalu nyalakan lagi integrasinya di sana agar key baru tertulis.
+                        @Lang.T("Integrasi CLI (Claude Code, Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi) dan hook Context Keeper diatur di menu", "CLI integrations (Claude Code, Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi) and the Context Keeper hook are set in the menu") <a asp-controller="Cli" asp-action="Index">CLI</a>@Lang.T(". Setelah key diganti, matikan lalu nyalakan lagi integrasinya di sana agar key baru tertulis.", ". After the key changes, turn the integration off and on again there so the new key is written.")
                     </div>
                 </div>
 
                 <div class="row g-2">
                     <div class="col-6 col-md-3">
-                        <label class="form-label small" for="plannerMaxSteps">Langkah planner</label>
+                        <label class="form-label small" for="plannerMaxSteps">@Lang.T("Langkah planner", "Planner steps")</label>
                         <input type="number" class="form-control" id="plannerMaxSteps" min="3" max="100" required />
                     </div>
                     <div class="col-6 col-md-3">
-                        <label class="form-label small" for="executorMaxRetries">Retry executor</label>
+                        <label class="form-label small" for="executorMaxRetries">@Lang.T("Retry executor", "Executor retries")</label>
                         <input type="number" class="form-control" id="executorMaxRetries" min="0" max="5" required />
                     </div>
                     <div class="col-6 col-md-3">
-                        <label class="form-label small" for="maxParallelTasks">Maks paralel</label>
+                        <label class="form-label small" for="maxParallelTasks">@Lang.T("Maks paralel", "Max parallel")</label>
                         <input type="number" class="form-control" id="maxParallelTasks" min="1" max="64" required />
                     </div>
                     <div class="col-6 col-md-3">
-                        <label class="form-label small" for="requestTimeout">Timeout (detik)</label>
+                        <label class="form-label small" for="requestTimeout">@Lang.T("Timeout (detik)", "Timeout (seconds)")</label>
                         <input type="number" class="form-control" id="requestTimeout" min="30" max="3600" required />
                     </div>
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">Simpan setting</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting", "Save settings")</button>
             </div>
         </div>
     </div>
@@ -133,27 +131,25 @@
             <div class="card-body">
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="buildEnabled" />
-                    <label class="form-check-label" for="buildEnabled">Build & verifikasi otomatis</label>
+                    <label class="form-check-label" for="buildEnabled">@Lang.T("Build & verifikasi otomatis", "Automatic build & verification")</label>
                     <div class="form-text">
-                        AIT menjalankan perintah build bawaan project (<span class="mono">dotnet build</span>, <span class="mono">tsc</span>/<span class="mono">npm run build</span>,
-                        <span class="mono">go build</span>, <span class="mono">cargo check</span>, <span class="mono">mvn compile</span>): sebagai tool planner dan setelah executor selesai.
-                        Error build (dan temuan node Reviewer, bila ada) diserahkan ke executor sebagai tugas perbaikan.
+                        @Html.Raw(Lang.T("AIT menjalankan perintah build bawaan project (<span class=\"mono\">dotnet build</span>, <span class=\"mono\">tsc</span>/<span class=\"mono\">npm run build</span>, <span class=\"mono\">go build</span>, <span class=\"mono\">cargo check</span>, <span class=\"mono\">mvn compile</span>): sebagai tool planner dan setelah executor selesai. Error build (dan temuan node Reviewer, bila ada) diserahkan ke executor sebagai tugas perbaikan.", "AIT runs the project's own build command (<span class=\"mono\">dotnet build</span>, <span class=\"mono\">tsc</span>/<span class=\"mono\">npm run build</span>, <span class=\"mono\">go build</span>, <span class=\"mono\">cargo check</span>, <span class=\"mono\">mvn compile</span>): as a planner tool and after the executors finish. Build errors (and the findings of the Reviewer node, when there is one) go to the executors as fix tasks."))
                     </div>
                 </div>
                 <div class="row g-2">
                     <div class="col-6 col-md-3">
-                        <label class="form-label small" for="buildTimeout">Timeout build (detik)</label>
+                        <label class="form-label small" for="buildTimeout">@Lang.T("Timeout build (detik)", "Build timeout (seconds)")</label>
                         <input type="number" class="form-control" id="buildTimeout" min="30" max="3600" required />
                     </div>
                     <div class="col-6 col-md-3">
-                        <label class="form-label small" for="maxFixRounds">Putaran perbaikan</label>
+                        <label class="form-label small" for="maxFixRounds">@Lang.T("Putaran perbaikan", "Fix rounds")</label>
                         <input type="number" class="form-control" id="maxFixRounds" min="0" max="5" required />
                     </div>
-                    <div class="col-md-6 form-text align-self-end">0 = hanya verifikasi dan laporkan, tanpa perbaikan otomatis.</div>
+                    <div class="col-md-6 form-text align-self-end">@Lang.T("0 = hanya verifikasi dan laporkan, tanpa perbaikan otomatis.", "0 = verify and report only, no automatic fixes.")</div>
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">Simpan setting</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting", "Save settings")</button>
             </div>
         </div>
     </div>
@@ -171,51 +167,47 @@
                 <div class="card-body">
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="memoryCopyExisting" checked />
-                        <label class="form-check-label" for="memoryCopyExisting">Salin memory yang ada ke penyimpanan baru saat provider/server diganti</label>
+                        <label class="form-check-label" for="memoryCopyExisting">@Lang.T("Salin memory yang ada ke penyimpanan baru saat provider/server diganti", "Copy the existing memory to the new storage when the provider/server changes")</label>
                     </div>
                     <div class="form-text">
-                        Saat disimpan, AIT menguji koneksi dan membuat database/tabel <span class="mono">ShortMemories</span>, <span class="mono">LongMemories</span>, atau
-                        <span class="mono">BusinessPages</span> (beserta revisi & gambarnya) bila belum ada (user perlu hak membuat tabel). Penyimpanan lama tidak dihapus atau diubah.
-                        Tanpa salinan, memory lama tidak terlihat sampai provider dikembalikan. Password disimpan terenkripsi dan tidak pernah dikirim balik ke browser.
-                        Memory dibagi antar developer berdasarkan <a href="/Project">project key</a> (git remote, <span class="mono">.aithread/project.json</span>, atau key manual), bukan folder root.
+                        @Html.Raw(Lang.T("Saat disimpan, AIT menguji koneksi dan membuat database/tabel <span class=\"mono\">ShortMemories</span>, <span class=\"mono\">LongMemories</span>, atau <span class=\"mono\">BusinessPages</span> (beserta revisi & gambarnya) bila belum ada (user perlu hak membuat tabel). Penyimpanan lama tidak dihapus atau diubah. Tanpa salinan, memory lama tidak terlihat sampai provider dikembalikan. Password disimpan terenkripsi dan tidak pernah dikirim balik ke browser. Memory dibagi antar developer berdasarkan <a href=\"/Project\">project key</a> (git remote, <span class=\"mono\">.aithread/project.json</span>, atau key manual), bukan folder root.", "When saving, AIT tests the connection and creates the database/tables <span class=\"mono\">ShortMemories</span>, <span class=\"mono\">LongMemories</span> or <span class=\"mono\">BusinessPages</span> (with their revisions & images) when missing (the user needs the right to create tables). The old storage is not deleted or changed. Without a copy, the old memory is not visible until the provider is switched back. Passwords are stored encrypted and never sent back to the browser. Memory is shared between developers by <a href=\"/Project\">project key</a> (git remote, <span class=\"mono\">.aithread/project.json</span>, or a manual key), not by root folder."))
                     </div>
                 </div>
                 <div class="card-footer text-end">
-                    <button type="submit" class="btn btn-primary" id="btnSaveMemoryStorage">Simpan penyimpanan memory</button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveMemoryStorage">@Lang.T("Simpan penyimpanan memory", "Save memory storage")</button>
                 </div>
             </div>
         </form>
 
         <form class="card mt-3" id="businessSettingsForm" autocomplete="off" novalidate>
-            <div class="card-header">Business memory — penulis wiki bisnis</div>
+            <div class="card-header">@Lang.T("Business memory — penulis wiki bisnis", "Business memory — business wiki writer")</div>
             <div class="card-body">
                 <p class="small text-secondary">
-                    Secara berkala, thread yang selesai dirangkum AI menjadi halaman wiki bisnis per modul (menu <a href="/Memory#bisnis">Memory → Business memory</a>).
-                    Planner membaca halaman ini sebelum mengubah perilaku modulnya. Setiap developer merangkum thread miliknya sendiri; halaman yang sama aman ditulis bersamaan.
+                    @Html.Raw(Lang.T("Secara berkala, thread yang selesai dirangkum AI menjadi halaman wiki bisnis per modul (menu <a href=\"/Memory#bisnis\">Memory → Business memory</a>). Planner membaca halaman ini sebelum mengubah perilaku modulnya. Setiap developer merangkum thread miliknya sendiri; halaman yang sama aman ditulis bersamaan.", "Periodically, finished threads are summarized by AI into business wiki pages per module (menu <a href=\"/Memory#bisnis\">Memory → Business memory</a>). The planner reads these pages before changing the behaviour of their module. Each developer summarizes their own threads; the same page is safe to write at the same time."))
                 </p>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" role="switch" id="bizEnabled" />
-                    <label class="form-check-label" for="bizEnabled">Perbarui wiki bisnis otomatis</label>
+                    <label class="form-check-label" for="bizEnabled">@Lang.T("Perbarui wiki bisnis otomatis", "Update the business wiki automatically")</label>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <label class="form-label small" for="bizInterval">Interval (jam)</label>
+                        <label class="form-label small" for="bizInterval">@Lang.T("Interval (jam)", "Interval (hours)")</label>
                         <input type="number" class="form-control" id="bizInterval" min="1" max="168" required />
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label small" for="bizModel">Model penulis wiki</label>
+                        <label class="form-label small" for="bizModel">@Lang.T("Model penulis wiki", "Wiki writer model")</label>
                         <select class="form-select" id="bizModel"></select>
-                        <div class="form-text">Model yang teliti dan bisa membaca gambar (untuk screenshot), mis. model planner.</div>
+                        <div class="form-text">@Lang.T("Model yang teliti dan bisa membaca gambar (untuk screenshot), mis. model planner.", "A careful model that can read images (for screenshots), e.g. the planner model.")</div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small" for="bizDeveloper">Nama developer</label>
+                        <label class="form-label small" for="bizDeveloper">@Lang.T("Nama developer", "Developer name")</label>
                         <input type="text" class="form-control" id="bizDeveloper" maxlength="200" />
-                        <div class="form-text">Dicatat pada halaman & riwayat revisi. Kosong = <span class="mono">git config user.name</span> (atau user Windows bila git tidak punya).</div>
+                        <div class="form-text">@Html.Raw(Lang.T("Dicatat pada halaman & riwayat revisi. Kosong = <span class=\"mono\">git config user.name</span> (atau user Windows bila git tidak punya).", "Recorded on pages & revision history. Empty = <span class=\"mono\">git config user.name</span> (or the Windows user when git has none)."))</div>
                     </div>
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">Simpan business memory</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan business memory", "Save business memory")</button>
             </div>
         </form>
     </div>
@@ -223,36 +215,34 @@
     <div class="tab-pane" id="tab-telegram" role="tabpanel" aria-labelledby="telegram-tab" tabindex="0">
         <div class="card" id="telegramCard">
             <div class="card-header d-flex flex-wrap align-items-center gap-2">
-                <span>Telegram — prompt jarak jauh</span>
-                <span class="ms-auto small" id="telegramState"></span>
+                @Html.Raw(Lang.T("<span>Telegram — prompt jarak jauh</span> <span class=\"ms-auto small\" id=\"telegramState\"></span>", "<span>Telegram — remote prompts</span> <span class=\"ms-auto small\" id=\"telegramState\"></span>"))
             </div>
             <div class="card-body">
                 <div class="row g-4">
                     <div class="col-lg-5">
                         <form id="telegramForm" autocomplete="off">
                             <p class="small text-secondary">
-                                Kirim prompt ke AIT dari HP lewat bot Telegram pribadi, misalnya saat laptop ditinggal di kantor/rumah.
-                                AIT menarik pesan dari Telegram (long polling), jadi tidak perlu URL publik atau membuka port — cukup laptop menyala dan terhubung internet.
+                                @Lang.T("Kirim prompt ke AIT dari HP lewat bot Telegram pribadi, misalnya saat laptop ditinggal di kantor/rumah. AIT menarik pesan dari Telegram (long polling), jadi tidak perlu URL publik atau membuka port — cukup laptop menyala dan terhubung internet.", "Send prompts to AIT from your phone through a private Telegram bot, e.g. while the laptop stays at the office/home. AIT pulls messages from Telegram (long polling), so no public URL or open port is needed — just a laptop that is on and online.")
                             </p>
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="telegramEnabled" />
-                                <label class="form-check-label" for="telegramEnabled">Aktifkan bot Telegram</label>
+                                <label class="form-check-label" for="telegramEnabled">@Lang.T("Aktifkan bot Telegram", "Turn on the Telegram bot")</label>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label small" for="telegramToken">Bot token</label>
-                                <input type="password" class="form-control mono" id="telegramToken" placeholder="Kosongkan untuk mempertahankan token tersimpan" />
+                                <input type="password" class="form-control mono" id="telegramToken" placeholder="@Lang.T("Kosongkan untuk mempertahankan token tersimpan", "Leave empty to keep the stored token")" />
                                 <div class="form-text" id="telegramTokenHint"></div>
                             </div>
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="telegramTokenClear" />
-                                <label class="form-check-label small" for="telegramTokenClear">Hapus token tersimpan</label>
+                                <label class="form-check-label small" for="telegramTokenClear">@Lang.T("Hapus token tersimpan", "Delete the stored token")</label>
                             </div>
-                            <button type="submit" class="btn btn-primary btn-sm">Simpan Telegram</button>
+                            <button type="submit" class="btn btn-primary btn-sm">@Lang.T("Simpan Telegram", "Save Telegram")</button>
                             <ol class="small text-secondary mt-3 mb-0 ps-3">
-                                <li>Di Telegram, chat <span class="mono">@@BotFather</span> → <span class="mono">/newbot</span> → salin token.</li>
-                                <li>Tempel token di atas, aktifkan, lalu klik <strong>Simpan Telegram</strong>.</li>
-                                <li>Kirim <span class="mono">/start</span> ke bot Anda, lalu klik <strong>Izinkan</strong> pada chat Anda di tabel.</li>
-                                <li>Pilih project dengan <span class="mono">/projects</span>, lalu kirim prompt seperti biasa.</li>
+                                <li>@Html.Raw(Lang.T("Di Telegram, chat <span class=\"mono\">@BotFather</span> → <span class=\"mono\">/newbot</span> → salin token.", "In Telegram, chat with <span class=\"mono\">@BotFather</span> → <span class=\"mono\">/newbot</span> → copy the token."))</li>
+                                <li>@Html.Raw(Lang.T("Tempel token di atas, aktifkan, lalu klik <strong>Simpan Telegram</strong>.", "Paste the token above, turn it on, then click <strong>Save Telegram</strong>."))</li>
+                                <li>@Html.Raw(Lang.T("Kirim <span class=\"mono\">/start</span> ke bot Anda, lalu klik <strong>Izinkan</strong> pada chat Anda di tabel.", "Send <span class=\"mono\">/start</span> to your bot, then click <strong>Allow</strong> on your chat in the table."))</li>
+                                <li>@Html.Raw(Lang.T("Pilih project dengan <span class=\"mono\">/projects</span>, lalu kirim prompt seperti biasa.", "Choose a project with <span class=\"mono\">/projects</span>, then send prompts as usual."))</li>
                             </ol>
                         </form>
                     </div>
@@ -261,17 +251,16 @@
                         <div class="table-responsive">
                             <table class="table align-middle mb-2">
                                 <thead>
-                                    <tr class="text-nowrap"><th>Chat</th><th>Status</th><th>Project aktif</th><th>Pesan terakhir</th><th></th></tr>
+                                    <tr class="text-nowrap"><th>Chat</th><th>Status</th><th>@Lang.T("Project aktif", "Active project")</th><th>@Lang.T("Pesan terakhir", "Last message")</th><th></th></tr>
                                 </thead>
                                 <tbody id="telegramChatRows">
-                                    <tr><td colspan="5" class="text-secondary small">Memuat…</td></tr>
+                                    <tr><td colspan="5" class="text-secondary small">@Lang.T("Memuat…", "Loading…")</td></tr>
                                 </tbody>
                             </table>
                         </div>
                         <div class="d-flex justify-content-between align-items-center small mb-2 d-none" id="telegramChatPager"></div>
                         <div class="form-text">
-                            Hanya chat pribadi yang <strong>diizinkan</strong> yang bisa menjalankan prompt — izinkan hanya akun Telegram Anda sendiri,
-                            karena prompt dapat mengubah file project di komputer ini. Chat lain yang mengirim pesan ke bot muncul di sini sebagai <em>menunggu izin</em>.
+                            @Html.Raw(Lang.T("Hanya chat pribadi yang <strong>diizinkan</strong> yang bisa menjalankan prompt — izinkan hanya akun Telegram Anda sendiri, karena prompt dapat mengubah file project di komputer ini. Chat lain yang mengirim pesan ke bot muncul di sini sebagai <em>menunggu izin</em>.", "Only <strong>allowed</strong> private chats can run prompts — allow only your own Telegram account, since prompts can change project files on this computer. Other chats that message the bot show up here as <em>waiting for approval</em>."))
                         </div>
                     </div>
                 </div>
@@ -286,48 +275,45 @@
                     <div class="card-header">Skill Orchestrator</div>
                     <div class="card-body">
                         <p class="small text-secondary">
-                            Tempel link git atau web yang berisi skill. Model di bawah memeriksa skill apa saja yang ada di link itu, lalu skill ditarik ke gudang lokal sehingga bisa dipakai offline.
-                            Di menu <a href="/Node">Node</a>, model yang sama mencarikan skill yang cocok dengan kebutuhan yang Anda tulis, lalu skill tersebut benar-benar ditempel ke system prompt node.
+                            @Html.Raw(Lang.T("Tempel link git atau web yang berisi skill. Model di bawah memeriksa skill apa saja yang ada di link itu, lalu skill ditarik ke gudang lokal sehingga bisa dipakai offline. Di menu <a href=\"/Node\">Node</a>, model yang sama mencarikan skill yang cocok dengan kebutuhan yang Anda tulis, lalu skill tersebut benar-benar ditempel ke system prompt node.", "Paste a git or web link that holds skills. The model below checks which skills the link has, then the skills are pulled into a local store so they work offline. In the <a href=\"/Node\">Node</a> menu, the same model finds the skills that match the need you describe, and those skills are really put into the node's system prompt."))
                         </p>
                         <div class="mb-3">
                             <label class="form-label small" for="skillModel">Model Skill Orchestrator</label>
                             <select class="form-select" id="skillModel"></select>
-                            <div class="form-text">Pilih model yang pandai menilai, mis. model planner. Dipakai saat menarik link dan saat mencari skill untuk node.</div>
+                            <div class="form-text">@Lang.T("Pilih model yang pandai menilai, mis. model planner. Dipakai saat menarik link dan saat mencari skill untuk node.", "Choose a model that judges well, e.g. the planner model. Used when pulling links and when finding skills for a node.")</div>
                         </div>
                         <div class="mb-2">
                             <label class="form-label small" for="skillMaxChars">Batas karakter skill per node</label>
                             <input type="number" class="form-control" id="skillMaxChars" min="4000" max="200000" step="1000" required />
-                            <div class="form-text">Isi semua skill pada satu node dibagi rata dalam batas ini sebelum ditempel ke system prompt. Skill yang lebih panjang dipotong, dan modelnya diberi path ke file lengkap.</div>
+                            <div class="form-text">@Lang.T("Isi semua skill pada satu node dibagi rata dalam batas ini sebelum ditempel ke system prompt. Skill yang lebih panjang dipotong, dan modelnya diberi path ke file lengkap.", "The content of all skills of one node is shared evenly within this limit before it goes into the system prompt. Longer skills are cut, and the model gets the path to the full file.")</div>
                         </div>
-                        <div class="form-text">Gudang: <span class="mono" id="skillStoreDir">–</span></div>
+                        <div class="form-text">@Html.Raw(Lang.T("Gudang: <span class=\"mono\" id=\"skillStoreDir\">–</span>", "Store: <span class=\"mono\" id=\"skillStoreDir\">–</span>"))</div>
                     </div>
                     <div class="card-footer text-end">
-                        <button type="submit" class="btn btn-primary btn-sm">Simpan Skill</button>
+                        <button type="submit" class="btn btn-primary btn-sm">@Lang.T("Simpan Skill", "Save Skill")</button>
                     </div>
                 </form>
             </div>
             <div class="col-lg-7">
                 <div class="card h-100">
                     <div class="card-header d-flex align-items-center gap-2">
-                        <span>Sumber skill</span>
-                        <span class="ms-auto small text-secondary" id="skillSourceSummary"></span>
+                        @Html.Raw(Lang.T("<span>Sumber skill</span> <span class=\"ms-auto small text-secondary\" id=\"skillSourceSummary\"></span>", "<span>Skill sources</span> <span class=\"ms-auto small text-secondary\" id=\"skillSourceSummary\"></span>"))
                     </div>
                     <div class="card-body">
                         <form class="d-flex gap-2" id="skillSourceForm" autocomplete="off">
                             <input type="text" class="form-control mono" id="skillSourceUrl" placeholder="https://github.com/anthropics/skills" required />
-                            <button type="submit" class="btn btn-primary text-nowrap">Tarik skill</button>
+                            <button type="submit" class="btn btn-primary text-nowrap">@Lang.T("Tarik skill", "Pull skills")</button>
                         </form>
                         <div class="form-text mb-3">
-                            Repository GitHub/GitLab (boleh link ke folder <span class="mono">/tree/main/…</span>), URL <span class="mono">.git</span>,
-                            file <span class="mono">.md</span>, atau halaman web yang memuat skill. GitHub/GitLab diunduh sebagai ZIP; host git lain memakai <span class="mono">git clone</span>.
+                            @Html.Raw(Lang.T("Repository GitHub/GitLab (boleh link ke folder <span class=\"mono\">/tree/main/…</span>), URL <span class=\"mono\">.git</span>, file <span class=\"mono\">.md</span>, atau halaman web yang memuat skill. GitHub/GitLab diunduh sebagai ZIP; host git lain memakai <span class=\"mono\">git clone</span>.", "A GitHub/GitLab repository (a link to a <span class=\"mono\">/tree/main/…</span> folder is fine), a <span class=\"mono\">.git</span> URL, a <span class=\"mono\">.md</span> file, or a web page holding skills. GitHub/GitLab are downloaded as ZIP; other git hosts use <span class=\"mono\">git clone</span>."))
                         </div>
                         <div class="table-responsive">
                             <table class="table align-middle mb-0">
                                 <thead>
-                                    <tr class="text-nowrap"><th>Sumber</th><th>Status</th><th>Skill</th><th>Ditarik</th><th></th></tr>
+                                    <tr class="text-nowrap"><th>@Lang.T("Sumber", "Source")</th><th>Status</th><th>Skill</th><th>@Lang.T("Ditarik", "Pulled")</th><th></th></tr>
                                 </thead>
                                 <tbody id="skillSourceRows">
-                                    <tr><td colspan="5" class="text-secondary small">Memuat…</td></tr>
+                                    <tr><td colspan="5" class="text-secondary small">@Lang.T("Memuat…", "Loading…")</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -338,18 +324,18 @@
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-                        <span>Gudang skill</span>
+                        <span>@Lang.T("Gudang skill", "Skill store")</span>
                         <span class="small text-secondary" id="skillCount"></span>
-                        <input type="search" class="form-control form-control-sm ms-auto w-auto" id="skillSearch" placeholder="Cari nama, deskripsi, tag…" />
+                        <input type="search" class="form-control form-control-sm ms-auto w-auto" id="skillSearch" placeholder="@Lang.T("Cari nama, deskripsi, tag…", "Search name, description, tag…")" />
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table align-middle mb-0">
                                 <thead>
-                                    <tr class="text-nowrap"><th>Skill</th><th>Sumber</th><th>Dipakai</th><th></th></tr>
+                                    <tr class="text-nowrap"><th>Skill</th><th>@Lang.T("Sumber", "Source")</th><th>@Lang.T("Dipakai", "Used")</th><th></th></tr>
                                 </thead>
                                 <tbody id="skillRows">
-                                    <tr><td colspan="4" class="text-secondary small">Memuat…</td></tr>
+                                    <tr><td colspan="4" class="text-secondary small">@Lang.T("Memuat…", "Loading…")</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -363,44 +349,40 @@
     <div class="tab-pane" id="tab-keamanan" role="tabpanel" aria-labelledby="keamanan-tab" tabindex="0">
         <form class="card" id="securityForm" autocomplete="off" novalidate>
             <div class="card-header d-flex flex-wrap align-items-center gap-2">
-                <span>Penyamaran secret</span>
-                <button type="button" class="btn btn-link btn-sm ms-auto p-0" id="btnSecurityExplain">Apa yang dilakukan AIT? →</button>
+                <span>@Lang.T("Penyamaran secret", "Secret masking")</span>
+                <button type="button" class="btn btn-link btn-sm ms-auto p-0" id="btnSecurityExplain">@Lang.T("Apa yang dilakukan AIT? →", "What does AIT do? →")</button>
             </div>
             <div class="card-body">
                 <p class="small text-secondary">
-                    Password, API key, token, JWT, private key, dan password di connection string diganti placeholder <span class="mono">{{AIT_SECRET:…}}</span>
-                    sebelum isi file, prompt, atau output tool dikirim ke model. Nilai aslinya hanya disimpan di memori AIT, lalu dipasang kembali saat AIT
-                    (atau Claude Code lewat hook) menulis ke file Anda. File kredensial seperti <span class="mono">.pem</span>, <span class="mono">.pfx</span>,
-                    kunci SSH, <span class="mono">.npmrc</span>, dan <span class="mono">~/.aws</span> tidak pernah dibaca, apa pun setting di halaman ini.
+                    @Html.Raw(Lang.T("Password, API key, token, JWT, private key, dan password di connection string diganti placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span> sebelum isi file, prompt, atau output tool dikirim ke model. Nilai aslinya hanya disimpan di memori AIT, lalu dipasang kembali saat AIT (atau Claude Code lewat hook) menulis ke file Anda. File kredensial seperti <span class=\"mono\">.pem</span>, <span class=\"mono\">.pfx</span>, kunci SSH, <span class=\"mono\">.npmrc</span>, dan <span class=\"mono\">/.aws</span> tidak pernah dibaca, apa pun setting di halaman ini.", "Passwords, API keys, tokens, JWTs, private keys and passwords in connection strings are replaced by the placeholder <span class=\"mono\">{{AIT_SECRET:…}}</span> before file contents, prompts or tool output are sent to a model. The real values are kept only in AIT's memory, and put back when AIT (or Claude Code through the hook) writes to your files. Credential files such as <span class=\"mono\">.pem</span>, <span class=\"mono\">.pfx</span>, SSH keys, <span class=\"mono\">.npmrc</span> and <span class=\"mono\">/.aws</span> are never read, whatever the settings on this page."))
                 </p>
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" role="switch" id="secMasking" />
-                    <label class="form-check-label" for="secMasking">Samarkan secret sebelum dikirim ke model dan sebelum disimpan</label>
+                    <label class="form-check-label" for="secMasking">@Lang.T("Samarkan secret sebelum dikirim ke model dan sebelum disimpan", "Mask secrets before they are sent to a model and before they are stored")</label>
                 </div>
                 <div class="form-check form-switch mb-1">
                     <input class="form-check-input" type="checkbox" role="switch" id="secPassthrough" />
-                    <label class="form-check-label" for="secPassthrough">Samarkan juga request passthrough (yang diteruskan apa adanya ke 9router)</label>
+                    <label class="form-check-label" for="secPassthrough">@Lang.T("Samarkan juga request passthrough (yang diteruskan apa adanya ke 9router)", "Also mask passthrough requests (forwarded as they are to 9router)")</label>
                 </div>
                 <div class="form-text mb-3">
-                    Untuk Claude Code, pasang hook di menu <a href="/Cli">CLI</a> agar placeholder dari request passthrough ditulis kembali sebagai nilai asli.
-                    CLI lain bisa menerima placeholder apa adanya; matikan opsi ini bila CLI tersebut sering mengedit file berisi secret.
+                    @Html.Raw(Lang.T("Untuk Claude Code, pasang hook di menu <a href=\"/Cli\">CLI</a> agar placeholder dari request passthrough ditulis kembali sebagai nilai asli. CLI lain bisa menerima placeholder apa adanya; matikan opsi ini bila CLI tersebut sering mengedit file berisi secret.", "For Claude Code, install the hook in the <a href=\"/Cli\">CLI</a> menu so placeholders from passthrough requests are written back as the real values. Other CLIs may receive the placeholders as they are; turn this option off when such a CLI often edits files holding secrets."))
                 </div>
 
                 <div class="security-stats mb-3" id="securityStats"></div>
 
                 <div class="small text-secondary">
-                    Atur per project di <span class="mono">.aithread/project.json</span>:
+                    @Html.Raw(Lang.T("Atur per project di <span class=\"mono\">.aithread/project.json</span>:", "Set per project in <span class=\"mono\">.aithread/project.json</span>:"))
                     <pre class="mono small mb-0 mt-1">{
   "secrets": {
-    "deny":  ["config/production/**"],   // file tambahan yang tidak boleh dibaca
-    "allow": ["tests/certs/test.pem"],   // file kredensial yang boleh dibaca (fixture test)
-    "keys":  ["LicenseCode"]             // nama setting tambahan yang nilainya disamarkan
+    "deny":  ["config/production/**"],   // @Lang.T("file tambahan yang tidak boleh dibaca", "extra files that must not be read")
+    "allow": ["tests/certs/test.pem"],   // @Lang.T("file kredensial yang boleh dibaca (fixture test)", "credential files that may be read (test fixtures)")
+    "keys":  ["LicenseCode"]             // @Lang.T("nama setting tambahan yang nilainya disamarkan", "extra setting names whose values are masked")
   }
 }</pre>
                 </div>
             </div>
             <div class="card-footer text-end">
-                <button type="submit" class="btn btn-primary">Simpan setting keamanan</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan setting keamanan", "Save security settings")</button>
             </div>
         </form>
     </div>

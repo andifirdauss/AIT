@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using AIThread.Common.Localization;
 
 namespace AIThread.UI.Hosting;
 
@@ -36,7 +37,7 @@ public sealed class ConsoleMenu(int port)
             if (_owned && !running && !_server.IsRunning)
             {
                 Out.WriteLine();
-                Out.WriteLine("Server berhenti.");
+                Out.WriteLine(Lang.T("Server berhenti.", "Server stopped."));
                 return 0;
             }
 
@@ -71,7 +72,7 @@ public sealed class ConsoleMenu(int port)
         }
 
         LogFile.Redirect();
-        Out.WriteLine($"Menjalankan AIT di {client.BaseUrl} ...");
+        Out.WriteLine(Lang.T($"Menjalankan AIT di {client.BaseUrl} ...", $"Starting AIT at {client.BaseUrl} ..."));
         try
         {
             await _server.StartAsync([], _port);
@@ -94,40 +95,40 @@ public sealed class ConsoleMenu(int port)
         Out.WriteLine("  ------------------------------------------------------------");
         if (info is not null)
         {
-            var where = _owned ? "proses ini" : "instance lain / tray";
+            var where = _owned ? Lang.T("proses ini", "this process") : "instance lain / tray";
             Write("  Server    : ", ConsoleColor.Gray);
-            Write($"Berjalan di {client.BaseUrl}", ConsoleColor.Green);
+            Write(Lang.T($"Berjalan di {client.BaseUrl}", $"Running at {client.BaseUrl}"), ConsoleColor.Green);
             Out.WriteLine($"  (PID {info.ProcessId}, {where})");
         }
         else
         {
             Write("  Server    : ", ConsoleColor.Gray);
-            Write("Tidak berjalan", ConsoleColor.Red);
+            Write(Lang.T("Tidak berjalan", "Not running"), ConsoleColor.Red);
             Out.WriteLine(_startError is null ? string.Empty : $"  ({_startError})");
         }
 
-        Out.WriteLine($"  Log       : {LogFile.CurrentPath ?? AppPaths.LatestLog()?.FullName ?? "(belum ada)"}");
-        Out.WriteLine($"  Autostart : {(Autostart.IsEnabled() ? "aktif (tray saat login Windows)" : "tidak aktif")}");
+        Out.WriteLine(Lang.T($"  Log       : {LogFile.CurrentPath ?? AppPaths.LatestLog()?.FullName ?? "(belum ada)"}", $"  Log       : {LogFile.CurrentPath ?? AppPaths.LatestLog()?.FullName ?? "(none yet)"}"));
+        Out.WriteLine(Lang.T($"  Autostart : {(Autostart.IsEnabled() ? "aktif (tray saat login Windows)" : "tidak aktif")}", $"  Autostart : {(Autostart.IsEnabled() ? "on (tray at Windows login)" : "off")}"));
         Out.WriteLine();
-        Out.WriteLine("  [1] Web UI (buka di browser)");
+        Out.WriteLine(Lang.T("  [1] Web UI (buka di browser)", "  [1] Web UI (open in the browser)"));
         if (_owned)
         {
-            Out.WriteLine("  [2] Sembunyikan ke Tray (background)");
+            Out.WriteLine(Lang.T("  [2] Sembunyikan ke Tray (background)", "  [2] Hide to the tray (background)"));
             Out.WriteLine("  [3] Log langsung");
             Out.WriteLine("  [4] Restart server");
-            Out.WriteLine($"  [5] Ganti port (sekarang {_port})");
+            Out.WriteLine(Lang.T($"  [5] Ganti port (sekarang {_port})", $"  [5] Change port (now {_port})"));
         }
         else
         {
-            Out.WriteLine(info is null ? "  [2] Coba jalankan server lagi" : "  [2] Matikan instance yang berjalan, lalu jalankan di jendela ini");
-            Out.WriteLine("  [3] Log terakhir");
-            if (info is null) Out.WriteLine($"  [5] Ganti port (sekarang {_port})");
+            Out.WriteLine(info is null ? Lang.T("  [2] Coba jalankan server lagi", "  [2] Try to start the server again") : Lang.T("  [2] Matikan instance yang berjalan, lalu jalankan di jendela ini", "  [2] Stop the running instance, then run in this window"));
+            Out.WriteLine(Lang.T("  [3] Log terakhir", "  [3] Latest log"));
+            if (info is null) Out.WriteLine(Lang.T($"  [5] Ganti port (sekarang {_port})", $"  [5] Change port (now {_port})"));
         }
 
-        Out.WriteLine($"  [6] Autostart saat login Windows: {(Autostart.IsEnabled() ? "matikan" : "aktifkan")}");
-        Out.WriteLine(_owned ? "  [0] Keluar (matikan server)" : "  [0] Keluar (instance tetap berjalan)");
+        Out.WriteLine(Lang.T($"  [6] Autostart saat login Windows: {(Autostart.IsEnabled() ? "matikan" : "aktifkan")}", $"  [6] Autostart at Windows login: {(Autostart.IsEnabled() ? "turn off" : "turn on")}"));
+        Out.WriteLine(_owned ? Lang.T("  [0] Keluar (matikan server)", "  [0] Exit (stop the server)") : Lang.T("  [0] Keluar (instance tetap berjalan)", "  [0] Exit (the instance keeps running)"));
         Out.WriteLine();
-        Out.Write("  Pilih: ");
+        Out.Write(Lang.T("  Pilih: ", "  Choose: "));
         Out.Flush();
     }
 
@@ -157,10 +158,10 @@ public sealed class ConsoleMenu(int port)
     private async Task<bool> HideToTrayAsync()
     {
         Out.WriteLine();
-        Out.WriteLine("Memindahkan AIT ke tray ...");
+        Out.WriteLine(Lang.T("Memindahkan AIT ke tray ...", "Moving AIT to the tray ..."));
         if (!Autostart.CanEnable)
         {
-            Out.WriteLine("Hanya tersedia untuk AIThread.exe hasil publish.");
+            Out.WriteLine(Lang.T("Hanya tersedia untuk AIThread.exe hasil publish.", "Only available for a published AIThread.exe."));
             await PauseAsync();
             return false;
         }
@@ -173,12 +174,12 @@ public sealed class ConsoleMenu(int port)
         var ready = await Cli.WaitUntilAsync(async () => await client.GetInfoAsync() is not null, TimeSpan.FromSeconds(90));
         if (ready)
         {
-            Out.WriteLine($"AIT berjalan di tray: {client.BaseUrl}. Jendela ini boleh ditutup.");
+            Out.WriteLine(Lang.T($"AIT berjalan di tray: {client.BaseUrl}. Jendela ini boleh ditutup.", $"AIT is running in the tray: {client.BaseUrl}. This window can be closed."));
             await Task.Delay(1500);
             return true;
         }
 
-        Out.WriteLine("AIT di tray belum menjawab. Periksa log di: " + AppPaths.LogDir);
+        Out.WriteLine(Lang.T("AIT di tray belum menjawab. Periksa log di: ", "AIT in the tray is not answering yet. Check the log in: ") + AppPaths.LogDir);
         await PauseAsync();
         return true;
     }
@@ -187,10 +188,10 @@ public sealed class ConsoleMenu(int port)
     {
         Out.WriteLine();
         if (await client.GetInfoAsync() is null) return;
-        Out.WriteLine("Mematikan instance yang berjalan ...");
+        Out.WriteLine(Lang.T("Mematikan instance yang berjalan ...", "Stopping the running instance ..."));
         if (!await client.ShutdownAsync())
         {
-            Out.WriteLine("Permintaan shutdown ditolak.");
+            Out.WriteLine(Lang.T("Permintaan shutdown ditolak.", "Shutdown request refused."));
             await PauseAsync();
             return;
         }
@@ -206,14 +207,14 @@ public sealed class ConsoleMenu(int port)
         if (path is null)
         {
             Out.WriteLine();
-            Out.WriteLine("Belum ada log.");
+            Out.WriteLine(Lang.T("Belum ada log.", "No log yet."));
             await PauseAsync();
             return;
         }
 
         Console.Clear();
         Out.WriteLine($"  {path}");
-        Out.WriteLine("  Tekan tombol apa pun untuk kembali ke menu.");
+        Out.WriteLine(Lang.T("  Tekan tombol apa pun untuk kembali ke menu.", "  Press any key to go back to the menu."));
         Out.WriteLine("  ------------------------------------------------------------");
 
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(_quit.Token);
@@ -241,14 +242,14 @@ public sealed class ConsoleMenu(int port)
     private async Task ChangePortAsync()
     {
         Out.WriteLine();
-        Out.Write($"  Port baru (1-65535, kosong = batal, sekarang {_port}): ");
+        Out.Write(Lang.T($"  Port baru (1-65535, kosong = batal, sekarang {_port}): ", $"  New port (1-65535, empty = cancel, now {_port}): "));
         Out.Flush();
         var input = Console.ReadLine()?.Trim();
         if (string.IsNullOrEmpty(input)) return;
 
         if (!int.TryParse(input, out var newPort) || newPort is < 1 or > 65535)
         {
-            Out.WriteLine("Port tidak valid.");
+            Out.WriteLine(Lang.T("Port tidak valid.", "Invalid port."));
             await PauseAsync();
             return;
         }
@@ -262,7 +263,7 @@ public sealed class ConsoleMenu(int port)
         if (!_owned)
         {
             // Port taken: go back to the working one rather than leave the user without a server.
-            Out.WriteLine($"Port {newPort} tidak bisa dipakai. Kembali ke port {oldPort}.");
+            Out.WriteLine(Lang.T($"Port {newPort} tidak bisa dipakai. Kembali ke port {oldPort}.", $"Port {newPort} cannot be used. Back to port {oldPort}."));
             _port = oldPort;
             await EnsureServerAsync();
             await PauseAsync();
@@ -270,7 +271,7 @@ public sealed class ConsoleMenu(int port)
         }
 
         new CliSettings { Port = _port }.Save();
-        Out.WriteLine($"Port disimpan: {_port}. Terapkan ulang integrasi CLI (menu CLI) karena alamatnya berubah.");
+        Out.WriteLine(Lang.T($"Port disimpan: {_port}. Terapkan ulang integrasi CLI (menu CLI) karena alamatnya berubah.", $"Port saved: {_port}. Apply the CLI integrations again (CLI menu) because the address changed."));
         await PauseAsync();
     }
 
@@ -293,7 +294,7 @@ public sealed class ConsoleMenu(int port)
         if (_owned)
         {
             Out.WriteLine();
-            Out.WriteLine("Mematikan AIT (thread yang berjalan dibatalkan dan dicatat) ...");
+            Out.WriteLine(Lang.T("Mematikan AIT (thread yang berjalan dibatalkan dan dicatat) ...", "Stopping AIT (running threads are cancelled and recorded) ..."));
             await _server.StopAsync();
         }
 
@@ -302,7 +303,7 @@ public sealed class ConsoleMenu(int port)
 
     private static async Task PauseAsync()
     {
-        Out.WriteLine("Tekan tombol apa pun untuk lanjut ...");
+        Out.WriteLine(Lang.T("Tekan tombol apa pun untuk lanjut ...", "Press any key to continue ..."));
         while (!Console.KeyAvailable) await Task.Delay(100);
         Console.ReadKey(intercept: true);
     }

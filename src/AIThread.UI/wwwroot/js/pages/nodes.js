@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, stream, debounce } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, fmt, stream, debounce } = window.AIThread;
   const el = id => document.getElementById(id);
   const roles = ['Planner', 'ToolsNode', 'Executor', 'Reviewer', 'Tester', 'Wrapper', 'ContextKeeper'];
   const roleLabels = { ContextKeeper: 'Context Keeper', ToolsNode: 'Tools Node' };
@@ -15,21 +15,21 @@
   };
   // Planner tools a tools node can run instead (PlannerTools.Delegable), with what they cost the planner.
   const delegableTools = [
-    ['list_directory', 'daftar isi folder'],
-    ['find_files', 'cari file dengan glob'],
-    ['search_text', 'cari teks — hasil bisa panjang'],
-    ['find_symbol', 'cari deklarasi'],
-    ['find_references', 'cari pemakaian — hasil bisa panjang'],
-    ['read_file', 'baca file — paling boros token'],
-    ['search_memory', 'cari label memory'],
-    ['read_memory', 'baca isi memory / wiki'],
-    ['read_thread', 'baca thread sebelumnya'],
-    ['git_status', 'file yang belum di-commit (hanya repo git)'],
-    ['git_diff', 'diff perubahan — hasil bisa panjang'],
-    ['git_log', 'riwayat commit'],
-    ['git_show', 'isi satu commit — hasil bisa panjang'],
-    ['git_blame', 'commit terakhir per baris'],
-    ['run_build', 'build proyek & daftar error']
+    ['list_directory', t('daftar isi folder', 'list folder contents')],
+    ['find_files', t('cari file dengan glob', 'find files by glob')],
+    ['search_text', t('cari teks — hasil bisa panjang', 'search text — results can be long')],
+    ['find_symbol', t('cari deklarasi', 'find declarations')],
+    ['find_references', t('cari pemakaian — hasil bisa panjang', 'find usages — results can be long')],
+    ['read_file', t('baca file — paling boros token', 'read a file — uses the most tokens')],
+    ['search_memory', t('cari label memory', 'search memory labels')],
+    ['read_memory', t('baca isi memory / wiki', 'read memory / wiki content')],
+    ['read_thread', t('baca thread sebelumnya', 'read an earlier thread')],
+    ['git_status', t('file yang belum di-commit (hanya repo git)', 'uncommitted files (git repos only)')],
+    ['git_diff', t('diff perubahan — hasil bisa panjang', 'diff of changes — results can be long')],
+    ['git_log', t('riwayat commit', 'commit history')],
+    ['git_show', t('isi satu commit — hasil bisa panjang', 'content of one commit — results can be long')],
+    ['git_blame', t('commit terakhir per baris', 'last commit per line')],
+    ['run_build', t('build proyek & daftar error', 'build the project & list errors')]
   ];
   const nodes = new Map();
   let models = [];
@@ -62,7 +62,7 @@
       ? ` · <span title="${n.skills.length} skill: ${escapeHtml(n.skills.map(s => s.name).join(', '))}">🧩 ${n.skills.length}</span>`
       : '';
     const fallback = n.fallbackNodeName
-      ? ` · <span title="Node cadangan: ${escapeHtml(n.fallbackNodeName)}">↪ ${escapeHtml(n.fallbackNodeName)}</span>`
+      ? (isEn ? ` · <span title="Fallback node: ${escapeHtml(n.fallbackNodeName)}">↪ ${escapeHtml(n.fallbackNodeName)}</span>` : ` · <span title="Node cadangan: ${escapeHtml(n.fallbackNodeName)}">↪ ${escapeHtml(n.fallbackNodeName)}</span>`)
       : '';
     return `${nodeCardHead(n)}
         <div class="small text-secondary mt-1 text-truncate">
@@ -79,15 +79,15 @@
     if (n.role !== 'Planner' || !n.autoTesting) return '';
     const tester = activeTester();
     return tester
-      ? ` · <span title="Auto Testing: perubahan dites oleh ${escapeHtml(tester.name)} (${escapeHtml(tester.model)}) setelah verifikasi.">🧪 auto test</span>`
-      : ' · <span class="text-warning" title="Auto Testing menyala, tetapi belum ada node Tester aktif — testing dilewati.">🧪 tanpa tester</span>';
+      ? (isEn ? ` · <span title="Auto Testing: changes are tested by ${escapeHtml(tester.name)} (${escapeHtml(tester.model)}) after verification.">🧪 auto test</span>` : ` · <span title="Auto Testing: perubahan dites oleh ${escapeHtml(tester.name)} (${escapeHtml(tester.model)}) setelah verifikasi.">🧪 auto test</span>`)
+      : t(' · <span class="text-warning" title="Auto Testing menyala, tetapi belum ada node Tester aktif — testing dilewati.">🧪 tanpa tester</span>', ' · <span class="text-warning" title="Auto Testing is on, but there is no active Tester node yet — testing is skipped.">🧪 no tester</span>');
   }
 
   // Planner: the tools it hands to tools nodes. Tools node: the planners that use it.
   function delegationBadge(n) {
     if (n.toolDelegations?.length) {
       const detail = n.toolDelegations
-        .map(d => `${d.tool} → ${d.toolsNodeName}${d.toolsNodeActive ? '' : ' (nonaktif: dijalankan planner)'}`)
+        .map(d => `${d.tool} → ${d.toolsNodeName}${d.toolsNodeActive ? '' : t(' (nonaktif: dijalankan planner)', ' (off: run by the planner)')}`)
         .join('\n');
       return ` · <span title="${escapeHtml(detail)}">🛰 ${n.toolDelegations.length} tool</span>`;
     }
@@ -95,13 +95,24 @@
     const users = [...nodes.values()]
       .map(p => ({ name: p.name, tools: (p.toolDelegations || []).filter(d => d.toolsNodeId === n.id).map(d => d.tool) }))
       .filter(p => p.tools.length);
-    if (!users.length) return ' · <span title="Belum ada planner yang mendelegasikan tool ke node ini (Edit node Planner).">🛰 belum dipakai</span>';
+    if (!users.length) return t(' · <span title="Belum ada planner yang mendelegasikan tool ke node ini (Edit node Planner).">🛰 belum dipakai</span>', ' · <span title="No planner delegates tools to this node yet (edit the Planner node).">🛰 not used yet</span>');
     const detail = users.map(p => `${p.name}: ${p.tools.join(', ')}`).join('\n');
     return ` · <span title="${escapeHtml(detail)}">🛰 ${users.length} planner</span>`;
   }
 
   function nodeCardHead(n) {
-    return `<div class="d-flex justify-content-between align-items-start gap-2">
+    return (isEn ? `<div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="node-card-title">
+            <div class="fw-semibold text-truncate" title="${escapeHtml(n.name)}">${escapeHtml(n.name)}
+              ${n.isActive ? '' : '<span class="badge text-bg-secondary">off</span>'}</div>
+            <div class="mono small text-truncate" title="${escapeHtml(n.model)}">${escapeHtml(n.model)}</div>
+          </div>
+          <div class="btn-group btn-group-sm flex-shrink-0">
+            <button type="button" class="btn btn-outline-secondary" data-test="${n.id}">Test</button>
+            <button type="button" class="btn btn-outline-secondary" data-edit="${n.id}">Edit</button>
+            <button type="button" class="btn btn-outline-danger" data-delete="${n.id}">Delete</button>
+          </div>
+        </div>` : `<div class="d-flex justify-content-between align-items-start gap-2">
           <div class="node-card-title">
             <div class="fw-semibold text-truncate" title="${escapeHtml(n.name)}">${escapeHtml(n.name)}
               ${n.isActive ? '' : '<span class="badge text-bg-secondary">nonaktif</span>'}</div>
@@ -112,7 +123,7 @@
             <button type="button" class="btn btn-outline-secondary" data-edit="${n.id}">Edit</button>
             <button type="button" class="btn btn-outline-danger" data-delete="${n.id}">Hapus</button>
           </div>
-        </div>`;
+        </div>`);
   }
 
   function nodeCard(n) {
@@ -127,12 +138,17 @@
   // The empty slot holds an invisible sample card so it is exactly as tall as a real one.
   function emptyCard(role) {
     const sample = { name: '-', model: '-', isActive: true, temperature: 0, maxTokens: 0, maxConcurrency: 0, priority: 0 };
-    return `<div class="card node-card node-empty mb-2">
+    return (isEn ? `<div class="card node-card node-empty mb-2">
+      <div class="card-body py-2">
+        <div class="node-empty-sample" aria-hidden="true">${nodeCardBody(sample)}</div>
+        <div class="node-empty-label small">No ${escapeHtml((roleLabels[role] || role).toLowerCase())} yet.</div>
+      </div>
+    </div>` : `<div class="card node-card node-empty mb-2">
       <div class="card-body py-2">
         <div class="node-empty-sample" aria-hidden="true">${nodeCardBody(sample)}</div>
         <div class="node-empty-label small">Belum ada ${escapeHtml((roleLabels[role] || role).toLowerCase())}.</div>
       </div>
-    </div>`;
+    </div>`);
   }
 
   async function loadNodes() {
@@ -159,8 +175,8 @@
       alert.classList.remove('d-none', 'alert-success', 'alert-warning');
       alert.classList.add(p.isReady && !p.issues.length ? 'alert-success' : 'alert-warning');
       alert.innerHTML = p.isReady && !p.issues.length
-        ? `Pipeline siap: ${p.plannerCount} planner · ${p.executorCount} executor · ${p.wrapperCount} wrapper.`
-        : `<strong>${p.isReady ? 'Pipeline siap, dengan catatan:' : 'Pipeline belum lengkap:'}</strong> ${p.issues.map(escapeHtml).join(' ')}`;
+        ? (isEn ? `Pipeline ready: ${p.plannerCount} planner · ${p.executorCount} executor · ${p.wrapperCount} wrapper.` : `Pipeline siap: ${p.plannerCount} planner · ${p.executorCount} executor · ${p.wrapperCount} wrapper.`)
+        : `<strong>${p.isReady ? t('Pipeline siap, dengan catatan:', 'Pipeline ready, with notes:') : t('Pipeline belum lengkap:', 'Pipeline not complete yet:')}</strong> ${p.issues.map(escapeHtml).join(' ')}`;
     } catch {
       // Shown by the node load error already.
     }
@@ -170,11 +186,11 @@
     try {
       models = await api.get(`/api/router/models${refresh ? '?refresh=true' : ''}`);
       modelsLoaded = true;
-      if (refresh) toast(`${models.length} model dimuat dari 9router.`, 'info');
+      if (refresh) toast((isEn ? `${models.length} models loaded from 9router.` : `${models.length} model dimuat dari 9router.`), 'info');
     } catch (error) {
       models = [];
       modelsLoaded = false;
-      if (refresh) toast(`Model 9router gagal dimuat: ${error.message}`, 'error');
+      if (refresh) toast((isEn ? `Could not load the 9router models: ${error.message}` : `Model 9router gagal dimuat: ${error.message}`), 'error');
     }
   }
 
@@ -205,7 +221,7 @@
     activeIndex = visibleModels.findIndex(m => m.id === query);
 
     if (visibleModels.length === 0) {
-      modelList.innerHTML = `<div class="dropdown-item-text small text-secondary">Tidak ada model cocok — id "${escapeHtml(query)}" akan dipakai apa adanya.</div>`;
+      modelList.innerHTML = (isEn ? `<div class="dropdown-item-text small text-secondary">No matching model — id "${escapeHtml(query)}" will be used as it is.</div>` : `<div class="dropdown-item-text small text-secondary">Tidak ada model cocok — id "${escapeHtml(query)}" akan dipakai apa adanya.</div>`);
       return;
     }
     let html = '';
@@ -290,13 +306,13 @@
     modelInput.value = selected || '';
     closeModelList();
     if (!modelsLoaded || models.length === 0) {
-      modelInput.placeholder = 'Model tidak termuat — ketik id model, mis. cc/claude-sonnet-5';
-      el('modelHint').textContent = '9router tidak dapat dihubungi — isi id model manual.';
+      modelInput.placeholder = t('Model tidak termuat — ketik id model, mis. cc/claude-sonnet-5', 'Models not loaded — type a model id, e.g. cc/claude-sonnet-5');
+      el('modelHint').textContent = t('9router tidak dapat dihubungi — isi id model manual.', '9router cannot be reached — fill in the model id by hand.');
       return;
     }
-    modelInput.placeholder = 'Cari model atau combo, mis. "sonnet" atau "combo"…';
-    const unknown = selected && !models.some(m => m.id === selected) ? ' Model saat ini tidak ada di 9router.' : '';
-    el('modelHint').textContent = `${models.length} model tersedia (${models.filter(m => m.isCombo).length} combo). Combo 9router otomatis fallback antar provider.${unknown}`;
+    modelInput.placeholder = t('Cari model atau combo, mis. "sonnet" atau "combo"…', 'Search a model or combo, e.g. "sonnet" or "combo"…');
+    const unknown = selected && !models.some(m => m.id === selected) ? t(' Model saat ini tidak ada di 9router.', ' The current model is not in 9router.') : '';
+    el('modelHint').textContent = (isEn ? `${models.length} models available (${models.filter(m => m.isCombo).length} combo). 9router combos fall back across providers automatically.${unknown}` : `${models.length} model tersedia (${models.filter(m => m.isCombo).length} combo). Combo 9router otomatis fallback antar provider.${unknown}`);
   }
 
   // Nodes of the same role, except the one being edited; inactive ones are listed too (pure backups).
@@ -304,8 +320,8 @@
     const id = el('nodeId').value;
     const role = el('nodeRole').value;
     const candidates = [...nodes.values()].filter(n => n.role === role && n.id !== id);
-    el('nodeFallback').innerHTML = '<option value="">Tidak ada</option>' + candidates
-      .map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${escapeHtml(n.name)} — ${escapeHtml(n.model)}${n.isActive ? '' : ' (nonaktif)'}</option>`)
+    el('nodeFallback').innerHTML = t('<option value="">Tidak ada</option>', '<option value="">None</option>') + candidates
+      .map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${escapeHtml(n.name)} — ${escapeHtml(n.model)}${n.isActive ? '' : t(' (nonaktif)', ' (off)')}</option>`)
       .join('');
   }
 
@@ -316,8 +332,8 @@
     el('nodeAutoTesting').checked = checked;
     const tester = activeTester();
     el('nodeAutoTestingHint').innerHTML = tester
-      ? `Tester yang dipakai: <strong>${escapeHtml(tester.name)}</strong> <span class="mono">${escapeHtml(tester.model)}</span>.`
-      : '<span class="text-warning">Belum ada node Tester aktif. Tambahkan node ber-role Tester dulu; tanpa itu testing dilewati.</span>';
+      ? (isEn ? `Tester in use: <strong>${escapeHtml(tester.name)}</strong> <span class="mono">${escapeHtml(tester.model)}</span>.` : `Tester yang dipakai: <strong>${escapeHtml(tester.name)}</strong> <span class="mono">${escapeHtml(tester.model)}</span>.`)
+      : t('<span class="text-warning">Belum ada node Tester aktif. Tambahkan node ber-role Tester dulu; tanpa itu testing dilewati.</span>', '<span class="text-warning">No active Tester node yet. Add a node with the Tester role first; without it testing is skipped.</span>');
   }
 
   // One select per delegable tool; only planners delegate. Keeps the choices made in the form when re-rendered.
@@ -331,21 +347,21 @@
     el('nodeDelegations').innerHTML = delegableTools.map(([tool, note]) => {
       const current = chosen.get(tool) || '';
       const options = toolsNodes
-        .map(n => `<option value="${n.id}" ${n.id === current ? 'selected' : ''}>${escapeHtml(n.name)} — ${escapeHtml(n.model)}${n.isActive ? '' : ' (nonaktif)'}</option>`)
+        .map(n => `<option value="${n.id}" ${n.id === current ? 'selected' : ''}>${escapeHtml(n.name)} — ${escapeHtml(n.model)}${n.isActive ? '' : t(' (nonaktif)', ' (off)')}</option>`)
         .join('');
       return `<div class="col-md-6">
           <label class="d-flex align-items-center gap-2 small mb-0" for="delegate-${tool}">
             <span class="mono text-nowrap" style="min-width: 9.5rem">${tool}</span>
             <select class="form-select form-select-sm" id="delegate-${tool}" data-delegate="${tool}" title="${escapeHtml(note)}" ${toolsNodes.length ? '' : 'disabled'}>
-              <option value="">Planner langsung</option>${options}
+              <option value="">${isEn ? 'Planner itself' : 'Planner langsung'}</option>${options}
             </select>
           </label>
           <div class="text-secondary" style="font-size: .75rem; margin-left: 10rem">${escapeHtml(note)}</div>
         </div>`;
     }).join('');
     el('nodeDelegationHint').textContent = toolsNodes.length
-      ? 'Saran hemat: read_file, search_text, find_references, git_diff dan git_show (output terbesar) ke tools node; find_symbol, list_directory dan git_status murah dibiarkan di planner.'
-      : 'Belum ada node Tools Node. Tambahkan node ber-role Tools Node (model murah) dulu, lalu pilih di sini.';
+      ? t('Saran hemat: read_file, search_text, find_references, git_diff dan git_show (output terbesar) ke tools node; find_symbol, list_directory dan git_status murah dibiarkan di planner.', 'Thrifty choice: read_file, search_text, find_references, git_diff and git_show (the largest output) to the tools node; the cheap find_symbol, list_directory and git_status stay with the planner.')
+      : t('Belum ada node Tools Node. Tambahkan node ber-role Tools Node (model murah) dulu, lalu pilih di sini.', 'No Tools Node yet. Add a node with the Tools Node role (a cheap model) first, then choose it here.');
   }
 
   function readDelegations() {
@@ -386,7 +402,7 @@
     renderFallbackOptions(node?.fallbackNodeId || '');
     renderDelegations(node?.toolDelegations || []);
     renderAutoTesting(node?.autoTesting ?? false);
-    el('nodeModalTitle').textContent = node ? `Edit node · ${node.name}` : 'Tambah node';
+    el('nodeModalTitle').textContent = node ? `Edit node · ${node.name}` : t('Tambah node', 'Add node');
     modal.show();
   }
 
@@ -421,7 +437,7 @@
       if (id) await api.put(`/api/nodes/${id}`, body);
       else await api.post('/api/nodes', body);
       modal.hide();
-      toast('Node tersimpan.');
+      toast(t('Node tersimpan.', 'Node saved.'));
       loadNodes();
     } catch (error) {
       toast(error.message, 'error');
@@ -436,22 +452,22 @@
       openModal(nodes.get(button.dataset.edit));
     } else if (button.dataset.delete) {
       const node = nodes.get(button.dataset.delete);
-      if (!confirm(`Hapus node "${node.name}"?`)) return;
+      if (!confirm((isEn ? `Delete node "${node.name}"?` : `Hapus node "${node.name}"?`))) return;
       try {
         await api.del(`/api/nodes/${node.id}`);
-        toast('Node dihapus.');
+        toast(t('Node dihapus.', 'Node deleted.'));
         loadNodes();
       } catch (error) {
         toast(error.message, 'error');
       }
     } else if (button.dataset.test) {
       const target = document.querySelector(`[data-test-result="${button.dataset.test}"]`);
-      target.innerHTML = '<span class="text-secondary">Menguji…</span>';
+      target.innerHTML = (isEn ? '<span class="text-secondary">Testing…</span>' : '<span class="text-secondary">Menguji…</span>');
       button.disabled = true;
       try {
         const r = await api.post(`/api/nodes/${button.dataset.test}/test`);
         target.innerHTML = r.success
-          ? `<span class="text-success">✓ ${fmt.ms(r.latencyMs)} · ${r.tokens} token · balasan: "${escapeHtml((r.reply || '').substring(0, 60))}"</span>`
+          ? (isEn ? `<span class="text-success">✓ ${fmt.ms(r.latencyMs)} · ${r.tokens} tokens · reply: "${escapeHtml((r.reply || '').substring(0, 60))}"</span>` : `<span class="text-success">✓ ${fmt.ms(r.latencyMs)} · ${r.tokens} token · balasan: "${escapeHtml((r.reply || '').substring(0, 60))}"</span>`)
           : `<span class="text-danger">✕ ${escapeHtml(r.error)}</span>`;
       } catch (error) {
         target.innerHTML = `<span class="text-danger">✕ ${escapeHtml(error.message)}</span>`;
@@ -473,7 +489,7 @@
           🧩 ${escapeHtml(s.name)}
           <button type="button" class="btn-close btn-close-white" style="font-size: .55rem" data-remove-skill="${i}" aria-label="Lepas ${escapeHtml(s.name)}"></button>
         </span>`).join('')
-      : '<span class="small text-secondary">Belum ada skill.</span>';
+      : t('<span class="small text-secondary">Belum ada skill.</span>', '<span class="small text-secondary">No skill yet.</span>');
   }
 
   el('nodeSkillChips').addEventListener('click', event => {
@@ -504,20 +520,20 @@
       target.innerHTML = `<div class="dropdown-item-text small text-secondary">${message}</div>`;
     } else if (!searchResults.length) {
       target.innerHTML = searchTerms.length
-        ? '<div class="dropdown-item-text small text-secondary">Tidak ada skill yang cocok.</div>'
-        : '<div class="dropdown-item-text small text-secondary">Gudang skill kosong. Tambahkan sumber di <a href="/Setting#skills">Setting → Skill</a>.</div>';
+        ? t('<div class="dropdown-item-text small text-secondary">Tidak ada skill yang cocok.</div>', '<div class="dropdown-item-text small text-secondary">No matching skill.</div>')
+        : t('<div class="dropdown-item-text small text-secondary">Gudang skill kosong. Tambahkan sumber di <a href="/Setting#skills">Setting → Skill</a>.</div>', '<div class="dropdown-item-text small text-secondary">The skill store is empty. Add a source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
     } else {
       const shown = searchResults.slice(0, maxSearchResults);
       target.innerHTML = shown.map((s, i) => {
         const attached = nodeSkills.some(n => n.id === s.id);
         return `<button type="button" class="dropdown-item text-wrap border-bottom py-2 ${attached ? 'active' : ''}" data-search-result="${i}">
           <span class="fw-semibold">${attached ? '✓ ' : ''}${highlight(s.name, searchTerms)}</span>
-          <span class="small text-secondary">· ${escapeHtml(s.sourceName)}${attached ? ' · terpasang (klik untuk melepas)' : ''}</span>
+          <span class="small text-secondary">· ${escapeHtml(s.sourceName)}${attached ? t(' · terpasang (klik untuk melepas)', ' · attached (click to detach)') : ''}</span>
           <span class="d-block small">${highlight(s.description, searchTerms)}</span>
-          ${s.snippet ? `<span class="d-block small text-secondary fst-italic">isi: ${highlight(s.snippet, searchTerms)}</span>` : ''}
+          ${s.snippet ? (isEn ? `<span class="d-block small text-secondary fst-italic">content: ${highlight(s.snippet, searchTerms)}</span>` : `<span class="d-block small text-secondary fst-italic">isi: ${highlight(s.snippet, searchTerms)}</span>`) : ''}
         </button>`;
       }).join('') + (searchResults.length > shown.length
-        ? `<div class="dropdown-item-text small text-secondary">${searchResults.length - shown.length} skill lain — persempit kata kunci.</div>`
+        ? (isEn ? `<div class="dropdown-item-text small text-secondary">${searchResults.length - shown.length} more skills — narrow the keywords.</div>` : `<div class="dropdown-item-text small text-secondary">${searchResults.length - shown.length} skill lain — persempit kata kunci.</div>`)
         : '');
     }
     target.classList.add('show');
@@ -526,7 +542,7 @@
   async function searchSkills() {
     const query = el('nodeSkillSearch').value.trim();
     const seq = ++searchSeq;
-    renderSearchResults('Mencari…');
+    renderSearchResults((isEn ? 'Searching…' : 'Mencari…'));
     try {
       const results = await api.get(`/api/skills${query ? `?query=${encodeURIComponent(query)}` : ''}`);
       if (seq !== searchSeq) return;
@@ -562,7 +578,7 @@
     if (index >= 0) {
       nodeSkills.splice(index, 1);
     } else if (nodeSkills.length >= maxSkills) {
-      return toast(`Satu node maksimal ${maxSkills} skill.`, 'info');
+      return toast((isEn ? `A node takes at most ${maxSkills} skills.` : `Satu node maksimal ${maxSkills} skill.`), 'info');
     } else {
       nodeSkills.push({ id: skill.id, name: skill.name, description: skill.description, sourceName: skill.sourceName });
     }
@@ -576,7 +592,7 @@
   function renderSuggestions() {
     const target = el('nodeSkillSuggestions');
     if (!suggestions.length) {
-      target.innerHTML = '<div class="small text-secondary">Tidak ada skill di gudang yang cocok. Coba tulis kebutuhan dengan kata lain, atau tambahkan sumber skill di <a href="/Setting#skills">Setting → Skill</a>.</div>';
+      target.innerHTML = t('<div class="small text-secondary">Tidak ada skill di gudang yang cocok. Coba tulis kebutuhan dengan kata lain, atau tambahkan sumber skill di <a href="/Setting#skills">Setting → Skill</a>.</div>', '<div class="small text-secondary">No skill in the store matches. Try describing the need in other words, or add a skill source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
       return;
     }
     const items = suggestions.map((s, i) => {
@@ -585,27 +601,31 @@
         <input class="form-check-input mt-1" type="checkbox" data-suggestion="${i}" ${s.recommended || attached ? 'checked' : ''} ${attached ? 'disabled' : ''} />
         <span>
           <span class="fw-semibold">${escapeHtml(s.name)}</span>
-          <span class="small text-secondary">· ${escapeHtml(s.sourceName)} · cocok ${Math.round(s.score * 100)}%${attached ? ' · sudah terpasang' : ''}</span>
+          <span class="small text-secondary">· ${escapeHtml(s.sourceName)} · cocok ${Math.round(s.score * 100)}%${attached ? t(' · sudah terpasang', ' · already attached') : ''}</span>
           <span class="d-block small">${escapeHtml(s.reason || s.description)}</span>
         </span>
       </label>`;
     }).join('');
-    target.innerHTML = `<div class="list-group list-group-flush border rounded mb-2">${items}</div>
+    target.innerHTML = (isEn ? `<div class="list-group list-group-flush border rounded mb-2">${items}</div>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDismissSkills">Close</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnApplySkills">Apply chosen skills</button>
+      </div>` : `<div class="list-group list-group-flush border rounded mb-2">${items}</div>
       <div class="d-flex justify-content-end gap-2">
         <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDismissSkills">Tutup</button>
         <button type="button" class="btn btn-primary btn-sm" id="btnApplySkills">Terapkan skill terpilih</button>
-      </div>`;
+      </div>`);
   }
 
   el('btnSuggestSkills').addEventListener('click', async () => {
     const prompt = el('nodeSkillPrompt').value.trim();
     if (!prompt) {
       el('nodeSkillPrompt').focus();
-      return toast('Tulis dulu kebutuhan node, mis. "aku butuh kamu bisa menjadi engineer yang handal".', 'info');
+      return toast(t('Tulis dulu kebutuhan node, mis. "aku butuh kamu bisa menjadi engineer yang handal".', 'Describe what the node needs first, e.g. "I need you to be a reliable engineer".'), 'info');
     }
     const button = el('btnSuggestSkills');
     button.disabled = true;
-    el('nodeSkillSuggestions').innerHTML = '<div class="small text-secondary">Skill Orchestrator sedang mencari di gudang skill…</div>';
+    el('nodeSkillSuggestions').innerHTML = t('<div class="small text-secondary">Skill Orchestrator sedang mencari di gudang skill…</div>', '<div class="small text-secondary">The Skill Orchestrator is searching the skill store…</div>');
     try {
       suggestions = await api.post('/api/skills/suggest', { prompt, role: el('nodeRole').value });
       renderSuggestions();
@@ -625,12 +645,12 @@
       const picked = Array.from(el('nodeSkillSuggestions').querySelectorAll('input[data-suggestion]:checked:not(:disabled)'))
         .map(input => suggestions[Number(input.dataset.suggestion)]);
       const room = maxSkills - nodeSkills.length;
-      if (picked.length > room) toast(`Satu node maksimal ${maxSkills} skill — hanya ${Math.max(room, 0)} yang ditambahkan.`, 'info');
+      if (picked.length > room) toast((isEn ? `A node takes at most ${maxSkills} skills — only ${Math.max(room, 0)} added.` : `Satu node maksimal ${maxSkills} skill — hanya ${Math.max(room, 0)} yang ditambahkan.`), 'info');
       picked.slice(0, Math.max(room, 0)).forEach(s => nodeSkills.push({ id: s.id, name: s.name, description: s.description, sourceName: s.sourceName }));
       renderSkillChips();
       suggestions = [];
       el('nodeSkillSuggestions').innerHTML = picked.length
-        ? '<div class="small text-success">Skill ditempel. Klik Simpan untuk menyimpan node.</div>'
+        ? t('<div class="small text-success">Skill ditempel. Klik Simpan untuk menyimpan node.</div>', '<div class="small text-success">Skills attached. Click Save to save the node.</div>')
         : '';
     }
   });

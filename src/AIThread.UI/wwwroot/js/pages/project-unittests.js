@@ -2,20 +2,20 @@
 // settings, scans and manual runs, and the confirmation of tests a thread marked obsolete. Snapshots are never shown.
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, debounce, pager } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, fmt, debounce, pager } = window.AIThread;
   const projectId = window.projectId;
   const el = id => document.getElementById(id);
   const base = `/api/projects/${projectId}/unit-tests`;
 
-  const states = { Active: ['success', 'Aktif'], Obsolete: ['warning', 'Obsolete'], Quarantined: ['secondary', 'Karantina'], Removed: ['dark', 'Dihapus'] };
+  const states = { Active: ['success', t('Aktif', 'Active')], Obsolete: ['warning', 'Obsolete'], Quarantined: ['secondary', (isEn ? 'Quarantined' : 'Karantina')], Removed: ['dark', t('Dihapus', 'Deleted')] };
   const results = {
-    Passed: ['success', 'Lolos'], Failed: ['danger', 'Gagal'], Error: ['danger', 'Error'], Skipped: ['secondary', 'Dilewati'],
-    NotFound: ['warning', 'Tidak dilaporkan'], Unknown: ['light border', 'Belum dijalankan']
+    Passed: ['success', (isEn ? 'Passed' : 'Lolos')], Failed: ['danger', t('Gagal', 'Failed')], Error: ['danger', 'Error'], Skipped: ['secondary', t('Dilewati', 'Skipped')],
+    NotFound: ['warning', t('Tidak dilaporkan', 'Not reported')], Unknown: ['light border', t('Belum dijalankan', 'Not run yet')]
   };
-  const origins = { Ait: 'Dibuat AIT', Scanned: 'Scan kode', Regenerated: 'Ditulis ulang (perlu konfirmasi)' };
-  const modes = { Off: 'mati', Relevant: 'test terkait saja', All: 'semua test aktif' };
-  const authorings = { OnRequest: 'hanya saat diminta', AutoLogic: 'otomatis untuk perubahan Logic', Off: 'tidak pernah' };
-  const phases = { baseline: 'sebelum perubahan', after: 'setelah perubahan', manual: 'manual', flaky: 'tidak stabil' };
+  const origins = { Ait: t('Dibuat AIT', 'Created by AIT'), Scanned: (isEn ? 'Code scan' : 'Scan kode'), Regenerated: t('Ditulis ulang (perlu konfirmasi)', 'Rewritten (needs confirmation)') };
+  const modes = { Off: 'mati', Relevant: t('test terkait saja', 'related tests only'), All: t('semua test aktif', 'all active tests') };
+  const authorings = { OnRequest: t('hanya saat diminta', 'only when asked'), AutoLogic: t('otomatis untuk perubahan Logic', 'automatic for Logic changes'), Off: t('tidak pernah', 'never') };
+  const phases = { baseline: t('sebelum perubahan', 'before the change'), after: t('setelah perubahan', 'after the change'), manual: 'manual', flaky: t('tidak stabil', 'flaky') };
 
   const settingsModal = bootstrap.Modal.getOrCreateInstance(el('unitTestSettingsModal'));
   const detailModal = bootstrap.Modal.getOrCreateInstance(el('unitTestDetailModal'));
@@ -29,7 +29,7 @@
   const testPager = pager('unitTestPager', rows => {
     el('unitTestRows').innerHTML = rows.length
       ? rows.map(rowHtml).join('')
-      : `<tr><td colspan="7" class="text-secondary">${catalog?.tests.length ? 'Tidak ada test yang cocok dengan filter.' : 'Belum ada unit test di katalog. Tekan Scan test untuk mendaftarkan test yang sudah ada di kode.'}</td></tr>`;
+      : `<tr><td colspan="7" class="text-secondary">${catalog?.tests.length ? t('Tidak ada test yang cocok dengan filter.', 'No test matches the filter.') : t('Belum ada unit test di katalog. Tekan Scan test untuk mendaftarkan test yang sudah ada di kode.', 'No unit test in the catalog yet. Press Scan tests to register the tests already in the code.')}</td></tr>`;
   }, 15);
 
   function rowHtml(t) {
@@ -44,18 +44,19 @@
         ? `<div class="small text-danger text-truncate" style="max-width:22rem" title="${escapeHtml(t.lastMessage)}">${escapeHtml(firstLine(t.lastMessage))}</div>`
         : '';
     const stateNote = t.state === 'Obsolete'
-      ? `<div class="small mt-1"><span class="text-secondary">Alasan:</span> ${escapeHtml(t.obsoleteReason || '–')}</div>
-         <div class="small text-secondary">${escapeHtml(t.obsoleteBy || '')}${t.obsoleteAt ? ` · ${fmt.relative(t.obsoleteAt)}` : ''}${t.obsoleteThreadId ? ` · <a href="/Thread/Detail/${t.obsoleteThreadId}">thread</a>` : ''}</div>`
+      ? (isEn ? `<div class="small mt-1"><span class="text-secondary">Reason:</span> ${escapeHtml(t.obsoleteReason || '–')}</div>
+         <div class="small text-secondary">${escapeHtml(t.obsoleteBy || '')}${t.obsoleteAt ? ` · ${fmt.relative(t.obsoleteAt)}` : ''}${t.obsoleteThreadId ? ` · <a href="/Thread/Detail/${t.obsoleteThreadId}">thread</a>` : ''}</div>` : `<div class="small mt-1"><span class="text-secondary">Alasan:</span> ${escapeHtml(t.obsoleteReason || '–')}</div>
+         <div class="small text-secondary">${escapeHtml(t.obsoleteBy || '')}${t.obsoleteAt ? ` · ${fmt.relative(t.obsoleteAt)}` : ''}${t.obsoleteThreadId ? ` · <a href="/Thread/Detail/${t.obsoleteThreadId}">thread</a>` : ''}</div>`)
       : t.state === 'Quarantined' && t.quarantineReason
         ? `<div class="small text-secondary mt-1">${escapeHtml(t.quarantineReason)}</div>`
         : '';
     const actions = [];
-    if (t.state !== 'Removed') actions.push(`<button type="button" class="btn btn-sm btn-outline-secondary" data-run="${t.id}" title="Jalankan test ini sekarang">Jalankan</button>`);
+    if (t.state !== 'Removed') actions.push((isEn ? `<button type="button" class="btn btn-sm btn-outline-secondary" data-run="${t.id}" title="Run this test now">Run</button>` : `<button type="button" class="btn btn-sm btn-outline-secondary" data-run="${t.id}" title="Jalankan test ini sekarang">Jalankan</button>`));
     if (t.state === 'Obsolete') {
-      actions.push(`<button type="button" class="btn btn-sm btn-outline-primary" data-reactivate="${t.id}">Kembalikan</button>`);
-      actions.push(`<button type="button" class="btn btn-sm btn-outline-danger" data-remove="${t.id}">Konfirmasi hapus</button>`);
+      actions.push((isEn ? `<button type="button" class="btn btn-sm btn-outline-primary" data-reactivate="${t.id}">Restore</button>` : `<button type="button" class="btn btn-sm btn-outline-primary" data-reactivate="${t.id}">Kembalikan</button>`));
+      actions.push((isEn ? `<button type="button" class="btn btn-sm btn-outline-danger" data-remove="${t.id}">Confirm deletion</button>` : `<button type="button" class="btn btn-sm btn-outline-danger" data-remove="${t.id}">Konfirmasi hapus</button>`));
     }
-    if (t.state === 'Quarantined') actions.push(`<button type="button" class="btn btn-sm btn-outline-primary" data-reactivate="${t.id}">Aktifkan</button>`);
+    if (t.state === 'Quarantined') actions.push((isEn ? `<button type="button" class="btn btn-sm btn-outline-primary" data-reactivate="${t.id}">Activate</button>` : `<button type="button" class="btn btn-sm btn-outline-primary" data-reactivate="${t.id}">Aktifkan</button>`));
     return `<tr>
       <td class="mono text-nowrap">${escapeHtml(t.displayNumber)}</td>
       <td>
@@ -92,26 +93,33 @@
     const count = state => tests.filter(t => t.state === state).length;
     const failing = tests.filter(t => t.state === 'Active' && isFailing(t)).length;
     el('unitTestCounts').textContent = tests.length
-      ? `· ${fmt.number(count('Active'))} aktif${count('Obsolete') ? `, ${count('Obsolete')} obsolete` : ''}${count('Quarantined') ? `, ${count('Quarantined')} karantina` : ''}${failing ? `, ${failing} gagal terakhir` : ''}`
+      ? (isEn ? `· ${fmt.number(count('Active'))} active${count('Obsolete') ? `, ${count('Obsolete')} obsolete` : ''}${count('Quarantined') ? `, ${count('Quarantined')} quarantined` : ''}${failing ? `, ${failing} failed last run` : ''}` : `· ${fmt.number(count('Active'))} aktif${count('Obsolete') ? `, ${count('Obsolete')} obsolete` : ''}${count('Quarantined') ? `, ${count('Quarantined')} karantina` : ''}${failing ? `, ${failing} gagal terakhir` : ''}`)
       : '';
 
     const s = catalog.settings;
     const suites = catalog.suites.length
-      ? catalog.suites.map(x => `<span class="chip" title="${escapeHtml(x.problem || x.stack)}">${escapeHtml(x.framework)} · <span class="mono">${escapeHtml(x.manifest)}</span>${x.problem ? ' ⚠️' : x.perTestResults ? '' : ' (tanpa hasil per test)'}</span>`).join('')
-      : '<span class="text-warning">Tidak ada test project/runner yang dikenali (dotnet test, jest, vitest, mocha, pytest, PHPUnit, Maven, Gradle, go test, cargo test).</span>';
+      ? catalog.suites.map(x => `<span class="chip" title="${escapeHtml(x.problem || x.stack)}">${escapeHtml(x.framework)} · <span class="mono">${escapeHtml(x.manifest)}</span>${x.problem ? ' ⚠️' : x.perTestResults ? '' : t(' (tanpa hasil per test)', ' (no per-test results)')}</span>`).join('')
+      : t('<span class="text-warning">Tidak ada test project/runner yang dikenali (dotnet test, jest, vitest, mocha, pytest, PHPUnit, Maven, Gradle, go test, cargo test).</span>', '<span class="text-warning">No known test project/runner found (dotnet test, jest, vitest, mocha, pytest, PHPUnit, Maven, Gradle, go test, cargo test).</span>');
     const problems = catalog.suites.filter(x => x.problem).map(x => `<div class="text-warning">⚠️ ${escapeHtml(x.manifest)}: ${escapeHtml(x.problem)}</div>`).join('');
-    el('unitTestInfo').innerHTML = `
+    el('unitTestInfo').innerHTML = (isEn ? `
+      <div class="mb-1">The catalog is shared by every developer of this project (key <span class="mono">${escapeHtml(catalog.projectKey)}</span>). Every thread runs
+        <strong>${escapeHtml(modes[s.mode] || s.mode)}</strong> before and after the change; a test that passed before and fails after is fixed in the code (at most 3 rounds).
+        New tests: <strong>${escapeHtml(authorings[s.authoring] || s.authoring)}</strong>. Snapshots: <strong>${s.keepSnapshots ? 'kept' : 'not kept'}</strong>.
+        Tests missing from the repository are restored automatically.</div>
+      <div class="mb-1">Runner: ${suites}</div>
+      ${problems}
+      ${catalog.testerAvailable ? '' : '<div class="text-warning">No active Tester node yet: unit test failures are fixed in the code without triage. Add a Tester node (a strong model) in the Node menu.</div>'}` : `
       <div class="mb-1">Katalog dipakai bersama semua developer project ini (key <span class="mono">${escapeHtml(catalog.projectKey)}</span>). Setiap thread menjalankan
         <strong>${escapeHtml(modes[s.mode] || s.mode)}</strong> sebelum dan sesudah perubahan; test yang lolos sebelumnya lalu gagal diperbaiki di kode (maks. 3 putaran).
         Test baru: <strong>${escapeHtml(authorings[s.authoring] || s.authoring)}</strong>. Snapshot: <strong>${s.keepSnapshots ? 'disimpan' : 'tidak disimpan'}</strong>.
         Test yang hilang dari repository dipulihkan otomatis.</div>
       <div class="mb-1">Runner: ${suites}</div>
       ${problems}
-      ${catalog.testerAvailable ? '' : '<div class="text-warning">Belum ada node Tester aktif: kegagalan unit test diperbaiki di kode tanpa triase. Tambahkan node Tester (model kuat) di menu Node.</div>'}`;
+      ${catalog.testerAvailable ? '' : '<div class="text-warning">Belum ada node Tester aktif: kegagalan unit test diperbaiki di kode tanpa triase. Tambahkan node Tester (model kuat) di menu Node.</div>'}`);
 
     const current = el('unitTestModuleFilter').value;
     const modules = [...new Set(tests.map(t => t.module).filter(Boolean))].sort();
-    el('unitTestModuleFilter').innerHTML = '<option value="">Semua modul</option>' + modules.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+    el('unitTestModuleFilter').innerHTML = t('<option value="">Semua modul</option>', '<option value="">All modules</option>') + modules.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
     if (modules.includes(current)) el('unitTestModuleFilter').value = current;
   }
 
@@ -130,13 +138,13 @@
     const label = button?.textContent;
     if (button) {
       button.disabled = true;
-      button.textContent = 'Menjalankan…';
+      button.textContent = t('Menjalankan…', 'Running…');
     }
-    toast('Menjalankan unit test… (bisa memakan waktu, termasuk build project test)', 'info');
+    toast(t('Menjalankan unit test… (bisa memakan waktu, termasuk build project test)', 'Running unit tests… (can take a while, including the build of the test project)'), 'info');
     try {
       const result = await api.post(`${base}/run`, body);
       const failed = result.tests.filter(t => t.result === 'Failed' || t.result === 'Error');
-      toast(`${result.ran} test: ${result.passed} lolos, ${result.failed} gagal, ${result.skipped} dilewati.${failed.length ? ` Gagal: ${failed.map(t => t.displayNumber).join(', ')}` : ''}`,
+      toast((isEn ? `${result.ran} tests: ${result.passed} passed, ${result.failed} failed, ${result.skipped} skipped.${failed.length ? ` Failed: ${failed.map(t => t.displayNumber).join(', ')}` : ''}` : `${result.ran} test: ${result.passed} lolos, ${result.failed} gagal, ${result.skipped} dilewati.${failed.length ? ` Gagal: ${failed.map(t => t.displayNumber).join(', ')}` : ''}`),
         result.failed ? 'warning' : 'success');
       result.warnings.forEach(w => toast(w, 'warning'));
       await load();
@@ -156,7 +164,23 @@
     el('unitTestDetailTitle').textContent = `${t.displayNumber} · ${t.title}`;
     const field = (label, value) => value ? `<dt class="col-sm-3 fw-normal text-secondary">${label}</dt><dd class="col-sm-9">${value}</dd>` : '';
     const list = values => values.length ? values.map(v => `<span class="chip mono">${escapeHtml(v)}</span>`).join('') : null;
-    el('unitTestDetailBody').innerHTML = `
+    el('unitTestDetailBody').innerHTML = (isEn ? `
+      <dl class="row small mb-3">
+        ${field('Purpose', t.purpose ? escapeHtml(t.purpose) : null)}
+        ${field('Scenario', t.scenario ? `<div class="pre-wrap">${escapeHtml(t.scenario)}</div>` : null)}
+        ${field('Module', t.module ? escapeHtml(t.module) : null)}
+        ${field('Code under test', list(t.targetFiles))}
+        ${field('Test file', `<span class="mono">${escapeHtml(t.testFile)}</span>`)}
+        ${field('Selector', `<span class="mono text-break">${escapeHtml(t.selector)}</span>`)}
+        ${field('Framework', `${escapeHtml(t.framework)}${t.testProject ? ` · <span class="mono">${escapeHtml(t.testProject)}</span>` : ''}`)}
+        ${field('Requires', list(t.requires))}
+        ${field('Origin', `${escapeHtml(origins[t.origin] || t.origin)}${t.createdBy ? ` · ${escapeHtml(t.createdBy)}` : ''} · ${fmt.dateTime(t.createdAt)}${t.createdThreadId ? ` · <a href="/Thread/Detail/${t.createdThreadId}">thread</a>` : ''}`)}
+        ${field('Snapshot', t.hasSnapshot ? 'stored (for automatic restore, not shown)' : 'none yet')}
+        ${t.state === 'Obsolete' ? field('Obsolete reason', escapeHtml(t.obsoleteReason || '–')) : ''}
+        ${t.lastMessage && isFailing(t) ? field('Failure message', `<pre class="code-block small mb-0">${escapeHtml(t.lastMessage)}</pre>`) : ''}
+      </dl>
+      <h6 class="small text-secondary text-uppercase">Run history</h6>
+      <div id="unitTestHistory" class="small text-secondary">Loading…</div>` : `
       <dl class="row small mb-3">
         ${field('Tujuan', t.purpose ? escapeHtml(t.purpose) : null)}
         ${field('Skenario', t.scenario ? `<div class="pre-wrap">${escapeHtml(t.scenario)}</div>` : null)}
@@ -172,18 +196,23 @@
         ${t.lastMessage && isFailing(t) ? field('Pesan gagal', `<pre class="code-block small mb-0">${escapeHtml(t.lastMessage)}</pre>`) : ''}
       </dl>
       <h6 class="small text-secondary text-uppercase">Riwayat run</h6>
-      <div id="unitTestHistory" class="small text-secondary">Memuat…</div>`;
+      <div id="unitTestHistory" class="small text-secondary">Memuat…</div>`);
     detailModal.show();
     try {
       const runs = await api.get(`${base}/${id}/history`);
       el('unitTestHistory').innerHTML = runs.length
-        ? `<table class="table table-sm mb-0"><thead><tr><th>Waktu</th><th>Fase</th><th>Hasil</th><th>Oleh</th><th>Keterangan</th></tr></thead><tbody>${runs.map(r => `<tr>
+        ? (isEn ? `<table class="table table-sm mb-0"><thead><tr><th>Time</th><th>Phase</th><th>Result</th><th>By</th><th>Details</th></tr></thead><tbody>${runs.map(r => `<tr>
             <td class="text-nowrap">${fmt.dateTime(r.runAt)}</td>
             <td>${escapeHtml(phases[r.phase] || r.phase)}${r.threadId ? ` · <a href="/Thread/Detail/${r.threadId}">thread</a>` : ''}</td>
             <td>${badge(results[r.result] || ['secondary', r.result])}${r.durationMs != null ? ` <span class="text-secondary">${fmt.ms(r.durationMs)}</span>` : ''}</td>
             <td>${escapeHtml(r.runBy || '–')}${r.machine ? `<div class="text-secondary mono">${escapeHtml(r.machine)}</div>` : ''}</td>
-            <td class="text-break">${escapeHtml(r.skipReason || firstLine(r.message))}</td></tr>`).join('')}</tbody></table>`
-        : 'Belum pernah dijalankan.';
+            <td class="text-break">${escapeHtml(r.skipReason || firstLine(r.message))}</td></tr>`).join('')}</tbody></table>` : `<table class="table table-sm mb-0"><thead><tr><th>Waktu</th><th>Fase</th><th>Hasil</th><th>Oleh</th><th>Keterangan</th></tr></thead><tbody>${runs.map(r => `<tr>
+            <td class="text-nowrap">${fmt.dateTime(r.runAt)}</td>
+            <td>${escapeHtml(phases[r.phase] || r.phase)}${r.threadId ? ` · <a href="/Thread/Detail/${r.threadId}">thread</a>` : ''}</td>
+            <td>${badge(results[r.result] || ['secondary', r.result])}${r.durationMs != null ? ` <span class="text-secondary">${fmt.ms(r.durationMs)}</span>` : ''}</td>
+            <td>${escapeHtml(r.runBy || '–')}${r.machine ? `<div class="text-secondary mono">${escapeHtml(r.machine)}</div>` : ''}</td>
+            <td class="text-break">${escapeHtml(r.skipReason || firstLine(r.message))}</td></tr>`).join('')}</tbody></table>`)
+        : (isEn ? 'Never run.' : 'Belum pernah dijalankan.');
     } catch (error) {
       el('unitTestHistory').textContent = error.message;
     }
@@ -199,11 +228,11 @@
     try {
       if (target.dataset.reactivate) {
         await api.post(`${base}/${test.id}/reactivate`);
-        toast(`${test.displayNumber} aktif lagi.`);
+        toast((isEn ? `${test.displayNumber} active again.` : `${test.displayNumber} aktif lagi.`));
       } else {
-        if (!confirm(`Hapus ${test.displayNumber} "${test.title}" dari katalog?\n\nAlasan obsolete: ${test.obsoleteReason || '–'}\n\nTest tidak akan dipulihkan lagi, dan sebuah thread menghapus kodenya (bisa di-rollback dari halaman thread).`)) return;
+        if (!confirm((isEn ? `Delete ${test.displayNumber} "${test.title}" from the catalog?\n\nObsolete reason: ${test.obsoleteReason || '–'}\n\nThe test will not be restored any more, and a thread deletes its code (it can be rolled back from the thread page).` : `Hapus ${test.displayNumber} "${test.title}" dari katalog?\n\nAlasan obsolete: ${test.obsoleteReason || '–'}\n\nTest tidak akan dipulihkan lagi, dan sebuah thread menghapus kodenya (bisa di-rollback dari halaman thread).`))) return;
         const result = await api.post(`${base}/${test.id}/confirm-removal`, { removeCode: true });
-        toast(result.threadId ? `${test.displayNumber} dihapus dari katalog; thread penghapus kode berjalan.` : `${test.displayNumber} dihapus dari katalog.`);
+        toast(result.threadId ? (isEn ? `${test.displayNumber} deleted from the catalog; a thread deleting its code is running.` : `${test.displayNumber} dihapus dari katalog; thread penghapus kode berjalan.`) : (isEn ? `${test.displayNumber} deleted from the catalog.` : `${test.displayNumber} dihapus dari katalog.`));
         if (result.threadId) setTimeout(() => { window.location.href = `/Thread/Detail/${result.threadId}`; }, 800);
       }
       await load();
@@ -213,16 +242,16 @@
   });
 
   el('btnUnitTestRunAll').addEventListener('click', event => {
-    if (!confirm('Jalankan semua unit test aktif sekarang? Ini bisa memakan waktu beberapa menit untuk project besar.')) return;
+    if (!confirm(t('Jalankan semua unit test aktif sekarang? Ini bisa memakan waktu beberapa menit untuk project besar.', 'Run all active unit tests now? This can take a few minutes for a big project.'))) return;
     run({ ids: [], all: true }, event.currentTarget);
   });
 
   el('btnUnitTestScan').addEventListener('click', async () => {
     el('btnUnitTestScan').disabled = true;
-    toast('Mencari test di kode dan memberi label… (model murah dipakai untuk judul dan tujuan)', 'info');
+    toast(t('Mencari test di kode dan memberi label… (model murah dipakai untuk judul dan tujuan)', 'Searching the code for tests and labelling them… (a cheap model writes titles and purposes)'), 'info');
     try {
       const result = await api.post(`${base}/scan`);
-      toast(`${result.found} test ditemukan: ${result.added} baru, ${result.moved} pindah file, ${result.missing} hilang (dipulihkan di thread berikutnya), ${result.labeled} diberi label.`);
+      toast((isEn ? `${result.found} tests found: ${result.added} new, ${result.moved} moved, ${result.missing} missing (restored in the next thread), ${result.labeled} labeled.` : `${result.found} test ditemukan: ${result.added} baru, ${result.moved} pindah file, ${result.missing} hilang (dipulihkan di thread berikutnya), ${result.labeled} diberi label.`));
       result.warnings.forEach(w => toast(w, 'warning'));
       await load();
     } catch (error) {
@@ -245,7 +274,7 @@
   el('unitTestSettingsForm').addEventListener('submit', async event => {
     event.preventDefault();
     const keep = el('unitTestKeepSnapshots').checked;
-    if (catalog.settings.keepSnapshots && !keep && !confirm('Mematikan snapshot ikut menghapus snapshot yang sudah tersimpan. Test yang hilang hanya bisa ditulis ulang dari skenarionya. Lanjutkan?')) return;
+    if (catalog.settings.keepSnapshots && !keep && !confirm(t('Mematikan snapshot ikut menghapus snapshot yang sudah tersimpan. Test yang hilang hanya bisa ditulis ulang dari skenarionya. Lanjutkan?', 'Turning snapshots off also deletes the snapshots already stored. Missing tests can then only be rewritten from their scenario. Continue?'))) return;
     try {
       await api.put(`${base}/settings`, {
         mode: el('unitTestMode').value,
@@ -254,7 +283,7 @@
         timeoutSeconds: el('unitTestTimeout').value ? Number(el('unitTestTimeout').value) : null
       });
       settingsModal.hide();
-      toast('Setting unit test disimpan.');
+      toast(t('Setting unit test disimpan.', 'Unit test settings saved.'));
       await load();
     } catch (error) {
       toast(error.message, 'error');

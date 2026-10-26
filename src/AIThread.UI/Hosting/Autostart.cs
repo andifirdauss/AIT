@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using AIThread.Common.Localization;
 using Microsoft.Win32;
 
 namespace AIThread.UI.Hosting;
@@ -22,7 +23,7 @@ public static class Autostart
 
     public static void Enable()
     {
-        if (!CanEnable) throw new InvalidOperationException("Autostart hanya tersedia untuk AIThread.exe hasil publish.");
+        if (!CanEnable) throw new InvalidOperationException(Lang.T("Autostart hanya tersedia untuk AIThread.exe hasil publish.", "Autostart is only available for a published AIThread.exe."));
         using var key = Registry.CurrentUser.CreateSubKey(RunKey);
         key.SetValue(ValueName, $"\"{AppPaths.ExePath}\" tray");
     }

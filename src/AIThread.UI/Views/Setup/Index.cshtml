@@ -5,11 +5,11 @@
 <div class="page-header">
     <div>
         <h1>Setup</h1>
-        <p class="page-subtitle">Semua langkah awal di satu halaman. Status tiap langkah dibaca dari kondisi AIT saat ini, jadi halaman ini juga bisa dipakai untuk memeriksa ulang kapan saja.</p>
+        <p class="page-subtitle">@Lang.T("Semua langkah awal di satu halaman. Status tiap langkah dibaca dari kondisi AIT saat ini, jadi halaman ini juga bisa dipakai untuk memeriksa ulang kapan saja.", "Every first step on one page. The status of each step is read from AIT's current state, so this page can also be used to check again at any time.")</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTour">Panduan bergambar</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRecheck">Cek ulang</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTour">@Lang.T("Panduan bergambar", "Illustrated guide")</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRecheck">@Lang.T("Cek ulang", "Check again")</button>
     </div>
 </div>
 
@@ -17,10 +17,10 @@
     <div class="card mb-3">
         <div class="card-body">
             <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
-                <div class="fw-semibold" id="setupSummary">Memeriksa…</div>
+                <div class="fw-semibold" id="setupSummary">@Lang.T("Memeriksa…", "Checking…")</div>
                 <div class="small text-secondary" id="setupChecked"></div>
             </div>
-            <div class="progress setup-progress mt-2" role="progressbar" aria-label="Langkah wajib yang selesai" aria-valuemin="0" aria-valuemax="100" id="setupProgress">
+            <div class="progress setup-progress mt-2" role="progressbar" aria-label="@Lang.T("Langkah wajib yang selesai", "Required steps done")" aria-valuemin="0" aria-valuemax="100" id="setupProgress">
                 <div class="progress-bar" id="setupBar" style="width: 0%"></div>
             </div>
         </div>
@@ -29,16 +29,14 @@
     <div class="card mb-3">
         <div class="card-body d-flex flex-wrap align-items-center gap-3">
             <div class="flex-grow-1" style="min-width: 260px">
-                <div class="fw-semibold">Profil setup tim</div>
+                <div class="fw-semibold">@Lang.T("Profil setup tim", "Team setup profile")</div>
                 <div class="small text-secondary">
-                    Ketua tim cukup mengatur sekali lalu <strong>Export profil</strong>. Developer lain <strong>Import profil</strong> file itu,
-                    lalu hanya mengisi API key 9router dan password database miliknya. Isi profil: alamat 9router, setting orkestrasi, node,
-                    penyimpanan memory, business memory, dan sumber skill. Secret dan nama developer tidak pernah ikut ke file.
+                    @Html.Raw(Lang.T("Ketua tim cukup mengatur sekali lalu <strong>Export profil</strong>. Developer lain <strong>Import profil</strong> file itu, lalu hanya mengisi API key 9router dan password database miliknya. Isi profil: alamat 9router, setting orkestrasi, node, penyimpanan memory, business memory, dan sumber skill. Secret dan nama developer tidak pernah ikut ke file.", "The team lead sets things up once, then <strong>Export profile</strong>. Other developers <strong>Import profile</strong> from that file and fill in only their own 9router API key and database password. A profile holds: the 9router address, orchestration settings, nodes, memory storage, business memory, and skill sources. Secrets and developer names never go into the file."))
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-primary btn-sm" data-profile-import>Import profil…</button>
-                <a class="btn btn-outline-secondary btn-sm" href="/api/setup/profile" download>Export profil</a>
+                <button type="button" class="btn btn-primary btn-sm" data-profile-import>@Lang.T("Import profil…", "Import profile…")</button>
+                <a class="btn btn-outline-secondary btn-sm" href="/api/setup/profile" download>@Lang.T("Export profil", "Export profile")</a>
             </div>
             <input type="file" id="profileFile" accept=".json,application/json" hidden />
         </div>
@@ -53,30 +51,25 @@
             </summary>
             <div class="card-body">
                 <p class="small text-secondary mb-0">
-                    Database (SQL Server LocalDB bawaan) dan short memory (Garnet di dalam AIT) disiapkan otomatis saat AIT start, jadi biasanya
-                    tidak ada yang perlu dilakukan. Bila langkah ini merah, lihat <a href="/Docs/01-instalasi#3-database">Instalasi → Database</a>
-                    atau <a href="/Docs/08-troubleshooting">Troubleshooting</a>, lalu restart AIT.
+                    @Html.Raw(Lang.T("Database (SQL Server LocalDB bawaan) dan short memory (Garnet di dalam AIT) disiapkan otomatis saat AIT start, jadi biasanya tidak ada yang perlu dilakukan. Bila langkah ini merah, lihat <a href=\"/Docs/01-instalasi#3-database\">Instalasi → Database</a> atau <a href=\"/Docs/08-troubleshooting\">Troubleshooting</a>, lalu restart AIT.", "The database (the default SQL Server LocalDB) and short memory (Garnet inside AIT) are prepared automatically when AIT starts, so usually there is nothing to do. When this step is red, see <a href=\"/Docs/01-instalasi#3-database\">Installation → Database</a> or <a href=\"/Docs/08-troubleshooting\">Troubleshooting</a>, then restart AIT."))
                 </p>
             </div>
         </details>
 
         <details class="card setup-step mb-2" id="step-router" data-step="router">
             <summary class="card-header setup-step-head">
-                <span class="setup-step-num">2</span>
-                <span class="setup-step-text"><span class="setup-step-title">Hubungkan 9router</span><span class="setup-step-detail" data-detail></span></span>
-                <span class="setup-step-state" data-state></span>
+                @Html.Raw(Lang.T("<span class=\"setup-step-num\">2</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Hubungkan 9router</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>", "<span class=\"setup-step-num\">2</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Connect 9router</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>"))
             </summary>
             <div class="card-body">
                 <ol class="small setup-howto">
                     <li>
-                        9router harus berjalan. AIT biasanya menyalakannya sendiri; bila masih offline:
-                        <button type="button" class="btn btn-outline-primary btn-sm ms-1" id="btnStartRouter">Jalankan 9router</button>
+                        @Lang.T("9router harus berjalan. AIT biasanya menyalakannya sendiri; bila masih offline:", "9router must be running. AIT usually starts it itself; if it is still offline:")
+                        <button type="button" class="btn btn-outline-primary btn-sm ms-1" id="btnStartRouter">@Lang.T("Jalankan 9router", "Start 9router")</button>
                     </li>
                     <li>
-                        Di <a id="routerDashboard" href="http://localhost:20128" target="_blank" rel="noopener">dashboard 9router ↗</a>, hubungkan
-                        minimal satu provider (menu <em>Providers</em>). Idealnya satu yang kuat dan satu yang murah/gratis.
+                        @Html.Raw(Lang.T("Di <a id=\"routerDashboard\" href=\"http://localhost:20128\" target=\"_blank\" rel=\"noopener\">dashboard 9router ↗</a>, hubungkan minimal satu provider (menu <em>Providers</em>). Idealnya satu yang kuat dan satu yang murah/gratis.", "In the <a id=\"routerDashboard\" href=\"http://localhost:20128\" target=\"_blank\" rel=\"noopener\">9router dashboard ↗</a>, connect at least one provider (the <em>Providers</em> menu). Ideally a strong one and a cheap/free one."))
                     </li>
-                    <li>Bila <em>Require API key</em> aktif di 9router, salin API key (menu <em>API Keys</em>) dan tempel di bawah.</li>
+                    <li>@Html.Raw(Lang.T("Bila <em>Require API key</em> aktif di 9router, salin API key (menu <em>API Keys</em>) dan tempel di bawah.", "When <em>Require API key</em> is on in 9router, copy the API key (the <em>API Keys</em> menu) and paste it below."))</li>
                 </ol>
                 <form id="routerForm" class="row g-2 align-items-start" novalidate>
                     <div class="col-md-5">
@@ -90,7 +83,7 @@
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small d-none d-md-block">&nbsp;</label>
-                        <button type="submit" class="btn btn-primary w-100" id="btnSaveRouter">Test &amp; simpan</button>
+                        <button type="submit" class="btn btn-primary w-100" id="btnSaveRouter">@Html.Raw(Lang.T("Test &amp; simpan", "Test &amp; save"))</button>
                     </div>
                 </form>
                 <div class="small mt-2" id="routerResult"></div>
@@ -99,48 +92,45 @@
 
         <details class="card setup-step mb-2" id="step-nodes" data-step="nodes">
             <summary class="card-header setup-step-head">
-                <span class="setup-step-num">3</span>
-                <span class="setup-step-text"><span class="setup-step-title">Pilih model untuk tiap peran</span><span class="setup-step-detail" data-detail></span></span>
-                <span class="setup-step-state" data-state></span>
+                @Html.Raw(Lang.T("<span class=\"setup-step-num\">3</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Pilih model untuk tiap peran</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>", "<span class=\"setup-step-num\">3</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Choose a model for each role</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>"))
             </summary>
             <div class="card-body">
                 <p class="small text-secondary">
-                    Cukup pilih dua model. AIT membuat node untuk setiap peran, lalu menguji tiap node dengan satu panggilan kecil.
-                    Menjalankan ini lagi memperbarui node yang sama; node lain yang Anda buat sendiri di menu Node tidak diubah.
+                    @Lang.T("Cukup pilih dua model. AIT membuat node untuk setiap peran, lalu menguji tiap node dengan satu panggilan kecil. Menjalankan ini lagi memperbarui node yang sama; node lain yang Anda buat sendiri di menu Node tidak diubah.", "Just choose two models. AIT creates a node for every role, then tests each node with one small call. Running this again updates the same nodes; other nodes you created yourself in the Node menu are not changed.")
                 </p>
                 <div class="small text-warning mb-2 d-none" id="presetNoModels"></div>
                 <form id="presetForm" class="row g-3" novalidate>
                     <div class="col-md-6">
-                        <label class="form-label small" for="presetStrong">Model kuat · Planner (dan Reviewer)</label>
+                        <label class="form-label small" for="presetStrong">@Lang.T("Model kuat · Planner (dan Reviewer)", "Strong model · Planner (and Reviewer)")</label>
                         <select class="form-select mono" id="presetStrong" required></select>
-                        <div class="form-text">Model terpintar yang mendukung <em>tool calling</em>: menjelajah kode, menyusun rencana, membagi tugas.</div>
+                        <div class="form-text">@Html.Raw(Lang.T("Model terpintar yang mendukung <em>tool calling</em>: menjelajah kode, menyusun rencana, membagi tugas.", "The smartest model with <em>tool calling</em>: explores the code, makes the plan, splits the tasks."))</div>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small" for="presetCheap">Model murah · Executor, Wrapper, Tools Node, Context Keeper</label>
+                        <label class="form-label small" for="presetCheap">@Lang.T("Model murah · Executor, Wrapper, Tools Node, Context Keeper", "Cheap model · Executor, Wrapper, Tools Node, Context Keeper")</label>
                         <select class="form-select mono" id="presetCheap"></select>
-                        <div class="form-text">Murah &amp; cepat: mengerjakan tugas per file secara paralel dan merangkum hasil.</div>
+                        <div class="form-text">@Html.Raw(Lang.T("Murah &amp; cepat: mengerjakan tugas per file secara paralel dan merangkum hasil.", "Cheap &amp; fast: does the per-file tasks in parallel and summarizes the results."))</div>
                     </div>
                     <div class="col-12">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="presetTools" checked />
-                            <label class="form-check-label small" for="presetTools"><strong>Tools Node</strong> (model murah): menjalankan <span class="mono">read_file</span>, <span class="mono">search_text</span>, dan <span class="mono">find_references</span> untuk planner, sehingga konteks planner tetap kecil dan hemat token.</label>
+                            <label class="form-check-label small" for="presetTools">@Html.Raw(Lang.T("<strong>Tools Node</strong> (model murah): menjalankan <span class=\"mono\">read_file</span>, <span class=\"mono\">search_text</span>, dan <span class=\"mono\">find_references</span> untuk planner, sehingga konteks planner tetap kecil dan hemat token.", "<strong>Tools Node</strong> (cheap model): runs <span class=\"mono\">read_file</span>, <span class=\"mono\">search_text</span> and <span class=\"mono\">find_references</span> for the planner, so the planner context stays small and saves tokens."))</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="presetContext" checked />
-                            <label class="form-check-label small" for="presetContext"><strong>Context Keeper</strong> (model murah): meringkas percakapan CLI setelah tiap thread, jadi planner mulai dari ringkasan, bukan seluruh chat.</label>
+                            <label class="form-check-label small" for="presetContext">@Html.Raw(Lang.T("<strong>Context Keeper</strong> (model murah): meringkas percakapan CLI setelah tiap thread, jadi planner mulai dari ringkasan, bukan seluruh chat.", "<strong>Context Keeper</strong> (cheap model): summarizes the CLI conversation after each thread, so the planner starts from a summary, not the whole chat."))</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="presetReviewer" />
-                            <label class="form-check-label small" for="presetReviewer"><strong>Reviewer</strong> (model kuat): memeriksa hasil executor terhadap rencana sebelum dilaporkan. Lebih teliti, lebih banyak token.</label>
+                            <label class="form-check-label small" for="presetReviewer">@Html.Raw(Lang.T("<strong>Reviewer</strong> (model kuat): memeriksa hasil executor terhadap rencana sebelum dilaporkan. Lebih teliti, lebih banyak token.", "<strong>Reviewer</strong> (strong model): checks the executors' results against the plan before they are reported. More careful, more tokens."))</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="presetTester" />
-                            <label class="form-check-label small" for="presetTester"><strong>Tester</strong> (model kuat): menilai unit test yang gagal setelah perubahan (regresi, test salah, lingkungan, tidak stabil) dan menjalankan Auto Testing ke aplikasi. Wajib bila project memakai katalog unit test atau Auto Testing.</label>
+                            <label class="form-check-label small" for="presetTester">@Html.Raw(Lang.T("<strong>Tester</strong> (model kuat): menilai unit test yang gagal setelah perubahan (regresi, test salah, lingkungan, tidak stabil) dan menjalankan Auto Testing ke aplikasi. Wajib bila project memakai katalog unit test atau Auto Testing.", "<strong>Tester</strong> (strong model): judges unit tests that fail after a change (regression, wrong test, environment, flaky) and runs Auto Testing against the application. Required when the project uses the unit test catalog or Auto Testing."))</label>
                         </div>
                     </div>
                     <div class="col-12 d-flex flex-wrap align-items-center gap-3">
-                        <button type="submit" class="btn btn-primary" id="btnPreset">Buat node &amp; uji</button>
-                        <a class="small" href="/Node">Atur detail per node di menu Node →</a>
+                        <button type="submit" class="btn btn-primary" id="btnPreset">@Html.Raw(Lang.T("Buat node &amp; uji", "Create nodes &amp; test"))</button>
+                        <a class="small" href="/Node">@Lang.T("Atur detail per node di menu Node →", "Set details per node in the Node menu →")</a>
                     </div>
                 </form>
                 <div class="mt-3" id="presetResult"></div>
@@ -149,51 +139,42 @@
 
         <details class="card setup-step mb-2" id="step-project" data-step="project">
             <summary class="card-header setup-step-head">
-                <span class="setup-step-num">4</span>
-                <span class="setup-step-text"><span class="setup-step-title">Daftarkan project</span><span class="setup-step-detail" data-detail></span></span>
-                <span class="setup-step-state" data-state></span>
+                @Html.Raw(Lang.T("<span class=\"setup-step-num\">4</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Daftarkan project</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>", "<span class=\"setup-step-num\">4</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Register a project</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>"))
             </summary>
             <div class="card-body">
                 <div class="small mb-2" id="setupProjects"></div>
                 <div class="input-group">
-                    <input type="text" class="form-control mono" id="setupProjectPath" placeholder="D:\Source\MyApp (folder project)" />
-                    <button class="btn btn-outline-secondary" type="button" id="btnSetupBrowse">Telusuri…</button>
-                    <button class="btn btn-primary" type="button" id="btnSetupRegister">Daftarkan</button>
+                    <input type="text" class="form-control mono" id="setupProjectPath" placeholder="@Lang.T("D:\\Source\\MyApp (folder project)", "D:\\Source\\MyApp (project folder)")" />
+                    <button class="btn btn-outline-secondary" type="button" id="btnSetupBrowse">@Lang.T("Telusuri…", "Browse…")</button>
+                    <button class="btn btn-primary" type="button" id="btnSetupRegister">@Lang.T("Daftarkan", "Register")</button>
                 </div>
-                <div class="form-text">Folder berisi <span class="mono">.git</span> atau file build (<span class="mono">.sln</span>, <span class="mono">package.json</span>, <span class="mono">pom.xml</span>, …). Kelola semua project di <a href="/Project">menu Project</a>.</div>
+                <div class="form-text">@Html.Raw(Lang.T("Folder berisi <span class=\"mono\">.git</span> atau file build (<span class=\"mono\">.sln</span>, <span class=\"mono\">package.json</span>, <span class=\"mono\">pom.xml</span>, …). Kelola semua project di <a href=\"/Project\">menu Project</a>.", "A folder with <span class=\"mono\">.git</span> or a build file (<span class=\"mono\">.sln</span>, <span class=\"mono\">package.json</span>, <span class=\"mono\">pom.xml</span>, …). Manage all projects in the <a href=\"/Project\">Project menu</a>."))</div>
             </div>
         </details>
 
         <details class="card setup-step mb-2" id="step-cli" data-step="cli">
             <summary class="card-header setup-step-head">
-                <span class="setup-step-num">5</span>
-                <span class="setup-step-text"><span class="setup-step-title">Arahkan CLI coding ke AIT</span><span class="setup-step-detail" data-detail></span></span>
-                <span class="setup-step-state" data-state></span>
+                @Html.Raw(Lang.T("<span class=\"setup-step-num\">5</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Arahkan CLI coding ke AIT</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>", "<span class=\"setup-step-num\">5</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Point your coding CLI to AIT</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>"))
             </summary>
             <div class="card-body">
                 <p class="small text-secondary">
-                    Nyalakan CLI yang Anda pakai. <strong>Global</strong> = semua sesi CLI itu di komputer ini lewat AIT. Untuk menyalakan per project saja,
-                    pakai <a href="/Cli">menu CLI</a>. AIT hanya menulis entri miliknya; mematikan switch melepasnya lagi. Buka sesi CLI baru setelahnya.
+                    @Html.Raw(Lang.T("Nyalakan CLI yang Anda pakai. <strong>Global</strong> = semua sesi CLI itu di komputer ini lewat AIT. Untuk menyalakan per project saja, pakai <a href=\"/Cli\">menu CLI</a>. AIT hanya menulis entri miliknya; mematikan switch melepasnya lagi. Buka sesi CLI baru setelahnya.", "Turn on the CLI you use. <strong>Global</strong> = every session of that CLI on this computer goes through AIT. To turn it on per project only, use the <a href=\"/Cli\">CLI menu</a>. AIT writes only its own entries; turning the switch off removes them again. Open a new CLI session afterwards."))
                 </p>
-                <div class="list-group" id="setupClis"><div class="list-group-item small text-secondary">Memuat…</div></div>
+                <div class="list-group" id="setupClis"><div class="list-group-item small text-secondary">@Lang.T("Memuat…", "Loading…")</div></div>
             </div>
         </details>
 
         <details class="card setup-step mb-2" id="step-memory" data-step="memory">
             <summary class="card-header setup-step-head">
-                <span class="setup-step-num">6</span>
-                <span class="setup-step-text"><span class="setup-step-title">Memory bersama tim</span><span class="setup-step-detail" data-detail></span></span>
-                <span class="setup-step-state" data-state></span>
+                @Html.Raw(Lang.T("<span class=\"setup-step-num\">6</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Memory bersama tim</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>", "<span class=\"setup-step-num\">6</span> <span class=\"setup-step-text\"><span class=\"setup-step-title\">Team-shared memory</span><span class=\"setup-step-detail\" data-detail></span></span> <span class=\"setup-step-state\" data-state></span>"))
             </summary>
             <div class="card-body">
                 <p class="small text-secondary">
-                    Bekerja sendiri? Lewati langkah ini: memory disimpan di komputer ini. Dalam tim, arahkan <strong>Long</strong> dan
-                    <strong>Business memory</strong> semua developer ke database yang sama agar AIT belajar dari pekerjaan seluruh tim.
-                    Cara termudah: import profil dari ketua tim.
+                    @Html.Raw(Lang.T("Bekerja sendiri? Lewati langkah ini: memory disimpan di komputer ini. Dalam tim, arahkan <strong>Long</strong> dan <strong>Business memory</strong> semua developer ke database yang sama agar AIT belajar dari pekerjaan seluruh tim. Cara termudah: import profil dari ketua tim.", "Working alone? Skip this step: memory is kept on this computer. In a team, point the <strong>Long</strong> and <strong>Business memory</strong> of every developer to the same database so AIT learns from the work of the whole team. Easiest: import the team lead's profile."))
                 </p>
                 <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-primary btn-sm" data-profile-import>Import profil tim…</button>
-                    <a class="btn btn-outline-secondary btn-sm" href="/Setting#memory">Atur di Setting → Penyimpanan memory</a>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-profile-import>@Lang.T("Import profil tim…", "Import team profile…")</button>
+                    <a class="btn btn-outline-secondary btn-sm" href="/Setting#memory">@Lang.T("Atur di Setting → Penyimpanan memory", "Set it in Setting → Memory storage")</a>
                 </div>
             </div>
         </details>
@@ -201,14 +182,12 @@
 
     <div class="card border-success-subtle bg-success-subtle mt-3 d-none" id="setupDone">
         <div class="card-body">
-            <div class="fw-semibold text-success-emphasis">Setup selesai 🎉</div>
+            <div class="fw-semibold text-success-emphasis">@Lang.T("Setup selesai 🎉", "Setup done 🎉")</div>
             <p class="small mb-2">
-                Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel, build &amp; review)
-                tampil langsung di CLI; detail dan diff per file ada di Dashboard.
+                @Html.Raw(Lang.T("Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel, build &amp; review) tampil langsung di CLI; detail dan diff per file ada di Dashboard.", "Open a <strong>new session</strong> of your CLI in the project folder and give commands as usual. The progress (plan, parallel tasks, build &amp; review) shows right in the CLI; details and per-file diffs are in the Dashboard."))
             </p>
             <div class="d-flex flex-wrap gap-2">
-                <a class="btn btn-sm btn-success" href="/">Buka Dashboard</a>
-                <a class="btn btn-sm btn-outline-secondary" href="/Docs/04-penggunaan">Cara memakai</a>
+                @Html.Raw(Lang.T("<a class=\"btn btn-sm btn-success\" href=\"/\">Buka Dashboard</a> <a class=\"btn btn-sm btn-outline-secondary\" href=\"/Docs/04-penggunaan\">Cara memakai</a>", "<a class=\"btn btn-sm btn-success\" href=\"/\">Open the Dashboard</a> <a class=\"btn btn-sm btn-outline-secondary\" href=\"/Docs/04-penggunaan\">How to use it</a>"))
             </div>
         </div>
     </div>
@@ -219,39 +198,39 @@
         <div class="modal-content">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="profileModalTitle">Import profil setup</h5>
+                <h5 class="modal-title" id="profileModalTitle">@Lang.T("Import profil setup", "Import setup profile")</h5>
             </div>
             <div class="modal-body">
                 <div class="small text-secondary mb-3" id="profileInfo"></div>
                 <div class="mb-3">
-                    <div class="form-label small">Bagian yang diterapkan</div>
+                    <div class="form-label small">@Lang.T("Bagian yang diterapkan", "Parts to apply")</div>
                     <div class="d-flex flex-wrap gap-3" id="profileSections"></div>
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6" id="profileNodeModeBox">
-                        <label class="form-label small" for="profileNodeMode">Node di komputer ini yang tidak ada di profil</label>
+                        <label class="form-label small" for="profileNodeMode">@Lang.T("Node di komputer ini yang tidak ada di profil", "Nodes on this computer that are not in the profile")</label>
                         <select class="form-select form-select-sm" id="profileNodeMode">
-                            <option value="Merge">Biarkan apa adanya</option>
-                            <option value="Replace">Nonaktifkan (tidak dihapus)</option>
+                            <option value="Merge">@Lang.T("Biarkan apa adanya", "Leave them as they are")</option>
+                            <option value="Replace">@Lang.T("Nonaktifkan (tidak dihapus)", "Turn them off (not deleted)")</option>
                         </select>
                     </div>
                     <div class="col-md-6 d-flex align-items-end" id="profileCopyBox">
                         <div class="form-check mb-1">
                             <input class="form-check-input" type="checkbox" id="profileCopy" checked />
-                            <label class="form-check-label small" for="profileCopy">Salin memory yang sudah ada ke penyimpanan baru</label>
+                            <label class="form-check-label small" for="profileCopy">@Lang.T("Salin memory yang sudah ada ke penyimpanan baru", "Copy the existing memory to the new storage")</label>
                         </div>
                     </div>
                 </div>
                 <div class="mb-3 d-none" id="profileSecretsBox">
-                    <div class="form-label small mb-0">Secret di komputer ini</div>
-                    <div class="small text-secondary mb-2">Tidak ada di file profil. Isi yang dibutuhkan; kosongkan yang sudah tersimpan atau tidak dipakai server-nya.</div>
+                    <div class="form-label small mb-0">@Lang.T("Secret di komputer ini", "Secrets on this computer")</div>
+                    <div class="small text-secondary mb-2">@Lang.T("Tidak ada di file profil. Isi yang dibutuhkan; kosongkan yang sudah tersimpan atau tidak dipakai server-nya.", "Not in the profile file. Fill in what is needed; leave empty what is already stored or not used by its server.")</div>
                     <div class="row g-2" id="profileSecrets"></div>
                 </div>
                 <div id="profilePreview"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="btnProfileClose">Batal</button>
-                <button type="button" class="btn btn-primary" id="btnProfileApply" disabled>Terapkan profil</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" id="btnProfileClose">@Lang.T("Batal", "Cancel")</button>
+                <button type="button" class="btn btn-primary" id="btnProfileApply" disabled>@Lang.T("Terapkan profil", "Apply profile")</button>
             </div>
         </div>
     </div>

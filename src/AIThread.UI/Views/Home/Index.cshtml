@@ -5,11 +5,11 @@
 <div class="page-header">
     <div>
         <h1>Dashboard</h1>
-        <p class="page-subtitle">Koneksi 9router, kesiapan pipeline, thread yang berjalan, dan log langsung.</p>
+        <p class="page-subtitle">@Lang.T("Koneksi 9router, kesiapan pipeline, thread yang berjalan, dan log langsung.", "9router connection, pipeline readiness, running threads, and the live log.")</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-primary btn-sm d-none" id="btnStartRouter" title="Menyalakan 9router di komputer ini (dipasang dengan npm bila belum ada)">Jalankan 9router</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshRouter">Cek ulang 9router</button>
+        <button type="button" class="btn btn-primary btn-sm d-none" id="btnStartRouter" title="@Lang.T("Menyalakan 9router di komputer ini (dipasang dengan npm bila belum ada)", "Start 9router on this computer (installed with npm when missing)")">@Lang.T("Jalankan 9router", "Start 9router")</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshRouter">@Lang.T("Cek ulang 9router", "Check 9router again")</button>
     </div>
 </div>
 
@@ -46,19 +46,19 @@
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Thread hari ini</div><div class="stat-value" id="statToday">–</div><div class="stat-hint" id="statTotal">&nbsp;</div>
+        <div class="stat-label">@Lang.T("Thread hari ini", "Threads today")</div><div class="stat-value" id="statToday">–</div><div class="stat-hint" id="statTotal">&nbsp;</div>
     </div></div></div>
     <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Sedang berjalan</div><div class="stat-value" id="statActive">–</div><div class="stat-hint">thread aktif</div>
+        <div class="stat-label">@Lang.T("Sedang berjalan", "Running")</div><div class="stat-value" id="statActive">–</div><div class="stat-hint">@Lang.T("thread aktif", "active threads")</div>
     </div></div></div>
     <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Success rate</div><div class="stat-value" id="statSuccess">–</div><div class="stat-hint">100 thread terakhir</div>
+        <div class="stat-label">Success rate</div><div class="stat-value" id="statSuccess">–</div><div class="stat-hint">@Lang.T("100 thread terakhir", "last 100 threads")</div>
     </div></div></div>
     <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Speedup paralel</div><div class="stat-value" id="statSpeedup">–</div><div class="stat-hint">kerja executor ÷ waktu nyata</div>
+        <div class="stat-label">@Lang.T("Speedup paralel", "Parallel speedup")</div><div class="stat-value" id="statSpeedup">–</div><div class="stat-hint">@Lang.T("kerja executor ÷ waktu nyata", "executor work ÷ real time")</div>
     </div></div></div>
     <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
-        <div class="stat-label">Token hari ini</div><div class="stat-value" id="statTokens">–</div><div class="stat-hint">planner + executor + wrapper</div>
+        <div class="stat-label">@Lang.T("Token hari ini", "Tokens today")</div><div class="stat-value" id="statTokens">–</div><div class="stat-hint">planner + executor + wrapper</div>
     </div></div></div>
     <div class="col-6 col-lg-2"><div class="card stat-card h-100"><div class="card-body">
         <div class="stat-label">Project · Memory</div><div class="stat-value" id="statProjects">–</div><div class="stat-hint" id="statMemory">&nbsp;</div>
@@ -69,32 +69,31 @@
     <div class="col-xl-7">
         @* Hidden for now; the markup stays so pages/home.js keeps working and the card can come back by dropping d-none. *@
         <div class="card mb-3 d-none">
-            <div class="card-header">Jalankan prompt</div>
+            <div class="card-header">@Lang.T("Jalankan prompt", "Run a prompt")</div>
             <div class="card-body">
-                <p class="small text-secondary mb-2">Uji pipeline tanpa CLI: pilih project terdaftar, tulis permintaan, lalu pantau thread-nya.</p>
+                <p class="small text-secondary mb-2">@Lang.T("Uji pipeline tanpa CLI: pilih project terdaftar, tulis permintaan, lalu pantau thread-nya.", "Test the pipeline without a CLI: choose a registered project, write a request, then follow its thread.")</p>
                 <div class="row g-2">
                     <div class="col-md-4">
-                        <select class="form-select" id="runProject"><option value="">Pilih project…</option></select>
+                        <select class="form-select" id="runProject"><option value="">@Lang.T("Pilih project…", "Choose a project…")</option></select>
                     </div>
                     <div class="col-md-8">
-                        <textarea class="form-control" id="runPrompt" rows="2" placeholder="Contoh: tambahkan kolom deskripsi pada form User (UI, JS, API, service, validasi, DDL)"></textarea>
+                        <textarea class="form-control" id="runPrompt" rows="2" placeholder="@Lang.T("Contoh: tambahkan kolom deskripsi pada form User (UI, JS, API, service, validasi, DDL)", "Example: add a description column to the User form (UI, JS, API, service, validation, DDL)")"></textarea>
                     </div>
                 </div>
                 <div class="text-end mt-2">
-                    <button type="button" class="btn btn-primary" id="btnRun">Jalankan thread</button>
+                    <button type="button" class="btn btn-primary" id="btnRun">@Lang.T("Jalankan thread", "Run thread")</button>
                 </div>
             </div>
         </div>
 
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Thread terbaru</span>
-                <span class="small text-secondary fw-normal">klik baris untuk detail</span>
+                @Html.Raw(Lang.T("<span>Thread terbaru</span> <span class=\"small text-secondary fw-normal\">klik baris untuk detail</span>", "<span>Latest threads</span> <span class=\"small text-secondary fw-normal\">click a row for details</span>"))
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 table-clickable">
-                    <thead><tr><th>Waktu</th><th>Project</th><th>Prompt</th><th>Status</th><th>Tugas</th><th>Durasi</th><th>Speedup</th><th>Token</th></tr></thead>
-                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">Memuat…</td></tr></tbody>
+                    <thead><tr><th>@Lang.T("Waktu", "Time")</th><th>Project</th><th>Prompt</th><th>Status</th><th>@Lang.T("Tugas", "Tasks")</th><th>@Lang.T("Durasi", "Duration")</th><th>Speedup</th><th>Token</th></tr></thead>
+                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
                 </table>
             </div>
             <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="threadPager"></div>
@@ -104,19 +103,19 @@
     <div class="col-xl-5">
         <div class="card win" id="logWindow" data-win-id="dashboard-log" data-win-persist>
             <div class="card-header win-bar">
-                <win-controls close-label="Kosongkan log" />
-                <span class="win-title">Log langsung</span>
+                <win-controls close-label="@Lang.T("Kosongkan log", "Clear log")" />
+                <span class="win-title">@Lang.T("Log langsung", "Live log")</span>
                 <div class="win-actions">
                     <select class="form-select form-select-sm" id="logLevel" style="width:auto">
                         <option value="Info" selected>Info+</option>
-                        <option value="Debug">Semua (debug)</option>
+                        <option value="Debug">@Lang.T("Semua (debug)", "All (debug)")</option>
                         <option value="Warning">Warning+</option>
                         <option value="Error">Error</option>
                     </select>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPauseLog">Jeda</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPauseLog">@Lang.T("Jeda", "Pause")</button>
                 </div>
             </div>
-            <div class="log-panel" id="logPanel"><div class="empty-state">Memuat log…</div></div>
+            <div class="log-panel" id="logPanel"><div class="empty-state">@Lang.T("Memuat log…", "Loading the log…")</div></div>
         </div>
     </div>
 </div>

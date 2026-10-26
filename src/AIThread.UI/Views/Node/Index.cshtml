@@ -5,55 +5,50 @@
 <div class="page-header">
     <div>
         <h1>Node</h1>
-        <p class="page-subtitle">Pekerja AI pipeline. Model diambil dari provider yang terhubung ke 9router, termasuk combo.</p>
+        <p class="page-subtitle">@Lang.T("Pekerja AI pipeline. Model diambil dari provider yang terhubung ke 9router, termasuk combo.", "The AI workers of the pipeline. Models come from the providers connected to 9router, combos included.")</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshModels">Muat ulang model 9router</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btnAddNode">Tambah node</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshModels">@Lang.T("Muat ulang model 9router", "Reload 9router models")</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnAddNode">@Lang.T("Tambah node", "Add node")</button>
     </div>
 </div>
 
 <div id="pipelineAlert" class="alert d-none" role="status"></div>
 
 <details class="card mb-3 node-guide border-info-subtle bg-info-subtle" id="nodeGuide" open>
-    <summary class="card-header text-info-emphasis border-info-subtle">ⓘ Panduan: arti <span class="mono fw-normal">temp · token · paralel · prioritas</span> di card node</summary>
+    <summary class="card-header text-info-emphasis border-info-subtle">@Html.Raw(Lang.T("ⓘ Panduan: arti <span class=\"mono fw-normal\">temp · token · paralel · prioritas</span> di card node", "ⓘ Guide: what <span class=\"mono fw-normal\">temp · token · paralel · prioritas</span> mean on a node card"))</summary>
     <div class="card-body">
         <div class="row g-3 small">
             <div class="col-md-6 col-xxl-3">
                 <div class="fw-semibold text-info-emphasis">temp — Temperature (0–2)</div>
                 <div class="text-secondary">
-                    Seberapa acak jawaban model. Rendah (0–0.3) = konsisten dan patuh format, cocok untuk planner & executor.
-                    Tinggi = lebih bervariasi. <span class="mono">default</span> = nilai bawaan peran.
+                    @Html.Raw(Lang.T("Seberapa acak jawaban model. Rendah (0–0.3) = konsisten dan patuh format, cocok untuk planner & executor. Tinggi = lebih bervariasi. <span class=\"mono\">default</span> = nilai bawaan peran.", "How random the model's answers are. Low (0–0.3) = consistent and follows the format, fits the planner & executor. High = more varied. <span class=\"mono\">default</span> = the role's default value."))
                 </div>
             </div>
             <div class="col-md-6 col-xxl-3">
                 <div class="fw-semibold text-info-emphasis">token — Max tokens</div>
                 <div class="text-secondary">
-                    Batas panjang <em>output</em> satu panggilan model (bukan batas konteks input). Executor harus cukup untuk menulis
-                    seluruh editnya; naikkan bila muncul <span class="mono">Output was cut off (max tokens)</span>.
+                    @Html.Raw(Lang.T("Batas panjang <em>output</em> satu panggilan model (bukan batas konteks input). Executor harus cukup untuk menulis seluruh editnya; naikkan bila muncul <span class=\"mono\">Output was cut off (max tokens)</span>.", "Limit on the <em>output</em> length of one model call (not the input context limit). An executor needs enough to write its whole edit; raise it when <span class=\"mono\">Output was cut off (max tokens)</span> shows up."))
                 </div>
             </div>
             <div class="col-md-6 col-xxl-3">
-                <div class="fw-semibold text-info-emphasis">paralel — Max paralel</div>
+                <div class="fw-semibold text-info-emphasis">@Lang.T("paralel — Max paralel", "paralel — Max parallel")</div>
                 <div class="text-secondary">
-                    Jumlah panggilan ke node ini yang boleh berjalan bersamaan, dihitung <strong>di semua thread</strong>.
-                    Executor 6 = maks 6 tugas serentak. Turunkan bila provider sering kena rate limit (429).
+                    @Html.Raw(Lang.T("Jumlah panggilan ke node ini yang boleh berjalan bersamaan, dihitung <strong>di semua thread</strong>. Executor 6 = maks 6 tugas serentak. Turunkan bila provider sering kena rate limit (429).", "How many calls to this node may run at the same time, counted <strong>across all threads</strong>. Executor 6 = at most 6 tasks at once. Lower it when the provider often hits rate limits (429)."))
                 </div>
             </div>
             <div class="col-md-6 col-xxl-3">
-                <div class="fw-semibold text-info-emphasis">prioritas — angka kecil diutamakan</div>
+                <div class="fw-semibold text-info-emphasis">@Lang.T("prioritas — angka kecil diutamakan", "priority — lower numbers come first")</div>
                 <div class="text-secondary">
-                    Planner, Reviewer, Tester, Wrapper, Context Keeper: hanya node aktif dengan prioritas terkecil yang dipakai
-                    (planner lain menjadi cadangan otomatis). Executor: semua dipakai; prioritas menentukan urutan bila slot kosongnya sama.
+                    @Lang.T("Planner, Reviewer, Tester, Wrapper, Context Keeper: hanya node aktif dengan prioritas terkecil yang dipakai (planner lain menjadi cadangan otomatis). Executor: semua dipakai; prioritas menentukan urutan bila slot kosongnya sama.", "Planner, Reviewer, Tester, Wrapper, Context Keeper: only the active node with the lowest priority is used (the other planners become automatic fallbacks). Executor: all are used; the priority decides the order when they have the same free slots.")
                 </div>
             </div>
         </div>
         <div class="small text-secondary mt-3">
-            <span class="mono">📝 instruksi</span> = node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).
-            <span class="mono">🧩 n</span> = node memakai n skill dari gudang (Setting → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.
-            <span class="mono">🛰 n tool</span> = planner menyerahkan n tool ke tools node (detail di tooltip).
-            <span class="mono">🧪 auto test</span> = Auto Testing planner menyala: perubahan dites node Tester setelah verifikasi.
-            Detail lengkap: <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">Docs → Konfigurasi</a>.
+            <span class="mono">@Lang.T("📝 instruksi", "📝 instructions")</span> @Lang.T("= node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).", "= the node has extra instructions appended to the default prompt of its role (hover to see them).")
+            <span class="mono">🧩 n</span> @Lang.T("= node memakai n skill dari gudang (Setting → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.", "= the node uses n skills from the store (Setting → Skill; names in the tooltip); the skill content goes into the node's system prompt.")
+            <span class="mono">🛰 n tool</span> @Lang.T("= planner menyerahkan n tool ke tools node (detail di tooltip).", "= the planner hands n tools to the tools node (details in the tooltip).")
+            <span class="mono">🧪 auto test</span> @Lang.T("= Auto Testing planner menyala: perubahan dites node Tester setelah verifikasi. Detail lengkap:", "= the planner's Auto Testing is on: changes are tested by the Tester node after verification. Full details:") <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">@Lang.T("Docs → Konfigurasi", "Docs → Configuration")</a>.
         </div>
     </div>
 </details>
@@ -62,49 +57,49 @@
     <div class="node-column">
         <div>
             <h2 class="h6 text-uppercase text-secondary">Planner</h2>
-            <p class="small text-secondary">Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas. Planner aktif lain menjadi cadangan otomatis.</p>
+            <p class="small text-secondary">@Html.Raw(Lang.T("Model paling cerdas. Menjelajah kode (butuh <em>tool calling</em>), menyusun kontrak & memecah tugas. Planner aktif lain menjadi cadangan otomatis.", "The smartest model. Explores the code (needs <em>tool calling</em>), writes the contract & splits the tasks. Other active planners become automatic fallbacks."))</p>
         </div>
         <div id="nodes-Planner"></div>
     </div>
     <div class="node-column">
         <div>
             <h2 class="h6 text-uppercase text-secondary">Tools Node</h2>
-            <p class="small text-secondary">Opsional. Model murah yang menjalankan tool planner yang didelegasikan (atur di Edit node Planner): ia menyelidiki sendiri lewat <span class="mono">investigate</span> dan hanya mengembalikan temuan ringkas, sehingga konteks planner tetap kecil.</p>
+            <p class="small text-secondary">@Html.Raw(Lang.T("Opsional. Model murah yang menjalankan tool planner yang didelegasikan (atur di Edit node Planner): ia menyelidiki sendiri lewat <span class=\"mono\">investigate</span> dan hanya mengembalikan temuan ringkas, sehingga konteks planner tetap kecil.", "Optional. A cheap model that runs the planner tools delegated to it (set in Edit node of the Planner): it investigates by itself through <span class=\"mono\">investigate</span> and returns only short findings, so the planner context stays small."))</p>
         </div>
         <div id="nodes-ToolsNode"></div>
     </div>
     <div class="node-column">
         <div>
             <h2 class="h6 text-uppercase text-secondary">Executor</h2>
-            <p class="small text-secondary">Model murah & cepat. Tiap tugas = satu file dengan konteks minimal; berjalan paralel.</p>
+            <p class="small text-secondary">@Lang.T("Model murah & cepat. Tiap tugas = satu file dengan konteks minimal; berjalan paralel.", "Cheap & fast model. Each task = one file with minimal context; they run in parallel.")</p>
         </div>
         <div id="nodes-Executor"></div>
     </div>
     <div class="node-column">
         <div>
             <h2 class="h6 text-uppercase text-secondary">Reviewer</h2>
-            <p class="small text-secondary">Opsional. Setelah executor selesai (dan build dijalankan), memeriksa apakah hasil sesuai rencana &amp; kontrak; temuannya diperbaiki executor. Tanpa node ini, verifikasi hanya memakai build.</p>
+            <p class="small text-secondary">@Html.Raw(Lang.T("Opsional. Setelah executor selesai (dan build dijalankan), memeriksa apakah hasil sesuai rencana &amp; kontrak; temuannya diperbaiki executor. Tanpa node ini, verifikasi hanya memakai build.", "Optional. After the executors finish (and the build ran), checks whether the result matches the plan &amp; contract; its findings are fixed by executors. Without this node, verification uses the build only."))</p>
         </div>
         <div id="nodes-Reviewer"></div>
     </div>
     <div class="node-column">
         <div>
             <h2 class="h6 text-uppercase text-secondary">Tester</h2>
-            <p class="small text-secondary">Opsional. Bila <em>Auto Testing</em> menyala di planner, setelah verifikasi ia mencoba perubahan di aplikasi yang sedang berjalan sesuai rencana testing planner: UI lewat browser Playwright yang tampil (non-headless), API lewat request HTTP yang output-nya ditampilkan.</p>
+            <p class="small text-secondary">@Html.Raw(Lang.T("Opsional. Bila <em>Auto Testing</em> menyala di planner, setelah verifikasi ia mencoba perubahan di aplikasi yang sedang berjalan sesuai rencana testing planner: UI lewat browser Playwright yang tampil (non-headless), API lewat request HTTP yang output-nya ditampilkan.", "Optional. When <em>Auto Testing</em> is on in the planner, after verification it tries the change in the running application following the planner's testing plan: UI through a visible Playwright browser (non-headless), API through HTTP requests whose output is shown."))</p>
         </div>
         <div id="nodes-Tester"></div>
     </div>
     <div class="node-column">
         <div>
             <h2 class="h6 text-uppercase text-secondary">Wrapper</h2>
-            <p class="small text-secondary">Mengumpulkan hasil semua executor dan menyusun balasan ke user. Juga dipakai untuk ekstraksi memory.</p>
+            <p class="small text-secondary">@Lang.T("Mengumpulkan hasil semua executor dan menyusun balasan ke user. Juga dipakai untuk ekstraksi memory.", "Gathers the results of all executors and writes the reply to the user. Also used for memory extraction.")</p>
         </div>
         <div id="nodes-Wrapper"></div>
     </div>
     <div class="node-column">
         <div>
             <h2 class="h6 text-uppercase text-secondary">Context Keeper</h2>
-            <p class="small text-secondary">Opsional. Meringkas percakapan CLI setelah tiap thread, sehingga planner mulai dari ringkasan kecil, bukan seluruh chat. Tanpa node ini, Wrapper yang meringkas.</p>
+            <p class="small text-secondary">@Lang.T("Opsional. Meringkas percakapan CLI setelah tiap thread, sehingga planner mulai dari ringkasan kecil, bukan seluruh chat. Tanpa node ini, Wrapper yang meringkas.", "Optional. Summarizes the CLI conversation after each thread, so the planner starts from a small summary instead of the whole chat. Without this node, the Wrapper summarizes.")</p>
         </div>
         <div id="nodes-ContextKeeper"></div>
     </div>
@@ -121,7 +116,7 @@
                 <input type="hidden" id="nodeId" />
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label small" for="nodeName">Nama</label>
+                        <label class="form-label small" for="nodeName">@Lang.T("Nama", "Name")</label>
                         <input type="text" class="form-control" id="nodeName" maxlength="100" required />
                     </div>
                     <div class="col-md-6">
@@ -158,22 +153,20 @@
                         <input type="number" class="form-control" id="nodeConcurrency" min="1" max="64" required />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small" for="nodePriority">Prioritas</label>
+                        <label class="form-label small" for="nodePriority">@Lang.T("Prioritas", "Priority")</label>
                         <input type="number" class="form-control" id="nodePriority" required />
-                        <div class="form-text">kecil = diutamakan</div>
+                        <div class="form-text">@Lang.T("kecil = diutamakan", "lower = first")</div>
                     </div>
                     <div class="col-12">
-                        <label class="form-label small" for="nodeFallback">Node cadangan (opsional)</label>
+                        <label class="form-label small" for="nodeFallback">@Lang.T("Node cadangan (opsional)", "Fallback node (optional)")</label>
                         <select class="form-select" id="nodeFallback"></select>
-                        <div class="form-text">Kalau node ini tetap gagal (rate limit 429, server 5xx, timeout) setelah 9router mencoba ulang, panggilan yang sama dialihkan ke node cadangan. Hanya node dengan role yang sama yang bisa dipilih. Node cadangan boleh <em>nonaktif</em>: ia tidak menerima pekerjaan biasa dan baru dipakai saat dibutuhkan. Cadangan dari node cadangan ikut dipakai berantai.</div>
+                        <div class="form-text">@Html.Raw(Lang.T("Kalau node ini tetap gagal (rate limit 429, server 5xx, timeout) setelah 9router mencoba ulang, panggilan yang sama dialihkan ke node cadangan. Hanya node dengan role yang sama yang bisa dipilih. Node cadangan boleh <em>nonaktif</em>: ia tidak menerima pekerjaan biasa dan baru dipakai saat dibutuhkan. Cadangan dari node cadangan ikut dipakai berantai.", "When this node keeps failing (rate limit 429, server 5xx, timeout) after 9router retried, the same call goes to the fallback node. Only nodes with the same role can be chosen. A fallback node may be <em>off</em>: it gets no regular work and is used only when needed. A fallback's own fallback is used too, as a chain."))</div>
                     </div>
                     <div class="col-12" id="nodeDelegationBox">
                         <div class="border rounded p-2">
-                            <div class="form-label small mb-1">Delegasi tool ke tools node</div>
+                            <div class="form-label small mb-1">@Lang.T("Delegasi tool ke tools node", "Tool delegation to the tools node")</div>
                             <div class="small text-secondary mb-2">
-                                Tool yang didelegasikan tidak lagi dipanggil planner sendiri. Planner bertanya lewat <span class="mono">investigate</span>,
-                                tools node menjalankan tool-nya dan hanya mengembalikan temuan ringkas (path:baris + kutipan pendek) — output mentah tidak
-                                masuk ke konteks planner. Tools node nonaktif = tool kembali dijalankan planner.
+                                @Html.Raw(Lang.T("Tool yang didelegasikan tidak lagi dipanggil planner sendiri. Planner bertanya lewat <span class=\"mono\">investigate</span>, tools node menjalankan tool-nya dan hanya mengembalikan temuan ringkas (path:baris + kutipan pendek) — output mentah tidak masuk ke konteks planner. Tools node nonaktif = tool kembali dijalankan planner.", "Delegated tools are no longer called by the planner itself. The planner asks through <span class=\"mono\">investigate</span>, the tools node runs the tool and returns only short findings (path:line + a short quote) — the raw output never enters the planner context. Tools node off = the planner runs the tools again."))
                             </div>
                             <div class="row g-2" id="nodeDelegations"></div>
                             <div class="form-text" id="nodeDelegationHint"></div>
@@ -186,35 +179,30 @@
                                 <label class="form-check-label small" for="nodeAutoTesting">Auto Testing</label>
                             </div>
                             <div class="small text-secondary">
-                                Planner ikut menyusun rencana testing: dari perubahannya ia menilai cara mengujinya —
-                                <strong>UI</strong> (halaman dibuka di browser Playwright non-headless yang muncul di layar),
-                                <strong>API</strong> (request HTTP ke endpoint, output-nya ditampilkan), atau tidak bisa dites dari luar.
-                                Setelah verifikasi, node Tester langsung menjalankannya ke aplikasi yang sedang berjalan di <span class="mono">localhost</span>.
-                                Jalankan aplikasinya dulu (mis. <span class="mono">dotnet watch</span> / <span class="mono">npm run dev</span>).
+                                @Html.Raw(Lang.T("Planner ikut menyusun rencana testing: dari perubahannya ia menilai cara mengujinya — <strong>UI</strong> (halaman dibuka di browser Playwright non-headless yang muncul di layar), <strong>API</strong> (request HTTP ke endpoint, output-nya ditampilkan), atau tidak bisa dites dari luar. Setelah verifikasi, node Tester langsung menjalankannya ke aplikasi yang sedang berjalan di <span class=\"mono\">localhost</span>. Jalankan aplikasinya dulu (mis. <span class=\"mono\">dotnet watch</span> / <span class=\"mono\">npm run dev</span>).", "The planner also writes a testing plan: from its change it judges how to test it — <strong>UI</strong> (the page opens in a non-headless Playwright browser shown on screen), <strong>API</strong> (HTTP requests to the endpoint, output shown), or not testable from outside. After verification, the Tester node runs it right away against the application running on <span class=\"mono\">localhost</span>. Start the application first (e.g. <span class=\"mono\">dotnet watch</span> / <span class=\"mono\">npm run dev</span>)."))
                             </div>
                             <div class="form-text" id="nodeAutoTestingHint"></div>
                         </div>
                     </div>
                     <div class="col-12">
-                        <label class="form-label small" for="nodeSystemPrompt">Instruksi tambahan (opsional)</label>
-                        <textarea class="form-control" id="nodeSystemPrompt" rows="3" placeholder="Ditambahkan ke prompt bawaan role, mis. konvensi coding tim."></textarea>
+                        <label class="form-label small" for="nodeSystemPrompt">@Lang.T("Instruksi tambahan (opsional)", "Extra instructions (optional)")</label>
+                        <textarea class="form-control" id="nodeSystemPrompt" rows="3" placeholder="@Lang.T("Ditambahkan ke prompt bawaan role, mis. konvensi coding tim.", "Appended to the role's default prompt, e.g. the team's coding conventions.")"></textarea>
                     </div>
                     <div class="col-12">
                         <div class="node-skills border rounded p-2">
                             <div class="d-flex align-items-center gap-2 mb-1">
-                                <span class="form-label small mb-0">Skill</span>
-                                <span class="small text-secondary" id="nodeSkillHint">Isi skill ditempel ke system prompt node, sesudah instruksi tambahan.</span>
+                                @Html.Raw(Lang.T("<span class=\"form-label small mb-0\">Skill</span> <span class=\"small text-secondary\" id=\"nodeSkillHint\">Isi skill ditempel ke system prompt node, sesudah instruksi tambahan.</span>", "<span class=\"form-label small mb-0\">Skill</span> <span class=\"small text-secondary\" id=\"nodeSkillHint\">Skill content goes into the node's system prompt, after the extra instructions.</span>"))
                             </div>
                             <div class="d-flex flex-wrap gap-1 mb-2" id="nodeSkillChips"></div>
-                            <label class="form-label small" for="nodeSkillSearch">Cari sendiri di gudang — nama, deskripsi, tag, atau isi skill.</label>
+                            <label class="form-label small" for="nodeSkillSearch">@Lang.T("Cari sendiri di gudang — nama, deskripsi, tag, atau isi skill.", "Search the store yourself — name, description, tag, or skill content.")</label>
                             <div class="dropdown mb-2" id="nodeSkillSearchBox">
-                                <input type="search" class="form-control" id="nodeSkillSearch" autocomplete="off" placeholder="Ketik untuk mencari, mis. code review, TDD, debugging…" aria-controls="nodeSkillSearchResults" />
+                                <input type="search" class="form-control" id="nodeSkillSearch" autocomplete="off" placeholder="@Lang.T("Ketik untuk mencari, mis. code review, TDD, debugging…", "Type to search, e.g. code review, TDD, debugging…")" aria-controls="nodeSkillSearchResults" />
                                 <div class="dropdown-menu w-100 overflow-auto py-0" id="nodeSkillSearchResults" style="max-height: 320px"></div>
                             </div>
-                            <label class="form-label small" for="nodeSkillPrompt">Butuh kemampuan apa? Skill Orchestrator mencarikan skill yang cocok dari gudang.</label>
+                            <label class="form-label small" for="nodeSkillPrompt">@Lang.T("Butuh kemampuan apa? Skill Orchestrator mencarikan skill yang cocok dari gudang.", "What ability do you need? The Skill Orchestrator finds matching skills in the store.")</label>
                             <div class="d-flex gap-2">
-                                <textarea class="form-control" id="nodeSkillPrompt" rows="2" maxlength="2000" placeholder="mis. aku butuh kamu bisa menjadi engineer yang handal"></textarea>
-                                <button type="button" class="btn btn-outline-primary text-nowrap align-self-start" id="btnSuggestSkills">Cari skill</button>
+                                <textarea class="form-control" id="nodeSkillPrompt" rows="2" maxlength="2000" placeholder="@Lang.T("mis. aku butuh kamu bisa menjadi engineer yang handal", "e.g. I need you to be a reliable engineer")"></textarea>
+                                <button type="button" class="btn btn-outline-primary text-nowrap align-self-start" id="btnSuggestSkills">@Lang.T("Cari skill", "Find skills")</button>
                             </div>
                             <div class="mt-2" id="nodeSkillSuggestions"></div>
                         </div>
@@ -222,14 +210,14 @@
                     <div class="col-12">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="nodeActive" checked />
-                            <label class="form-check-label" for="nodeActive">Aktif</label>
+                            <label class="form-check-label" for="nodeActive">@Lang.T("Aktif", "Active")</label>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Batal", "Cancel")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
     </div>

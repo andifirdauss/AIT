@@ -1,23 +1,23 @@
 @{
-    ViewData["Title"] = "Detail project";
+    ViewData["Title"] = Lang.T("Detail project", "Project detail");
     var projectId = (Guid)ViewData["ProjectId"]!;
 }
 
 <div class="page-header">
     <div>
         <a asp-controller="Project" asp-action="Index" class="small text-decoration-none">← Project</a>
-        <h1 class="mt-1" id="projectName">Memuat…</h1>
+        <h1 class="mt-1" id="projectName">@Lang.T("Memuat…", "Loading…")</h1>
         <p class="page-subtitle mono mb-1" id="projectPath"></p>
         <div id="projectStacks"></div>
     </div>
-    <a class="btn btn-outline-secondary btn-sm" href="/Memory?projectId=@projectId">Lihat memory project</a>
+    <a class="btn btn-outline-secondary btn-sm" href="/Memory?projectId=@projectId">@Lang.T("Lihat memory project", "View project memory")</a>
 </div>
 
 <div class="row g-3 mb-3">
     <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Thread</div><div class="stat-value" id="statThreads">–</div></div></div></div>
-    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Sesi CLI</div><div class="stat-value" id="statSessions">–</div></div></div></div>
+    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">@Lang.T("Sesi CLI", "CLI sessions")</div><div class="stat-value" id="statSessions">–</div></div></div></div>
     <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Memory</div><div class="stat-value" id="statMemory">–</div></div></div></div>
-    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">Terakhir dipakai</div><div class="stat-value fs-5" id="statLastSeen">–</div></div></div></div>
+    <div class="col-md-3"><div class="card stat-card h-100"><div class="card-body"><div class="stat-label">@Lang.T("Terakhir dipakai", "Last used")</div><div class="stat-value fs-5" id="statLastSeen">–</div></div></div></div>
 </div>
 
 <div class="row g-3">
@@ -28,26 +28,24 @@
                 <div class="mono fw-semibold text-break" id="projectKey">–</div>
                 <div class="small text-secondary mb-2" id="projectKeySource"></div>
                 <p class="small text-secondary mb-2">
-                    Memory dibagi antar developer berdasarkan key ini, walau folder root tiap orang berbeda. Urutannya:
-                    file <span class="mono">.aithread/project.json</span> (<span class="mono">{ "key": "eep" }</span>) di repository,
-                    key manual di bawah, lalu git remote <span class="mono">origin</span>.
+                    @Html.Raw(Lang.T("Memory dibagi antar developer berdasarkan key ini, walau folder root tiap orang berbeda. Urutannya: file <span class=\"mono\">.aithread/project.json</span> (<span class=\"mono\">{ \"key\": \"eep\" }</span>) di repository, key manual di bawah, lalu git remote <span class=\"mono\">origin</span>.", "Memory is shared between developers by this key, even when each one's root folder differs. In this order: the file <span class=\"mono\">.aithread/project.json</span> (<span class=\"mono\">{ \"key\": \"eep\" }</span>) in the repository, the manual key below, then the git remote <span class=\"mono\">origin</span>."))
                 </p>
-                <label class="form-label small text-secondary" for="manualKey">Key manual</label>
+                <label class="form-label small text-secondary" for="manualKey">@Lang.T("Key manual", "Manual key")</label>
                 <div class="input-group input-group-sm">
-                    <input type="text" class="form-control mono" id="manualKey" maxlength="300" placeholder="mis. eep" />
-                    <button class="btn btn-outline-primary" type="button" id="btnSaveKey">Simpan</button>
+                    <input type="text" class="form-control mono" id="manualKey" maxlength="300" placeholder="@Lang.T("mis. eep", "e.g. eep")" />
+                    <button class="btn btn-outline-primary" type="button" id="btnSaveKey">@Lang.T("Simpan", "Save")</button>
                 </div>
             </div>
         </div>
         <div class="card mb-3">
-            <div class="card-header">Solution &amp; file build</div>
-            <ul class="list-group list-group-flush small mono" id="projectModules"><li class="list-group-item text-secondary">Memuat…</li></ul>
+            <div class="card-header">@Html.Raw(Lang.T("Solution &amp; file build", "Solution &amp; build files"))</div>
+            <ul class="list-group list-group-flush small mono" id="projectModules"><li class="list-group-item text-secondary">@Lang.T("Memuat…", "Loading…")</li></ul>
         </div>
         <div class="card">
-            <div class="card-header">Sesi</div>
+            <div class="card-header">@Lang.T("Sesi", "Session")</div>
             <div class="table-responsive">
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>Sesi</th><th>Thread</th><th>Terakhir</th></tr></thead>
+                    <thead><tr><th>@Lang.T("Sesi", "Sessions")</th><th>Thread</th><th>@Lang.T("Terakhir", "Last")</th></tr></thead>
                     <tbody id="sessionRows"><tr><td colspan="3" class="text-secondary">–</td></tr></tbody>
                 </table>
             </div>
@@ -56,11 +54,11 @@
     </div>
     <div class="col-xl-8">
         <div class="card mb-3">
-            <div class="card-header">Thread project ini</div>
+            <div class="card-header">@Lang.T("Thread project ini", "Threads of this project")</div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 table-clickable">
-                    <thead><tr><th>Waktu</th><th>Project</th><th>Prompt</th><th>Status</th><th>Tugas</th><th>Durasi</th><th>Speedup</th><th>Token</th></tr></thead>
-                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">Memuat…</td></tr></tbody>
+                    <thead><tr><th>@Lang.T("Waktu", "Time")</th><th>Project</th><th>Prompt</th><th>Status</th><th>@Lang.T("Tugas", "Tasks")</th><th>@Lang.T("Durasi", "Duration")</th><th>Speedup</th><th>Token</th></tr></thead>
+                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
                 </table>
             </div>
             <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="threadPager"></div>
@@ -68,27 +66,27 @@
 
         <div class="card mb-3">
             <div class="card-header d-flex flex-wrap align-items-center gap-2">
-                <span class="me-auto">Peta kode</span>
-                <input type="search" class="form-control form-control-sm w-auto" id="codeMapSearch" placeholder="Cari path…" aria-label="Cari path" />
-                <select class="form-select form-select-sm w-auto" id="codeMapModule" aria-label="Filter modul"><option value="">Semua modul</option></select>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCodeMapAdd">Atur file</button>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="btnCodeMapScan" title="Petakan semua file yang belum punya modul">Scan</button>
+                <span class="me-auto">@Lang.T("Peta kode", "Code map")</span>
+                <input type="search" class="form-control form-control-sm w-auto" id="codeMapSearch" placeholder="@Lang.T("Cari path…", "Search a path…")" aria-label="@Lang.T("Cari path", "Search a path")" />
+                <select class="form-select form-select-sm w-auto" id="codeMapModule" aria-label="@Lang.T("Filter modul", "Filter by module")"><option value="">@Lang.T("Semua modul", "All modules")</option></select>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCodeMapAdd">@Lang.T("Atur file", "Map a file")</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btnCodeMapScan" title="@Lang.T("Petakan semua file yang belum punya modul", "Map every file that has no module yet")">Scan</button>
             </div>
             <div class="card-body small text-secondary border-bottom">
-                Modul dan layer tiap file, diputuskan sekali lalu dipakai ulang. Koreksi manual tidak pernah ditimpa; planner juga bisa mengoreksi lewat prompt ("anggap UserBL modul Account").
+                @Lang.T("Modul dan layer tiap file, diputuskan sekali lalu dipakai ulang. Koreksi manual tidak pernah ditimpa; planner juga bisa mengoreksi lewat prompt (\"anggap UserBL modul Account\").", "Module and layer of each file, decided once and then reused. Manual corrections are never overwritten; the planner can correct them through a prompt too (\"treat UserBL as module Account\").")
             </div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>File</th><th>Modul</th><th>Layer</th><th>Area</th><th>Sumber</th><th></th></tr></thead>
-                    <tbody id="codeMapRows"><tr><td colspan="6" class="text-secondary">Memuat…</td></tr></tbody>
+                    <thead><tr><th>File</th><th>@Lang.T("Modul", "Module")</th><th>Layer</th><th>Area</th><th>@Lang.T("Sumber", "Source")</th><th></th></tr></thead>
+                    <tbody id="codeMapRows"><tr><td colspan="6" class="text-secondary">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
                 </table>
             </div>
             <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="codeMapPager"></div>
         </div>
 
         <div class="card">
-            <div class="card-header">Riwayat gabung modul</div>
-            <div class="list-group list-group-flush small" id="mergeRows"><div class="list-group-item text-secondary">Memuat…</div></div>
+            <div class="card-header">@Lang.T("Riwayat gabung modul", "Module merge history")</div>
+            <div class="list-group list-group-flush small" id="mergeRows"><div class="list-group-item text-secondary">@Lang.T("Memuat…", "Loading…")</div></div>
             <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="mergePager"></div>
         </div>
     </div>
@@ -96,17 +94,16 @@
 
 <div class="card mt-3">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <span class="me-auto">Modul</span>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCheckModules" title="Cari modul yang sama tapi terpisah (beda tulisan, terjemahan, nama lain)">Cek modul ganda</button>
+        <span class="me-auto">@Lang.T("Modul", "Modules")</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCheckModules" title="@Lang.T("Cari modul yang sama tapi terpisah (beda tulisan, terjemahan, nama lain)", "Find modules that are the same but kept apart (different spelling, translation, other name)")">@Lang.T("Cek modul ganda", "Check duplicate modules")</button>
     </div>
     <div class="card-body small text-secondary border-bottom">
-        Bagian pertama label memory dan modul wiki bisnis. Nama lain dan terjemahan (alias) diarahkan ke modul yang sama.
-        Modul ganda dengan keyakinan tinggi digabung otomatis; yang ragu menunggu di <a href="/Memory#review">Memory → Perlu review</a>.
+        @Html.Raw(Lang.T("Bagian pertama label memory dan modul wiki bisnis. Nama lain dan terjemahan (alias) diarahkan ke modul yang sama. Modul ganda dengan keyakinan tinggi digabung otomatis; yang ragu menunggu di <a href=\"/Memory#review\">Memory → Perlu review</a>.", "The first part of memory labels and of business wiki modules. Other names and translations (aliases) lead to the same module. Duplicate modules with high confidence are merged automatically; doubtful ones wait in <a href=\"/Memory#review\">Memory → Needs review</a>."))
     </div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>Modul</th><th>Alias</th><th>Memory</th><th>File</th><th></th></tr></thead>
-            <tbody id="moduleRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
+            <thead><tr><th>@Lang.T("Modul", "Module")</th><th>@Lang.T("Alias", "Aliases")</th><th>Memory</th><th>File</th><th></th></tr></thead>
+            <tbody id="moduleRows"><tr><td colspan="5" class="text-secondary">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
         </table>
     </div>
     <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="modulePager"></div>
@@ -114,26 +111,26 @@
 
 <div class="card mt-3" id="unitTestCard">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <span class="me-auto">Unit test <span class="small text-secondary fw-normal" id="unitTestCounts"></span></span>
-        <input type="search" class="form-control form-control-sm w-auto" id="unitTestSearch" placeholder="Cari nomor, judul, file…" aria-label="Cari unit test" />
-        <select class="form-select form-select-sm w-auto" id="unitTestStateFilter" aria-label="Filter status unit test">
-            <option value="">Semua kecuali dihapus</option>
-            <option value="Active">Aktif</option>
+        <span class="me-auto">@Html.Raw(Lang.T("Unit test <span class=\"small text-secondary fw-normal\" id=\"unitTestCounts\"></span>", "Unit tests <span class=\"small text-secondary fw-normal\" id=\"unitTestCounts\"></span>"))</span>
+        <input type="search" class="form-control form-control-sm w-auto" id="unitTestSearch" placeholder="@Lang.T("Cari nomor, judul, file…", "Search number, title, file…")" aria-label="@Lang.T("Cari unit test", "Search unit tests")" />
+        <select class="form-select form-select-sm w-auto" id="unitTestStateFilter" aria-label="@Lang.T("Filter status unit test", "Filter unit tests by status")">
+            <option value="">@Lang.T("Semua kecuali dihapus", "All but deleted")</option>
+            <option value="Active">@Lang.T("Aktif", "Active")</option>
             <option value="Obsolete">Obsolete</option>
-            <option value="Quarantined">Karantina</option>
-            <option value="Removed">Dihapus</option>
-            <option value="Failing">Gagal terakhir</option>
+            <option value="Quarantined">@Lang.T("Karantina", "Quarantined")</option>
+            <option value="Removed">@Lang.T("Dihapus", "Deleted")</option>
+            <option value="Failing">@Lang.T("Gagal terakhir", "Failed last run")</option>
         </select>
-        <select class="form-select form-select-sm w-auto" id="unitTestModuleFilter" aria-label="Filter modul unit test"><option value="">Semua modul</option></select>
+        <select class="form-select form-select-sm w-auto" id="unitTestModuleFilter" aria-label="@Lang.T("Filter modul unit test", "Filter unit tests by module")"><option value="">@Lang.T("Semua modul", "All modules")</option></select>
         <button type="button" class="btn btn-outline-secondary btn-sm" id="btnUnitTestSettings">Setting</button>
-        <button type="button" class="btn btn-outline-primary btn-sm" id="btnUnitTestScan" title="Cari test di kode, daftarkan yang baru, dan beri judul serta tujuan dengan model murah">Scan test</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btnUnitTestRunAll" title="Jalankan semua test aktif sekarang">Jalankan semua</button>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnUnitTestScan" title="@Lang.T("Cari test di kode, daftarkan yang baru, dan beri judul serta tujuan dengan model murah", "Search the code for tests, register new ones, and give them a title and purpose with a cheap model")">@Lang.T("Scan test", "Scan tests")</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnUnitTestRunAll" title="@Lang.T("Jalankan semua test aktif sekarang", "Run all active tests now")">@Lang.T("Jalankan semua", "Run all")</button>
     </div>
-    <div class="card-body small text-secondary border-bottom" id="unitTestInfo">Memuat…</div>
+    <div class="card-body small text-secondary border-bottom" id="unitTestInfo">@Lang.T("Memuat…", "Loading…")</div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>No</th><th>Test</th><th>Modul</th><th>Status</th><th>Hasil terakhir</th><th>Asal</th><th></th></tr></thead>
-            <tbody id="unitTestRows"><tr><td colspan="7" class="text-secondary">Memuat…</td></tr></tbody>
+            <thead><tr><th>No</th><th>Test</th><th>@Lang.T("Modul", "Module")</th><th>Status</th><th>@Lang.T("Hasil terakhir", "Last result")</th><th>@Lang.T("Asal", "Origin")</th><th></th></tr></thead>
+            <tbody id="unitTestRows"><tr><td colspan="7" class="text-secondary">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
         </table>
     </div>
     <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="unitTestPager"></div>
@@ -141,37 +138,34 @@
 
 <div class="card mt-3" id="testAccountCard">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <span class="me-auto">Akun uji <span class="small text-secondary fw-normal" id="testAccountCount"></span></span>
-        <button type="button" class="btn btn-outline-primary btn-sm" id="btnTestAccountAdd">Tambah akun</button>
+        <span class="me-auto">@Html.Raw(Lang.T("Akun uji <span class=\"small text-secondary fw-normal\" id=\"testAccountCount\"></span>", "Test accounts <span class=\"small text-secondary fw-normal\" id=\"testAccountCount\"></span>"))</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnTestAccountAdd">@Lang.T("Tambah akun", "Add account")</button>
     </div>
     <div class="card-body small text-secondary border-bottom" id="testAccountInfo">
-        Akun yang dipakai node Tester untuk berganti user saat testing (pengaju, atasan, approver per level, admin). Dibagi ke semua developer
-        project lewat project key. Tidak ada password per akun: Tester login dengan <strong>password dev</strong> project di bawah.
-        Pakai akun uji, bukan akun karyawan sungguhan.
+        @Html.Raw(Lang.T("Akun yang dipakai node Tester untuk berganti user saat testing (pengaju, atasan, approver per level, admin). Dibagi ke semua developer project lewat project key. Tidak ada password per akun: Tester login dengan <strong>password dev</strong> project di bawah. Pakai akun uji, bukan akun karyawan sungguhan.", "Accounts the Tester node uses to switch users while testing (requester, manager, approver per level, admin). Shared with every developer of the project through the project key. No password per account: the Tester logs in with the project's <strong>dev password</strong> below. Use test accounts, not real employee accounts."))
     </div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>Username</th><th>Peran</th><th>Atribut</th><th>Catatan</th><th></th></tr></thead>
-            <tbody id="testAccountRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
+            <thead><tr><th>Username</th><th>@Lang.T("Peran", "Role")</th><th>@Lang.T("Atribut", "Attributes")</th><th>@Lang.T("Catatan", "Notes")</th><th></th></tr></thead>
+            <tbody id="testAccountRows"><tr><td colspan="5" class="text-secondary">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
         </table>
     </div>
     <div class="card-body border-top">
         <div class="row g-3">
             <div class="col-lg-5">
-                <label class="form-label small fw-semibold" for="devPassword">Password dev</label>
+                <label class="form-label small fw-semibold" for="devPassword">@Lang.T("Password dev", "Dev password")</label>
                 <div class="input-group input-group-sm">
                     <input type="text" class="form-control mono" id="devPassword" maxlength="200" autocomplete="off" />
-                    <button class="btn btn-outline-primary" type="button" id="btnSaveDevPassword">Simpan</button>
+                    <button class="btn btn-outline-primary" type="button" id="btnSaveDevPassword">@Lang.T("Simpan", "Save")</button>
                 </div>
                 <div class="form-text" id="devPasswordHint"></div>
-                <div class="form-text text-warning">Jangan isi password asli: nilai ini terlihat oleh semua developer project. Untuk password asli, balas
-                    <span class="mono">login &lt;user&gt; &lt;password&gt;</span> di chat (tidak disimpan).</div>
+                <div class="form-text text-warning">@Html.Raw(Lang.T("Jangan isi password asli: nilai ini terlihat oleh semua developer project. Untuk password asli, balas <span class=\"mono\">login &lt;user&gt; &lt;password&gt;</span> di chat (tidak disimpan).", "Do not fill in a real password: this value is visible to every developer of the project. For a real password, reply <span class=\"mono\">login &lt;user&gt; &lt;password&gt;</span> in the chat (not stored)."))</div>
             </div>
             <div class="col-lg-7">
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <span class="small fw-semibold me-auto">Login as / impersonate</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDetectImpersonation" title="Cari fitur login sebagai user lain di kode project">Deteksi</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnEditImpersonation">Ubah</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDetectImpersonation" title="@Lang.T("Cari fitur login sebagai user lain di kode project", "Search the project code for a log-in-as-another-user feature")">@Lang.T("Deteksi", "Detect")</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnEditImpersonation">@Lang.T("Ubah", "Edit")</button>
                 </div>
                 <div class="small" id="impersonationInfo">–</div>
             </div>
@@ -181,20 +175,17 @@
 
 <div class="card mt-3" id="testScenarioCard">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
-        <span class="me-auto">Skenario test <span class="small text-secondary fw-normal" id="testScenarioCount"></span></span>
-        <label class="btn btn-outline-primary btn-sm mb-0" for="testScenarioFile" title="Unggah file skenario (.xlsx) yang sudah diisi">Unggah Excel</label>
+        <span class="me-auto">@Html.Raw(Lang.T("Skenario test <span class=\"small text-secondary fw-normal\" id=\"testScenarioCount\"></span>", "Test scenarios <span class=\"small text-secondary fw-normal\" id=\"testScenarioCount\"></span>"))</span>
+        <label class="btn btn-outline-primary btn-sm mb-0" for="testScenarioFile" title="@Lang.T("Unggah file skenario (.xlsx) yang sudah diisi", "Upload a filled-in scenario file (.xlsx)")">@Lang.T("Unggah Excel", "Upload Excel")</label>
         <input type="file" class="d-none" id="testScenarioFile" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
     </div>
     <div class="card-body small text-secondary border-bottom">
-        Alur multi-langkah (submit → approve per level → …) yang dijalankan Tester langkah demi langkah dengan akun uji. Dibuat dari
-        <em>test lanjutan</em> yang disarankan Tester (halaman thread → <strong>Buat skenario Excel</strong>, atau balas
-        <span class="mono">buat skenario test lanjutan &lt;nomor&gt;</span> di chat). Isi file Excel-nya, unggah di sini atau simpan di
-        <span class="mono">.aithread/testing/</span> lalu balas <span class="mono">jalankan skenario &lt;nama&gt;</span>.
+        @Html.Raw(Lang.T("Alur multi-langkah (submit → approve per level → …) yang dijalankan Tester langkah demi langkah dengan akun uji. Dibuat dari <em>test lanjutan</em> yang disarankan Tester (halaman thread → <strong>Buat skenario Excel</strong>, atau balas <span class=\"mono\">buat skenario test lanjutan &lt;nomor&gt;</span> di chat). Isi file Excel-nya, unggah di sini atau simpan di <span class=\"mono\">.aithread/testing/</span> lalu balas <span class=\"mono\">jalankan skenario &lt;nama&gt;</span>.", "Multi-step flows (submit → approve per level → …) the Tester runs step by step with test accounts. Created from a <em>follow-up test</em> the Tester suggested (thread page → <strong>Create Excel scenario</strong>, or reply <span class=\"mono\">create scenario for follow-up test &lt;number&gt;</span> in the chat). Fill in the Excel file, upload it here or save it in <span class=\"mono\">.aithread/testing/</span>, then reply <span class=\"mono\">run scenario &lt;name&gt;</span>."))
     </div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>Skenario</th><th>Langkah</th><th>Peran</th><th>Hasil terakhir</th><th></th></tr></thead>
-            <tbody id="testScenarioRows"><tr><td colspan="5" class="text-secondary">Memuat…</td></tr></tbody>
+            <thead><tr><th>@Lang.T("Skenario", "Scenario")</th><th>@Lang.T("Langkah", "Steps")</th><th>@Lang.T("Peran", "Roles")</th><th>@Lang.T("Hasil terakhir", "Last result")</th><th></th></tr></thead>
+            <tbody id="testScenarioRows"><tr><td colspan="5" class="text-secondary">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
         </table>
     </div>
 </div>
@@ -202,20 +193,20 @@
 <div class="card win mt-3" id="structureWindow" data-win-id="project-structure" data-win-persist>
     <div class="card-header win-bar flex-wrap">
         <win-controls disabled="close" />
-        <span class="win-title">Struktur kode</span>
+        <span class="win-title">@Lang.T("Struktur kode", "Code structure")</span>
         <div class="win-actions flex-wrap">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Tampilan struktur">
+            <div class="btn-group btn-group-sm" role="group" aria-label="@Lang.T("Tampilan struktur", "Structure view")">
                 <input type="radio" class="btn-check" name="structureView" id="structureViewFolder" value="folder" checked />
                 <label class="btn btn-outline-secondary" for="structureViewFolder">Folder</label>
                 <input type="radio" class="btn-check" name="structureView" id="structureViewClass" value="class" />
                 <label class="btn btn-outline-secondary" for="structureViewClass">Class</label>
             </div>
-            <input type="search" class="form-control form-control-sm structure-search" id="structureSearch" placeholder="Cari class, method, file…" aria-label="Cari di struktur kode" />
-            <button type="button" class="btn btn-outline-primary btn-sm" id="btnStructureRescan" title="Baca ulang file yang berubah sejak scan terakhir">Scan ulang</button>
+            <input type="search" class="form-control form-control-sm structure-search" id="structureSearch" placeholder="@Lang.T("Cari class, method, file…", "Search class, method, file…")" aria-label="@Lang.T("Cari di struktur kode", "Search the code structure")" />
+            <button type="button" class="btn btn-outline-primary btn-sm" id="btnStructureRescan" title="@Lang.T("Baca ulang file yang berubah sejak scan terakhir", "Read the files changed since the last scan again")">@Lang.T("Scan ulang", "Scan again")</button>
         </div>
     </div>
-    <div class="card-body small text-secondary border-bottom py-2" id="structureSummary">Memuat…</div>
-    <div class="structure-tree" id="structureTree" role="tree" aria-label="Struktur kode"></div>
+    <div class="card-body small text-secondary border-bottom py-2" id="structureSummary">@Lang.T("Memuat…", "Loading…")</div>
+    <div class="structure-tree" id="structureTree" role="tree" aria-label="@Lang.T("Struktur kode", "Code structure")"></div>
 </div>
 
 <div class="modal fade" id="moduleModal" tabindex="-1" aria-labelledby="moduleModalTitle" aria-hidden="true">
@@ -223,34 +214,34 @@
         <form class="modal-content" id="moduleForm" autocomplete="off">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="moduleModalTitle">Modul</h5>
+                <h5 class="modal-title" id="moduleModalTitle">@Lang.T("Modul", "Module")</h5>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="moduleName" />
                 <div class="mb-2">
-                    <label class="form-label small" for="moduleNewName">Nama</label>
+                    <label class="form-label small" for="moduleNewName">@Lang.T("Nama", "Name")</label>
                     <input type="text" class="form-control" id="moduleNewName" maxlength="100" required />
-                    <div class="form-text">Singkatan ditulis kapital (<span class="mono">MKPP</span>, <span class="mono">KlaimDF</span>). Mengganti nama ikut mengubah memory, peta kode, dan halaman wiki modul ini; nama lama disimpan sebagai alias.</div>
+                    <div class="form-text">@Html.Raw(Lang.T("Singkatan ditulis kapital (<span class=\"mono\">MKPP</span>, <span class=\"mono\">KlaimDF</span>). Mengganti nama ikut mengubah memory, peta kode, dan halaman wiki modul ini; nama lama disimpan sebagai alias.", "Abbreviations in capitals (<span class=\"mono\">MKPP</span>, <span class=\"mono\">KlaimDF</span>). Renaming also changes the memory, code map and wiki pages of this module; the old name is kept as an alias."))</div>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label small" for="moduleDescription">Deskripsi</label>
-                    <input type="text" class="form-control" id="moduleDescription" maxlength="500" placeholder="Satu baris: modul ini mencakup apa" />
+                    <label class="form-label small" for="moduleDescription">@Lang.T("Deskripsi", "Description")</label>
+                    <input type="text" class="form-control" id="moduleDescription" maxlength="500" placeholder="@Lang.T("Satu baris: modul ini mencakup apa", "One line: what this module covers")" />
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small" for="moduleAliases">Alias (dipisah koma)</label>
-                    <input type="text" class="form-control" id="moduleAliases" placeholder="Pengguna, Users" />
-                    <div class="form-text">Nama lain atau terjemahan. Memory, file, dan halaman wiki dengan nama ini masuk ke modul ini.</div>
+                    <label class="form-label small" for="moduleAliases">@Lang.T("Alias (dipisah koma)", "Aliases (comma separated)")</label>
+                    <input type="text" class="form-control" id="moduleAliases" placeholder="@Lang.T("Pengguna, Users", "Pengguna, Users")" />
+                    <div class="form-text">@Lang.T("Nama lain atau terjemahan. Memory, file, dan halaman wiki dengan nama ini masuk ke modul ini.", "Other names or translations. Memory, files and wiki pages with this name go to this module.")</div>
                 </div>
-                <label class="form-label small" for="moduleMergeInto">Gabungkan ke modul lain</label>
+                <label class="form-label small" for="moduleMergeInto">@Lang.T("Gabungkan ke modul lain", "Merge into another module")</label>
                 <div class="input-group input-group-sm">
                     <select class="form-select" id="moduleMergeInto"></select>
-                    <button type="button" class="btn btn-outline-danger" id="btnModuleMerge">Gabungkan</button>
+                    <button type="button" class="btn btn-outline-danger" id="btnModuleMerge">@Lang.T("Gabungkan", "Merge")</button>
                 </div>
-                <div class="form-text">Memory, peta kode, dan halaman wiki modul ini pindah ke modul tujuan. Bisa dibatalkan dari riwayat.</div>
+                <div class="form-text">@Lang.T("Memory, peta kode, dan halaman wiki modul ini pindah ke modul tujuan. Bisa dibatalkan dari riwayat.", "The memory, code map and wiki pages of this module move to the target module. It can be undone from the history.")</div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
     </div>
@@ -261,30 +252,30 @@
         <form class="modal-content" id="codeMapForm" autocomplete="off">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="codeMapModalTitle">Atur modul file</h5>
+                <h5 class="modal-title" id="codeMapModalTitle">@Lang.T("Atur modul file", "Set a file's module")</h5>
             </div>
             <div class="modal-body">
                 <div class="mb-2">
-                    <label class="form-label small" for="codeMapPath">File atau nama class</label>
-                    <input type="text" class="form-control mono" id="codeMapPath" placeholder="src/Bl/UserBL.cs atau UserBL" required />
+                    <label class="form-label small" for="codeMapPath">@Lang.T("File atau nama class", "File or class name")</label>
+                    <input type="text" class="form-control mono" id="codeMapPath" placeholder="@Lang.T("src/Bl/UserBL.cs atau UserBL", "src/Bl/UserBL.cs or UserBL")" required />
                 </div>
                 <div class="row g-2">
                     <div class="col-7">
-                        <label class="form-label small" for="codeMapModuleInput">Modul</label>
+                        <label class="form-label small" for="codeMapModuleInput">@Lang.T("Modul", "Module")</label>
                         <input type="text" class="form-control" id="codeMapModuleInput" list="codeMapModuleList" maxlength="100" required />
                         <datalist id="codeMapModuleList"></datalist>
                     </div>
                     <div class="col-5">
                         <label class="form-label small" for="codeMapLayer">Layer</label>
                         <select class="form-select" id="codeMapLayer">
-                            <option value="">(tetap)</option><option>UI</option><option>Entry</option><option>Logic</option><option>Data</option><option>Infra</option><option>Test</option>
+                            <option value="">@Lang.T("(tetap)", "(unchanged)")</option><option>UI</option><option>Entry</option><option>Logic</option><option>Data</option><option>Infra</option><option>Test</option>
                         </select>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
     </div>
@@ -295,38 +286,38 @@
         <form class="modal-content" id="unitTestSettingsForm" autocomplete="off">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="unitTestSettingsTitle">Setting unit test</h5>
+                <h5 class="modal-title" id="unitTestSettingsTitle">@Lang.T("Setting unit test", "Unit test settings")</h5>
             </div>
             <div class="modal-body">
-                <p class="small text-secondary">Berlaku untuk semua developer project ini (disimpan bersama katalog, mengikuti penyimpanan long memory).</p>
+                <p class="small text-secondary">@Lang.T("Berlaku untuk semua developer project ini (disimpan bersama katalog, mengikuti penyimpanan long memory).", "Applies to every developer of this project (stored with the catalog, following the long memory storage).")</p>
                 <div class="mb-3">
-                    <label class="form-label small" for="unitTestMode">Test yang dijalankan tiap thread</label>
+                    <label class="form-label small" for="unitTestMode">@Lang.T("Test yang dijalankan tiap thread", "Tests run in every thread")</label>
                     <select class="form-select" id="unitTestMode">
-                        <option value="Relevant">Relevan saja: test yang terkait file/modul yang diubah</option>
-                        <option value="All">Semua test aktif</option>
-                        <option value="Off">Mati</option>
+                        <option value="Relevant">@Lang.T("Relevan saja: test yang terkait file/modul yang diubah", "Relevant only: tests related to the changed files/modules")</option>
+                        <option value="All">@Lang.T("Semua test aktif", "All active tests")</option>
+                        <option value="Off">@Lang.T("Mati", "Off")</option>
                     </select>
-                    <div class="form-text">Test dijalankan sebelum perubahan (baseline, paralel dengan planner) dan setelah build lolos. Hasil kode yang sama dipakai ulang tanpa menjalankan lagi.</div>
+                    <div class="form-text">@Lang.T("Test dijalankan sebelum perubahan (baseline, paralel dengan planner) dan setelah build lolos. Hasil kode yang sama dipakai ulang tanpa menjalankan lagi.", "Tests run before the change (baseline, in parallel with the planner) and after the build passes. Results for the same code are reused without running again.")</div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label small" for="unitTestAuthoring">Buat unit test baru</label>
+                    <label class="form-label small" for="unitTestAuthoring">@Lang.T("Buat unit test baru", "Write new unit tests")</label>
                     <select class="form-select" id="unitTestAuthoring">
-                        <option value="OnRequest">Hanya saat diminta</option>
-                        <option value="AutoLogic">Otomatis untuk perubahan logika bisnis (layer Logic)</option>
-                        <option value="Off">Tidak pernah</option>
+                        <option value="OnRequest">@Lang.T("Hanya saat diminta", "Only when asked")</option>
+                        <option value="AutoLogic">@Lang.T("Otomatis untuk perubahan logika bisnis (layer Logic)", "Automatically for business logic changes (Logic layer)")</option>
+                        <option value="Off">@Lang.T("Tidak pernah", "Never")</option>
                     </select>
                 </div>
                 <div class="form-check form-switch mb-1">
                     <input class="form-check-input" type="checkbox" role="switch" id="unitTestKeepSnapshots" />
-                    <label class="form-check-label" for="unitTestKeepSnapshots">Simpan snapshot test</label>
+                    <label class="form-check-label" for="unitTestKeepSnapshots">@Lang.T("Simpan snapshot test", "Keep test snapshots")</label>
                 </div>
-                <div class="form-text mb-3">Isi file test disimpan di katalog agar test yang hilang dari repository developer lain bisa dipulihkan otomatis. Snapshot tidak pernah ditampilkan. Dimatikan: snapshot yang ada ikut dihapus.</div>
-                <label class="form-label small" for="unitTestTimeout">Batas waktu run test (detik)</label>
-                <input type="number" class="form-control" id="unitTestTimeout" min="10" max="3600" placeholder="Kosong = ikut batas waktu build" />
+                <div class="form-text mb-3">@Lang.T("Isi file test disimpan di katalog agar test yang hilang dari repository developer lain bisa dipulihkan otomatis. Snapshot tidak pernah ditampilkan. Dimatikan: snapshot yang ada ikut dihapus.", "The content of test files is kept in the catalog so tests missing from another developer's repository can be restored automatically. Snapshots are never shown. Off: existing snapshots are deleted too.")</div>
+                <label class="form-label small" for="unitTestTimeout">@Lang.T("Batas waktu run test (detik)", "Test run time limit (seconds)")</label>
+                <input type="number" class="form-control" id="unitTestTimeout" min="10" max="3600" placeholder="@Lang.T("Kosong = ikut batas waktu build", "Empty = follow the build time limit")" />
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
     </div>
@@ -337,11 +328,11 @@
         <div class="modal-content">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="unitTestDetailTitle">Unit test</h5>
+                <h5 class="modal-title" id="unitTestDetailTitle">@Lang.T("Unit test", "Unit tests")</h5>
             </div>
             <div class="modal-body" id="unitTestDetailBody"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
             </div>
         </div>
     </div>
@@ -352,7 +343,7 @@
         <form class="modal-content" id="testAccountForm" autocomplete="off">
             <div class="modal-header win-bar">
                 <win-controls for="modal" />
-                <h5 class="modal-title" id="testAccountModalTitle">Akun uji</h5>
+                <h5 class="modal-title" id="testAccountModalTitle">@Lang.T("Akun uji", "Test account")</h5>
             </div>
             <div class="modal-body">
                 <div class="row g-3">
@@ -361,28 +352,28 @@
                         <input type="text" class="form-control mono" id="testAccountUsername" maxlength="200" required />
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="testAccountRole">Peran</label>
-                        <input type="text" class="form-control" id="testAccountRole" maxlength="100" list="testAccountRoleList" placeholder="mis. Pengaju, Atasan, HR, Administrator" />
+                        <label class="form-label" for="testAccountRole">@Lang.T("Peran", "Role")</label>
+                        <input type="text" class="form-control" id="testAccountRole" maxlength="100" list="testAccountRoleList" placeholder="@Lang.T("mis. Pengaju, Atasan, HR, Administrator", "e.g. Requester, Manager, HR, Administrator")" />
                         <datalist id="testAccountRoleList"></datalist>
                     </div>
                 </div>
                 <div class="mt-3">
                     <div class="d-flex align-items-center mb-1">
-                        <span class="form-label mb-0 me-auto">Atribut</span>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestAccountAttribute">Tambah atribut</button>
+                        <span class="form-label mb-0 me-auto">@Lang.T("Atribut", "Attributes")</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnTestAccountAttribute">@Lang.T("Tambah atribut", "Add attribute")</button>
                     </div>
-                    <div class="form-text mb-2">Bebas per project, mis. NIK, Unit, Level approval, Atasan (username atasannya). Tester memakainya untuk memilih akun.</div>
+                    <div class="form-text mb-2">@Lang.T("Bebas per project, mis. NIK, Unit, Level approval, Atasan (username atasannya). Tester memakainya untuk memilih akun.", "Free per project, e.g. NIK, Unit, Approval level, Manager (the manager's username). The Tester uses them to choose an account.")</div>
                     <datalist id="testAccountKeyList"></datalist>
                     <div id="testAccountAttributes"></div>
                 </div>
                 <div class="mt-3">
-                    <label class="form-label" for="testAccountNotes">Catatan</label>
-                    <textarea class="form-control" id="testAccountNotes" rows="2" maxlength="1000" placeholder="mis. dipakai untuk flow cuti saja"></textarea>
+                    <label class="form-label" for="testAccountNotes">@Lang.T("Catatan", "Notes")</label>
+                    <textarea class="form-control" id="testAccountNotes" rows="2" maxlength="1000" placeholder="@Lang.T("mis. dipakai untuk flow cuti saja", "e.g. used for the leave flow only")"></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
     </div>
@@ -398,25 +389,25 @@
             <div class="modal-body">
                 <label class="form-label" for="impersonationStatus">Status</label>
                 <select class="form-select" id="impersonationStatus">
-                    <option value="available">Tersedia</option>
-                    <option value="none">Tidak ada</option>
-                    <option value="unknown">Belum diketahui</option>
+                    <option value="available">@Lang.T("Tersedia", "Available")</option>
+                    <option value="none">@Lang.T("Tidak ada", "None")</option>
+                    <option value="unknown">@Lang.T("Belum diketahui", "Unknown yet")</option>
                 </select>
-                <label class="form-label mt-3" for="impersonationHow">Cara memakai</label>
-                <textarea class="form-control" id="impersonationHow" rows="2" maxlength="2000" placeholder="mis. Admin › Users › cari username › tombol Login as, atau GET /Account/LoginAs?username={{target}}"></textarea>
-                <label class="form-label mt-3" for="impersonationBack">Cara kembali ke admin</label>
-                <input type="text" class="form-control" id="impersonationBack" maxlength="1000" placeholder="mis. tombol Kembali ke admin di header (kosongkan bila tidak ada)" />
-                <label class="form-label mt-3" for="impersonationRoles">Peran yang boleh memakai</label>
-                <input type="text" class="form-control" id="impersonationRoles" maxlength="500" placeholder="pisahkan dengan koma, mis. Administrator, HR" />
-                <div class="form-text">Dicocokkan dengan peran akun uji (tidak peka huruf besar/kecil).</div>
+                <label class="form-label mt-3" for="impersonationHow">@Lang.T("Cara memakai", "How to use it")</label>
+                <textarea class="form-control" id="impersonationHow" rows="2" maxlength="2000" placeholder="@Lang.T("mis. Admin › Users › cari username › tombol Login as, atau GET /Account/LoginAs?username={{target}}", "e.g. Admin › Users › search the username › Login as button, or GET /Account/LoginAs?username={{target}}")"></textarea>
+                <label class="form-label mt-3" for="impersonationBack">@Lang.T("Cara kembali ke admin", "How to go back to admin")</label>
+                <input type="text" class="form-control" id="impersonationBack" maxlength="1000" placeholder="@Lang.T("mis. tombol Kembali ke admin di header (kosongkan bila tidak ada)", "e.g. the Back to admin button in the header (leave empty when there is none)")" />
+                <label class="form-label mt-3" for="impersonationRoles">@Lang.T("Peran yang boleh memakai", "Roles allowed to use it")</label>
+                <input type="text" class="form-control" id="impersonationRoles" maxlength="500" placeholder="@Lang.T("pisahkan dengan koma, mis. Administrator, HR", "comma separated, e.g. Administrator, HR")" />
+                <div class="form-text">@Lang.T("Dicocokkan dengan peran akun uji (tidak peka huruf besar/kecil).", "Matched against the roles of the test accounts (not case sensitive).")</div>
                 <div class="form-check mt-3">
                     <input class="form-check-input" type="checkbox" id="impersonationConfirmed" />
-                    <label class="form-check-label" for="impersonationConfirmed">Sudah saya cek, cara ini benar</label>
+                    <label class="form-check-label" for="impersonationConfirmed">@Lang.T("Sudah saya cek, cara ini benar", "I checked it, this is how it works")</label>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tutup</button>
-                <button type="submit" class="btn btn-primary">Simpan</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Tutup", "Close")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
     </div>

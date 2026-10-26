@@ -2,7 +2,7 @@
 // AIThread.projectBrowser.open({ startPath, onRegistered }). onRegistered runs after projects were registered.
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, fmt } = window.AIThread;
   const el = id => document.getElementById(id);
   const browsePathKey = 'aithread-browse-path';
 
@@ -39,8 +39,8 @@
 
   function projectItem(c, subtitle) {
     const status = c.isRegistered
-      ? `<a class="badge text-bg-success text-decoration-none" href="/Project/Detail/${c.projectId}">Terdaftar</a>`
-      : '<span class="badge text-bg-secondary">Baru</span>';
+      ? (isEn ? `<a class="badge text-bg-success text-decoration-none" href="/Project/Detail/${c.projectId}">Registered</a>` : `<a class="badge text-bg-success text-decoration-none" href="/Project/Detail/${c.projectId}">Terdaftar</a>`)
+      : t('<span class="badge text-bg-secondary">Baru</span>', '<span class="badge text-bg-secondary">New</span>');
     const checked = c.isRegistered || selected.has(c.path) ? 'checked' : '';
     return `<label class="list-group-item d-flex align-items-center gap-2">
       <input class="form-check-input flex-shrink-0 mt-0" type="checkbox" data-select="${escapeHtml(c.path)}" ${checked} ${c.isRegistered ? 'disabled' : ''} />
@@ -62,15 +62,15 @@
       ? current.folders.map(f => `<button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-path="${escapeHtml(f.path)}">
           <span class="text-break">📁 ${escapeHtml(f.name)}</span>${f.isProject ? `<span>${stackBadges(f.stacks, true)}</span>` : ''}
         </button>`).join('')
-      : '<div class="list-group-item small text-secondary">Tidak ada sub-folder.</div>';
+      : t('<div class="list-group-item small text-secondary">Tidak ada sub-folder.</div>', '<div class="list-group-item small text-secondary">No sub-folders.</div>');
   }
 
   function renderProjects() {
     el('projectList').innerHTML = !current.path
-      ? '<div class="list-group-item small text-secondary">Pilih drive atau lokasi untuk mulai.</div>'
+      ? t('<div class="list-group-item small text-secondary">Pilih drive atau lokasi untuk mulai.</div>', '<div class="list-group-item small text-secondary">Choose a drive or location to start.</div>')
       : current.projects.length
         ? current.projects.map(c => projectItem(c, c.path)).join('')
-        : '<div class="list-group-item small text-secondary">Folder ini bukan root project (tidak ada .git atau file build). Buka folder yang bertanda stack atau <span class="badge text-bg-secondary">git</span>, gunakan Scan, atau isi path-nya di kolom Daftarkan manual.</div>';
+        : t('<div class="list-group-item small text-secondary">Folder ini bukan root project (tidak ada .git atau file build). Buka folder yang bertanda stack atau <span class="badge text-bg-secondary">git</span>, gunakan Scan, atau isi path-nya di kolom Daftarkan manual.</div>', '<div class="list-group-item small text-secondary">This folder is not a project root (no .git or build file). Open a folder marked with a stack or <span class="badge text-bg-secondary">git</span>, use Scan, or fill in its path in the Register manually field.</div>');
   }
 
   function renderScan() {
@@ -81,11 +81,11 @@
       return;
     }
 
-    const truncated = lastScan.truncated ? ' · <span class="text-warning">berhenti lebih awal (batas waktu/jumlah) — persempit folder atau kedalaman</span>' : '';
-    el('scanInfo').innerHTML = `${lastScan.projects.length} project dari ${fmt.number(lastScan.foldersScanned)} folder di <span class="mono">${escapeHtml(lastScan.root)}</span> · ${fmt.ms(lastScan.elapsedMs)}${truncated}`;
+    const truncated = lastScan.truncated ? t(' · <span class="text-warning">berhenti lebih awal (batas waktu/jumlah) — persempit folder atau kedalaman</span>', ' · <span class="text-warning">stopped early (time/count limit) — narrow the folder or the depth</span>') : '';
+    el('scanInfo').innerHTML = (isEn ? `${lastScan.projects.length} project(s) in ${fmt.number(lastScan.foldersScanned)} folders under <span class="mono">${escapeHtml(lastScan.root)}</span> · ${fmt.ms(lastScan.elapsedMs)}${truncated}` : `${lastScan.projects.length} project dari ${fmt.number(lastScan.foldersScanned)} folder di <span class="mono">${escapeHtml(lastScan.root)}</span> · ${fmt.ms(lastScan.elapsedMs)}${truncated}`);
     el('scanResults').innerHTML = lastScan.projects.length
       ? lastScan.projects.map(c => projectItem(c, relativeTo(lastScan.root, c.path))).join('')
-      : '<div class="list-group-item small text-secondary">Tidak ditemukan folder project (.git atau file build).</div>';
+      : t('<div class="list-group-item small text-secondary">Tidak ditemukan folder project (.git atau file build).</div>', '<div class="list-group-item small text-secondary">No project folder found (.git or build file).</div>');
     button.classList.toggle('d-none', !lastScan.projects.some(c => !c.isRegistered));
   }
 
@@ -98,9 +98,9 @@
 
   function renderSelection() {
     const count = selected.size;
-    el('selectionInfo').textContent = count ? `${count} project dipilih.` : 'Belum ada project dipilih.';
+    el('selectionInfo').textContent = count ? (isEn ? `${count} project(s) chosen.` : `${count} project dipilih.`) : t('Belum ada project dipilih.', 'No project chosen yet.');
     el('btnRegisterSelected').disabled = count === 0;
-    el('btnRegisterSelected').textContent = count ? `Daftarkan terpilih (${count})` : 'Daftarkan terpilih';
+    el('btnRegisterSelected').textContent = count ? (isEn ? `Register chosen (${count})` : `Daftarkan terpilih (${count})`) : t('Daftarkan terpilih', 'Register chosen');
   }
 
   async function fetchFolder(path) {
@@ -108,7 +108,7 @@
   }
 
   async function browse(path) {
-    el('folderList').innerHTML = '<div class="list-group-item small text-secondary">Memuat…</div>';
+    el('folderList').innerHTML = t('<div class="list-group-item small text-secondary">Memuat…</div>', '<div class="list-group-item small text-secondary">Loading…</div>');
     try {
       current = await fetchFolder(path);
     } catch (error) {
@@ -135,8 +135,8 @@
     if (!current?.path) return;
     const button = el('btnScan');
     button.disabled = true;
-    el('scanInfo').textContent = 'Memindai sub-folder…';
-    el('scanResults').innerHTML = '<div class="list-group-item small text-secondary"><span class="spinner-border spinner-border-sm me-2"></span>Memindai…</div>';
+    el('scanInfo').textContent = (isEn ? 'Scanning sub-folders…' : 'Memindai sub-folder…');
+    el('scanResults').innerHTML = (isEn ? '<div class="list-group-item small text-secondary"><span class="spinner-border spinner-border-sm me-2"></span>Scanning…</div>' : '<div class="list-group-item small text-secondary"><span class="spinner-border spinner-border-sm me-2"></span>Memindai…</div>');
     try {
       lastScan = await api.get(`/api/projects/scan?path=${encodeURIComponent(current.path)}&depth=${el('scanDepth').value}`);
       renderScan();
@@ -154,7 +154,7 @@
     lastScan = null;
     renderScan();
     renderSelection();
-    el('scanInfo').textContent = 'Folder build, VCS, tersembunyi, dan junction dilewati.';
+    el('scanInfo').textContent = t('Folder build, VCS, tersembunyi, dan junction dilewati.', 'Build, VCS, hidden and junction folders are skipped.');
     browseModal.show();
     await browse(startPath || storedPath());
   }
@@ -166,7 +166,7 @@
     button.disabled = true;
     try {
       const result = await api.post('/api/projects/batch', { paths });
-      toast(`${result.registered} project terdaftar${result.alreadyRegistered ? `, ${result.alreadyRegistered} sudah terdaftar` : ''}.`);
+      toast(`${result.registered} ${isEn ? 'project(s) registered' : 'project terdaftar'}${result.alreadyRegistered ? (isEn ? `, ${result.alreadyRegistered} already registered` : `, ${result.alreadyRegistered} sudah terdaftar`) : ''}.`);
       result.errors.forEach(e => toast(e, 'warning'));
 
       const failed = new Set(result.errors.map(e => e.split(': ')[0]));

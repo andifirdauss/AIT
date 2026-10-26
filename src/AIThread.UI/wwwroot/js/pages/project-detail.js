@@ -1,18 +1,18 @@
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, threadRow, bindRowLinks, stream, debounce, pager } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, fmt, threadRow, bindRowLinks, stream, debounce, pager } = window.AIThread;
   const projectId = window.projectId;
   const el = id => document.getElementById(id);
   const sessionPager = pager('sessionPager', rows => {
     el('sessionRows').innerHTML = rows.length
       ? rows.map(s => `<tr><td class="mono" title="${escapeHtml(s.sessionId)}">${escapeHtml(s.sessionId.substring(0, 8))}</td><td>${s.threadCount}</td><td>${fmt.relative(s.lastSeenAt)}</td></tr>`).join('')
-      : '<tr><td colspan="3" class="text-secondary">Belum ada sesi CLI.</td></tr>';
+      : t('<tr><td colspan="3" class="text-secondary">Belum ada sesi CLI.</td></tr>', '<tr><td colspan="3" class="text-secondary">No CLI session yet.</td></tr>');
   });
 
   const threadPager = pager('threadPager', rows => {
     el('threadRows').innerHTML = rows.length
       ? rows.map(threadRow).join('')
-      : '<tr><td colspan="8" class="empty-state">Belum ada thread.</td></tr>';
+      : t('<tr><td colspan="8" class="empty-state">Belum ada thread.</td></tr>', '<tr><td colspan="8" class="empty-state">No thread yet.</td></tr>');
   });
 
   async function loadDetail() {
@@ -20,7 +20,7 @@
       const detail = await api.get(`/api/projects/${projectId}`);
       const p = detail.project;
       el('projectName').textContent = p.name;
-      el('projectPath').textContent = p.rootPath + (p.exists ? '' : '  (folder tidak ditemukan)');
+      el('projectPath').textContent = p.rootPath + (p.exists ? '' : t('  (folder tidak ditemukan)', '  (folder not found)'));
       el('projectStacks').innerHTML = p.stacks.map(s => `<span class="badge text-bg-primary me-1">${escapeHtml(s)}</span>`).join('');
       el('statThreads').textContent = fmt.number(p.threadCount);
       el('statSessions').textContent = fmt.number(p.sessionCount);
@@ -30,7 +30,7 @@
 
       el('projectModules').innerHTML = detail.modules.length
         ? detail.modules.map(m => `<li class="list-group-item">${escapeHtml(m)}</li>`).join('')
-        : '<li class="list-group-item text-secondary">Tidak ada file solution/build terbaca.</li>';
+        : t('<li class="list-group-item text-secondary">Tidak ada file solution/build terbaca.</li>', '<li class="list-group-item text-secondary">No solution/build file read.</li>');
 
       sessionPager.set(detail.sessions);
     } catch (error) {
@@ -39,10 +39,10 @@
   }
 
   const keySources = {
-    File: 'dari .aithread/project.json di repository',
-    Manual: 'key manual',
-    GitRemote: 'dari git remote',
-    Local: 'lokal — memory hanya ada di mesin ini. Tambah git remote, file .aithread/project.json, atau isi key manual.'
+    File: t('dari .aithread/project.json di repository', 'from .aithread/project.json in the repository'),
+    Manual: (isEn ? 'manual key' : 'key manual'),
+    GitRemote: t('dari git remote', 'from the git remote'),
+    Local: t('lokal — memory hanya ada di mesin ini. Tambah git remote, file .aithread/project.json, atau isi key manual.', 'local — memory exists on this machine only. Add a git remote, a .aithread/project.json file, or fill in a manual key.')
   };
 
   function renderKey(p) {
@@ -77,33 +77,46 @@
   const moduleModal = bootstrap.Modal.getOrCreateInstance(el('moduleModal'));
   const codeMapModal = bootstrap.Modal.getOrCreateInstance(el('codeMapModal'));
   const sources = { Heuristic: 'aturan', AI: 'AI', Manual: 'manual' };
-  const mergeStatuses = { Applied: 'digabung', Undone: 'dibatalkan', Suggested: 'saran', Rejected: 'ditolak' };
+  const mergeStatuses = { Applied: t('digabung', 'merged'), Undone: t('dibatalkan', 'undone'), Suggested: t('saran', 'suggested'), Rejected: t('ditolak', 'rejected') };
   let modules = [];
   let codeMapQuery = null;
 
   const modulePager = pager('modulePager', rows => {
     el('moduleRows').innerHTML = rows.length
-      ? rows.map(m => `<tr>
+      ? rows.map(m => (isEn ? `<tr>
+          <td><span class="fw-semibold">${escapeHtml(m.name)}</span>${m.description ? `<div class="small text-secondary">${escapeHtml(m.description)}</div>` : ''}</td>
+          <td class="small">${m.aliases.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join('') || '<span class="text-secondary">–</span>'}</td>
+          <td><a href="/Memory?projectId=${projectId}" class="text-decoration-none">${fmt.number(m.memories)}</a></td>
+          <td><button type="button" class="btn btn-link btn-sm p-0" data-files="${escapeHtml(m.name)}">${fmt.number(m.files)}</button></td>
+          <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-module="${escapeHtml(m.name)}">Manage</button></td>
+        </tr>` : `<tr>
           <td><span class="fw-semibold">${escapeHtml(m.name)}</span>${m.description ? `<div class="small text-secondary">${escapeHtml(m.description)}</div>` : ''}</td>
           <td class="small">${m.aliases.map(a => `<span class="chip">${escapeHtml(a)}</span>`).join('') || '<span class="text-secondary">–</span>'}</td>
           <td><a href="/Memory?projectId=${projectId}" class="text-decoration-none">${fmt.number(m.memories)}</a></td>
           <td><button type="button" class="btn btn-link btn-sm p-0" data-files="${escapeHtml(m.name)}">${fmt.number(m.files)}</button></td>
           <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-module="${escapeHtml(m.name)}">Atur</button></td>
-        </tr>`).join('')
-      : '<tr><td colspan="5" class="text-secondary">Belum ada modul. Modul terbentuk dari peta kode, memory, dan wiki bisnis.</td></tr>';
+        </tr>`)).join('')
+      : t('<tr><td colspan="5" class="text-secondary">Belum ada modul. Modul terbentuk dari peta kode, memory, dan wiki bisnis.</td></tr>', '<tr><td colspan="5" class="text-secondary">No module yet. Modules come from the code map, memory and the business wiki.</td></tr>');
   });
 
   const codeMapPager = pager('codeMapPager', rows => {
     el('codeMapRows').innerHTML = rows.length
-      ? rows.map(e => `<tr>
+      ? rows.map(e => (isEn ? `<tr>
+          <td class="mono small text-break">${escapeHtml(e.path)}</td>
+          <td>${escapeHtml(e.module)}</td>
+          <td><span class="badge text-bg-light border">${e.layer}</span></td>
+          <td class="small">${escapeHtml(e.area || '–')}</td>
+          <td class="small ${e.source === 'Manual' ? 'fw-semibold' : 'text-secondary'}">${sources[e.source] || e.source}</td>
+          <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-path="${escapeHtml(e.path)}" data-module="${escapeHtml(e.module)}" data-layer="${e.layer}">Edit</button></td>
+        </tr>` : `<tr>
           <td class="mono small text-break">${escapeHtml(e.path)}</td>
           <td>${escapeHtml(e.module)}</td>
           <td><span class="badge text-bg-light border">${e.layer}</span></td>
           <td class="small">${escapeHtml(e.area || '–')}</td>
           <td class="small ${e.source === 'Manual' ? 'fw-semibold' : 'text-secondary'}">${sources[e.source] || e.source}</td>
           <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary" data-path="${escapeHtml(e.path)}" data-module="${escapeHtml(e.module)}" data-layer="${e.layer}">Ubah</button></td>
-        </tr>`).join('')
-      : '<tr><td colspan="6" class="text-secondary">Belum ada file terpetakan. Tekan Scan, atau biarkan terisi dari thread berikutnya.</td></tr>';
+        </tr>`)).join('')
+      : t('<tr><td colspan="6" class="text-secondary">Belum ada file terpetakan. Tekan Scan, atau biarkan terisi dari thread berikutnya.</td></tr>', '<tr><td colspan="6" class="text-secondary">No file mapped yet. Press Scan, or let the next threads fill it.</td></tr>');
   });
 
   const mergePager = pager('mergePager', rows => {
@@ -112,11 +125,11 @@
           <div class="me-auto">
             <span class="fw-semibold">${escapeHtml(g.from)}</span> → <span class="fw-semibold">${escapeHtml(g.into)}</span>
             <span class="badge text-bg-light border ms-1">${mergeStatuses[g.status] || g.status}</span>
-            <div class="text-secondary">${fmt.relative(g.decidedAt || g.createdAt)}${g.decidedBy ? ` · ${escapeHtml(g.decidedBy)}` : ''}${g.status === 'Applied' ? ` · ${fmt.number(g.memories)} memory, ${fmt.number(g.files)} file, ${fmt.number(g.pages)} halaman` : ''}${g.reason ? ` · ${escapeHtml(g.reason)}` : ''}</div>
+            <div class="text-secondary">${fmt.relative(g.decidedAt || g.createdAt)}${g.decidedBy ? ` · ${escapeHtml(g.decidedBy)}` : ''}${g.status === 'Applied' ? (isEn ? ` · ${fmt.number(g.memories)} memories, ${fmt.number(g.files)} files, ${fmt.number(g.pages)} pages` : ` · ${fmt.number(g.memories)} memory, ${fmt.number(g.files)} file, ${fmt.number(g.pages)} halaman`) : ''}${g.reason ? ` · ${escapeHtml(g.reason)}` : ''}</div>
           </div>
-          ${g.status === 'Applied' ? `<button type="button" class="btn btn-sm btn-outline-secondary" data-undo="${g.id}">Batalkan</button>` : ''}
+          ${g.status === 'Applied' ? (isEn ? `<button type="button" class="btn btn-sm btn-outline-secondary" data-undo="${g.id}">Undo</button>` : `<button type="button" class="btn btn-sm btn-outline-secondary" data-undo="${g.id}">Batalkan</button>`) : ''}
         </div>`).join('')
-      : '<div class="list-group-item text-secondary">Belum ada modul yang digabung.</div>';
+      : t('<div class="list-group-item text-secondary">Belum ada modul yang digabung.</div>', '<div class="list-group-item text-secondary">No merged modules yet.</div>');
   });
 
   async function loadModules() {
@@ -124,7 +137,7 @@
       modules = await api.get(`/api/memory/modules?projectId=${projectId}`);
       modulePager.set(modules);
       const current = el('codeMapModule').value;
-      el('codeMapModule').innerHTML = '<option value="">Semua modul</option>' + modules.map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('');
+      el('codeMapModule').innerHTML = t('<option value="">Semua modul</option>', '<option value="">All modules</option>') + modules.map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('');
       if (modules.some(m => m.name === current)) el('codeMapModule').value = current;
       el('codeMapModuleList').innerHTML = modules.map(m => `<option value="${escapeHtml(m.name)}"></option>`).join('');
     } catch (error) {
@@ -160,11 +173,11 @@
     if (!module) return;
     el('moduleName').value = module.name;
     el('moduleNewName').value = module.name;
-    el('moduleModalTitle').textContent = `Modul ${module.name}`;
+    el('moduleModalTitle').textContent = (isEn ? `Module ${module.name}` : `Modul ${module.name}`);
     el('moduleDescription').value = module.description || '';
     el('moduleAliases').value = module.aliases.join(', ');
     el('moduleMergeInto').innerHTML = modules.filter(m => m.name !== module.name)
-      .map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('') || '<option value="">(tidak ada modul lain)</option>';
+      .map(m => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('') || t('<option value="">(tidak ada modul lain)</option>', '<option value="">(no other module)</option>');
     el('btnModuleMerge').disabled = modules.length < 2;
     moduleModal.show();
   }
@@ -199,7 +212,7 @@
         aliases: el('moduleAliases').value.split(',').map(a => a.trim()).filter(Boolean)
       });
       moduleModal.hide();
-      toast(module.name !== name ? `Modul ${name} → ${module.name}.` : 'Modul diperbarui.');
+      toast(module.name !== name ? (isEn ? `Module ${name} → ${module.name}.` : `Modul ${name} → ${module.name}.`) : t('Modul diperbarui.', 'Module updated.'));
       loadModules();
       if (module.name !== name) loadCodeMap();
     } catch (error) {
@@ -210,11 +223,11 @@
   el('btnModuleMerge').addEventListener('click', async () => {
     const from = el('moduleName').value;
     const into = el('moduleMergeInto').value;
-    if (!into || !confirm(`Gabungkan modul ${from} ke ${into}? Memory, peta kode, dan halaman wiki ikut pindah.`)) return;
+    if (!into || !confirm((isEn ? `Merge module ${from} into ${into}? Memory, code map and wiki pages move along.` : `Gabungkan modul ${from} ke ${into}? Memory, peta kode, dan halaman wiki ikut pindah.`))) return;
     try {
       await api.post('/api/memory/modules/merge', { projectId, from, into });
       moduleModal.hide();
-      toast(`Modul ${from} digabung ke ${into}.`);
+      toast((isEn ? `Module ${from} merged into ${into}.` : `Modul ${from} digabung ke ${into}.`));
       refreshCatalog();
     } catch (error) {
       toast(error.message, 'error');
@@ -225,7 +238,7 @@
     el('btnCheckModules').disabled = true;
     try {
       const found = await api.post(`/api/memory/modules/check?projectId=${projectId}`);
-      toast(found ? `${found} modul ganda digabung atau disarankan.` : 'Tidak ada modul ganda.', 'info');
+      toast(found ? (isEn ? `${found} duplicate module(s) merged or suggested.` : `${found} modul ganda digabung atau disarankan.`) : t('Tidak ada modul ganda.', 'No duplicate modules.'), 'info');
       refreshCatalog();
     } catch (error) {
       toast(error.message, 'error');
@@ -258,10 +271,10 @@
 
   el('btnCodeMapScan').addEventListener('click', async () => {
     el('btnCodeMapScan').disabled = true;
-    toast('Memetakan file project… (bisa memakan waktu untuk repository besar)', 'info');
+    toast(t('Memetakan file project… (bisa memakan waktu untuk repository besar)', 'Mapping the project files… (can take a while for a big repository)'), 'info');
     try {
       const result = await api.post(`/api/projects/${projectId}/codemap/scan`);
-      toast(`${result.mapped} dari ${result.files} file terpetakan ke ${result.modules} modul.`);
+      toast((isEn ? `${result.mapped} of ${result.files} files mapped to ${result.modules} modules.` : `${result.mapped} dari ${result.files} file terpetakan ke ${result.modules} modul.`));
       refreshCatalog();
     } catch (error) {
       toast(error.message, 'error');
@@ -272,10 +285,10 @@
 
   el('mergeRows').addEventListener('click', async event => {
     const target = event.target.closest('button[data-undo]');
-    if (!target || !confirm('Batalkan gabung modul ini? Memory, peta kode, dan halaman wiki kembali ke modul asal.')) return;
+    if (!target || !confirm(t('Batalkan gabung modul ini? Memory, peta kode, dan halaman wiki kembali ke modul asal.', 'Undo this module merge? Memory, code map and wiki pages go back to the original module.'))) return;
     try {
       await api.post(`/api/memory/merges/${target.dataset.undo}/undo`);
-      toast('Gabung modul dibatalkan.');
+      toast(t('Gabung modul dibatalkan.', 'Module merge undone.'));
       refreshCatalog();
     } catch (error) {
       toast(error.message, 'error');
