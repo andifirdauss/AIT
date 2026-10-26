@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -13,13 +14,13 @@ public sealed partial class ModuleMerger
     // keeps the old one as an alias, so a model that still writes it lands on the renamed module. Returns the new name.
     public async Task<string> RenameAsync(string key, string name, string newName, string decidedBy, CancellationToken cancellationToken)
     {
-        var target = MemoryLabels.Module(newName) ?? throw new AppValidationException("Nama modul baru wajib diisi.");
+        var target = MemoryLabels.Module(newName) ?? throw new AppValidationException(Lang.T("Nama modul baru wajib diisi.", "The new module name is required."));
         string from;
         await using (var catalog = await longStore.CreateCatalogAsync(cancellationToken))
         {
             var modules = await catalog.ProjectModules.Where(m => m.ProjectKey == key).ToListAsync(cancellationToken);
             var source = modules.FirstOrDefault(m => m.MergedInto is null && string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase))
-                         ?? throw new AppValidationException($"Modul '{name}' tidak ditemukan.");
+                         ?? throw new AppValidationException(Lang.T($"Modul '{name}' tidak ditemukan.", $"Module '{name}' not found."));
             from = source.Name;
             if (from == target) return target;
 
@@ -27,7 +28,7 @@ public sealed partial class ModuleMerger
             var compact = MemoryLabels.Compact(target);
             if (modules.FirstOrDefault(m => m.Id != source.Id && (MemoryLabels.SameName(m.Name, target)
                     || MemoryLabels.SplitCsv(m.Aliases).Any(a => MemoryLabels.SameName(a, target)))) is { } taken)
-                throw new AppValidationException($"Nama '{target}' sudah dipakai modul {taken.MergedInto ?? taken.Name}. Gabungkan lewat Merge bila keduanya sama.");
+                throw new AppValidationException(Lang.T($"Nama '{target}' sudah dipakai modul {taken.MergedInto ?? taken.Name}. Gabungkan lewat Merge bila keduanya sama.", $"The name '{target}' is already used by module {taken.MergedInto ?? taken.Name}. Merge them with Merge when they are the same."));
 
             source.Name = target;
             source.Aliases = MemoryLabels.JoinCsv(MemoryLabels.SplitCsv(source.Aliases).Where(a => !string.Equals(a, target, StringComparison.OrdinalIgnoreCase)));
@@ -69,7 +70,7 @@ public sealed partial class ModuleMerger
             }
         }
 
-        activityLog.Info("memory", $"Modul {from} diganti nama menjadi {target} ({decidedBy}): {memories.Count} memory ikut diperbarui.");
+        activityLog.Info("memory", Lang.T($"Modul {from} diganti nama menjadi {target} ({decidedBy}): {memories.Count} memory ikut diperbarui.", $"Module {from} renamed to {target} ({decidedBy}): {memories.Count} memories updated along."));
         Publish("renamed", key);
         return target;
     }

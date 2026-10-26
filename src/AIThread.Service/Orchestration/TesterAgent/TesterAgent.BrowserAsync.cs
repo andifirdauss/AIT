@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 using AIThread.Service.Memory;
 using AIThread.Service.Testing;
 
@@ -16,13 +17,13 @@ public sealed partial class TesterAgent
             {
                 run.Browser = await browsers.LaunchAsync(text => progress.DetailAsync(text, cancellationToken), cancellationToken, run.Profile);
                 run.Report.Browser = run.Browser.Name;
-                await progress.DetailAsync($"🌐 {run.Browser.Name} dibuka (non-headless)" + (run.Account is { } account ? $" · profil {account.Username}" : string.Empty),
+                await progress.DetailAsync(Lang.T($"🌐 {run.Browser.Name} dibuka (non-headless)", $"🌐 {run.Browser.Name} opened (non-headless)") + (run.Account is { } account ? Lang.T($" · profil {account.Username}", $" · profile {account.Username}") : string.Empty),
                     cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 run.BrowserError = $"the browser could not be started ({ex.Message}). Mark the UI scenarios \"blocked\".";
-                run.Report.Error ??= $"Browser tester tidak bisa dibuka: {ex.Message}";
+                run.Report.Error ??= Lang.T($"Browser tester tidak bisa dibuka: {ex.Message}", $"The tester browser cannot be opened: {ex.Message}");
                 return $"Error: {run.BrowserError}";
             }
         }

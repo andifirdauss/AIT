@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -10,14 +11,14 @@ public sealed partial class MemoryRelabeler
     private async Task ScanProjectAsync(RegisteredProject project, string label, CancellationToken cancellationToken)
     {
         if (_scannedKeys.Contains(project.Key)) return;
-        SetPhase("Peta kode lengkap", label);
+        SetPhase(Lang.T("Peta kode lengkap", "Full code map"), label);
         try
         {
             var context = await projectService.GetContextAsync(project.Id, cancellationToken);
             if (context is null) return;
             var (files, mapped) = await codeMapper.ScanAsync(context, ScanMaxFiles, cancellationToken, (done, total) => ReportFiles(label, done, total));
             _scannedKeys.Add(project.Key);
-            if (files > 0) activityLog.Info("memory", $"Peta kode {project.Name}: {mapped} dari {files} file dipetakan ke modul.");
+            if (files > 0) activityLog.Info("memory", Lang.T($"Peta kode {project.Name}: {mapped} dari {files} file dipetakan ke modul.", $"Code map {project.Name}: {mapped} of {files} files mapped to modules."));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

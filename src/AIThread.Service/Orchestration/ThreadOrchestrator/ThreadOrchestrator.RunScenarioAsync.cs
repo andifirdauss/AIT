@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,7 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ThreadOrchestrator
 {
-    private const string StepBlocked = "Langkah sebelumnya tidak lolos, jadi langkah ini tidak dijalankan.";
+    private static string StepBlocked => Lang.T("Langkah sebelumnya tidak lolos, jadi langkah ini tidak dijalankan.", "The previous step did not pass, so this step was not run.");
 
     // A scenario of the thread it came from, one tester session per step (its actor, its form values) so a long flow
     // does not run into the step limit, the remembered values passed from step to step. It stops at the first step that
@@ -32,7 +33,7 @@ public sealed partial class ThreadOrchestrator
             var tokens = 0;
             var node = tester;
 
-            recorder.Log(ActivityLevel.Info, $"Skenario test \"{scenario.Title}\" (versi {scenario.Version}, {steps.Count} langkah) dijalankan.");
+            recorder.Log(ActivityLevel.Info, Lang.T($"Skenario test \"{scenario.Title}\" (versi {scenario.Version}, {steps.Count} langkah) dijalankan.", $"Test scenario \"{scenario.Title}\" (version {scenario.Version}, {steps.Count} steps) started."));
             await recorder.UpdateThreadAsync(t =>
             {
                 t.Status = ThreadStatus.Testing;
@@ -59,7 +60,7 @@ public sealed partial class ThreadOrchestrator
                     }
                 };
 
-                await progress.PhaseAsync("🧩", $"Skenario {scenario.Slug} · langkah {step.Order}/{steps.Count} · {step.Action}" +
+                await progress.PhaseAsync("🧩", Lang.T($"Skenario {scenario.Slug} · langkah {step.Order}/{steps.Count} · {step.Action}", $"Scenario {scenario.Slug} · step {step.Order}/{steps.Count} · {step.Action}") +
                                                (username is null ? string.Empty : $" · {username}") + $" · {tester.Model}", cancellationToken);
                 var result = AskForLogin(await testerAgent.RunAsync(new TestingInput(tester, request, stepPlan, execution, project, null, canAskLogin, values),
                     recorder, progress, cancellationToken), thread.SessionId, project.ProjectId, thread.Id);
@@ -68,7 +69,7 @@ public sealed partial class ThreadOrchestrator
                 var run = result.Report;
                 foreach (var (name, value) in run.Values) values[name] = value;
 
-                var outcome = run.Scenarios.FirstOrDefault() ?? new TestScenarioResult { Details = run.Error ?? "Tester tidak memberi hasil." };
+                var outcome = run.Scenarios.FirstOrDefault() ?? new TestScenarioResult { Details = run.Error ?? Lang.T("Tester tidak memberi hasil.", "The Tester gave no result.") };
                 outcome.Title = item.Title;
                 outcome.Actor ??= username;
                 combined.Scenarios.Add(outcome);
@@ -104,7 +105,7 @@ public sealed partial class ThreadOrchestrator
             combined.Outcome = combined.Count(TestingReport.Failed) > 0 ? TestingReport.Failed
                 : combined.Scenarios.Count > 0 && combined.Count(TestingReport.Passed) == combined.Scenarios.Count ? TestingReport.Passed
                 : TestingReport.Blocked;
-            combined.Summary = $"Skenario \"{scenario.Title}\" versi {scenario.Version}: {combined.Count(TestingReport.Passed)} dari {steps.Count} langkah lolos.";
+            combined.Summary = Lang.T($"Skenario \"{scenario.Title}\" versi {scenario.Version}: {combined.Count(TestingReport.Passed)} dari {steps.Count} langkah lolos.", $"Scenario \"{scenario.Title}\" version {scenario.Version}: {combined.Count(TestingReport.Passed)} of {steps.Count} steps passed.");
             combined.TesterModel = node.Model;
 
             var by = (await settingService.GetRuntimeAsync(cancellationToken)).EffectiveDeveloperName;
@@ -124,7 +125,7 @@ public sealed partial class ThreadOrchestrator
                 t.TesterModel = node.Model;
             });
             var closing = TestingClosing(combined);
-            recorder.Log(combined.Outcome == TestingReport.Passed ? ActivityLevel.Success : ActivityLevel.Warning, $"Skenario {scenario.Slug}: {closing}.");
+            recorder.Log(combined.Outcome == TestingReport.Passed ? ActivityLevel.Success : ActivityLevel.Warning, Lang.T($"Skenario {scenario.Slug}: {closing}.", $"Scenario {scenario.Slug}: {closing}."));
             await progress.StepAsync(closing, cancellationToken, last: true);
             return new TestingResult(combined, tokens, TesterAgent.ForModels(combined), node);
         }
@@ -132,7 +133,7 @@ public sealed partial class ThreadOrchestrator
         {
             var cancelled = ex is OperationCanceledException;
             if (!cancelled) logger.LogError(ex, "Scenario {Scenario} of thread {ThreadId} crashed", scenario.Slug, thread.Id);
-            recorder.Log(cancelled ? ActivityLevel.Warning : ActivityLevel.Error, cancelled ? "Skenario dibatalkan." : $"Skenario gagal: {ex.Message}");
+            recorder.Log(cancelled ? ActivityLevel.Warning : ActivityLevel.Error, cancelled ? Lang.T("Skenario dibatalkan.", "Scenario cancelled.") : Lang.T($"Skenario gagal: {ex.Message}", $"Scenario failed: {ex.Message}"));
             await recorder.UpdateThreadAsync(t => t.Status = ThreadStatus.Completed);
             return null;
         }

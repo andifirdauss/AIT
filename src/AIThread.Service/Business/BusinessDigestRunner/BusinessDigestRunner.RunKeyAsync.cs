@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Business;
@@ -13,7 +14,7 @@ public sealed partial class BusinessDigestRunner
         var warnings = new List<string>();
         try
         {
-            activityLog.Info("business", $"Business memory {name}: merangkum thread baru ke wiki bisnis…");
+            activityLog.Info("business", Lang.T($"Business memory {name}: merangkum thread baru ke wiki bisnis…", $"Business memory {name}: summarizing new threads into the business wiki…"));
             for (var batch = 0; batch < MaxBatchesPerRun; batch++)
             {
                 var digests = await collector.NextBatchAsync(key, cancellationToken);
@@ -31,7 +32,7 @@ public sealed partial class BusinessDigestRunner
                 if (result.DigestedThreads.Count == 0) break;
             }
 
-            var summary = $"Business memory {name}: {threads} thread dirangkum — {created} halaman baru, {updated} halaman diperbarui" +
+            var summary = Lang.T($"Business memory {name}: {threads} thread dirangkum — {created} halaman baru, {updated} halaman diperbarui", $"Business memory {name}: {threads} threads summarized — {created} new pages, {updated} pages updated") +
                           (images > 0 ? $", {images} screenshot." : ".");
             if (warnings.Count > 0) activityLog.Warn("business", summary + " " + string.Join(" ", warnings.Take(3)));
             else activityLog.Success("business", summary);
@@ -39,7 +40,7 @@ public sealed partial class BusinessDigestRunner
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            activityLog.Warn("business", $"Business memory {name} gagal diperbarui: {ex.Message}");
+            activityLog.Warn("business", Lang.T($"Business memory {name} gagal diperbarui: {ex.Message}", $"Business memory {name} could not be updated: {ex.Message}"));
             throw;
         }
         finally

@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
@@ -44,13 +45,13 @@ public sealed partial class ContextKeeper
                 new { thread.Id, thread.Status, thread.PlanSummary, thread.TotalMs, thread.Error }, thread.Id));
 
             activityLog.Debug("context",
-                $"Konteks sesi {(incremental ? "diperbarui" : "disusun ulang dari " + (earlier.Count + 1) + " thread")} oleh {author} ({pack.Length} karakter).",
+                Lang.T($"Konteks sesi {(incremental ? "diperbarui" : "disusun ulang dari " + (earlier.Count + 1) + " thread")} oleh {author} ({pack.Length} karakter).", $"Session context {(incremental ? "updated" : "rebuilt from " + (earlier.Count + 1) + " threads")} by {author} ({pack.Length} characters)."),
                 thread.Id, projectId);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Context keeper failed for thread {ThreadId}", thread.Id);
-            activityLog.Warn("context", $"Context Keeper gagal memperbarui konteks sesi: {ex.Message}", thread.Id, projectId);
+            activityLog.Warn("context", Lang.T($"Context Keeper gagal memperbarui konteks sesi: {ex.Message}", $"Context Keeper failed to update the session context: {ex.Message}"), thread.Id, projectId);
         }
     }
 }

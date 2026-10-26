@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+
 namespace AIThread.Service.Implementations.Cli;
 
 public sealed partial class CodexIntegration
@@ -15,17 +17,17 @@ public sealed partial class CodexIntegration
             {
                 table = Normalize(header.Groups["name"].Value);
                 if (IsOurs(table))
-                    return $"{FileName} sudah punya [{table}] buatan Anda. Hapus atau ganti namanya dulu.";
+                    return Lang.T($"{FileName} sudah punya [{table}] buatan Anda. Hapus atau ganti namanya dulu.", $"{FileName} already has a [{table}] made by you. Delete or rename it first.");
                 continue;
             }
 
             if (KeyLine().Match(line) is not { Success: true } key) continue;
             var name = Normalize(key.Groups["key"].Value);
             if (table is null && name is "model_providers" or "profiles")
-                return $"{FileName} menulis {name} sebagai inline table ({name} = {{ ... }}). Ubah ke bentuk [{name}.<id>] dulu.";
+                return Lang.T($"{FileName} menulis {name} sebagai inline table ({name} = {{ ... }}). Ubah ke bentuk [{name}.<id>] dulu.", $"{FileName} writes {name} as an inline table ({name} = {{ ... }}). Change it to the [{name}.<id>] form first.");
             var fullName = table is null ? name : $"{table}.{name}";
             if (IsOurs(fullName))
-                return $"{FileName} sudah punya {fullName} buatan Anda. Hapus atau ganti namanya dulu.";
+                return Lang.T($"{FileName} sudah punya {fullName} buatan Anda. Hapus atau ganti namanya dulu.", $"{FileName} already has a {fullName} made by you. Delete or rename it first.");
         }
         return null;
     }

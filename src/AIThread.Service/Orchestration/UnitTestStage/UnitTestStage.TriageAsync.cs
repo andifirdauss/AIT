@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.UnitTests;
 using AIThread.Service.Verification;
 
@@ -16,7 +17,7 @@ public sealed partial class UnitTestStage
         UnitTestTriageResult? triage = null;
         if (input.Tester is { } tester)
         {
-            await progress.StepAsync($"🩺 Triase · {problems.Count} test gagal · {tester.Model}", cancellationToken, hang: 3);
+            await progress.StepAsync(Lang.T($"🩺 Triase · {problems.Count} test gagal · {tester.Model}", $"🩺 Triage · {problems.Count} failing test(s) · {tester.Model}"), cancellationToken, hang: 3);
             var failures = problems.Select(p => new UnitTestFailure(p.Label, p.Test.Title, p.Test.Purpose ?? p.Test.Scenario, p.Item.Decision ?? PlanTests.Keep,
                 p.Test.TestFile, Source(session, p.Test), p.Item.Message)).ToList();
             triage = await testerAgent.TriageAsync(new UnitTestTriageInput(tester, input.Request, input.Plan, input.Tasks, input.Results, failures),
@@ -25,8 +26,8 @@ public sealed partial class UnitTestStage
             session.Report.TesterModel = round.TesterModel;
             if (triage.Error is not null)
             {
-                await progress.DetailAsync($"🟡 Tester tidak memberi hasil: {triage.Error} — perbaikan diarahkan ke kode yang diuji.", cancellationToken);
-                recorder.Log(ActivityLevel.Warning, $"Triase unit test gagal: {triage.Error}");
+                await progress.DetailAsync(Lang.T($"🟡 Tester tidak memberi hasil: {triage.Error} — perbaikan diarahkan ke kode yang diuji.", $"🟡 The Tester gave no result: {triage.Error} — the fix goes to the code under test."), cancellationToken);
+                recorder.Log(ActivityLevel.Warning, Lang.T($"Triase unit test gagal: {triage.Error}", $"Unit test triage failed: {triage.Error}"));
             }
             round.Triage = triage.Summary;
         }
@@ -57,19 +58,19 @@ public sealed partial class UnitTestStage
             {
                 case UnitTestTriageVerdict.Environment:
                     item.Verdict = UnitTestReportItem.SkippedVerdict;
-                    item.SkipReason = $"Lingkungan (menurut Tester): {verdict.Reason ?? "kebutuhan test tidak ada di mesin ini"}";
+                    item.SkipReason = Lang.T($"Lingkungan (menurut Tester): {verdict.Reason ?? "kebutuhan test tidak ada di mesin ini"}", $"Environment (according to the Tester): {verdict.Reason ?? "a requirement of the test is missing on this machine"}");
                     session.After[test.Id] = session.After[test.Id] with { Result = UnitTestResult.Skipped, SkipReason = item.SkipReason };
                     break;
                 case UnitTestTriageVerdict.Flaky:
                     item.Verdict = UnitTestReportItem.Flaky;
-                    session.Quarantine[test.Id] = verdict.Reason ?? "Tester menilai test ini tidak stabil (gagal tanpa sebab di kode).";
+                    session.Quarantine[test.Id] = verdict.Reason ?? Lang.T("Tester menilai test ini tidak stabil (gagal tanpa sebab di kode).", "The Tester judged this test flaky (fails without a cause in the code).");
                     break;
                 case UnitTestTriageVerdict.TestWrong when isNew || item.Decision == PlanTests.Update:
                 case UnitTestTriageVerdict.PlanWrong:
                     if (verdict.Verdict == UnitTestTriageVerdict.PlanWrong)
                     {
                         item.Decision = PlanTests.Update;
-                        session.Report.Notes.Add($"{item.Number} diperbarui mengikuti perubahan perilaku yang diminta (menurut Tester): {verdict.Reason}");
+                        session.Report.Notes.Add(Lang.T($"{item.Number} diperbarui mengikuti perubahan perilaku yang diminta (menurut Tester): {verdict.Reason}", $"{item.Number} updated to follow the requested behaviour change (according to the Tester): {verdict.Reason}"));
                     }
                     issues.Add(new ReviewIssue(test.TestFile, verdict.Anchor, Problem(test, label, item, isNew),
                         verdict.Fix ?? $"Update the test to the behaviour the request asks for: {verdict.Reason}"));
@@ -80,7 +81,7 @@ public sealed partial class UnitTestStage
                 default:
                     // No tester, no usable verdict, or a test of another developer the tester wanted changed.
                     if (verdict?.Verdict == UnitTestTriageVerdict.TestWrong)
-                        session.Report.Notes.Add($"Tester menilai {item.Number} salah, tetapi test lama hanya boleh diubah lewat keputusan update; yang diperbaiki kodenya.");
+                        session.Report.Notes.Add(Lang.T($"Tester menilai {item.Number} salah, tetapi test lama hanya boleh diubah lewat keputusan update; yang diperbaiki kodenya.", $"The Tester judged {item.Number} wrong, but an existing test may only change through an update decision; the code was fixed instead."));
                     MechanicalIssues(session, input, test, label, item, isNew, issues, unfixable);
                     break;
             }

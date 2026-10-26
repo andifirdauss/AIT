@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Business;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -18,30 +19,30 @@ public class BusinessController(IBusinessMemoryService business, IBusinessDigest
     public async Task<ActionResult<ApiResponse<BusinessOverviewDto>>> Overview(Guid projectId, CancellationToken cancellationToken) =>
         await business.GetOverviewAsync(projectId, cancellationToken) is { } overview
             ? ApiResponse<BusinessOverviewDto>.Ok(overview)
-            : NotFound(ApiResponse<BusinessOverviewDto>.Fail("Project tidak ditemukan."));
+            : NotFound(ApiResponse<BusinessOverviewDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
 
     [HttpGet("pages/{id:guid}")]
     public async Task<ActionResult<ApiResponse<BusinessPageDto>>> Get(Guid id, CancellationToken cancellationToken) =>
         await business.GetPageAsync(id, cancellationToken) is { } page
             ? ApiResponse<BusinessPageDto>.Ok(page)
-            : NotFound(ApiResponse<BusinessPageDto>.Fail("Halaman tidak ditemukan."));
+            : NotFound(ApiResponse<BusinessPageDto>.Fail(Lang.T("Halaman tidak ditemukan.", "Page not found.")));
 
     [HttpPost("pages")]
     public async Task<ActionResult<ApiResponse<BusinessPageDto>>> Create(SaveBusinessPageRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<BusinessPageDto>.Ok(await business.CreatePageAsync(request, cancellationToken), "Halaman dibuat.");
+        ApiResponse<BusinessPageDto>.Ok(await business.CreatePageAsync(request, cancellationToken), Lang.T("Halaman dibuat.", "Page created."));
 
     // 409 when someone else saved the page since request.Version.
     [HttpPut("pages/{id:guid}")]
     public async Task<ActionResult<ApiResponse<BusinessPageDto>>> Update(Guid id, SaveBusinessPageRequest request, CancellationToken cancellationToken) =>
         await business.UpdatePageAsync(id, request, cancellationToken) is { } page
-            ? ApiResponse<BusinessPageDto>.Ok(page, "Halaman disimpan.")
-            : NotFound(ApiResponse<BusinessPageDto>.Fail("Halaman tidak ditemukan."));
+            ? ApiResponse<BusinessPageDto>.Ok(page, Lang.T("Halaman disimpan.", "Page saved."))
+            : NotFound(ApiResponse<BusinessPageDto>.Fail(Lang.T("Halaman tidak ditemukan.", "Page not found.")));
 
     [HttpDelete("pages/{id:guid}")]
     public async Task<ActionResult<ApiResponse<bool>>> Delete(Guid id, CancellationToken cancellationToken) =>
         await business.DeletePageAsync(id, cancellationToken)
-            ? ApiResponse<bool>.Ok(true, "Halaman dihapus.")
-            : NotFound(ApiResponse<bool>.Fail("Halaman tidak ditemukan."));
+            ? ApiResponse<bool>.Ok(true, Lang.T("Halaman dihapus.", "Page deleted."))
+            : NotFound(ApiResponse<bool>.Fail(Lang.T("Halaman tidak ditemukan.", "Page not found.")));
 
     [HttpGet("pages/{id:guid}/revisions")]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<BusinessRevisionDto>>>> Revisions(Guid id, CancellationToken cancellationToken) =>
@@ -51,13 +52,13 @@ public class BusinessController(IBusinessMemoryService business, IBusinessDigest
     public async Task<ActionResult<ApiResponse<BusinessRevisionDto>>> Revision(Guid id, int version, CancellationToken cancellationToken) =>
         await business.GetRevisionAsync(id, version, cancellationToken) is { } revision
             ? ApiResponse<BusinessRevisionDto>.Ok(revision)
-            : NotFound(ApiResponse<BusinessRevisionDto>.Fail("Revisi tidak ditemukan."));
+            : NotFound(ApiResponse<BusinessRevisionDto>.Fail(Lang.T("Revisi tidak ditemukan.", "Revision not found.")));
 
     [HttpPost("pages/{id:guid}/revisions/{version:int}/restore")]
     public async Task<ActionResult<ApiResponse<BusinessPageDto>>> Restore(Guid id, int version, CancellationToken cancellationToken) =>
         await business.RestoreAsync(id, version, cancellationToken) is { } page
-            ? ApiResponse<BusinessPageDto>.Ok(page, $"Halaman dipulihkan dari versi {version}.")
-            : NotFound(ApiResponse<BusinessPageDto>.Fail("Halaman atau revisi tidak ditemukan."));
+            ? ApiResponse<BusinessPageDto>.Ok(page, Lang.T($"Halaman dipulihkan dari versi {version}.", $"Page restored from version {version}."))
+            : NotFound(ApiResponse<BusinessPageDto>.Fail(Lang.T("Halaman atau revisi tidak ditemukan.", "Page or revision not found.")));
 
     // Renders the editor's Markdown exactly as a saved page is shown.
     [HttpPost("preview")]
@@ -68,7 +69,7 @@ public class BusinessController(IBusinessMemoryService business, IBusinessDigest
     public async Task<ActionResult<ApiResponse<BusinessAssetDto>>> Upload(UploadBusinessAssetRequest request, CancellationToken cancellationToken)
     {
         var data = request.Data ?? string.Empty;
-        if (data.Length > MaxUploadChars) throw new AppValidationException($"Gambar maksimal {BusinessImages.MaxBytes / 1024 / 1024} MB.");
+        if (data.Length > MaxUploadChars) throw new AppValidationException(Lang.T($"Gambar maksimal {BusinessImages.MaxBytes / 1024 / 1024} MB.", $"Images are at most {BusinessImages.MaxBytes / 1024 / 1024} MB."));
         var comma = data.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ? data.IndexOf(',') : -1;
 
         byte[] bytes;
@@ -78,7 +79,7 @@ public class BusinessController(IBusinessMemoryService business, IBusinessDigest
         }
         catch (FormatException)
         {
-            throw new AppValidationException("Data gambar tidak valid.");
+            throw new AppValidationException(Lang.T("Data gambar tidak valid.", "Invalid image data."));
         }
         return ApiResponse<BusinessAssetDto>.Ok(await business.AddAssetAsync(request.ProjectId, request.PageId, bytes, request.Caption, cancellationToken));
     }
@@ -100,7 +101,7 @@ public class BusinessController(IBusinessMemoryService business, IBusinessDigest
         var result = await runner.RunProjectAsync(projectId, cancellationToken);
         var message = result.Threads == 0 && result.Warnings.Count > 0
             ? result.Warnings[0]
-            : $"{result.Threads} thread dirangkum: {result.PagesCreated} halaman baru, {result.PagesUpdated} diperbarui.";
+            : Lang.T($"{result.Threads} thread dirangkum: {result.PagesCreated} halaman baru, {result.PagesUpdated} diperbarui.", $"{result.Threads} thread(s) summarized: {result.PagesCreated} new page(s), {result.PagesUpdated} updated.");
         return ApiResponse<BusinessDigestResultDto>.Ok(result, message);
     }
 
@@ -110,9 +111,9 @@ public class BusinessController(IBusinessMemoryService business, IBusinessDigest
 
     [HttpPut("developer")]
     public async Task<ActionResult<ApiResponse<BusinessSettingsDto>>> SetDeveloper(SetDeveloperNameRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<BusinessSettingsDto>.Ok(await business.SetDeveloperNameAsync(request.Name, cancellationToken), "Nama developer disimpan.");
+        ApiResponse<BusinessSettingsDto>.Ok(await business.SetDeveloperNameAsync(request.Name, cancellationToken), Lang.T("Nama developer disimpan.", "Developer name saved."));
 
     [HttpPut("settings")]
     public async Task<ActionResult<ApiResponse<BusinessSettingsDto>>> UpdateSettings(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken) =>
-        ApiResponse<BusinessSettingsDto>.Ok(await business.UpdateSettingsAsync(request, cancellationToken), "Setting business memory disimpan.");
+        ApiResponse<BusinessSettingsDto>.Ok(await business.UpdateSettingsAsync(request, cancellationToken), Lang.T("Setting business memory disimpan.", "Business memory settings saved."));
 }

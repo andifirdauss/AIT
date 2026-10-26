@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.Extensions.Logging;
 
@@ -46,13 +47,13 @@ public sealed partial class UnitTestRestorer
             await process.StandardOutput.ReadToEndAsync(limit.Token);
             await process.WaitForExitAsync(limit.Token);
             notes.Add(process.ExitCode == 0
-                ? $"Project test {projectFile} dipulihkan dan ditambahkan ke {solution}."
-                : $"Project test {projectFile} dipulihkan, tetapi belum bisa ditambahkan ke {solution}: {(await error).Trim()}");
+                ? Lang.T($"Project test {projectFile} dipulihkan dan ditambahkan ke {solution}.", $"Test project {projectFile} restored and added to {solution}.")
+                : Lang.T($"Project test {projectFile} dipulihkan, tetapi belum bisa ditambahkan ke {solution}: {(await error).Trim()}", $"Test project {projectFile} restored, but it cannot be added to {solution} yet: {(await error).Trim()}"));
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or OperationCanceledException && !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "Could not add {Project} to {Solution}.", projectFile, solution);
-            notes.Add($"Project test {projectFile} dipulihkan; tambahkan sendiri ke {solution} (dotnet sln add).");
+            notes.Add(Lang.T($"Project test {projectFile} dipulihkan; tambahkan sendiri ke {solution} (dotnet sln add).", $"Test project {projectFile} restored; add it to {solution} yourself (dotnet sln add)."));
         }
     }
 }

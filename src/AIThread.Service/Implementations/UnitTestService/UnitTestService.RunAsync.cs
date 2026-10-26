@@ -1,6 +1,7 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 using AIThread.Service.UnitTests;
@@ -20,7 +21,7 @@ public sealed partial class UnitTestService
         var wanted = request.Ids?.ToHashSet() ?? [];
         // Every active test, or the chosen ones whatever their state (a quarantined test can be tried by hand).
         var tests = (request.All ? all.Where(t => t.State == UnitTestState.Active) : all.Where(t => wanted.Contains(t.Id) && t.State != UnitTestState.Removed)).ToList();
-        if (tests.Count == 0) throw new AppValidationException("Tidak ada unit test yang dipilih untuk dijalankan.");
+        if (tests.Count == 0) throw new AppValidationException(Lang.T("Tidak ada unit test yang dipilih untuk dijalankan.", "No unit test selected to run."));
 
         var suites = TestCommandResolver.Suites(project.RootPath, project.Modules);
         var timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds ?? runtime.BuildTimeoutSeconds);
@@ -58,7 +59,7 @@ public sealed partial class UnitTestService
         var passed = items.Count(i => i.Verdict.Result == UnitTestResult.Passed);
         var failed = items.Count(i => i.Verdict.IsFailure);
         activityLog.Write(failed > 0 ? ActivityLevel.Warning : ActivityLevel.Success, "unittest",
-            $"Unit test {project.Name} dijalankan manual: {tests.Count} test, {passed} lolos, {failed} gagal, {tests.Count - passed - failed} dilewati.", projectId: projectId);
+            Lang.T($"Unit test {project.Name} dijalankan manual: {tests.Count} test, {passed} lolos, {failed} gagal, {tests.Count - passed - failed} dilewati.", $"Unit tests of {project.Name} run manually: {tests.Count} tests, {passed} passed, {failed} failed, {tests.Count - passed - failed} skipped."), projectId: projectId);
         return new UnitTestRunResultDto(tests.Count, passed, failed, tests.Count - passed - failed, execution.DurationMs,
             items.Select(i => new UnitTestRunItemDto(i.Test.Id, i.Test.DisplayNumber, i.Test.Title, i.Verdict.Result, i.Verdict.DurationMs, i.Verdict.Message, i.Verdict.SkipReason)).ToList(),
             suites.Where(s => !s.CanRun).Select(s => $"{s.Manifest}: {s.Problem}").ToList());

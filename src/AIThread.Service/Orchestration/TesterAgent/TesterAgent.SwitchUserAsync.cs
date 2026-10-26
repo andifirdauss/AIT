@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Testing;
 
 namespace AIThread.Service.Orchestration;
@@ -26,7 +27,7 @@ public sealed partial class TesterAgent
         if (!run.Report.Accounts.Contains(account.Username, StringComparer.OrdinalIgnoreCase)) run.Report.Accounts.Add(account.Username);
         var defaultPassword = string.IsNullOrEmpty(set.Settings.DevPassword);
         if (defaultPassword) run.Report.DefaultDevPassword = true;
-        recorder.Log(ActivityLevel.Info, $"Tester berganti ke akun uji {account.Username}" + (account.Role is null ? "." : $" ({account.Role})."));
+        recorder.Log(ActivityLevel.Info, Lang.T($"Tester berganti ke akun uji {account.Username}", $"The Tester switched to test account {account.Username}") + (account.Role is null ? "." : $" ({account.Role})."));
 
         var answer = $"You now act as {account.Username}{(account.Role is null ? string.Empty : $" ({account.Role})")}. " +
                      $"{TestLogin.UsernamePlaceholder} is {account.Username} and {TestLogin.PasswordPlaceholder} is the project's development password" +

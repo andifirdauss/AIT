@@ -1,11 +1,12 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Testing;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AIThread.API.Controllers;
 
@@ -21,13 +22,13 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
     public async Task<ActionResult<ApiResponse<ThreadDetailDto>>> Get(Guid id, CancellationToken cancellationToken) =>
         await threadService.GetDetailAsync(id, cancellationToken) is { } detail
             ? ApiResponse<ThreadDetailDto>.Ok(detail)
-            : NotFound(ApiResponse<ThreadDetailDto>.Fail("Thread tidak ditemukan."));
+            : NotFound(ApiResponse<ThreadDetailDto>.Fail(Lang.T("Thread tidak ditemukan.", "Thread not found.")));
 
     // Runs a prompt from the dashboard against a registered project; progress arrives over SSE.
     [HttpPost]
     public async Task<ActionResult<ApiResponse<Guid>>> Start(StartThreadRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Prompt)) throw new AppValidationException("Prompt wajib diisi.");
+        if (string.IsNullOrWhiteSpace(request.Prompt)) throw new AppValidationException(Lang.T("Prompt wajib diisi.", "A prompt is required."));
 
         var threadId = await orchestrator.StartInBackgroundAsync(new ThreadRequest(
             ThreadSource.Dashboard,
@@ -38,19 +39,19 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
             request.ProjectId,
             SessionId: null), cancellationToken);
 
-        return ApiResponse<Guid>.Ok(threadId, "Thread dimulai.");
+        return ApiResponse<Guid>.Ok(threadId, Lang.T("Thread dimulai.", "Thread started."));
     }
 
     [HttpPost("{id:guid}/cancel")]
     public ActionResult<ApiResponse<bool>> Cancel(Guid id) =>
         threadService.Cancel(id)
-            ? ApiResponse<bool>.Ok(true, "Pembatalan dikirim.")
-            : NotFound(ApiResponse<bool>.Fail("Thread tidak sedang berjalan."));
+            ? ApiResponse<bool>.Ok(true, Lang.T("Pembatalan dikirim.", "Cancellation sent."))
+            : NotFound(ApiResponse<bool>.Fail(Lang.T("Thread tidak sedang berjalan.", "The thread is not running.")));
 
     // Runs the planned tasks that did not succeed again from the stored plan; progress arrives over SSE.
     [HttpPost("{id:guid}/retry")]
     public async Task<ActionResult<ApiResponse<Guid>>> Retry(Guid id, CancellationToken cancellationToken) =>
-        ApiResponse<Guid>.Ok(await orchestrator.RetryInBackgroundAsync(id, cancellationToken), "Tugas yang gagal dijalankan ulang.");
+        ApiResponse<Guid>.Ok(await orchestrator.RetryInBackgroundAsync(id, cancellationToken), Lang.T("Tugas yang gagal dijalankan ulang.", "The failed tasks are running again."));
 
     // Runs the thread's Auto Testing again from its stored test plan, with the login typed on the thread page (never
     // stored); progress arrives over SSE.
@@ -60,27 +61,27 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
     {
         var login = TestLogin.From(request?.Username, request?.Password);
         if (login is null && (!string.IsNullOrWhiteSpace(request?.Username) || !string.IsNullOrWhiteSpace(request?.Password)))
-            throw new AppValidationException("Isi username dan password, atau kosongkan keduanya.");
-        return ApiResponse<Guid>.Ok(await orchestrator.RetestInBackgroundAsync(id, login, cancellationToken), "Testing dijalankan ulang.");
+            throw new AppValidationException(Lang.T("Isi username dan password, atau kosongkan keduanya.", "Fill in the username and password, or leave both empty."));
+        return ApiResponse<Guid>.Ok(await orchestrator.RetestInBackgroundAsync(id, login, cancellationToken), Lang.T("Testing dijalankan ulang.", "Testing started again."));
     }
 
     // Runs one of the tester's suggested follow-up tests; progress arrives over SSE.
     [HttpPost("{id:guid}/follow-ups/{number:int}/run")]
     public async Task<ActionResult<ApiResponse<Guid>>> RunFollowUp(Guid id, int number, CancellationToken cancellationToken) =>
-        ApiResponse<Guid>.Ok(await orchestrator.FollowUpInBackgroundAsync(id, number, cancellationToken), $"Test lanjutan {number} dijalankan.");
+        ApiResponse<Guid>.Ok(await orchestrator.FollowUpInBackgroundAsync(id, number, cancellationToken), Lang.T($"Test lanjutan {number} dijalankan.", $"Follow-up test {number} started."));
 
     // What undoing the thread's file changes would do, file by file, without touching anything.
     [HttpGet("{id:guid}/rollback")]
     public async Task<ActionResult<ApiResponse<RollbackPreviewDto>>> RollbackPreview(Guid id, CancellationToken cancellationToken) =>
         await rollback.PreviewAsync(id, cancellationToken) is { } preview
             ? ApiResponse<RollbackPreviewDto>.Ok(preview)
-            : NotFound(ApiResponse<RollbackPreviewDto>.Fail("Thread tidak ditemukan."));
+            : NotFound(ApiResponse<RollbackPreviewDto>.Fail(Lang.T("Thread tidak ditemukan.", "Thread not found.")));
 
     // Undoes the thread's file changes; refused as a whole (400) when any file changed after the thread.
     [HttpPost("{id:guid}/rollback")]
     public async Task<ActionResult<ApiResponse<RollbackResultDto>>> Rollback(Guid id, CancellationToken cancellationToken)
     {
         var result = await rollback.RollbackAsync(id, cancellationToken);
-        return ApiResponse<RollbackResultDto>.Ok(result, $"Perubahan dibatalkan: {result.Restored} file dikembalikan, {result.Deleted} file dihapus.");
+        return ApiResponse<RollbackResultDto>.Ok(result, Lang.T($"Perubahan dibatalkan: {result.Restored} file dikembalikan, {result.Deleted} file dihapus.", $"Changes rolled back: {result.Restored} file(s) restored, {result.Deleted} file(s) deleted."));
     }
 }

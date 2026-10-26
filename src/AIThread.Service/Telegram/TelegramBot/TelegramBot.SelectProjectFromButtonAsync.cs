@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Telegram;
 
@@ -9,12 +10,12 @@ public sealed partial class TelegramBot
         var projects = await ProjectsAsync(cancellationToken);
         if (projects.FirstOrDefault(p => p.Id == projectId) is not { } project)
         {
-            await api.AnswerCallbackAsync(callback.Id, "Project sudah tidak terdaftar.", cancellationToken);
+            await api.AnswerCallbackAsync(callback.Id, Lang.T("Project sudah tidak terdaftar.", "The project is no longer registered."), cancellationToken);
             return;
         }
 
         await SetActiveProjectAsync(chat, project, cancellationToken);
-        await api.AnswerCallbackAsync(callback.Id, TelegramFormatter.Truncate($"Project aktif: {project.Name}", 200), cancellationToken);
+        await api.AnswerCallbackAsync(callback.Id, TelegramFormatter.Truncate(Lang.T($"Project aktif: {project.Name}", $"Active project: {project.Name}"), 200), cancellationToken);
 
         var pending = TakePendingPrompt(chat.ChatId);
         if (callback.Message is { } menu)

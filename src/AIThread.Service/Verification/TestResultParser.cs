@@ -1,10 +1,11 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Xml;
+using System.Text;
 using System.Xml.Linq;
+using System.Xml;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Verification;
 
@@ -30,18 +31,18 @@ public static partial class TestResultParser
                 TestReportFormat.MochaJson => FromFiles(command.ReportPath, "*.json", startedUtc, ParseMochaJson),
                 TestReportFormat.GoJson => (ParseGoJson(output), null),
                 TestReportFormat.RustText => (ParseRust(output), null),
-                _ => ([], "Runner ini hanya memberi exit code, tanpa hasil per test.")
+                _ => ([], Lang.T("Runner ini hanya memberi exit code, tanpa hasil per test.", "This runner only gives an exit code, without results per test."))
             };
         }
         catch (Exception ex) when (ex is XmlException or JsonException or IOException or UnauthorizedAccessException or FormatException)
         {
-            return ([], $"Laporan hasil test tidak terbaca: {ex.Message}");
+            return ([], Lang.T($"Laporan hasil test tidak terbaca: {ex.Message}", $"The test result report cannot be read: {ex.Message}"));
         }
     }
 
     private static (IReadOnlyList<TestCaseOutcome>, string?) FromFiles(string? path, string pattern, DateTime startedUtc, Func<string, IEnumerable<TestCaseOutcome>> parse)
     {
-        if (path is null) return ([], "Runner tidak menulis laporan hasil test.");
+        if (path is null) return ([], Lang.T("Runner tidak menulis laporan hasil test.", "The runner did not write a test result report."));
         IEnumerable<string> files;
         if (File.Exists(path)) files = [path];
         else if (Directory.Exists(path))
@@ -50,12 +51,12 @@ public static partial class TestResultParser
                 .Where(f => File.GetLastWriteTimeUtc(f) >= startedUtc.AddSeconds(-2))
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                 .ToList();
-        else return ([], "Runner tidak menulis laporan hasil test (biasanya karena gagal build atau gagal start).");
+        else return ([], Lang.T("Runner tidak menulis laporan hasil test (biasanya karena gagal build atau gagal start).", "The runner did not write a test result report (usually because the build or the start failed)."));
 
         var outcomes = new List<TestCaseOutcome>();
         foreach (var file in files) outcomes.AddRange(parse(File.ReadAllText(file)));
         return outcomes.Count == 0 && !files.Any()
-            ? ([], "Runner tidak menulis laporan hasil test (biasanya karena gagal build atau gagal start).")
+            ? ([], Lang.T("Runner tidak menulis laporan hasil test (biasanya karena gagal build atau gagal start).", "The runner did not write a test result report (usually because the build or the start failed)."))
             : (outcomes, null);
     }
 
@@ -97,7 +98,7 @@ public static partial class TestResultParser
             };
             yield return new TestCaseOutcome(className, StripParameters(name), null, status, Duration((string?)result.Attribute("duration")),
                 status == UnitTestResult.Skipped ? null : Clip(message),
-                status == UnitTestResult.Skipped ? Clip((string?)error?.Element(ns + "Message")) ?? $"Tidak dijalankan ({outcome})." : null);
+                status == UnitTestResult.Skipped ? Clip((string?)error?.Element(ns + "Message")) ?? Lang.T($"Tidak dijalankan ({outcome}).", $"Not run ({outcome}).") : null);
         }
     }
 
@@ -121,7 +122,7 @@ public static partial class TestResultParser
             var message = problem is null ? null : Join((string?)problem.Attribute("message"), problem.Value);
             yield return new TestCaseOutcome(className, StripParameters(name), file, status, (long)(seconds * 1000),
                 status == UnitTestResult.Skipped ? null : Clip(message),
-                status == UnitTestResult.Skipped ? Clip(message) ?? "Di-skip oleh test itu sendiri tanpa alasan." : null);
+                status == UnitTestResult.Skipped ? Clip(message) ?? Lang.T("Di-skip oleh test itu sendiri tanpa alasan.", "Skipped by the test itself without a reason.") : null);
         }
     }
 
@@ -157,11 +158,11 @@ public static partial class TestResultParser
                     var duration = test.TryGetProperty("duration", out var d) && d.ValueKind == JsonValueKind.Number ? (long)d.GetDouble() : 0;
                     outcomes.Add(new TestCaseOutcome(null, Text(test, "title") ?? string.Empty, path, status, duration,
                         status == UnitTestResult.Failed ? Clip(StripAnsi(failures)) : null,
-                        status == UnitTestResult.Skipped ? $"Di-skip di kode test ({Text(test, "status")})." : null));
+                        status == UnitTestResult.Skipped ? Lang.T($"Di-skip di kode test ({Text(test, "status")}).", $"Skipped in the test code ({Text(test, "status")}).") : null));
                 }
             }
             if (count == 0 && Text(file, "status") == "failed")
-                outcomes.Add(new TestCaseOutcome(null, TestCaseOutcome.Everything, path, UnitTestResult.Error, 0, Clip(StripAnsi(Text(file, "message"))) ?? "File test gagal dimuat."));
+                outcomes.Add(new TestCaseOutcome(null, TestCaseOutcome.Everything, path, UnitTestResult.Error, 0, Clip(StripAnsi(Text(file, "message"))) ?? Lang.T("File test gagal dimuat.", "The test file failed to load.")));
         }
         return outcomes;
     }
@@ -184,7 +185,7 @@ public static partial class TestResultParser
             var duration = test.TryGetProperty("duration", out var d) && d.ValueKind == JsonValueKind.Number ? (long)d.GetDouble() : 0;
             outcomes.Add(new TestCaseOutcome(null, title, Text(test, "file"), status, duration,
                 status == UnitTestResult.Failed ? Clip(message) : null,
-                status == UnitTestResult.Skipped ? "Di-skip di kode test (pending)." : null));
+                status == UnitTestResult.Skipped ? Lang.T("Di-skip di kode test (pending).", "Skipped in the test code (pending).") : null));
         }
         return outcomes;
     }
@@ -236,12 +237,12 @@ public static partial class TestResultParser
             var log = logs.GetValueOrDefault(r.Key)?.ToString();
             return new TestCaseOutcome(r.Key.Package, r.Key.Test, null, status, (long)(r.Value.Elapsed * 1000),
                 status == UnitTestResult.Failed ? Clip(log) : null,
-                status == UnitTestResult.Skipped ? Clip(log) ?? "Di-skip di kode test (t.Skip)." : null);
+                status == UnitTestResult.Skipped ? Clip(log) ?? Lang.T("Di-skip di kode test (t.Skip).", "Skipped in the test code (t.Skip).") : null);
         }).ToList();
         // A package that failed without any test result did not build.
         foreach (var package in packageFailed.Where(p => p.Value && !results.Keys.Any(k => k.Package == p.Key)).Select(p => p.Key))
             outcomes.Add(new TestCaseOutcome(package, TestCaseOutcome.Everything, null, UnitTestResult.Error, 0,
-                Clip(packageLogs.GetValueOrDefault(package)?.ToString()) ?? "Package gagal di-build."));
+                Clip(packageLogs.GetValueOrDefault(package)?.ToString()) ?? Lang.T("Package gagal di-build.", "The package failed to build.")));
         return outcomes;
     }
 
@@ -274,7 +275,7 @@ public static partial class TestResultParser
             var cut = path.LastIndexOf("::", StringComparison.Ordinal);
             outcomes.Add(new TestCaseOutcome(cut < 0 ? null : path[..cut], cut < 0 ? path : path[(cut + 2)..], null, status, 0,
                 status == UnitTestResult.Failed ? Clip(details.GetValueOrDefault(path)?.ToString()) : null,
-                status == UnitTestResult.Skipped ? (verdict.Length > "ignored".Length ? $"Di-skip di kode test: {verdict["ignored, ".Length..]}" : "Di-skip di kode test (#[ignore]).") : null));
+                status == UnitTestResult.Skipped ? (verdict.Length > "ignored".Length ? Lang.T($"Di-skip di kode test: {verdict["ignored, ".Length..]}", $"Skipped in the test code: {verdict["ignored, ".Length..]}") : Lang.T("Di-skip di kode test (#[ignore]).", "Skipped in the test code (#[ignore]).")) : null));
         }
         return outcomes;
     }

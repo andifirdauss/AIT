@@ -1,6 +1,7 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
-using AIThread.Service.Workspace;
 using AIThread.Service.Workspace.Structure;
+using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Implementations;
 
@@ -18,8 +19,8 @@ public sealed partial class CodeStructureService
             // Another request may have scanned while this one waited.
             if (!rescan && entry.Snapshot is { } scanned && DateTime.UtcNow - scanned.ScannedAt < FreshFor) return scanned;
 
-            var project = await projectService.GetContextAsync(projectId, cancellationToken) ?? throw new AppValidationException("Project tidak ditemukan.");
-            if (!Directory.Exists(project.RootPath)) throw new AppValidationException($"Folder project '{project.RootPath}' tidak ditemukan di mesin ini.");
+            var project = await projectService.GetContextAsync(projectId, cancellationToken) ?? throw new AppValidationException(Lang.T("Project tidak ditemukan.", "Project not found."));
+            if (!Directory.Exists(project.RootPath)) throw new AppValidationException(Lang.T($"Folder project '{project.RootPath}' tidak ditemukan di mesin ini.", $"The project folder '{project.RootPath}' was not found on this machine."));
 
             var ignored = ProjectLocator.IgnoredDirectoriesFor(project.Stacks);
             var previous = entry.Snapshot;

@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json.Nodes;
+using System.Text;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Testing;
 
 namespace AIThread.Service.Orchestration;
@@ -63,7 +64,7 @@ public sealed partial class TesterAgent
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                exchange.Error = $"tidak ada respons dalam {RequestTimeout.TotalSeconds:0} detik";
+                exchange.Error = Lang.T($"tidak ada respons dalam {RequestTimeout.TotalSeconds:0} detik", $"no response within {RequestTimeout.TotalSeconds:0} seconds");
             }
             catch (HttpRequestException ex)
             {
@@ -97,7 +98,7 @@ public sealed partial class TesterAgent
         var lines = body.ReplaceLineEndings("\n").Split('\n').Where(l => l.Trim().Length > 0).ToList();
         foreach (var line in lines.Take(MaxProgressBodyLines))
             yield return line.Length > MaxProgressLineChars ? line[..MaxProgressLineChars] + "…" : line;
-        if (lines.Count > MaxProgressBodyLines) yield return $"… {lines.Count - MaxProgressBodyLines} baris lagi";
+        if (lines.Count > MaxProgressBodyLines) yield return Lang.T($"… {lines.Count - MaxProgressBodyLines} baris lagi", $"… {lines.Count - MaxProgressBodyLines} more lines");
     }
 
     private static bool LooksLikeJson(string text) => text.TrimStart() is { Length: > 0 } trimmed && (trimmed[0] == '{' || trimmed[0] == '[');

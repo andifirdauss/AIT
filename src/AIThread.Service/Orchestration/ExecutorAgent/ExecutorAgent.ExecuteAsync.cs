@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -83,6 +84,6 @@ public sealed partial class ExecutorAgent
             messages.Add(ChatMessages.User(feedback));
         }
 
-        return new ExecutorOutcome(false, null, null, lastError ?? "Executor gagal.", tokens, maxAttempts);
+        return new ExecutorOutcome(false, null, null, lastError ?? Lang.T("Executor gagal.", "Executor failed."), tokens, maxAttempts);
     }
 }

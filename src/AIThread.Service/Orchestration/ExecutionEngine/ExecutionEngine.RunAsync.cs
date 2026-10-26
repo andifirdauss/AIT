@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -32,7 +33,7 @@ public sealed partial class ExecutionEngine
                     var failed = dependencies.Where(d => results[d].Status != ThreadTaskStatus.Succeeded).ToList();
                     if (failed.Count > 0)
                     {
-                        results[task.Id] = await SkipAsync(task, entities[task.Id], $"Dependency tidak berhasil: {string.Join(", ", failed)}", columns, recorder, progress, cancellationToken);
+                        results[task.Id] = await SkipAsync(task, entities[task.Id], Lang.T($"Dependency tidak berhasil: {string.Join(", ", failed)}", $"Dependency did not succeed: {string.Join(", ", failed)}"), columns, recorder, progress, cancellationToken);
                         continue;
                     }
 
@@ -47,7 +48,7 @@ public sealed partial class ExecutionEngine
             {
                 // Unreachable after validation (cycles are rejected), but never spin forever.
                 foreach (var task in pending)
-                    results[task.Id] = await SkipAsync(task, entities[task.Id], "Dependency tidak dapat diselesaikan.", columns, recorder, progress, cancellationToken);
+                    results[task.Id] = await SkipAsync(task, entities[task.Id], Lang.T("Dependency tidak dapat diselesaikan.", "Dependency cannot be resolved."), columns, recorder, progress, cancellationToken);
                 break;
             }
 

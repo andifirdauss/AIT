@@ -1,6 +1,7 @@
 using AIThread.API.Infrastructure;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,7 +20,7 @@ public class CliIntegrationsController(IEnumerable<ICliIntegration> integrations
     public async Task<ActionResult<ApiResponse<CliStatusDto>>> Status(
         string id, [FromQuery] CliScope scope, [FromQuery] Guid? projectId, [FromQuery] string? proxyBaseUrl, CancellationToken cancellationToken)
     {
-        if (Find(id) is not { } cli) return NotFound(ApiResponse<CliStatusDto>.Fail("CLI tidak dikenal."));
+        if (Find(id) is not { } cli) return NotFound(ApiResponse<CliStatusDto>.Fail(Lang.T("CLI tidak dikenal.", "Unknown CLI.")));
         return ApiResponse<CliStatusDto>.Ok(await cli.GetStatusAsync(scope, projectId, ProxyUrl(proxyBaseUrl), cancellationToken));
     }
 
@@ -27,26 +28,26 @@ public class CliIntegrationsController(IEnumerable<ICliIntegration> integrations
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectCliStatusDto>>>> Projects(
         string id, [FromQuery] string? proxyBaseUrl, CancellationToken cancellationToken)
     {
-        if (Find(id) is not { } cli) return NotFound(ApiResponse<IReadOnlyList<ProjectCliStatusDto>>.Fail("CLI tidak dikenal."));
+        if (Find(id) is not { } cli) return NotFound(ApiResponse<IReadOnlyList<ProjectCliStatusDto>>.Fail(Lang.T("CLI tidak dikenal.", "Unknown CLI.")));
         return ApiResponse<IReadOnlyList<ProjectCliStatusDto>>.Ok(await cli.GetProjectStatusesAsync(ProxyUrl(proxyBaseUrl), cancellationToken));
     }
 
     [HttpPut("{id}/toggle")]
     public async Task<ActionResult<ApiResponse<CliStatusDto>>> Toggle(string id, CliToggleRequest request, CancellationToken cancellationToken)
     {
-        if (Find(id) is not { } cli) return NotFound(ApiResponse<CliStatusDto>.Fail("CLI tidak dikenal."));
+        if (Find(id) is not { } cli) return NotFound(ApiResponse<CliStatusDto>.Fail(Lang.T("CLI tidak dikenal.", "Unknown CLI.")));
 
         var proxyBaseUrl = ProxyUrl(request.ProxyBaseUrl);
         if (request.Enabled)
         {
             var applied = await cli.ApplyAsync(request.Scope, request.ProjectId, proxyBaseUrl, cancellationToken);
-            activityLog.Success("setting", $"{cli.Info.Name} diarahkan ke AIT ({applied.Path}).");
-            return ApiResponse<CliStatusDto>.Ok(applied, $"{cli.Info.Name} diarahkan ke AIT. {cli.Info.Note}");
+            activityLog.Success("setting", Lang.T($"{cli.Info.Name} diarahkan ke AIT ({applied.Path}).", $"{cli.Info.Name} now points to AIT ({applied.Path})."));
+            return ApiResponse<CliStatusDto>.Ok(applied, Lang.T($"{cli.Info.Name} diarahkan ke AIT. {cli.Info.Note}", $"{cli.Info.Name} now points to AIT. {cli.Info.Note}"));
         }
 
         var reverted = await cli.RevertAsync(request.Scope, request.ProjectId, proxyBaseUrl, cancellationToken);
-        activityLog.Info("setting", $"Pengarahan {cli.Info.Name} ke AIT dihapus ({reverted.Path}).");
-        return ApiResponse<CliStatusDto>.Ok(reverted, $"{cli.Info.Name} tidak lagi diarahkan ke AIT. Buka sesi baru agar berlaku.");
+        activityLog.Info("setting", Lang.T($"Pengarahan {cli.Info.Name} ke AIT dihapus ({reverted.Path}).", $"{cli.Info.Name} no longer points to AIT ({reverted.Path})."));
+        return ApiResponse<CliStatusDto>.Ok(reverted, Lang.T($"{cli.Info.Name} tidak lagi diarahkan ke AIT. Buka sesi baru agar berlaku.", $"{cli.Info.Name} no longer points to AIT. Open a new session for it to apply."));
     }
 
     private ICliIntegration? Find(string id) =>

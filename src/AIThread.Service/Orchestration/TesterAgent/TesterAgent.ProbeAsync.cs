@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+
 namespace AIThread.Service.Orchestration;
 
 public sealed partial class TesterAgent
@@ -14,7 +16,7 @@ public sealed partial class TesterAgent
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return $"tidak menjawab dalam {ProbeTimeout.TotalSeconds:0} detik";
+            return Lang.T($"tidak menjawab dalam {ProbeTimeout.TotalSeconds:0} detik", $"no answer within {ProbeTimeout.TotalSeconds:0} seconds");
         }
         catch (HttpRequestException ex)
         {

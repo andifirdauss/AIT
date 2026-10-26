@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -66,7 +67,7 @@ public sealed partial class MemoryStorageService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Long memories could not be copied to the new store.");
-            warnings.Add($"Long memory lama tidak dapat disalin (sebagian mungkin sudah tersalin): {MemoryStoreTester.ErrorMessage(ex)}");
+            warnings.Add(Lang.T($"Long memory lama tidak dapat disalin (sebagian mungkin sudah tersalin): {MemoryStoreTester.ErrorMessage(ex)}", $"The old long memory cannot be copied (part of it may already be copied): {MemoryStoreTester.ErrorMessage(ex)}"));
             return 0;
         }
     }

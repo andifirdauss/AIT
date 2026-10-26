@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -9,7 +10,7 @@ public sealed partial class NodeService
     public async Task<NodeTestResultDto> TestAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var node = await GetAsync(id, cancellationToken);
-        if (node is null) return new NodeTestResultDto(false, null, 0, 0, "Node tidak ditemukan.");
+        if (node is null) return new NodeTestResultDto(false, null, 0, 0, Lang.T("Node tidak ditemukan.", "Node not found."));
 
         var stopwatch = Stopwatch.StartNew();
         try

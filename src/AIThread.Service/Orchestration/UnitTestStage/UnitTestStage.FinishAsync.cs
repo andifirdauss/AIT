@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.UnitTests;
 using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
@@ -86,7 +87,7 @@ public sealed partial class UnitTestStage
                     session.Items[test.Id].Id = test.Id;
                     session.Items[test.Id].Number = test.DisplayNumber;
                 }
-                recorder.Log(ActivityLevel.Info, $"Unit test baru masuk katalog: {string.Join(", ", session.NewTests.Select(t => $"{t.DisplayNumber} {t.Title}"))}.");
+                recorder.Log(ActivityLevel.Info, Lang.T($"Unit test baru masuk katalog: {string.Join(", ", session.NewTests.Select(t => $"{t.DisplayNumber} {t.Title}"))}.", $"New unit tests added to the catalog: {string.Join(", ", session.NewTests.Select(t => $"{t.DisplayNumber} {t.Title}"))}."));
             }
             await catalog.RecordRunsAsync(runs, cancellationToken);
 
@@ -105,7 +106,7 @@ public sealed partial class UnitTestStage
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "The unit test results of thread {ThreadId} could not be saved.", threadId);
-            recorder.Log(ActivityLevel.Warning, $"Hasil unit test tidak bisa disimpan ke katalog: {ex.Message}");
+            recorder.Log(ActivityLevel.Warning, Lang.T($"Hasil unit test tidak bisa disimpan ke katalog: {ex.Message}", $"Unit test results cannot be saved to the catalog: {ex.Message}"));
         }
     }
 }

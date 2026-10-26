@@ -1,12 +1,13 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using ClosedXML.Excel;
 
 namespace AIThread.Service.Testing;
 
 // What a developer filled in a scenario sheet: the scenario it belongs to (from the hidden _AIT tab), the accounts per
-// role (Akun tab, with their attributes), the steps (Langkah tab) and the form columns. Errors: rows that cannot be used,
-// in Indonesian with their row number.
+// role (Akun/Accounts tab, with their attributes), the steps (Langkah/Steps tab) and the form columns. Errors: rows that
+// cannot be used, in the UI language with their row number.
 public sealed record ScenarioSheetContent(
     Guid? ScenarioId,
     int? Version,
@@ -20,25 +21,28 @@ public sealed record ScenarioSheetAccount(string Role, string? Username, IReadOn
 // The Excel sheet of a scenario, written by AIT (never by a model) so it always reads back: Panduan (how to fill it),
 // Akun (one row per role, with dropdown-free username cells and the project's attribute keys), Langkah (one row per step:
 // role from Akun as a dropdown, action as a dropdown, one column per form field), and a very hidden _AIT tab with the
-// scenario id and version. Cells the developer still has to fill are yellow.
+// scenario id and version. Cells the developer still has to fill are yellow. Tab and column names are written in the UI
+// language and read in either language, so a sheet made by a teammate with the other language still reads back.
 public static class ScenarioSheet
 {
     public const string Format = "aithread-scenario";
     public const int FormatVersion = 1;
 
-    private const string GuideTab = "Panduan";
-    private const string AccountsTab = "Akun";
-    private const string StepsTab = "Langkah";
     private const string MetaTab = "_AIT";
 
-    private const string RoleHeader = "Peran";
-    private const string UsernameHeader = "Username";
-    private const string NumberHeader = "No";
-    private const string ActorHeader = "Aktor (peran)";
-    private const string ActionHeader = "Aksi";
-    private const string TargetHeader = "Target";
-    private const string InstructionHeader = "Langkah";
-    private const string ExpectHeader = "Hasil yang diharapkan";
+    private static readonly Label GuideTab = new("Panduan", "Guide");
+    private static readonly Label AccountsTab = new("Akun", "Accounts");
+    private static readonly Label StepsTab = new("Langkah", "Steps");
+
+    private static readonly Label RoleHeader = new("Peran", "Role");
+    private static readonly Label UsernameHeader = new("Username", "Username");
+    private static readonly Label NumberHeader = new("No", "No");
+    private static readonly Label ActorHeader = new("Aktor (peran)", "Actor (role)");
+    private static readonly Label ShortActorHeader = new("Aktor", "Actor");
+    private static readonly Label ActionHeader = new("Aksi", "Action");
+    private static readonly Label TargetHeader = new("Target", "Target");
+    private static readonly Label InstructionHeader = new("Langkah", "Step");
+    private static readonly Label ExpectHeader = new("Hasil yang diharapkan", "Expected result");
 
     // Rows the dropdowns cover: room for the developer to add steps and roles.
     private const int DropdownRows = 200;
@@ -56,10 +60,10 @@ public static class ScenarioSheet
         var attributeKeys = accounts is null ? [] : TestAccountText.AttributeKeys(accounts.Accounts).Take(8).ToList();
 
         using var workbook = new XLWorkbook();
-        WriteGuide(workbook.Worksheets.Add(GuideTab), scenario);
+        WriteGuide(workbook.Worksheets.Add(GuideTab.Text), scenario);
 
-        var accountSheet = workbook.Worksheets.Add(AccountsTab);
-        string[] accountHeaders = [RoleHeader, UsernameHeader, .. attributeKeys];
+        var accountSheet = workbook.Worksheets.Add(AccountsTab.Text);
+        string[] accountHeaders = [RoleHeader.Text, UsernameHeader.Text, .. attributeKeys];
         Header(accountSheet, accountHeaders);
         for (var i = 0; i < roles.Count; i++)
         {
@@ -74,8 +78,8 @@ public static class ScenarioSheet
         }
         Widths(accountSheet, [18, 22, .. attributeKeys.Select(_ => 18)]);
 
-        var stepSheet = workbook.Worksheets.Add(StepsTab);
-        string[] stepHeaders = [NumberHeader, ActorHeader, ActionHeader, TargetHeader, InstructionHeader, .. fields, ExpectHeader];
+        var stepSheet = workbook.Worksheets.Add(StepsTab.Text);
+        string[] stepHeaders = [NumberHeader.Text, ActorHeader.Text, ActionHeader.Text, TargetHeader.Text, InstructionHeader.Text, .. fields, ExpectHeader.Text];
         Header(stepSheet, stepHeaders);
         for (var i = 0; i < steps.Count; i++)
         {
@@ -114,7 +118,7 @@ public static class ScenarioSheet
         meta.Cell(5, 2).Value = scenario.Slug;
         meta.Visibility = XLWorksheetVisibility.VeryHidden;
 
-        workbook.Worksheet(StepsTab).SetTabActive();
+        stepSheet.SetTabActive();
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
@@ -129,17 +133,18 @@ public static class ScenarioSheet
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return Failed($"File bukan Excel (.xlsx) yang bisa dibaca: {ex.Message}");
+            return Failed(Lang.T($"File bukan Excel (.xlsx) yang bisa dibaca: {ex.Message}", $"The file is not a readable Excel (.xlsx) file: {ex.Message}"));
         }
 
         using (workbook)
         {
             if (!workbook.TryGetWorksheet(MetaTab, out var meta) || meta.Cell(1, 2).GetFormattedString() != Format)
-                return Failed("Bukan file skenario AIT (sheet _AIT tidak ada). Unduh file skenario dari AIT, isi, lalu unggah lagi.");
+                return Failed(Lang.T("Bukan file skenario AIT (sheet _AIT tidak ada). Unduh file skenario dari AIT, isi, lalu unggah lagi.",
+                    "Not an AIT scenario file (the _AIT sheet is missing). Download the scenario file from AIT, fill it in, then upload it again."));
             var id = Guid.TryParse(meta.Cell(3, 2).GetFormattedString(), out var parsed) ? parsed : (Guid?)null;
             var version = int.TryParse(meta.Cell(4, 2).GetFormattedString(), out var v) ? v : (int?)null;
-            if (!workbook.TryGetWorksheet(AccountsTab, out var accountSheet) || !workbook.TryGetWorksheet(StepsTab, out var stepSheet))
-                return Failed("Sheet Akun atau Langkah tidak ada di file.");
+            if (Sheet(workbook, AccountsTab) is not { } accountSheet || Sheet(workbook, StepsTab) is not { } stepSheet)
+                return Failed(Lang.T("Sheet Akun atau Langkah tidak ada di file.", "The Accounts or Steps sheet is missing from the file."));
 
             var errors = new List<string>();
             var accounts = ReadAccounts(accountSheet, errors);
@@ -155,7 +160,8 @@ public static class ScenarioSheet
         var usernameColumn = Column(headers, UsernameHeader);
         if (roleColumn is null || usernameColumn is null)
         {
-            errors.Add($"Sheet Akun: kolom \"{RoleHeader}\" dan \"{UsernameHeader}\" wajib ada di baris 1.");
+            errors.Add(Lang.T($"Sheet Akun: kolom \"{RoleHeader.Text}\" dan \"{UsernameHeader.Text}\" wajib ada di baris 1.",
+                $"Accounts sheet: the \"{RoleHeader.Text}\" and \"{UsernameHeader.Text}\" columns are required in row 1."));
             return [];
         }
 
@@ -168,17 +174,17 @@ public static class ScenarioSheet
             if (role.Length == 0 && username.Length == 0) continue;
             if (role.Length == 0)
             {
-                errors.Add($"Sheet Akun baris {row}: peran kosong.");
+                errors.Add(Lang.T($"Sheet Akun baris {row}: peran kosong.", $"Accounts sheet row {row}: the role is empty."));
                 continue;
             }
             if (accounts.Any(a => string.Equals(a.Role, role, StringComparison.OrdinalIgnoreCase)))
             {
-                errors.Add($"Sheet Akun baris {row}: peran \"{role}\" sudah ada di baris lain.");
+                errors.Add(Lang.T($"Sheet Akun baris {row}: peran \"{role}\" sudah ada di baris lain.", $"Accounts sheet row {row}: the role \"{role}\" is already in another row."));
                 continue;
             }
             if (username.Any(char.IsWhiteSpace))
             {
-                errors.Add($"Sheet Akun baris {row}: username \"{username}\" tidak boleh berisi spasi.");
+                errors.Add(Lang.T($"Sheet Akun baris {row}: username \"{username}\" tidak boleh berisi spasi.", $"Accounts sheet row {row}: the username \"{username}\" must not contain spaces."));
                 continue;
             }
             var attributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -192,14 +198,15 @@ public static class ScenarioSheet
     private static (List<ScenarioStepDto> Steps, List<string> Fields) ReadSteps(IXLWorksheet sheet, IReadOnlyList<ScenarioSheetAccount> accounts, List<string> errors)
     {
         var headers = Headers(sheet);
-        var actor = Column(headers, ActorHeader) ?? Column(headers, "Aktor");
+        var actor = Column(headers, ActorHeader) ?? Column(headers, ShortActorHeader);
         var action = Column(headers, ActionHeader);
         var target = Column(headers, TargetHeader);
         var instruction = Column(headers, InstructionHeader);
         var expect = Column(headers, ExpectHeader);
         if (instruction is null || expect is null)
         {
-            errors.Add($"Sheet Langkah: kolom \"{InstructionHeader}\" dan \"{ExpectHeader}\" wajib ada di baris 1.");
+            errors.Add(Lang.T($"Sheet Langkah: kolom \"{InstructionHeader.Text}\" dan \"{ExpectHeader.Text}\" wajib ada di baris 1.",
+                $"Steps sheet: the \"{InstructionHeader.Text}\" and \"{ExpectHeader.Text}\" columns are required in row 1."));
             return ([], []);
         }
         var known = new[] { Column(headers, NumberHeader), actor, action, target, instruction, expect };
@@ -213,14 +220,15 @@ public static class ScenarioSheet
             var role = actor is null ? string.Empty : Text(sheet, row, actor.Value);
             var result = Text(sheet, row, expect.Value);
             if (text.Length == 0 && role.Length == 0 && result.Length == 0) continue;
-            if (text.Length == 0) errors.Add($"Sheet Langkah baris {row}: kolom Langkah kosong.");
-            if (result.Length == 0) errors.Add($"Sheet Langkah baris {row}: kolom Hasil yang diharapkan kosong.");
+            if (text.Length == 0) errors.Add(Lang.T($"Sheet Langkah baris {row}: kolom Langkah kosong.", $"Steps sheet row {row}: the Step column is empty."));
+            if (result.Length == 0) errors.Add(Lang.T($"Sheet Langkah baris {row}: kolom Hasil yang diharapkan kosong.", $"Steps sheet row {row}: the Expected result column is empty."));
             if (role.Length > 0 && !accounts.Any(a => string.Equals(a.Role, role, StringComparison.OrdinalIgnoreCase)))
-                errors.Add($"Sheet Langkah baris {row}: aktor \"{role}\" tidak ada di sheet Akun.");
+                errors.Add(Lang.T($"Sheet Langkah baris {row}: aktor \"{role}\" tidak ada di sheet Akun.", $"Steps sheet row {row}: the actor \"{role}\" is not in the Accounts sheet."));
             if (text.Length == 0 || result.Length == 0) continue;
             if (steps.Count >= ScenarioText.MaxSteps)
             {
-                errors.Add($"Sheet Langkah: maksimal {ScenarioText.MaxSteps} langkah; baris {row} dan seterusnya dilewati.");
+                errors.Add(Lang.T($"Sheet Langkah: maksimal {ScenarioText.MaxSteps} langkah; baris {row} dan seterusnya dilewati.",
+                    $"Steps sheet: at most {ScenarioText.MaxSteps} steps; row {row} onward is skipped."));
                 break;
             }
 
@@ -236,22 +244,39 @@ public static class ScenarioSheet
 
     private static void WriteGuide(IXLWorksheet sheet, TestingScenario scenario)
     {
-        string[] lines =
-        [
-            $"Skenario test: {scenario.Title}",
-            scenario.Description ?? string.Empty,
-            string.Empty,
-            "Cara mengisi",
-            "1. Sheet Akun: isi Username untuk setiap peran (sel kuning). Username yang belum ada otomatis ditambahkan sebagai akun uji project saat file diunggah. Kolom lain adalah atribut akun (boleh ditambah).",
-            "2. Sheet Langkah: satu baris per langkah, berurutan. Aktor = peran dari sheet Akun (dropdown). Isi kolom form (sel kuning) dengan data yang mau dites. Baris boleh ditambah, dihapus, atau diurutkan ulang.",
-            $"3. Simpan file, lalu balas \"jalankan skenario {scenario.Slug}\" di chat, atau unggah di Project > Detail → Skenario test.",
-            string.Empty,
-            "Peringatan",
-            "Skenario dijalankan di aplikasi yang sedang berjalan: submit dan approve sungguhan membuat data dan bisa mengirim email atau notifikasi. Pastikan database dan email di lingkungan dev tidak mengarah ke orang asli.",
-            $"Teks bebas yang diketik Tester diawali {ScenarioText.DataMarker} supaya data uji mudah dicari dan dibersihkan.",
-            string.Empty,
-            "Jangan ubah nama sheet. Sheet tersembunyi _AIT menyimpan id skenario."
-        ];
+        string[] lines = Lang.IsEnglish
+            ?
+            [
+                $"Test scenario: {scenario.Title}",
+                scenario.Description ?? string.Empty,
+                string.Empty,
+                "How to fill it in",
+                "1. Accounts sheet: fill in the Username of every role (yellow cells). A username that does not exist yet is added as a project test account when the file is uploaded. The other columns are account attributes (more can be added).",
+                "2. Steps sheet: one row per step, in order. Actor = a role from the Accounts sheet (dropdown). Fill the form columns (yellow cells) with the data to test. Rows can be added, deleted or reordered.",
+                $"3. Save the file, then reply \"run scenario {scenario.Slug}\" in the chat, or upload it in Project > Detail → Test scenarios.",
+                string.Empty,
+                "Warning",
+                "The scenario runs against the running application: real submits and approvals create data and can send emails or notifications. Make sure the database and email of the dev environment do not reach real people.",
+                $"Free text the Tester types starts with {ScenarioText.DataMarker} so test data is easy to find and clean up.",
+                string.Empty,
+                "Do not rename the sheets. The hidden _AIT sheet holds the scenario id."
+            ]
+            :
+            [
+                $"Skenario test: {scenario.Title}",
+                scenario.Description ?? string.Empty,
+                string.Empty,
+                "Cara mengisi",
+                "1. Sheet Akun: isi Username untuk setiap peran (sel kuning). Username yang belum ada otomatis ditambahkan sebagai akun uji project saat file diunggah. Kolom lain adalah atribut akun (boleh ditambah).",
+                "2. Sheet Langkah: satu baris per langkah, berurutan. Aktor = peran dari sheet Akun (dropdown). Isi kolom form (sel kuning) dengan data yang mau dites. Baris boleh ditambah, dihapus, atau diurutkan ulang.",
+                $"3. Simpan file, lalu balas \"jalankan skenario {scenario.Slug}\" di chat, atau unggah di Project > Detail → Skenario test.",
+                string.Empty,
+                "Peringatan",
+                "Skenario dijalankan di aplikasi yang sedang berjalan: submit dan approve sungguhan membuat data dan bisa mengirim email atau notifikasi. Pastikan database dan email di lingkungan dev tidak mengarah ke orang asli.",
+                $"Teks bebas yang diketik Tester diawali {ScenarioText.DataMarker} supaya data uji mudah dicari dan dibersihkan.",
+                string.Empty,
+                "Jangan ubah nama sheet. Sheet tersembunyi _AIT menyimpan id skenario."
+            ];
         for (var i = 0; i < lines.Length; i++) sheet.Cell(i + 1, 1).Value = lines[i];
         sheet.Cell(1, 1).Style.Font.Bold = true;
         sheet.Cell(1, 1).Style.Font.FontSize = 14;
@@ -287,10 +312,21 @@ public static class ScenarioSheet
         return headers;
     }
 
-    private static int? Column(List<(int Column, string Name)> headers, string name) =>
-        headers.Where(h => string.Equals(h.Name, name, StringComparison.OrdinalIgnoreCase)).Select(h => (int?)h.Column).FirstOrDefault();
+    private static int? Column(List<(int Column, string Name)> headers, Label label) =>
+        headers.Where(h => label.Is(h.Name)).Select(h => (int?)h.Column).FirstOrDefault();
+
+    private static IXLWorksheet? Sheet(XLWorkbook workbook, Label label) => workbook.Worksheets.FirstOrDefault(w => label.Is(w.Name));
 
     private static string Text(IXLWorksheet sheet, int row, int column) => sheet.Cell(row, column).GetFormattedString().Trim();
 
     private static ScenarioSheetContent Failed(string error) => new(null, null, [], [], [], [error]);
+
+    // A tab or column name: written in the UI language, recognized in both.
+    private sealed record Label(string Indonesian, string English)
+    {
+        public string Text => Lang.T(Indonesian, English);
+
+        public bool Is(string? name) =>
+            string.Equals(name, Indonesian, StringComparison.OrdinalIgnoreCase) || string.Equals(name, English, StringComparison.OrdinalIgnoreCase);
+    }
 }

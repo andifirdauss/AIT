@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -9,7 +10,7 @@ public sealed partial class SettingService
     {
         var baseUrl = NormalizeRouterUrl(url);
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-            throw new AppValidationException("URL 9router tidak valid. Contoh: http://localhost:20128");
+            throw new AppValidationException(Lang.T("URL 9router tidak valid. Contoh: http://localhost:20128", "Invalid 9router URL. Example: http://localhost:20128"));
         return baseUrl;
     }
 }

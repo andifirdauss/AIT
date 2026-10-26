@@ -14,7 +14,7 @@ public record ScenarioStepDto(
 // A role the scenario needs and the test account that plays it (null until the developer picks one).
 public record ScenarioRoleDto(string Role, string? Username);
 
-// Missing: what the sheet still needs before a run (a role without an account), in Indonesian.
+// Missing: what the sheet still needs before a run (a role without an account), in the UI language.
 public record TestingScenarioDto(
     Guid Id,
     string Slug,

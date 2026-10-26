@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
@@ -39,7 +40,7 @@ public sealed partial class TesterAgent
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             var message = run.Mask(ex.Message);
-            recorder.Log(ActivityLevel.Warning, $"Tester: {call.Name} gagal: {message}");
+            recorder.Log(ActivityLevel.Warning, Lang.T($"Tester: {call.Name} gagal: {message}", $"Tester: {call.Name} failed: {message}"));
             return $"Error: {message}";
         }
     }

@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ public sealed partial class MemoryStorageService
                 .Select(p => (p.ProjectKey, p.Slug)).ToHashSet();
             var copy = pages.Where(p => !existingIds.Contains(p.Id) && !existingSlugs.Contains((p.ProjectKey, p.Slug))).ToList();
             var skipped = pages.Count(p => !existingIds.Contains(p.Id)) - copy.Count;
-            if (skipped > 0) warnings.Add($"{skipped} halaman bisnis tidak disalin karena store baru sudah punya halaman dengan judul yang sama.");
+            if (skipped > 0) warnings.Add(Lang.T($"{skipped} halaman bisnis tidak disalin karena store baru sudah punya halaman dengan judul yang sama.", $"{skipped} business pages were not copied because the new store already has a page with the same title."));
 
             foreach (var batch in copy.Chunk(CopyBatchSize))
             {
@@ -48,7 +49,7 @@ public sealed partial class MemoryStorageService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Business memory could not be copied to the new store.");
-            warnings.Add($"Business memory lama tidak dapat disalin (sebagian mungkin sudah tersalin): {MemoryStoreTester.ErrorMessage(ex)}");
+            warnings.Add(Lang.T($"Business memory lama tidak dapat disalin (sebagian mungkin sudah tersalin): {MemoryStoreTester.ErrorMessage(ex)}", $"The old business memory cannot be copied (part of it may already be copied): {MemoryStoreTester.ErrorMessage(ex)}"));
             return 0;
         }
     }

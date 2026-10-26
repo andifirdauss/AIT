@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Implementations.Cli;
@@ -19,10 +20,10 @@ public sealed partial class OpenCodeIntegration(ISettingService settingService, 
     public override CliInfoDto Info => new(
         Id,
         "opencode — provider AIT",
-        $"Menambah provider \"{ProviderId}\" di opencode.json global. Pilih model {ProviderId}/{ModelId} lewat /models (atau --model {ProviderId}/{ModelId}); provider lain tetap bisa dipakai.",
+        Lang.T($"Menambah provider \"{ProviderId}\" di opencode.json global. Pilih model {ProviderId}/{ModelId} lewat /models (atau --model {ProviderId}/{ModelId}); provider lain tetap bisa dipakai.", $"Adds the provider \"{ProviderId}\" to the global opencode.json. Choose the model {ProviderId}/{ModelId} with /models (or --model {ProviderId}/{ModelId}); other providers can still be used."),
         _configPath,
         null,
-        "Berlaku untuk sesi opencode berikutnya. Project terdeteksi dari folder tempat opencode dijalankan.");
+        Lang.T("Berlaku untuk sesi opencode berikutnya. Project terdeteksi dari folder tempat opencode dijalankan.", "Takes effect for the next opencode session. The project is detected from the folder opencode runs in."));
 
     private string FileName => Path.GetFileName(_configPath);
 }

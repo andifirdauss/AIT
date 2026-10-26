@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Service.Interfaces;
@@ -26,7 +27,7 @@ public sealed record ExecutionSummary(IReadOnlyList<TaskResult> Results, long Wa
 // Delete and move tasks are done by FileOperations without a model.
 public sealed partial class ExecutionEngine(IExecutorAgent executor, INodeConcurrencyLimiter limiter, IFileOperations fileOperations) : IExecutionEngine
 {
-    private const string NoModel = "tanpa model";
+    private static string NoModel => Lang.T("tanpa model", "no model");
 
     private int _roundRobin;
 

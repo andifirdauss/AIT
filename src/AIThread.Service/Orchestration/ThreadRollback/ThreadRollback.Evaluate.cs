@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -17,7 +18,7 @@ public sealed partial class ThreadRollback
             if (current is null && snapshot.Removed)
                 return new RollbackFileDto(snapshot.FilePath, Restore, null);
             return new RollbackFileDto(snapshot.FilePath, Conflict, current is null
-                ? "File sudah dihapus setelah diubah thread ini."
-                : "Isi file sudah berubah lagi setelah thread ini (diedit developer atau thread lain).");
+                ? Lang.T("File sudah dihapus setelah diubah thread ini.", "The file was deleted after this thread changed it.")
+                : Lang.T("Isi file sudah berubah lagi setelah thread ini (diedit developer atau thread lain).", "The file content changed again after this thread (edited by a developer or another thread)."));
         }).ToList();
 }

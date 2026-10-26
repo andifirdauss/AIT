@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -45,7 +46,7 @@ public sealed partial class BusinessMemoryWriter
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex, "Business page {Module} — {Title} could not be written.", target.Module, target.Title);
-                warnings.Add($"Halaman '{target.Module} — {target.Title}' gagal ditulis: {ex.Message}");
+                warnings.Add(Lang.T($"Halaman '{target.Module} — {target.Title}' gagal ditulis: {ex.Message}", $"Page '{target.Module} — {target.Title}' could not be written: {ex.Message}"));
                 foreach (var thread in feeding) failedThreads.Add(thread.ThreadId);
             }
         }

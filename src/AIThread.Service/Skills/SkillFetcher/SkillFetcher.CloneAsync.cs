@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+
 namespace AIThread.Service.Skills;
 
 public sealed partial class SkillFetcher
@@ -18,7 +20,7 @@ public sealed partial class SkillFetcher
             {
                 source = Path.GetFullPath(Path.Combine(checkout, subPath.Replace('/', Path.DirectorySeparatorChar)));
                 if (!source.StartsWith(Path.GetFullPath(checkout), StringComparison.OrdinalIgnoreCase) || !Directory.Exists(source))
-                    throw new InvalidDataException($"Folder '{subPath}' tidak ditemukan di repository.");
+                    throw new InvalidDataException(Lang.T($"Folder '{subPath}' tidak ditemukan di repository.", $"Folder '{subPath}' not found in the repository."));
             }
 
             SkillPaths.DeleteDirectory(Path.Combine(source, ".git"));

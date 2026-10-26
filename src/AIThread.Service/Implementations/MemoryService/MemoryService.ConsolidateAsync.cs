@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -37,7 +38,7 @@ public sealed partial class MemoryService
         if (moved > 0)
         {
             Publish("consolidated", null);
-            activityLog.Info("memory", $"{moved} short memory (> {options.Value.ShortMemoryHours} jam) dipindah ke long memory.");
+            activityLog.Info("memory", Lang.T($"{moved} short memory (> {options.Value.ShortMemoryHours} jam) dipindah ke long memory.", $"{moved} short memories (> {options.Value.ShortMemoryHours} hours) moved to long memory."));
         }
         return moved;
     }

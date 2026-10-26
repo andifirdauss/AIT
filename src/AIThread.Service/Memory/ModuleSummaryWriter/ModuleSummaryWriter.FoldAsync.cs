@@ -55,7 +55,8 @@ public sealed partial class ModuleSummaryWriter
         var (json, _) = await ai.AskJsonAsync(AgentPrompts.ModuleSummary, input, MaxTokens, cancellationToken);
         var state = ChangeLog.ParseState(json as JsonObject);
         if (ChangeLog.IsEmpty(state)) return null;
-        var description = ChangeLog.Render(module, state);
+        var english = language == TextLanguage.English;
+        var description = ChangeLog.Render(module, state, english);
         if (TextLanguage.IsForeign(description))
         {
             // Never stored: the facts stay, and the next pass asks again.
@@ -85,7 +86,7 @@ public sealed partial class ModuleSummaryWriter
         summary.Layers = MemoryLabels.LayersCsv(layers);
         summary.Keywords = MemoryLabels.JoinCsv(keywords);
         summary.Label = MemoryLabels.Compose(MemoryLabels.Display(null, name, layers, MemoryKind.Summary), keywords);
-        summary.Description = name == module ? description : ChangeLog.Render(name, state);
+        summary.Description = name == module ? description : ChangeLog.Render(name, state, english);
         summary.LabelVersion = MemoryLabels.CurrentVersion;
         summary.PromotedAt = changes.Count == 0 ? watermark : changes[^1].PromotedAt;
         if (current is null) db.LongMemories.Add(summary);

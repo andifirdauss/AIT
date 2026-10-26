@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Skills;
 
@@ -40,18 +41,18 @@ public static class SkillArchive
 
             var target = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
             if (!target.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException($"Arsip berisi path berbahaya: {entry.FullName}");
+                throw new InvalidDataException(Lang.T($"Arsip berisi path berbahaya: {entry.FullName}", $"The archive contains a dangerous path: {entry.FullName}"));
 
             total += entry.Length;
-            if (total > MaxTotalBytes) throw new InvalidDataException("Isi repository terlalu besar (lebih dari 300 MB).");
-            if (++written > MaxFiles) throw new InvalidDataException($"Repository berisi lebih dari {MaxFiles} file.");
+            if (total > MaxTotalBytes) throw new InvalidDataException(Lang.T("Isi repository terlalu besar (lebih dari 300 MB).", "The repository content is too large (more than 300 MB)."));
+            if (++written > MaxFiles) throw new InvalidDataException(Lang.T($"Repository berisi lebih dari {MaxFiles} file.", $"The repository holds more than {MaxFiles} files."));
 
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             entry.ExtractToFile(target, overwrite: true);
         }
 
         if (keep is not null && written == 0)
-            throw new InvalidDataException($"Folder '{subPath}' tidak ditemukan di repository.");
+            throw new InvalidDataException(Lang.T($"Folder '{subPath}' tidak ditemukan di repository.", $"Folder '{subPath}' not found in the repository."));
         return written;
     }
 

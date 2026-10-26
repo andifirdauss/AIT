@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Data.Cache;
 using AIThread.Service.Interfaces;
@@ -48,7 +49,7 @@ public sealed partial class MemoryService
 
         // Short memory store unavailable: keep the memory rather than losing it.
         var entity = await InsertLongAsync(record, cancellationToken);
-        activityLog.Warn("memory", $"Penyimpanan short memory tidak tersedia — memory '{record.Label}' langsung disimpan sebagai long memory.", sourceThreadId, record.ProjectId);
+        activityLog.Warn("memory", Lang.T($"Penyimpanan short memory tidak tersedia — memory '{record.Label}' langsung disimpan sebagai long memory.", $"The short memory storage is not available — memory '{record.Label}' is stored directly as long memory."), sourceThreadId, record.ProjectId);
         Publish("created", entity.Id);
         return ToDto(entity, projects);
     }

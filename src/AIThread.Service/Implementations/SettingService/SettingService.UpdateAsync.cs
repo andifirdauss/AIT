@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -15,7 +16,7 @@ public sealed partial class SettingService
         EnsureRange(request.MaxParallelTasks, 1, 64, "Max parallel tasks");
         EnsureRange(request.RequestTimeoutSeconds, 30, 3600, "Request timeout");
         EnsureRange(request.BuildTimeoutSeconds, 30, 3600, "Build timeout");
-        EnsureRange(request.MaxFixRounds, 0, 5, "Putaran perbaikan");
+        EnsureRange(request.MaxFixRounds, 0, 5, Lang.T("Putaran perbaikan", "Fix rounds"));
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var entity = await LoadTrackedAsync(db, cancellationToken);

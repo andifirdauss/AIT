@@ -1,4 +1,5 @@
 using System.Text;
+using AIThread.Common.Localization;
 using AIThread.Service.Workspace;
 
 namespace AIThread.Service.Verification;
@@ -49,22 +50,22 @@ public static class BuildReport
         return location.Length == 0 ? $"{code}{error.Message}" : $"{location}: {code}{error.Message}";
     }
 
-    // One line for progress output and the activity log (Indonesian, like the rest of the UI).
+    // One line for progress output and the activity log (in the UI language).
     public static string Headline(BuildResult result)
     {
         var headline = HeadlineCore(result);
         return result.InUseOutput is { } inUse && result.StartError is null && !result.OnlyLockedOutput
-            ? $"{headline}; tanpa clean karena {Path.GetFileName(inUse)} sedang dipakai program yang berjalan"
+            ? Lang.T($"{headline}; tanpa clean karena {Path.GetFileName(inUse)} sedang dipakai program yang berjalan", $"{headline}; without clean because {Path.GetFileName(inUse)} is in use by a running program")
             : headline;
     }
 
     private static string HeadlineCore(BuildResult result)
     {
         var seconds = $"{result.DurationMs / 1000.0:0.0}s";
-        if (result.StartError is not null) return $"build tidak bisa dijalankan — {result.StartError}";
-        if (result.TimedOut) return $"build melewati batas waktu ({seconds}) dan dihentikan";
-        if (result.Succeeded) return $"build berhasil ({seconds}{(result.WarningCount > 0 ? $", {result.WarningCount} warning" : string.Empty)})";
-        if (result.OnlyLockedOutput) return $"kompilasi berhasil, tetapi file output terkunci oleh program yang sedang berjalan ({seconds})";
-        return $"build gagal: {result.Errors.Count} error ({seconds})";
+        if (result.StartError is not null) return Lang.T($"build tidak bisa dijalankan — {result.StartError}", $"the build cannot run — {result.StartError}");
+        if (result.TimedOut) return Lang.T($"build melewati batas waktu ({seconds}) dan dihentikan", $"the build exceeded the time limit ({seconds}) and was stopped");
+        if (result.Succeeded) return Lang.T($"build berhasil ({seconds}{(result.WarningCount > 0 ? $", {result.WarningCount} warning" : string.Empty)})", $"build succeeded ({seconds}{(result.WarningCount > 0 ? $", {result.WarningCount} warnings" : string.Empty)})");
+        if (result.OnlyLockedOutput) return Lang.T($"kompilasi berhasil, tetapi file output terkunci oleh program yang sedang berjalan ({seconds})", $"compilation succeeded, but an output file is locked by a running program ({seconds})");
+        return Lang.T($"build gagal: {result.Errors.Count} error ({seconds})", $"build failed: {result.Errors.Count} errors ({seconds})");
     }
 }

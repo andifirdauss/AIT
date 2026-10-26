@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -37,12 +38,12 @@ public sealed partial class MemoryRelabeler
             File.Move(memoryPath + ".tmp", memoryPath);
 
             _backupPath = memoryPath;
-            activityLog.Info("memory", $"Backup memory sebelum migrasi label: {file.Items.Count} memory → {memoryPath}");
+            activityLog.Info("memory", Lang.T($"Backup memory sebelum migrasi label: {file.Items.Count} memory → {memoryPath}", $"Memory backup before the label migration: {file.Items.Count} memories → {memoryPath}"));
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _lastMessage = $"Backup memory gagal, migrasi label ditunda: {ex.Message}";
+            _lastMessage = Lang.T($"Backup memory gagal, migrasi label ditunda: {ex.Message}", $"Memory backup failed, the label migration is postponed: {ex.Message}");
             activityLog.Warn("memory", _lastMessage);
             logger.LogWarning(ex, "Memory backup before relabeling failed.");
             return false;

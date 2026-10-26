@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Data.Context;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,7 @@ public sealed partial class NodeService
         if (skillIds is null) return;
         var wanted = skillIds.Distinct().ToList();
         if (wanted.Count > MaxSkillsPerNode)
-            throw new AppValidationException($"Satu node maksimal {MaxSkillsPerNode} skill — skill yang terlalu banyak membuat prompt boros dan tidak fokus.");
+            throw new AppValidationException(Lang.T($"Satu node maksimal {MaxSkillsPerNode} skill — skill yang terlalu banyak membuat prompt boros dan tidak fokus.", $"One node has at most {MaxSkillsPerNode} skills — too many skills make the prompt wasteful and unfocused."));
 
         var skills = await db.Skills.Include(s => s.SkillSource).Where(s => wanted.Contains(s.Id)).ToListAsync(cancellationToken);
         node.Skills.RemoveAll(ns => !wanted.Contains(ns.SkillId));

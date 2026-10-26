@@ -1,5 +1,7 @@
 using System.Text;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
+using AIThread.Service.Memory;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Skills;
@@ -17,6 +19,7 @@ public sealed partial class BusinessMemoryWriter
         {
             var input = new StringBuilder();
             input.Append("# Project\n").Append(projectName).Append("\n\n");
+            input.Append("# Language\n").Append(TextLanguage.Ui).Append("\n\n");
             input.Append("# Page\n").Append($"{page?.Module ?? target.Module} — {page?.Title ?? target.Title}\n\n");
             input.Append("# Current page\n").Append(page is null ? "(new page)" : page.Content).Append("\n\n");
             input.Append("# New information from the developer threads\n");
@@ -46,9 +49,9 @@ public sealed partial class BusinessMemoryWriter
         var content = SkillAi.Text(json?["content"]);
         if (content is null || content.Length < 20)
             throw new OrchestrationException(reply.FinishReason == "length"
-                ? "jawaban model terpotong (halaman terlalu panjang untuk batas token)"
-                : "model tidak menjawab JSON berisi halaman");
-        if (content.Length > BusinessPageStore.MaxContentChars) throw new OrchestrationException("halaman hasil model terlalu panjang");
+                ? Lang.T("jawaban model terpotong (halaman terlalu panjang untuk batas token)", "the model answer was cut off (the page is too long for the token limit)")
+                : Lang.T("model tidak menjawab JSON berisi halaman", "the model did not answer with JSON holding a page"));
+        if (content.Length > BusinessPageStore.MaxContentChars) throw new OrchestrationException(Lang.T("halaman hasil model terlalu panjang", "the page from the model is too long"));
 
         return new WriterAnswer(content, SkillAi.Text(json?["summary"]), SkillAi.Text(json?["labels"]), SkillAi.Text(json?["changeNote"]));
 

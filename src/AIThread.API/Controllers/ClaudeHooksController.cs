@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Orchestration;
 using Microsoft.AspNetCore.Mvc;
@@ -54,7 +55,7 @@ public class ClaudeHooksController(ISessionHandoff handoff, ISecretGuard secrets
         var restore = secrets.RestoreJson(updated, file);
         if (!restore.Complete)
         {
-            activityLog.Warn("keamanan", $"{tool} dihentikan: memakai placeholder secret yang tidak dikenali AIT.");
+            activityLog.Warn("keamanan", Lang.T($"{tool} dihentikan: memakai placeholder secret yang tidak dikenali AIT.", $"{tool} stopped: it uses a secret placeholder AIT does not know."));
             return Ok(new
             {
                 hookSpecificOutput = new
@@ -68,14 +69,14 @@ public class ClaudeHooksController(ISessionHandoff handoff, ISecretGuard secrets
         }
         if (restore.Restored == 0) return Ok();
 
-        activityLog.Info("keamanan", $"{restore.Restored} secret dikembalikan ke {tool} sebelum dijalankan Claude Code.");
+        activityLog.Info("keamanan", Lang.T($"{restore.Restored} secret dikembalikan ke {tool} sebelum dijalankan Claude Code.", $"{restore.Restored} secret(s) put back into {tool} before Claude Code runs it."));
         return Ok(new
         {
             hookSpecificOutput = new
             {
                 hookEventName = "PreToolUse",
                 permissionDecision = AcceptsWithoutAsking(Str(input["permission_mode"]), tool) ? "allow" : "ask",
-                permissionDecisionReason = $"AIT mengembalikan {restore.Restored} secret yang disamarkan dari model.",
+                permissionDecisionReason = Lang.T($"AIT mengembalikan {restore.Restored} secret yang disamarkan dari model.", $"AIT put back {restore.Restored} secret(s) masked from the model."),
                 updatedInput = updated
             }
         });

@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
 
@@ -9,7 +10,7 @@ public sealed partial class TestAccountService
 {
     public async Task<TestAccountsDto> GetAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
-        var project = await projectService.GetContextAsync(projectId, cancellationToken) ?? throw new AppValidationException("Project tidak ditemukan.");
+        var project = await projectService.GetContextAsync(projectId, cancellationToken) ?? throw new AppValidationException(Lang.T("Project tidak ditemukan.", "Project not found."));
         if (string.IsNullOrEmpty(project.Key))
             return new TestAccountsDto(null, false, NoKey, [], TestAccountText.ToDto(new TestingSettings()), []);
 

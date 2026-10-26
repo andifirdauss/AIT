@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Telegram;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,7 @@ public sealed partial class TelegramService
         eventBus.Publish(AppEvent.Create(AppEventTypes.TelegramChanged, new { chat.Id, action = "deleted" }));
         if (chat.IsAllowed)
         {
-            activityLog.Info("telegram", $"Akses chat Telegram {chat.DisplayName} (ID {chat.ChatId}) dicabut.");
+            activityLog.Info("telegram", Lang.T($"Akses chat Telegram {chat.DisplayName} (ID {chat.ChatId}) dicabut.", $"Access of Telegram chat {chat.DisplayName} (ID {chat.ChatId}) revoked."));
             await NotifyAsync(chat, TelegramMessages.Revoked, cancellationToken);
         }
         return true;

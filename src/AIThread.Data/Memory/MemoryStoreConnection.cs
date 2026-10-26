@@ -1,5 +1,6 @@
 using System.Data.Common;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +47,7 @@ public sealed record MemoryStoreConnection(
         MemoryStoreProvider.MySql => "MySQL",
         MemoryStoreProvider.Oracle => "Oracle",
         MemoryStoreProvider.Sqlite => "SQLite",
-        _ => "Bawaan"
+        _ => Lang.T("Bawaan", "Default")
     };
 
     // Where the store lives, without credentials. Shown in the UI and in logs.

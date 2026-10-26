@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -9,7 +10,7 @@ public sealed partial class CodeStructureService
     {
         var snapshot = await SnapshotAsync(projectId, false, cancellationToken);
         var type = snapshot.Classes.Find(group, name, string.IsNullOrEmpty(container) ? null : container)
-                   ?? throw new AppValidationException($"Class '{name}' tidak ada di hasil scan.");
+                   ?? throw new AppValidationException(Lang.T($"Class '{name}' tidak ada di hasil scan.", $"Class '{name}' is not in the scan result."));
         var severalFiles = type.Locations.Count > 1;
         var members = type.Members.Select(m => WithKey(ToDto(m.Member) with { Path = severalFiles ? m.Path : null }, m.Member, m.Path, type.Name, type.Container)).ToList();
         var counted = await WithCallsAsync(projectId, members, cancellationToken);

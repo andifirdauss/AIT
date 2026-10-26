@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations;
 
@@ -37,7 +38,7 @@ public sealed partial class SetupProfileService
             }
             else if (needsPassword && level.Password is not null)
             {
-                plan.Change(SetupProfileSection.Memory, $"{level.Name}: password diganti dengan yang diisi.");
+                plan.Change(SetupProfileSection.Memory, Lang.T($"{level.Name}: password diganti dengan yang diisi.", $"{level.Name}: the password is replaced with the one entered."));
                 changed = true;
             }
 
@@ -53,7 +54,7 @@ public sealed partial class SetupProfileService
             if (result.CopiedShort + result.CopiedLong + result.CopiedBusiness > 0)
             {
                 plan.Change(SetupProfileSection.Memory,
-                    $"{result.CopiedShort} short, {result.CopiedLong} long memory & {result.CopiedBusiness} halaman bisnis disalin ke penyimpanan baru.");
+                    Lang.T($"{result.CopiedShort} short, {result.CopiedLong} long memory & {result.CopiedBusiness} halaman bisnis disalin ke penyimpanan baru.", $"{result.CopiedShort} short, {result.CopiedLong} long memory & {result.CopiedBusiness} business pages copied to the new storage."));
             }
         }));
     }

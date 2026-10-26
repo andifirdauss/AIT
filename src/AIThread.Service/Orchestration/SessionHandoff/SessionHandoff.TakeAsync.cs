@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +30,7 @@ public sealed partial class SessionHandoff
             }
             else
             {
-                activityLog.Warn("context", $"Ringkasan sesi untuk /clear di {workingDirectory} belum selesai dalam {PackWait.TotalSeconds:0} detik; sesi baru dimulai tanpa ringkasan.");
+                activityLog.Warn("context", Lang.T($"Ringkasan sesi untuk /clear di {workingDirectory} belum selesai dalam {PackWait.TotalSeconds:0} detik; sesi baru dimulai tanpa ringkasan.", $"The session summary for /clear in {workingDirectory} did not finish within {PackWait.TotalSeconds:0} seconds; the new session starts without a summary."));
                 return null;
             }
         }
@@ -51,7 +52,7 @@ public sealed partial class SessionHandoff
         var handedTo = Truncate(newSessionId, 100);
         await db.SessionPacks.Where(p => p.Id == packId)
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.HandedToSessionId, handedTo).SetProperty(p => p.HandedAt, DateTime.UtcNow), cancellationToken);
-        activityLog.Success("context", $"Ringkasan sesi sebelumnya diserahkan ke sesi Claude Code baru setelah /clear ({workingDirectory}, {pack!.Length} karakter).");
+        activityLog.Success("context", Lang.T($"Ringkasan sesi sebelumnya diserahkan ke sesi Claude Code baru setelah /clear ({workingDirectory}, {pack!.Length} karakter).", $"The summary of the previous session handed to the new Claude Code session after /clear ({workingDirectory}, {pack!.Length} characters)."));
         return $"{ContextIntro}\n\n{pack}";
     }
 }

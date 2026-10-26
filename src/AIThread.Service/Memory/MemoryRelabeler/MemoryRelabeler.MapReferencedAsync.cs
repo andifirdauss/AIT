@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Memory;
@@ -8,12 +9,12 @@ public sealed partial class MemoryRelabeler
     // goes to the status detail, e.g. "KN2018_KCO (1/5) · 12/40 file disebut memory".
     private async Task MapReferencedAsync(RegisteredProject project, string label, IReadOnlyList<string> descriptions, CancellationToken cancellationToken)
     {
-        SetPhase("Peta kode", label);
+        SetPhase(Lang.T("Peta kode", "Code map"), label);
         try
         {
             var context = await projectService.GetContextAsync(project.Id, cancellationToken);
             if (context is null) return;
-            await codeMapper.MapReferencedAsync(context, descriptions, cancellationToken, (done, total) => ReportFiles(label, done, total, " disebut memory"));
+            await codeMapper.MapReferencedAsync(context, descriptions, cancellationToken, (done, total) => ReportFiles(label, done, total, Lang.T(" disebut memory", " named in memory")));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

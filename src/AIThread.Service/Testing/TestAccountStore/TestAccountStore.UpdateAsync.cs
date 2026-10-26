@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +13,9 @@ public sealed partial class TestAccountStore
         var (username, role, attributes, notes) = TestAccountText.Validate(request);
         await using var db = await store.CreateTestingAsync(cancellationToken);
         var account = await db.TestAccounts.FirstOrDefaultAsync(a => a.Id == accountId && a.ProjectKey == projectKey, cancellationToken)
-                      ?? throw new AppValidationException("Akun uji tidak ditemukan.");
+                      ?? throw new AppValidationException(Lang.T("Akun uji tidak ditemukan.", "Test account not found."));
         var taken = await db.TestAccounts.AsNoTracking().Where(a => a.ProjectKey == projectKey && a.Id != accountId).Select(a => a.Username).ToListAsync(cancellationToken);
-        if (taken.Contains(username, StringComparer.OrdinalIgnoreCase)) throw new AppValidationException($"Akun uji \"{username}\" sudah ada di project ini.");
+        if (taken.Contains(username, StringComparer.OrdinalIgnoreCase)) throw new AppValidationException(Lang.T($"Akun uji \"{username}\" sudah ada di project ini.", $"Test account \"{username}\" already exists in this project."));
 
         account.Username = username;
         account.Role = role;

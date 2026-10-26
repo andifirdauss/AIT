@@ -1,7 +1,8 @@
 using System.IO.Enumeration;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Text;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Verification;
 
@@ -163,7 +164,7 @@ public static partial class TestCommandResolver
 
             // dotnet cannot restore packages.config or import Visual Studio's targets: Visual Studio's MSBuild builds it.
             var missing = MsBuildLocator.Find() is null ? BuildCommandResolver.NoMsBuild
-                : VsTestConsole() is null ? "vstest.console.exe dari Visual Studio tidak ditemukan di mesin ini."
+                : VsTestConsole() is null ? Lang.T("vstest.console.exe dari Visual Studio tidak ditemukan di mesin ini.", "vstest.console.exe from Visual Studio was not found on this machine.")
                 : null;
             return Make(framework, ".NET Framework", root, project, TestReportFormat.Trx, missing) with { BuildsWithMsBuild = true };
         }
@@ -171,8 +172,8 @@ public static partial class TestCommandResolver
         // Old-format projects only build with Visual Studio's MSBuild; their tests run from the built assembly.
         var vstest = VsTestConsole();
         var assembly = BuiltAssembly(project, text);
-        var problem = vstest is null ? "vstest.console.exe dari Visual Studio tidak ditemukan di mesin ini."
-            : assembly is null ? "Assembly test belum di-build (jalankan build dulu)."
+        var problem = vstest is null ? Lang.T("vstest.console.exe dari Visual Studio tidak ditemukan di mesin ini.", "vstest.console.exe from Visual Studio was not found on this machine.")
+            : assembly is null ? Lang.T("Assembly test belum di-build (jalankan build dulu).", "The test assembly has not been built yet (run a build first).")
             : null;
         return Make(framework, ".NET Framework", root, project, TestReportFormat.Trx, problem) with { IsLegacyDotNet = true };
     }
@@ -375,7 +376,7 @@ public static partial class TestCommandResolver
 
         var bin = NodeBin(root, directory, framework);
         return Make(framework, "Node.js", root, packageJson, framework == TestSuite.Mocha ? TestReportFormat.MochaJson : TestReportFormat.JestJson,
-            bin is null ? $"{framework} tidak ada di node_modules (jalankan npm install dulu)." : null);
+            bin is null ? Lang.T($"{framework} tidak ada di node_modules (jalankan npm install dulu).", $"{framework} is not in node_modules (run npm install first).") : null);
     }
 
     // The runner's own script in node_modules of the package or, in a workspace, of the root; run with node so no
@@ -481,7 +482,7 @@ public static partial class TestCommandResolver
         if (!config) return null;
         var phpunit = PhpUnitScript(root, directory);
         return Make(TestSuite.PhpUnit, "PHP", root, Path.Combine(directory, "composer.json"), TestReportFormat.JUnitXml,
-            phpunit is null ? "vendor/bin/phpunit tidak ada (jalankan composer install dulu)." : null);
+            phpunit is null ? Lang.T("vendor/bin/phpunit tidak ada (jalankan composer install dulu).", "vendor/bin/phpunit does not exist (run composer install first).") : null);
     }
 
     private static string? PhpUnitScript(string root, string directory) =>

@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AIThread.Common.Enums;
@@ -46,7 +45,6 @@ public sealed partial class MemoryRelabeler(
         Converters = { new JsonStringEnumConverter() }
     };
 
-    private static readonly CultureInfo Indonesian = CultureInfo.GetCultureInfo("id-ID");
     private static readonly TimeSpan ProgressInterval = TimeSpan.FromSeconds(3);
 
     private readonly SemaphoreSlim _gate = new(1, 1);

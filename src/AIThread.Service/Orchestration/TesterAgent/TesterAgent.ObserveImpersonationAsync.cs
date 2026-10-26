@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Memory;
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +25,7 @@ public sealed partial class TesterAgent
         try
         {
             if (await impersonation.ObserveAsync(run.Input.Project.Key, info, DetectedBy, cancellationToken))
-                recorder.Log(ActivityLevel.Info, $"Tester melihat login as di aplikasi; dicatat di Akun uji (belum dikonfirmasi): {how}");
+                recorder.Log(ActivityLevel.Info, Lang.T($"Tester melihat login as di aplikasi; dicatat di Akun uji (belum dikonfirmasi): {how}", $"The Tester saw a login-as feature in the application; recorded in Test accounts (not confirmed yet): {how}"));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

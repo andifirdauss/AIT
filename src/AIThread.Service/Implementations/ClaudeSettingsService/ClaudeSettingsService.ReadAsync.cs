@@ -1,5 +1,6 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -15,11 +16,11 @@ public sealed partial class ClaudeSettingsService
         try
         {
             return JsonNode.Parse(text, documentOptions: ReadOptions) as JsonObject
-                   ?? throw new AppValidationException($"{path} bukan objek JSON.");
+                   ?? throw new AppValidationException(Lang.T($"{path} bukan objek JSON.", $"{path} is not a JSON object."));
         }
         catch (JsonException ex)
         {
-            throw new AppValidationException($"{path} tidak dapat dibaca sebagai JSON: {ex.Message}");
+            throw new AppValidationException(Lang.T($"{path} tidak dapat dibaca sebagai JSON: {ex.Message}", $"{path} cannot be read as JSON: {ex.Message}"));
         }
     }
 }

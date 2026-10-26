@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -9,7 +10,7 @@ public sealed partial class ProjectService
 {
     public async Task<ProjectScanDto> ScanAsync(string path, int depth, CancellationToken cancellationToken = default)
     {
-        var directory = ExistingDirectory(path) ?? throw new AppValidationException($"Folder '{path}' tidak ditemukan.");
+        var directory = ExistingDirectory(path) ?? throw new AppValidationException(Lang.T($"Folder '{path}' tidak ditemukan.", $"Folder '{path}' not found."));
         depth = Math.Clamp(depth, 1, 8);
 
         using var timeLimit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

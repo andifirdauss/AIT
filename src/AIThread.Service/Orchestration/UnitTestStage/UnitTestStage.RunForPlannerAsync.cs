@@ -1,6 +1,7 @@
 using System.Text;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.UnitTests;
 
 namespace AIThread.Service.Orchestration;
@@ -10,7 +11,7 @@ public sealed partial class UnitTestStage
     public async Task<(string ForModel, string Headline)> RunForPlannerAsync(UnitTestSession session, IReadOnlyList<string> numbers, string? file, bool all, CancellationToken cancellationToken)
     {
         if (!session.CanRun)
-            return ("Error: no test runner of this project can run on this machine: " + string.Join("; ", session.Report.Problems), "🟡 tidak ada runner test yang bisa jalan");
+            return ("Error: no test runner of this project can run on this machine: " + string.Join("; ", session.Report.Problems), Lang.T("🟡 tidak ada runner test yang bisa jalan", "🟡 no test runner that can run"));
 
         var normalized = file?.Trim().Replace('\\', '/').TrimStart('.', '/');
         var selected = all ? session.Active.ToList()
@@ -18,7 +19,7 @@ public sealed partial class UnitTestStage
             : numbers.Select(n => UnitTestText.ParseNumber(n) is { } number ? session.ByNumber(number) : null).OfType<UnitTestCase>().Distinct().ToList();
         if (selected.Count == 0)
             return ("Error: no active test of the catalog matches. Give numbers from \"# Unit tests\" (e.g. \"UT-0012\"), a registered test file, or all.",
-                "🟡 tidak ada test katalog yang cocok");
+                Lang.T("🟡 tidak ada test katalog yang cocok", "🟡 no matching catalog test"));
 
         var execution = await executor.RunAsync(session.Project.RootPath, session.Suites, selected, session.Timeout, retryFailures: false, cancellationToken);
         // Nothing has changed yet: these results are the baseline too.
@@ -37,8 +38,8 @@ public sealed partial class UnitTestStage
             if (verdict.IsFailure && verdict.Message is not null) builder.Append("```\n").Append(UnitTestText.Clip(verdict.Message, MaxMessageChars * 2)).Append("\n```\n");
         }
         var skipped = selected.Count - passed - failed;
-        var headline = (failed > 0 ? "🔴" : "✅") + $" {selected.Count} test · {passed} lolos" + (failed > 0 ? $", {failed} gagal" : string.Empty)
-                       + (skipped > 0 ? $", {skipped} dilewati" : string.Empty) + $" ({execution.DurationMs / 1000.0:0.0}s)";
+        var headline = (failed > 0 ? "🔴" : "✅") + Lang.T($" {selected.Count} test · {passed} lolos", $" {selected.Count} tests · {passed} passed") + (failed > 0 ? Lang.T($", {failed} gagal", $", {failed} failed") : string.Empty)
+                       + (skipped > 0 ? Lang.T($", {skipped} dilewati", $", {skipped} skipped") : string.Empty) + $" ({execution.DurationMs / 1000.0:0.0}s)";
         return (builder.ToString(), headline);
     }
 }

@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ public sealed partial class MemoryRelabeler
                     if (!await BackupAsync(cancellationToken)) return;
                 }
 
-                SetPhase("Wiki bisnis");
+                SetPhase(Lang.T("Wiki bisnis", "Business wiki"));
                 await NormalizeWikiAsync(cancellationToken);
 
                 if (pending > 0)
@@ -38,8 +39,8 @@ public sealed partial class MemoryRelabeler
                     var (labeled, reviewed) = await MigrateAsync(projects, registered, pendingByKey, relabeledKeys, cancellationToken);
                     if (labeled + reviewed > 0)
                     {
-                        _lastMessage = $"{labeled} memory dilabeli ulang, {reviewed} perlu review.";
-                        activityLog.Info("memory", $"Migrasi label memory: {_lastMessage}");
+                        _lastMessage = Lang.T($"{labeled} memory dilabeli ulang, {reviewed} perlu review.", $"{labeled} memories relabeled, {reviewed} need review.");
+                        activityLog.Info("memory", Lang.T($"Migrasi label memory: {_lastMessage}", $"Memory label migration: {_lastMessage}"));
                     }
 
                     // The full code map only helps later threads; it comes after every label, projects with memory first.
@@ -51,13 +52,13 @@ public sealed partial class MemoryRelabeler
                 }
             }
 
-            SetPhase("Cek modul ganda");
+            SetPhase(Lang.T("Cek modul ganda", "Duplicate module check"));
             await CheckModulesAsync(relabeledKeys, cancellationToken);
             _lastRunAt = DateTime.UtcNow;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _lastMessage = $"Migrasi label berhenti: {ex.Message}";
+            _lastMessage = Lang.T($"Migrasi label berhenti: {ex.Message}", $"Label migration stopped: {ex.Message}");
             logger.LogWarning(ex, "Memory relabeling stopped.");
         }
         finally

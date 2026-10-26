@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Data.Cache;
 using AIThread.Data.Memory;
 using AIThread.Service.Interfaces;
@@ -15,13 +16,13 @@ public sealed partial class MemoryTransferService
     public async Task<MemoryImportResultDto> ImportAsync(MemoryExportFile file, MemoryImportMode mode, bool dryRun, CancellationToken cancellationToken = default)
     {
         if (file is null || file.Format != MemoryExportFile.FormatName)
-            throw new AppValidationException($"Bukan file export memory AIT (format harus \"{MemoryExportFile.FormatName}\").");
+            throw new AppValidationException(Lang.T($"Bukan file export memory AIT (format harus \"{MemoryExportFile.FormatName}\").", $"Not an AIT memory export file (the format must be \"{MemoryExportFile.FormatName}\")."));
         if (file.Version > MemoryExportFile.CurrentVersion)
-            throw new AppValidationException($"File dibuat oleh AIT yang lebih baru (format v{file.Version}) — perbarui AIT dulu.");
-        if (!Enum.IsDefined(mode)) throw new AppValidationException("Mode import tidak valid.");
+            throw new AppValidationException(Lang.T($"File dibuat oleh AIT yang lebih baru (format v{file.Version}) — perbarui AIT dulu.", $"The file was made by a newer AIT (format v{file.Version}) — update AIT first."));
+        if (!Enum.IsDefined(mode)) throw new AppValidationException(Lang.T("Mode import tidak valid.", "Invalid import mode."));
 
         var items = file.Items ?? [];
-        if (items.Count > MaxItems) throw new AppValidationException($"File berisi {items.Count} memory; maksimal {MaxItems} per import.");
+        if (items.Count > MaxItems) throw new AppValidationException(Lang.T($"File berisi {items.Count} memory; maksimal {MaxItems} per import.", $"The file holds {items.Count} memories; at most {MaxItems} per import."));
 
         var projects = await LocalProjectsAsync(cancellationToken);
         var shortConnected = shortStore.IsConnected;
@@ -90,11 +91,11 @@ public sealed partial class MemoryTransferService
         }
 
         var warnings = invalid.Take(MaxListedWarnings).ToList();
-        if (invalid.Count > MaxListedWarnings) warnings.Add($"… dan {invalid.Count - MaxListedWarnings} memory tidak valid lainnya.");
-        if (orphaned > 0) warnings.Add($"{orphaned} project memory tanpa project key dan tanpa project yang terdaftar di sini dijadikan knowledge memory.");
-        if (foreignLocal > 0) warnings.Add($"{foreignLocal} memory memakai key lokal (local:…) mesin lain, jadi tidak cocok dengan project mana pun di sini. Beri project key bersama di mesin asal (remote git, key manual, atau .aithread/project.json), lalu ekspor ulang.");
+        if (invalid.Count > MaxListedWarnings) warnings.Add(Lang.T($"… dan {invalid.Count - MaxListedWarnings} memory tidak valid lainnya.", $"… and {invalid.Count - MaxListedWarnings} other invalid memories."));
+        if (orphaned > 0) warnings.Add(Lang.T($"{orphaned} project memory tanpa project key dan tanpa project yang terdaftar di sini dijadikan knowledge memory.", $"{orphaned} project memories without a project key and without a project registered here became knowledge memory."));
+        if (foreignLocal > 0) warnings.Add(Lang.T($"{foreignLocal} memory memakai key lokal (local:…) mesin lain, jadi tidak cocok dengan project mana pun di sini. Beri project key bersama di mesin asal (remote git, key manual, atau .aithread/project.json), lalu ekspor ulang.", $"{foreignLocal} memories use a local key (local:…) of another machine, so they match no project here. Give the project a shared project key on the source machine (git remote, manual key or .aithread/project.json), then export again."));
         var shortToLong = shortConnected ? 0 : adds.Count(a => a.Level == MemoryLevel.Short);
-        if (shortToLong > 0) warnings.Add($"Penyimpanan short memory tidak terhubung — {shortToLong} short memory disimpan langsung sebagai long memory.");
+        if (shortToLong > 0) warnings.Add(Lang.T($"Penyimpanan short memory tidak terhubung — {shortToLong} short memory disimpan langsung sebagai long memory.", $"The short memory storage is not connected — {shortToLong} short memories are stored directly as long memory."));
 
         var projectSummary = keys
             .Select(k => new MemoryImportProjectDto(k.Key, k.Value.Name, k.Value.Count, k.Value.Registered))
@@ -109,11 +110,11 @@ public sealed partial class MemoryTransferService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Unit test import stopped.");
-            throw new AppValidationException($"Import unit test berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Unit test yang sudah masuk tidak akan digandakan bila import diulang.");
+            throw new AppValidationException(Lang.T($"Import unit test berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Unit test yang sudah masuk tidak akan digandakan bila import diulang.", $"Unit test import stopped: {MemoryStoreTester.ErrorMessage(ex)}. Unit tests already imported are not duplicated when the import is repeated."));
         }
         warnings.AddRange(unitTests.Warnings.Take(MaxListedWarnings));
         if (unitTests.Renumbered > 0)
-            warnings.Add($"{unitTests.Renumbered} unit test mendapat nomor baru karena nomornya sudah dipakai test lain di project yang sama.");
+            warnings.Add(Lang.T($"{unitTests.Renumbered} unit test mendapat nomor baru karena nomornya sudah dipakai test lain di project yang sama.", $"{unitTests.Renumbered} unit tests got a new number because their number is already used by another test in the same project."));
 
         TestingImport testing;
         try
@@ -123,16 +124,16 @@ public sealed partial class MemoryTransferService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Test account import stopped.");
-            throw new AppValidationException($"Import akun uji berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Akun yang sudah masuk tidak akan digandakan bila import diulang.");
+            throw new AppValidationException(Lang.T($"Import akun uji berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Akun yang sudah masuk tidak akan digandakan bila import diulang.", $"Test account import stopped: {MemoryStoreTester.ErrorMessage(ex)}. Accounts already imported are not duplicated when the import is repeated."));
         }
         warnings.AddRange(testing.Warnings.Take(MaxListedWarnings));
 
         var result = new MemoryImportResultDto(dryRun, items.Count, adds.Count, updates.Count, skipped, duplicates, invalid.Count, projectSummary, warnings,
             unitTests.Added, unitTests.Updated, unitTests.Renumbered, unitTests.Skipped, testing.Added, testing.Updated, testing.Skipped);
         if (!dryRun && unitTests.Added + unitTests.Updated > 0)
-            activityLog.Info("memory", $"Import unit test: {unitTests.Added} ditambahkan, {unitTests.Updated} diperbarui, {unitTests.Skipped} dilewati.");
+            activityLog.Info("memory", Lang.T($"Import unit test: {unitTests.Added} ditambahkan, {unitTests.Updated} diperbarui, {unitTests.Skipped} dilewati.", $"Unit test import: {unitTests.Added} added, {unitTests.Updated} updated, {unitTests.Skipped} skipped."));
         if (!dryRun && testing.Added + testing.Updated > 0)
-            activityLog.Info("memory", $"Import akun uji: {testing.Added} ditambahkan, {testing.Updated} diperbarui, {testing.Skipped} dilewati.");
+            activityLog.Info("memory", Lang.T($"Import akun uji: {testing.Added} ditambahkan, {testing.Updated} diperbarui, {testing.Skipped} dilewati.", $"Test account import: {testing.Added} added, {testing.Updated} updated, {testing.Skipped} skipped."));
         if (dryRun || (adds.Count == 0 && updates.Count == 0)) return result;
 
         try
@@ -143,11 +144,11 @@ public sealed partial class MemoryTransferService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Memory import stopped.");
-            throw new AppValidationException($"Import berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Memory yang sudah masuk tidak akan digandakan bila import diulang.");
+            throw new AppValidationException(Lang.T($"Import berhenti: {MemoryStoreTester.ErrorMessage(ex)}. Memory yang sudah masuk tidak akan digandakan bila import diulang.", $"Import stopped: {MemoryStoreTester.ErrorMessage(ex)}. Memory already imported is not duplicated when the import is repeated."));
         }
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.MemoryChanged, new { id = (Guid?)null, action = "imported" }));
-        activityLog.Info("memory", $"Import memory: {adds.Count} ditambahkan, {updates.Count} ditimpa, {skipped + duplicates} dilewati.");
+        activityLog.Info("memory", Lang.T($"Import memory: {adds.Count} ditambahkan, {updates.Count} ditimpa, {skipped + duplicates} dilewati.", $"Memory import: {adds.Count} added, {updates.Count} overwritten, {skipped + duplicates} skipped."));
         return result;
     }
 }

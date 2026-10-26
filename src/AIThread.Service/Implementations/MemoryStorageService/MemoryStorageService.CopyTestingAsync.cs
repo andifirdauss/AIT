@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Data.Memory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -35,7 +36,7 @@ public sealed partial class MemoryStorageService
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "The test accounts could not be copied to the new store.");
-            warnings.Add($"Akun uji tidak dapat disalin (bisa dipindah lewat export/import memory): {MemoryStoreTester.ErrorMessage(ex)}");
+            warnings.Add(Lang.T($"Akun uji tidak dapat disalin (bisa dipindah lewat export/import memory): {MemoryStoreTester.ErrorMessage(ex)}", $"Test accounts cannot be copied (they can be moved with memory export/import): {MemoryStoreTester.ErrorMessage(ex)}"));
         }
     }
 }

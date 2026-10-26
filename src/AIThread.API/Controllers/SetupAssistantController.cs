@@ -1,7 +1,8 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 using AIThread.API.Infrastructure;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,7 +36,7 @@ public class SetupAssistantController(ISetupService setup, ISetupProfileService 
     {
         var result = await setup.ApplyPresetAsync(request, cancellationToken);
         var created = result.Nodes.Count(n => n.Created);
-        return ApiResponse<SetupPresetResultDto>.Ok(result, $"{created} node dibuat, {result.Nodes.Count - created} diperbarui.");
+        return ApiResponse<SetupPresetResultDto>.Ok(result, Lang.T($"{created} node dibuat, {result.Nodes.Count - created} diperbarui.", $"{created} node(s) created, {result.Nodes.Count - created} updated."));
     }
 
     // The team profile as a file to download and hand to the other developers.
@@ -52,8 +53,8 @@ public class SetupAssistantController(ISetupService setup, ISetupProfileService 
     {
         var result = await profiles.ImportAsync(request, cancellationToken);
         var message = result.DryRun ? null
-            : result.Errors.Count > 0 ? $"Profil diimpor sebagian: {result.Errors.Count} bagian gagal."
-            : $"Profil diimpor: {result.Changes.Count} perubahan.";
+            : result.Errors.Count > 0 ? Lang.T($"Profil diimpor sebagian: {result.Errors.Count} bagian gagal.", $"Profile partly imported: {result.Errors.Count} part(s) failed.")
+            : Lang.T($"Profil diimpor: {result.Changes.Count} perubahan.", $"Profile imported: {result.Changes.Count} change(s).");
         return ApiResponse<SetupProfileImportResultDto>.Ok(result, message);
     }
 }

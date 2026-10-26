@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+
 namespace AIThread.Service.Orchestration;
 
 public sealed partial class ThreadOrchestrator
@@ -5,7 +7,7 @@ public sealed partial class ThreadOrchestrator
     // "📋 Rencana": the summary, then one entry per task (id, file and dependencies) with its title under it.
     private static async Task ReportPlanAsync(ClientProgress progress, ThreadPlan plan, CancellationToken cancellationToken)
     {
-        await progress.PhaseAsync("📋", $"Rencana · {plan.Tasks.Count} tugas", cancellationToken);
+        await progress.PhaseAsync("📋", Lang.T($"Rencana · {plan.Tasks.Count} tugas", $"Plan · {plan.Tasks.Count} tasks"), cancellationToken);
         if (!string.IsNullOrWhiteSpace(plan.Summary)) await progress.TextAsync(plan.Summary, cancellationToken);
         for (var i = 0; i < plan.Tasks.Count; i++)
         {

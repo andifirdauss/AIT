@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Skills;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,7 @@ public sealed partial class SkillService
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.SkillChanged, new { sourceId = id, action = "deleted" }));
         if (attached > 0) eventBus.Publish(AppEvent.Create(AppEventTypes.NodeChanged, new { action = "skills" }));
-        activityLog.Info("skill", $"Sumber skill {source.Name} dihapus{(attached > 0 ? $" (dilepas dari {attached} lampiran node)" : string.Empty)}.");
+        activityLog.Info("skill", Lang.T($"Sumber skill {source.Name} dihapus{(attached > 0 ? $" (dilepas dari {attached} lampiran node)" : string.Empty)}.", $"Skill source {source.Name} deleted{(attached > 0 ? $" (detached from {attached} node attachments)" : string.Empty)}."));
         return true;
     }
 }

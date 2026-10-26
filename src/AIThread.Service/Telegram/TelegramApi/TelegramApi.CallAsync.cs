@@ -1,5 +1,6 @@
-using System.Text;
 using System.Text.Json;
+using System.Text;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Telegram;
@@ -37,11 +38,11 @@ public sealed partial class TelegramApi
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new TelegramApiException($"{method}: Telegram tidak merespons dalam {timeout.TotalSeconds:0} detik.");
+            throw new TelegramApiException(Lang.T($"{method}: Telegram tidak merespons dalam {timeout.TotalSeconds:0} detik.", $"{method}: Telegram did not respond within {timeout.TotalSeconds:0} seconds."));
         }
         catch (HttpRequestException ex)
         {
-            throw new TelegramApiException($"{method}: Telegram tidak dapat dihubungi ({ex.Message}).", innerException: ex);
+            throw new TelegramApiException(Lang.T($"{method}: Telegram tidak dapat dihubungi ({ex.Message}).", $"{method}: Telegram cannot be reached ({ex.Message})."), innerException: ex);
         }
     }
 }

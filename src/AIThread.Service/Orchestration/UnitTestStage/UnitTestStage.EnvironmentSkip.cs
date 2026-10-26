@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Service.UnitTests;
@@ -13,7 +14,7 @@ public sealed partial class UnitTestStage
         if (string.IsNullOrEmpty(test.Requires)) return null;
         if (!session.MachineRuns.TryGetValue(test.Id, out var run) || run.Result != UnitTestResult.Skipped || run.SkipReason is null) return null;
         if (DateTime.UtcNow - run.CreatedAt > EnvironmentSkipAge) return null;
-        const string again = " (tidak dicoba lagi: run terakhir di mesin ini juga dilewati)";
+        var again = Lang.T(" (tidak dicoba lagi: run terakhir di mesin ini juga dilewati)", " (not tried again: the last run on this machine was skipped too)");
         var reason = run.SkipReason.EndsWith(again, StringComparison.Ordinal) ? run.SkipReason : run.SkipReason + again;
         return new TestVerdict(UnitTestResult.Skipped, null, null, reason, UnitTestText.Lines(test.Requires).FirstOrDefault(), Remembered: true);
     }

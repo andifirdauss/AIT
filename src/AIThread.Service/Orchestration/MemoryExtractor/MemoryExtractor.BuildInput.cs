@@ -9,11 +9,11 @@ namespace AIThread.Service.Orchestration;
 public sealed partial class MemoryExtractor
 {
     private static string BuildInput(ThreadRun thread, ThreadPlan plan, ExecutionSummary? execution, string finalText, IReadOnlyList<ChangeLogFile> changed,
-        IReadOnlyList<CodeMapHit> map, IReadOnlyList<ProjectModule> modules, IReadOnlyList<MemoryItemDto> existing)
+        IReadOnlyList<CodeMapHit> map, IReadOnlyList<ProjectModule> modules, IReadOnlyList<MemoryItemDto> existing, string language)
     {
         var builder = new StringBuilder();
-        // Decided by AIT when the words tell it, so a cheap model does not drift into another language.
-        if (TextLanguage.Guess([thread.Prompt, plan.Summary]) is { } language) builder.Append("# Language\n").Append(language).Append("\n\n");
+        // Decided by AIT, so a cheap model does not drift into another language.
+        builder.Append("# Language\n").Append(language).Append("\n\n");
         builder.Append("# Developer request\n").Append(thread.Prompt).Append("\n\n");
         builder.Append("# Plan summary\n").Append(plan.Summary).Append("\n\n");
         if (plan.Contract.Count > 0)

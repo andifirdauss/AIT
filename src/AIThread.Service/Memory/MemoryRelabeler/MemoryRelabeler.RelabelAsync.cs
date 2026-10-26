@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+
 namespace AIThread.Service.Memory;
 
 public sealed partial class MemoryRelabeler
@@ -9,7 +11,7 @@ public sealed partial class MemoryRelabeler
     {
         if (!await ai.IsAvailableAsync(cancellationToken))
         {
-            _lastMessage = "Migrasi label menunggu: belum ada node Tools node, Wrapper, atau Planner yang aktif.";
+            _lastMessage = Lang.T("Migrasi label menunggu: belum ada node Tools node, Wrapper, atau Planner yang aktif.", "Label migration waiting: there is no active Tools node, Wrapper or Planner yet.");
             return (0, 0);
         }
 

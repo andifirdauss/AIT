@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -9,7 +10,7 @@ public sealed partial class ClaudeSettingsService
     public async Task<ClaudeSettingsStatusDto> ApplyAsync(ClaudeSettingsApplyRequest request, CancellationToken cancellationToken = default)
     {
         if (!Uri.TryCreate(request.ProxyBaseUrl, UriKind.Absolute, out _))
-            throw new AppValidationException("URL proxy tidak valid.");
+            throw new AppValidationException(Lang.T("URL proxy tidak valid.", "Invalid proxy URL."));
 
         var target = await ResolveTargetAsync(request.Scope, request.ProjectId, cancellationToken);
         var root = await ReadAsync(target.Path, cancellationToken);

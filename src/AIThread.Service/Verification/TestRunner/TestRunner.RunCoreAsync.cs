@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Verification;
@@ -58,7 +59,7 @@ public sealed partial class TestRunner
         {
             logger.LogWarning(ex, "Test command {Command} could not start", command.Display);
             return new TestRunResult(command, false, null, [], string.Empty, 0,
-                $"'{command.FileName}' tidak bisa dijalankan ({ex.Message}). Apakah toolchain {command.Suite.Stack} terpasang dan ada di PATH?");
+                Lang.T($"'{command.FileName}' tidak bisa dijalankan ({ex.Message}). Apakah toolchain {command.Suite.Stack} terpasang dan ada di PATH?", $"'{command.FileName}' cannot be run ({ex.Message}). Is the {command.Suite.Stack} toolchain installed and on PATH?"));
         }
 
         process.StandardInput.Close();

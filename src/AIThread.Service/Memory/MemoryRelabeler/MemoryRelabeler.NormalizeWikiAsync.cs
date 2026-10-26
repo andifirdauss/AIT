@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -49,6 +50,6 @@ public sealed partial class MemoryRelabeler
                 changed++;
             }
         }
-        if (changed > 0) activityLog.Info("memory", $"Migrasi label: modul dan label {changed} halaman wiki bisnis dinormalisasi.");
+        if (changed > 0) activityLog.Info("memory", Lang.T($"Migrasi label: modul dan label {changed} halaman wiki bisnis dinormalisasi.", $"Label migration: the module and label of {changed} business wiki pages normalized."));
     }
 }

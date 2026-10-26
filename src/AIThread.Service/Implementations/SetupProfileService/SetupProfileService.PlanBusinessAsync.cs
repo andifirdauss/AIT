@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations;
 
@@ -10,9 +11,9 @@ public sealed partial class SetupProfileService
         var current = await businessMemory.GetSettingsAsync(cancellationToken);
         var model = Clean(b.Model);
         var diffs = new List<string>();
-        Diff(diffs, "Wiki bisnis", OnOff(current.Enabled), OnOff(b.Enabled));
-        Diff(diffs, "Interval (jam)", current.IntervalHours, b.IntervalHours);
-        Diff(diffs, "Model", current.Model ?? "otomatis", model ?? "otomatis");
+        Diff(diffs, Lang.T("Wiki bisnis", "Business wiki"), OnOff(current.Enabled), OnOff(b.Enabled));
+        Diff(diffs, Lang.T("Interval (jam)", "Interval (hours)"), current.IntervalHours, b.IntervalHours);
+        Diff(diffs, "Model", current.Model ?? Lang.T("otomatis", "automatic"), model ?? Lang.T("otomatis", "automatic"));
         if (diffs.Count == 0) return;
 
         plan.Change(SetupProfileSection.Business, string.Join(" · ", diffs));

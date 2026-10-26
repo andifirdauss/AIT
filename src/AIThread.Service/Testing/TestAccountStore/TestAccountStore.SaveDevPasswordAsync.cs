@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Testing;
@@ -9,7 +10,7 @@ public sealed partial class TestAccountStore
     {
         var value = string.IsNullOrWhiteSpace(password) ? null : password.Trim();
         if (value?.Length > TestingSettings.MaxDevPasswordLength)
-            throw new AppValidationException($"Password dev maksimal {TestingSettings.MaxDevPasswordLength} karakter.");
+            throw new AppValidationException(Lang.T($"Password dev maksimal {TestingSettings.MaxDevPasswordLength} karakter.", $"The dev password is at most {TestingSettings.MaxDevPasswordLength} characters."));
 
         await using var db = await store.CreateTestingAsync(cancellationToken);
         var settings = await SettingsAsync(db, projectKey, cancellationToken);

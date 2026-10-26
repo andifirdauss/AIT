@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Orchestration;
 
@@ -44,7 +45,7 @@ public sealed partial class SkillCatalogAgent
         await Task.WhenAll(Enumerable.Range(0, batches.Count).Select(RunAsync));
         // Nothing got through: let the caller report the orchestrator as unreachable.
         if (failed == batches.Count && batches.Count > 0)
-            throw new NineRouterException("Skill Orchestrator gagal pada semua batch.");
+            throw new NineRouterException(Lang.T("Skill Orchestrator gagal pada semua batch.", "The Skill Orchestrator failed on every batch."));
         return results.SelectMany(r => r).ToList();
     }
 }

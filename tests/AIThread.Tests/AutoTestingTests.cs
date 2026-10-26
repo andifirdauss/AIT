@@ -710,6 +710,7 @@ public class AutoTestingTests
     [InlineData("jalankan test lanjutan 2", 2)]
     [InlineData("Test lanjutan #1", 1)]
     [InlineData("run follow-up 3", 3)]
+    [InlineData("Run follow-up test number 2", 2)]
     [InlineData("lanjut test no. 4.", 4)]
     [InlineData("jalankan test lanjutan untuk approval", null)]
     [InlineData("tambah test lanjutan 2 untuk HR", null)]
@@ -737,6 +738,7 @@ public class AutoTestingTests
     [InlineData("password dev 123", "123")]
     [InlineData("  Password Dev: `P@ss w0rd`", null)]
     [InlineData("PASSWORD DEV=Rahasia#1", "Rahasia#1")]
+    [InlineData("dev password Secret#2", "Secret#2")]
     [InlineData("password dev", null)]
     [InlineData("ganti password dev jadi 1", null)]
     public void Development_password_replies_are_recognised(string reply, string? expected) =>

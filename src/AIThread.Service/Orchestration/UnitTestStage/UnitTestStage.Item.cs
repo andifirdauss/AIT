@@ -1,4 +1,5 @@
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -12,7 +13,7 @@ public sealed partial class UnitTestStage
             item = new UnitTestReportItem
             {
                 Id = isNew ? null : test.Id,
-                Number = isNew ? "baru" : test.DisplayNumber,
+                Number = isNew ? Lang.T("baru", "new") : test.DisplayNumber,
                 Title = test.Title,
                 File = test.TestFile
             };

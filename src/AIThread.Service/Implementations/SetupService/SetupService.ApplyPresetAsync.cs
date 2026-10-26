@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -12,7 +13,7 @@ public sealed partial class SetupService
     public async Task<SetupPresetResultDto> ApplyPresetAsync(SetupPresetRequest request, CancellationToken cancellationToken = default)
     {
         var strong = request.StrongModel?.Trim();
-        if (string.IsNullOrEmpty(strong)) throw new AppValidationException("Pilih model kuat untuk planner.");
+        if (string.IsNullOrEmpty(strong)) throw new AppValidationException(Lang.T("Pilih model kuat untuk planner.", "Choose a strong model for the planner."));
         var cheap = string.IsNullOrWhiteSpace(request.CheapModel) ? strong : request.CheapModel.Trim();
 
         var existing = await nodeService.GetAllAsync(cancellationToken);
@@ -30,7 +31,7 @@ public sealed partial class SetupService
         var delegations = PlannerDelegations(FindPreset(existing, NodeRole.Planner), presetToolsId, request.ToolsNode ? toolsNode?.Node.Id : null);
         await PresetAsync(existing, NodeRole.Planner, strong, true, delegations, results, cancellationToken);
 
-        activityLog.Info("node", $"Setup: preset pipeline diterapkan — model kuat {strong}, model murah {cheap}.");
+        activityLog.Info("node", Lang.T($"Setup: preset pipeline diterapkan — model kuat {strong}, model murah {cheap}.", $"Setup: pipeline preset applied — strong model {strong}, cheap model {cheap}."));
         return new SetupPresetResultDto(results);
     }
 }

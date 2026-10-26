@@ -1,5 +1,6 @@
-using System.Text;
 using System.Text.RegularExpressions;
+using System.Text;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Implementations.Cli;
 
@@ -49,7 +50,7 @@ public static partial class YamlProviderBlock
     {
         var lines = Lines(Remove(content));
         if (lines.Any(l => FlowProviders().IsMatch(l)))
-            return "models.yml memakai bentuk \"providers: { ... }\" dalam satu baris. Ubah ke bentuk blok (satu provider per baris) dulu.";
+            return Lang.T("models.yml memakai bentuk \"providers: { ... }\" dalam satu baris. Ubah ke bentuk blok (satu provider per baris) dulu.", "models.yml uses the one-line form \"providers: { ... }\". Change it to the block form (one provider per line) first.");
 
         var providers = lines.FindIndex(l => ProvidersKey().IsMatch(l));
         if (providers < 0) return null;
@@ -61,7 +62,7 @@ public static partial class YamlProviderBlock
             if (!char.IsWhiteSpace(lines[i][0])) break;
             if (indent is not null && lines[i].StartsWith(indent) && !char.IsWhiteSpace(lines[i][indent.Length])
                 && lines[i].Trim().StartsWith(providerId + ":", StringComparison.Ordinal))
-                return $"models.yml sudah punya provider \"{providerId}\" buatan Anda. Hapus atau ganti namanya dulu.";
+                return Lang.T($"models.yml sudah punya provider \"{providerId}\" buatan Anda. Hapus atau ganti namanya dulu.", $"models.yml already has a provider \"{providerId}\" made by you. Delete or rename it first.");
         }
         return null;
     }

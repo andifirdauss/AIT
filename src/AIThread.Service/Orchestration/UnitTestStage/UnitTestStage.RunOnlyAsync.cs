@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.UnitTests;
 
 namespace AIThread.Service.Orchestration;
@@ -15,7 +16,7 @@ public sealed partial class UnitTestStage
         await progress.PhaseAsync("🧪", $"Unit test · {selected.Count} test", cancellationToken);
         if (selected.Count == 0 || !session.CanRun)
         {
-            await progress.StepAsync(session.CanRun ? "tidak ada test yang dijalankan" : "tidak ada runner test yang bisa dijalankan di mesin ini", cancellationToken, last: true);
+            await progress.StepAsync(session.CanRun ? Lang.T("tidak ada test yang dijalankan", "no test was run") : Lang.T("tidak ada runner test yang bisa dijalankan di mesin ini", "no test runner that can run on this machine"), cancellationToken, last: true);
             return;
         }
 
@@ -67,13 +68,13 @@ public sealed partial class UnitTestStage
         round.Regressions = selected.Where(t => verdicts[t.Id].IsFailure).Select(t => t.DisplayNumber).ToList();
 
         var icon = round.Failed > 0 ? "🔴" : round.Skipped > 0 ? "🟡" : "✅";
-        await progress.StepAsync($"{icon} {round.Passed} lolos" + (round.Failed > 0 ? $", {round.Failed} gagal" : string.Empty)
-                                 + (round.Skipped > 0 ? $", {round.Skipped} dilewati" : string.Empty)
+        await progress.StepAsync(Lang.T($"{icon} {round.Passed} lolos", $"{icon} {round.Passed} passed") + (round.Failed > 0 ? Lang.T($", {round.Failed} gagal", $", {round.Failed} failed") : string.Empty)
+                                 + (round.Skipped > 0 ? Lang.T($", {round.Skipped} dilewati", $", {round.Skipped} skipped") : string.Empty)
                                  + (toRun.Count > 0 ? $" ({round.DurationMs / 1000.0:0.0}s)" : string.Empty)
-                                 + (reused > 0 ? $" · {reused} dari run_tests planner" : string.Empty), cancellationToken, last: true);
+                                 + (reused > 0 ? Lang.T($" · {reused} dari run_tests planner", $" · {reused} from the planner's run_tests") : string.Empty), cancellationToken, last: true);
         foreach (var test in selected.Where(t => verdicts[t.Id].IsFailure).Take(MaxProgressFailures))
             await progress.DetailAsync($"{test.DisplayNumber} {test.Title} — {OneLine(verdicts[test.Id].Message)}", cancellationToken, underLast: true);
         recorder.Log(round.Failed > 0 ? ActivityLevel.Warning : ActivityLevel.Success,
-            $"Unit test (tanpa perubahan kode): {selected.Count} test, {round.Passed} lolos, {round.Failed} gagal, {round.Skipped} dilewati.");
+            Lang.T($"Unit test (tanpa perubahan kode): {selected.Count} test, {round.Passed} lolos, {round.Failed} gagal, {round.Skipped} dilewati.", $"Unit tests (no code change): {selected.Count} tests, {round.Passed} passed, {round.Failed} failed, {round.Skipped} skipped."));
     }
 }

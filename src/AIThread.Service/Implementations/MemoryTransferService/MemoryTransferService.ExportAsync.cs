@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public sealed partial class MemoryTransferService
         if (filter.Level is null or MemoryLevel.Short)
         {
             if (!shortStore.IsConnected)
-                throw new AppValidationException("Penyimpanan short memory tidak terhubung — pilih level Long untuk mengekspor long memory saja.");
+                throw new AppValidationException(Lang.T("Penyimpanan short memory tidak terhubung — pilih level Long untuk mengekspor long memory saja.", "The short memory storage is not connected — choose the Long level to export long memory only."));
 
             items.AddRange((await shortStore.GetAllAsync())
                 .Where(r => (filter.Type is null || r.Type == filter.Type)

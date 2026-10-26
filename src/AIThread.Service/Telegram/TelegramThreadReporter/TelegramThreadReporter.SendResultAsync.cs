@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Telegram;
 
@@ -15,7 +16,7 @@ public sealed partial class TelegramThreadReporter
         if (detail.Tasks.Any(t => !string.IsNullOrWhiteSpace(t.Diff)))
         {
             blocks.Add(string.Empty);
-            blocks.Add("<i>Kirim /diff untuk melihat perubahan file.</i>");
+            blocks.Add(Lang.T("<i>Kirim /diff untuk melihat perubahan file.</i>", "<i>Send /diff to see the file changes.</i>"));
         }
 
         var chunks = TelegramFormatter.Pack(blocks);
@@ -27,6 +28,6 @@ public sealed partial class TelegramThreadReporter
         }
         if (chunks.Count > MaxResultMessages)
             await api.SendAsync(context.ChatId,
-                $"… {chunks.Count - MaxResultMessages} bagian lagi tidak dikirim. Lihat detail thread di dashboard AIT.", cancellationToken: cancellationToken);
+                Lang.T($"… {chunks.Count - MaxResultMessages} bagian lagi tidak dikirim. Lihat detail thread di dashboard AIT.", $"… {chunks.Count - MaxResultMessages} more parts not sent. See the thread detail in the AIT dashboard."), cancellationToken: cancellationToken);
     }
 }

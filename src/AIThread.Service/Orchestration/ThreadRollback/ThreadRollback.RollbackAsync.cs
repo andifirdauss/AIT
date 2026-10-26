@@ -1,4 +1,5 @@
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
@@ -9,10 +10,10 @@ public sealed partial class ThreadRollback
     {
         // Holding the registry entry keeps a retry from starting while files are restored.
         using var running = registry.TryRegister(threadId, CancellationToken.None)
-                            ?? throw new AppValidationException("Thread ini sedang berjalan; perubahan baru bisa dibatalkan setelah thread selesai.");
+                            ?? throw new AppValidationException(Lang.T("Thread ini sedang berjalan; perubahan baru bisa dibatalkan setelah thread selesai.", "This thread is running; its changes can only be rolled back after it finishes."));
         try
         {
-            var loaded = await LoadAsync(threadId, cancellationToken) ?? throw new AppValidationException("Thread tidak ditemukan.");
+            var loaded = await LoadAsync(threadId, cancellationToken) ?? throw new AppValidationException(Lang.T("Thread tidak ditemukan.", "Thread not found."));
             var state = loaded with { Running = false }; // the registry entry is our own
             if (Refusal(state) is { } refusal) throw new AppValidationException(refusal);
 

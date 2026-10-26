@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -23,13 +24,13 @@ public sealed partial class ModuleSummaryWriter
             await File.WriteAllBytesAsync(path + ".tmp", JsonSerializer.SerializeToUtf8Bytes(file, BackupJson), cancellationToken);
             File.Move(path + ".tmp", path);
             _backupPath = path;
-            activityLog.Info("memory", $"Backup memory sebelum migrasi ke catatan perubahan: {file.Items.Count} memory → {path}");
+            activityLog.Info("memory", Lang.T($"Backup memory sebelum migrasi ke catatan perubahan: {file.Items.Count} memory → {path}", $"Memory backup before the migration to change entries: {file.Items.Count} memories → {path}"));
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _lastMessage = $"Backup memory gagal, migrasi memory lama ditunda: {ex.Message}";
-            activityLog.Warn("memory", $"Backup memory gagal, migrasi memory lama ke ringkasan modul ditunda: {ex.Message}");
+            _lastMessage = Lang.T($"Backup memory gagal, migrasi memory lama ditunda: {ex.Message}", $"Memory backup failed, the migration of old memory is postponed: {ex.Message}");
+            activityLog.Warn("memory", Lang.T($"Backup memory gagal, migrasi memory lama ke ringkasan modul ditunda: {ex.Message}", $"Memory backup failed, the migration of old memory to module summaries is postponed: {ex.Message}"));
             logger.LogWarning(ex, "Memory backup before the change log migration failed.");
             return false;
         }

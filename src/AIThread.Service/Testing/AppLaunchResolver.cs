@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
 
@@ -22,9 +23,9 @@ public static partial class AppLaunchResolver
 {
     public const string RunKey = "run";
 
-    public const string Unsupported =
-        "AIT belum tahu cara menjalankan project ini (yang dikenali: project ASP.NET Core, Laravel, script \"dev\"/\"start\"/\"serve\" di package.json). " +
-        "Tambahkan perintahnya di .aithread/project.json, mis. { \"run\": \"npm run dev\" }, atau jalankan aplikasinya sendiri.";
+    public static string Unsupported =>
+        Lang.T("AIT belum tahu cara menjalankan project ini (yang dikenali: project ASP.NET Core, Laravel, script \"dev\"/\"start\"/\"serve\" di package.json). ", "AIT does not know yet how to run this project (recognized: ASP.NET Core projects, Laravel, the \"dev\"/\"start\"/\"serve\" script in package.json). ") +
+        Lang.T("Tambahkan perintahnya di .aithread/project.json, mis. { \"run\": \"npm run dev\" }, atau jalankan aplikasinya sendiri.", "Add the command in .aithread/project.json, e.g. { \"run\": \"npm run dev\" }, or start the application yourself.");
 
     private static readonly string[] ProjectExtensions = [".csproj", ".fsproj", ".vbproj"];
     private static readonly string[] NodeScripts = ["dev", "start", "serve"];
@@ -36,7 +37,7 @@ public static partial class AppLaunchResolver
         error = null;
         if (!TestUrls.TryParseLocal(baseUrl, out var url))
         {
-            error = $"'{baseUrl}' bukan alamat di komputer ini.";
+            error = Lang.T($"'{baseUrl}' bukan alamat di komputer ini.", $"'{baseUrl}' is not an address on this computer.");
             return null;
         }
 
@@ -74,7 +75,7 @@ public static partial class AppLaunchResolver
             if (NodeScript(Path.Combine(directory, "package.json")) is not { } script) continue;
             if (!Directory.Exists(Path.Combine(directory, "node_modules")) && !Directory.Exists(Path.Combine(root, "node_modules")))
             {
-                error = $"node_modules belum ada di {Where(root, directory)} (jalankan npm install dulu).";
+                error = Lang.T($"node_modules belum ada di {Where(root, directory)} (jalankan npm install dulu).", $"node_modules does not exist yet in {Where(root, directory)} (run npm install first).");
                 return null;
             }
 
@@ -105,8 +106,8 @@ public static partial class AppLaunchResolver
         else if (web.Count == 1) project = web[0];
         if (project is null)
         {
-            error = $"Ada {web.Count} project web .NET dan tidak satu pun memakai port {url.Port} di Properties/launchSettings.json, jadi AIT tidak tahu mana yang dijalankan. " +
-                    "Tulis perintahnya di .aithread/project.json, mis. { \"run\": \"dotnet run --project src/Web\" }.";
+            error = Lang.T($"Ada {web.Count} project web .NET dan tidak satu pun memakai port {url.Port} di Properties/launchSettings.json, jadi AIT tidak tahu mana yang dijalankan. ", $"There are {web.Count} .NET web projects and none of them uses port {url.Port} in Properties/launchSettings.json, so AIT does not know which one to run. ") +
+                    Lang.T("Tulis perintahnya di .aithread/project.json, mis. { \"run\": \"dotnet run --project src/Web\" }.", "Write the command in .aithread/project.json, e.g. { \"run\": \"dotnet run --project src/Web\" }.");
             return null;
         }
 
@@ -210,7 +211,7 @@ public static partial class AppLaunchResolver
         Path.GetRelativePath(root, directory) is "." ? "root project" : Path.GetRelativePath(root, directory).Replace('\\', '/');
 
     private static string Suffix(string root, string directory) =>
-        Path.GetRelativePath(root, directory) is "." ? string.Empty : $" (di {Path.GetRelativePath(root, directory).Replace('\\', '/')})";
+        Path.GetRelativePath(root, directory) is "." ? string.Empty : Lang.T($" (di {Path.GetRelativePath(root, directory).Replace('\\', '/')})", $" (in {Path.GetRelativePath(root, directory).Replace('\\', '/')})");
 
     private static int Depth(string relativePath) => relativePath.Replace('\\', '/').Count(c => c == '/');
 

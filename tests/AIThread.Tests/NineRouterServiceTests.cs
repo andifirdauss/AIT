@@ -52,10 +52,11 @@ public class NineRouterServiceTests
     }
 
     [Theory]
-    [InlineData(GoodKey, true, null)]
-    [InlineData("sk-wrong", false, NineRouterService.KeyRejectedMessage)]
-    public async Task Status_reports_whether_the_stored_key_is_accepted(string key, bool valid, string? error)
+    [InlineData(GoodKey, true)]
+    [InlineData("sk-wrong", false)]
+    public async Task Status_reports_whether_the_stored_key_is_accepted(string key, bool valid)
     {
+        var error = valid ? null : NineRouterService.KeyRejectedMessage;
         var status = await Create(key, requireApiKey: true).CheckStatusAsync();
 
         Assert.True(status.HasApiKey);

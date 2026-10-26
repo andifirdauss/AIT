@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
@@ -13,7 +14,7 @@ public sealed partial class TestScenarioService
         await using var db = await longStore.CreateTestingAsync(cancellationToken);
         var key = project.Key;
         var scenario = await db.TestingScenarios.AsNoTracking().FirstOrDefaultAsync(s => s.Id == scenarioId && s.ProjectKey == key, cancellationToken)
-                       ?? throw new AppValidationException("Skenario tidak ditemukan.");
+                       ?? throw new AppValidationException(Lang.T("Skenario tidak ditemukan.", "Scenario not found."));
         return new ScenarioFile(ScenarioSheet.Write(scenario, await accounts.GetAsync(key, cancellationToken)), $"{scenario.Slug}.xlsx");
     }
 }

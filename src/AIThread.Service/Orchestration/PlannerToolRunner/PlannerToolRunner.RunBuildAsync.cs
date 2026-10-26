@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 
 namespace AIThread.Service.Orchestration;
@@ -14,7 +15,7 @@ public sealed partial class PlannerToolRunner
         if (!input.Settings.BuildEnabled)
         {
             await progress.StepAsync(head + shownTarget, cancellationToken, hang: hang);
-            await progress.DetailAsync("🟡 build dimatikan di setting", cancellationToken, hang);
+            await progress.DetailAsync(Lang.T("🟡 build dimatikan di setting", "🟡 build turned off in the settings"), cancellationToken, hang);
             return new PlannerToolOutcome("Error: building is disabled in the AIT settings.", null, true);
         }
 

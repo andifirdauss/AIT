@@ -1,6 +1,7 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Memory;
@@ -28,7 +29,9 @@ public sealed partial class MemoryExtractor
 
             // Counts against the node's Max paralel like any other call to it (usually the wrapper node), and falls
             // back like it.
-            var input = BuildInput(thread, plan, execution, finalText, changed, map, modules, existing);
+            // The words of the request when they tell, else the UI language.
+            var language = TextLanguage.Guess([thread.Prompt, plan.Summary]) ?? TextLanguage.Ui;
+            var input = BuildInput(thread, plan, execution, finalText, changed, map, modules, existing, language);
             var reply = await caller.ChatAsync(node, candidate => Task.FromResult(new ChatCompletionRequest
             {
                 Model = candidate.Model,
@@ -41,7 +44,7 @@ public sealed partial class MemoryExtractor
                 MaxTokens = Math.Min(candidate.MaxTokens, 4096)
             }), cancellationToken, onSwitch: s =>
             {
-                activityLog.Warn("memory", $"Ekstraksi memory: `{s.From.Model}` tidak tersedia ({s.Reason}), beralih ke `{s.To.Model}`.", thread.Id, thread.ProjectId);
+                activityLog.Warn("memory", Lang.T($"Ekstraksi memory: `{s.From.Model}` tidak tersedia ({s.Reason}), beralih ke `{s.To.Model}`.", $"Memory extraction: `{s.From.Model}` not available ({s.Reason}), switching to `{s.To.Model}`."), thread.Id, thread.ProjectId);
                 return Task.CompletedTask;
             });
 
@@ -64,10 +67,10 @@ public sealed partial class MemoryExtractor
             var area = areas is [{ } single] ? single : null;
             var entry = extracted.Entry with { Files = ChangeLog.MergeFiles(changed, extracted.Entry.Files) };
             var keywords = extracted.Keywords.Count > 0 ? extracted.Keywords : MemoryLabels.Tokens(entry.Title, 8);
-            var description = ChangeLog.Render(entry);
+            var description = ChangeLog.Render(entry, language == TextLanguage.English);
             if (TextLanguage.IsForeign(description))
             {
-                activityLog.Warn("memory", "Catatan perubahan tidak disimpan: model menulisnya dalam bahasa lain.", thread.Id, thread.ProjectId);
+                activityLog.Warn("memory", Lang.T("Catatan perubahan tidak disimpan: model menulisnya dalam bahasa lain.", "Change entry not saved: the model wrote it in another language."), thread.Id, thread.ProjectId);
                 return new MemoryExtraction(0, tokens);
             }
             try
@@ -76,7 +79,7 @@ public sealed partial class MemoryExtractor
                 var saved = await memoryService.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, projectId, module, MemoryKind.Change, keywords,
                     secrets.Redact(description), layers, area, extracted.OtherModules), thread.Id, cancellationToken);
                 activityLog.Info("memory",
-                    $"Catatan perubahan baru dari thread ini ({(saved.Level == MemoryLevel.Short ? "short" : "long")} memory): {saved.Label} — {entry.Title}",
+                    Lang.T($"Catatan perubahan baru dari thread ini ({(saved.Level == MemoryLevel.Short ? "short" : "long")} memory): {saved.Label} — {entry.Title}", $"New change entry from this thread ({(saved.Level == MemoryLevel.Short ? "short" : "long")} memory): {saved.Label} — {entry.Title}"),
                     thread.Id, thread.ProjectId);
                 return new MemoryExtraction(1, tokens);
             }
@@ -89,7 +92,7 @@ public sealed partial class MemoryExtractor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogWarning(ex, "Memory extraction failed for thread {ThreadId}", thread.Id);
-            activityLog.Warn("memory", $"Ekstraksi memory gagal: {ex.Message}", thread.Id, thread.ProjectId);
+            activityLog.Warn("memory", Lang.T($"Ekstraksi memory gagal: {ex.Message}", $"Memory extraction failed: {ex.Message}"), thread.Id, thread.ProjectId);
             return new MemoryExtraction(0, tokens, Failed: true);
         }
     }

@@ -61,12 +61,12 @@ public sealed class TrayIcon : IDisposable
             hInstance = instance,
             lpszClassName = className
         };
-        if (RegisterClassEx(ref windowClass) == 0) throw new InvalidOperationException("RegisterClassEx gagal.");
+        if (RegisterClassEx(ref windowClass) == 0) throw new InvalidOperationException(Lang.T("RegisterClassEx gagal.", "RegisterClassEx failed."));
 
         // A hidden top-level window rather than a message-only one: only top-level windows receive the
         // TaskbarCreated broadcast, which tells us Explorer restarted and the icon must be added again.
         _hwnd = CreateWindowEx(0x80 /* WS_EX_TOOLWINDOW */, className, "AIThread", 0, 0, 0, 0, 0, 0, 0, instance, 0);
-        if (_hwnd == 0) throw new InvalidOperationException("CreateWindowEx gagal.");
+        if (_hwnd == 0) throw new InvalidOperationException(Lang.T("CreateWindowEx gagal.", "CreateWindowEx failed."));
 
         _icon = ExtractIcon(instance, AppPaths.ExePath, 0);
         if (_icon <= 1) _icon = LoadIcon(0, 32512 /* IDI_APPLICATION */);

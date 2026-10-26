@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -39,14 +40,14 @@ public sealed partial class PlannerAgent
             Interlocked.Add(ref run.ToolsNodeTokens, result.Tokens);
             recorder.Investigation.Finding(question, result.Findings);
             // The wait for a tools node slot shows only when there was one: MaxConcurrency too low for the parallel calls.
-            var queued = result.QueueTime.TotalMilliseconds >= 100 ? $", antre {FinalReport.Duration(result.QueueTime)}" : string.Empty;
-            await progress.StepAsync(nodePrefix + ClientProgress.Pad("complete", PlannerTools.NameColumn) + $"{result.Steps} langkah · {FinalReport.Duration(result.Elapsed)} (model {FinalReport.Duration(result.ModelTime)}, laporan {FinalReport.Duration(result.ReportTime)}{queued}) · {FinalReport.Tokens(result.Tokens)} token{(result.CachedTokens > 0 ? $" · c{FinalReport.Tokens(result.CachedTokens)}" : string.Empty)} · {result.Node.Model}", cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
+            var queued = result.QueueTime.TotalMilliseconds >= 100 ? Lang.T($", antre {FinalReport.Duration(result.QueueTime)}", $", queued {FinalReport.Duration(result.QueueTime)}") : string.Empty;
+            await progress.StepAsync(nodePrefix + ClientProgress.Pad("complete", PlannerTools.NameColumn) + Lang.T($"{result.Steps} langkah · {FinalReport.Duration(result.Elapsed)} (model {FinalReport.Duration(result.ModelTime)}, laporan {FinalReport.Duration(result.ReportTime)}{queued}) · {FinalReport.Tokens(result.Tokens)} token{(result.CachedTokens > 0 ? $" · c{FinalReport.Tokens(result.CachedTokens)}" : string.Empty)} · {result.Node.Model}", $"{result.Steps} steps · {FinalReport.Duration(result.Elapsed)} (model {FinalReport.Duration(result.ModelTime)}, report {FinalReport.Duration(result.ReportTime)}{queued}) · {FinalReport.Tokens(result.Tokens)} tokens{(result.CachedTokens > 0 ? $" · c{FinalReport.Tokens(result.CachedTokens)}" : string.Empty)} · {result.Node.Model}"), cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
             return new PlannerToolOutcome(result.Findings, null);
         }
         catch (NineRouterException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            recorder.Log(ActivityLevel.Warning, $"Tools node '{group.Node.Name}' gagal menjawab investigasi {label}: {ex.Message}");
-            await progress.StepAsync(nodePrefix + ClientProgress.Pad("failed", PlannerTools.NameColumn) + $"tools node {group.Node.Model} gagal: {ex.Message}", cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
+            recorder.Log(ActivityLevel.Warning, Lang.T($"Tools node '{group.Node.Name}' gagal menjawab investigasi {label}: {ex.Message}", $"Tools node '{group.Node.Name}' failed to answer investigation {label}: {ex.Message}"));
+            await progress.StepAsync(nodePrefix + ClientProgress.Pad("failed", PlannerTools.NameColumn) + Lang.T($"tools node {group.Node.Model} gagal: {ex.Message}", $"tools node {group.Node.Model} failed: {ex.Message}"), cancellationToken, hang: PlannerToolRunner.Hang(nodePrefix));
             return new PlannerToolOutcome($"Error: the sub agent is unavailable ({ex.Message}). Try again later or plan with what you already know.", null, true);
         }
     }

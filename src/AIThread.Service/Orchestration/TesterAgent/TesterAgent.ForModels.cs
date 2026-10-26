@@ -1,4 +1,5 @@
 using System.Text;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -25,7 +26,7 @@ public sealed partial class TesterAgent
                 .Append(report.LoginUrl is null ? string.Empty : $" ({report.LoginUrl})")
                 .Append(!report.AskedLogin ? ".\n"
                     : report.LoginKind == TestingReport.LoginKindDevPassword
-                        ? ". The project's development password was refused: AIT asks the developer to reply with \"password dev <value>\" (kept for the project) or \"login <username> <password>\" (this session only); the test then runs again.\n"
+                        ? ". The project's development password was refused: AIT asks the developer to reply with \"dev password <value>\" (kept for the project) or \"login <username> <password>\" (this session only); the test then runs again.\n"
                         : ". AIT asks the developer to reply in the chat with \"login <username> <password>\"; the test then runs again.\n");
         if (report.Summary is not null) builder.Append($"Tester summary: {report.Summary}\n");
         foreach (var scenario in report.Scenarios)
@@ -41,7 +42,7 @@ public sealed partial class TesterAgent
             builder.Append("Browser errors:\n").Append(string.Concat(report.BrowserErrors.Take(MaxRequestsForModels).Select(e => $"- {e}\n")));
         if (report.FollowUps.Count > 0)
         {
-            builder.Append("Follow-up tests the tester suggests (already listed for the developer, who runs one by replying \"jalankan test lanjutan <number>\"):\n");
+            builder.Append(Lang.T("Follow-up tests the tester suggests (already listed for the developer, who runs one by replying \"jalankan test lanjutan <number>\"):\n", "Follow-up tests the tester suggests (already listed for the developer, who runs one by replying \"run follow-up test <number>\"):\n"));
             foreach (var followUp in report.FollowUps)
                 builder.Append($"- {followUp.Number}. {followUp.Title}").Append(followUp.Needs is null ? string.Empty : $" (needs: {followUp.Needs})")
                     .Append(followUp.LastRun is { } run ? $" — last run: {run.Outcome}" : string.Empty).Append('\n');

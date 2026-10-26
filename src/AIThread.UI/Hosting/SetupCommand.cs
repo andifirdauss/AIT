@@ -15,7 +15,7 @@ public static class SetupCommand
     public static string Usage => Lang.T("Pemakaian: AIThread.exe setup [export <file> | import <file> [--yes]]",
         "Usage: AIThread.exe setup [export <file> | import <file> [--yes]]");
 
-    private static readonly Dictionary<SetupProfileSection, string> SectionLabels = new()
+    private static Dictionary<SetupProfileSection, string> SectionLabels => new()
     {
         [SetupProfileSection.Router] = Lang.T("Koneksi 9router", "9router connection"),
         [SetupProfileSection.Orchestration] = Lang.T("Proxy & orkestrasi", "Proxy & orchestration"),

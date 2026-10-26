@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Orchestration;
@@ -14,7 +15,7 @@ public sealed partial class ThreadOrchestrator
         var (recorder, progress, request, wrapper) = (pipeline.Recorder, pipeline.Progress, pipeline.Request, pipeline.Wrapper);
         var thread = recorder.Thread;
         var unit = pipeline.UnitTests;
-        recorder.Log(ActivityLevel.Info, "Planner tidak mengubah kode; developer hanya meminta pengujian.");
+        recorder.Log(ActivityLevel.Info, Lang.T("Planner tidak mengubah kode; developer hanya meminta pengujian.", "The planner did not change code; the developer only asked for testing."));
 
         if (unit is not null && plan.Tests is { Run.Count: > 0 } tests)
         {
@@ -32,7 +33,7 @@ public sealed partial class ThreadOrchestrator
             t.Status = ThreadStatus.Wrapping;
             t.WrapperModel = wrapper?.Model;
         });
-        if (wrapper is not null) await progress.PhaseAsync("📦", $"Rangkuman · {wrapper.Model}", cancellationToken);
+        if (wrapper is not null) await progress.PhaseAsync("📦", Lang.T($"Rangkuman · {wrapper.Model}", $"Summary · {wrapper.Model}"), cancellationToken);
         await progress.FinalAsync(FinalReport.TestOnlyStatus(unitReport, testing?.Report), cancellationToken);
 
         var unitText = "No file was changed: the developer only asked for a test." + (unitReport is null ? string.Empty : "\n" + UnitTestStage.Describe(unitReport));
@@ -68,7 +69,7 @@ public sealed partial class ThreadOrchestrator
             }
             catch (NineRouterException ex)
             {
-                recorder.Log(ActivityLevel.Warning, $"Wrapper gagal ({ex.Message}); memakai ringkasan otomatis.");
+                recorder.Log(ActivityLevel.Warning, Lang.T($"Wrapper gagal ({ex.Message}); memakai ringkasan otomatis.", $"Wrapper failed ({ex.Message}); using an automatic summary."));
                 finalText = fallback;
                 if (!narrated) await progress.FinalAsync(plan.Answer ?? plan.Summary, cancellationToken);
             }
@@ -81,7 +82,7 @@ public sealed partial class ThreadOrchestrator
         if (unitReport?.Outcome == UnitTestReport.Failed) notes.Add(UnitTestNote(unitReport));
         if (testing?.Report.Outcome == TestingReport.Failed) notes.Add(TestingNote(testing.Report));
         await FinishAsync(recorder, ThreadStatus.Completed, finalText, pipeline.Total, wrapTokens, wrapClock.ElapsedMilliseconds, notes.Count > 0 ? string.Join(" ", notes) : null);
-        recorder.Log(ActivityLevel.Success, $"Thread selesai (hanya pengujian) dalam {Seconds(pipeline.Total.ElapsedMilliseconds)}.");
+        recorder.Log(ActivityLevel.Success, Lang.T($"Thread selesai (hanya pengujian) dalam {Seconds(pipeline.Total.ElapsedMilliseconds)}.", $"Thread finished (testing only) in {Seconds(pipeline.Total.ElapsedMilliseconds)}."));
 
         await FooterAsync(progress, request, pipeline.Settings, thread, ThreadStatus.Completed, pipeline.Total, pipeline.MemoriesUsed, null, false, cancellationToken);
         if (pipeline.KeepContext) ScheduleContextKeeping(thread, request);

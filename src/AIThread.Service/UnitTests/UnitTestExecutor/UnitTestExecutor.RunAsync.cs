@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Verification;
 
 namespace AIThread.Service.UnitTests;
@@ -24,7 +25,7 @@ public sealed partial class UnitTestExecutor
             var failing = group.Where(t => verdicts[t.Id] is { IsFailure: true, Requirement: null }).ToList();
             if (!retryFailures || !perTest || failing.Count == 0) continue;
             var (retry, retryVerdicts, _) = await RunSuiteAsync(suite, failing, timeout, cancellationToken);
-            runs.Add(retry with { Display = retry.Display + " (ulang yang gagal)" });
+            runs.Add(retry with { Display = retry.Display + Lang.T(" (ulang yang gagal)", " (rerun of the failed ones)") });
             foreach (var test in failing)
                 if (retryVerdicts.TryGetValue(test.Id, out var second) && second.Result == UnitTestResult.Passed)
                     verdicts[test.Id] = second with { Flaky = true, Message = verdicts[test.Id].Message };

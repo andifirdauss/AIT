@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -13,7 +14,7 @@ public sealed partial class ExecutionEngine
             e.Error = reason;
             e.CompletedAt = DateTime.UtcNow;
         });
-        await columns.WriteAsync(progress, "⏩", task.Id, "—", "—", $"dilewati — {reason}", cancellationToken);
+        await columns.WriteAsync(progress, "⏩", task.Id, "—", "—", Lang.T($"dilewati — {reason}", $"skipped — {reason}"), cancellationToken);
         return new TaskResult(task.Id, task.File, ThreadTaskStatus.Skipped, null, null, reason, 0, 0);
     }
 }

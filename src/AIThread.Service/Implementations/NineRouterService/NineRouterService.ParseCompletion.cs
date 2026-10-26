@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -7,7 +8,7 @@ public sealed partial class NineRouterService
 {
     private static ChatCompletionResult ParseCompletion(string json)
     {
-        var root = JsonNode.Parse(json) ?? throw new NineRouterException("Respons 9router kosong.");
+        var root = JsonNode.Parse(json) ?? throw new NineRouterException(Lang.T("Respons 9router kosong.", "Empty 9router response."));
         if (root["error"] is { } error)
             throw new NineRouterException(GetString(error["message"]) ?? error.ToJsonString(), 502);
 

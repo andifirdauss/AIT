@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using AIThread.Common.DTOs;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 
 namespace AIThread.Service.Implementations;
@@ -46,7 +47,7 @@ public sealed partial class NineRouterService
         catch (Exception ex) when (ex is HttpRequestException or NineRouterException or JsonException
                                        || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
-            return Offline(baseUrl, hasKey, ex is OperationCanceledException ? "Timeout (5 detik)" : ex.Message);
+            return Offline(baseUrl, hasKey, ex is OperationCanceledException ? Lang.T("Timeout (5 detik)", "Timeout (5 seconds)") : ex.Message);
         }
     }
 }

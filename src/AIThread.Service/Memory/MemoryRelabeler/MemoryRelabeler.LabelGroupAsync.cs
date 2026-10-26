@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Common.Memory;
 using AIThread.Service.Orchestration;
 using AIThread.Service.Skills;
@@ -16,7 +17,7 @@ public sealed partial class MemoryRelabeler
         {
             var reviewed = 0;
             foreach (var candidate in candidates)
-                if (await SaveReviewAsync(candidate, "Project memory tanpa project key dan tanpa project yang terdaftar.", cancellationToken)) reviewed++;
+                if (await SaveReviewAsync(candidate, Lang.T("Project memory tanpa project key dan tanpa project yang terdaftar.", "Project memory without a project key and without a registered project."), cancellationToken)) reviewed++;
             return (0, reviewed);
         }
 
@@ -33,7 +34,7 @@ public sealed partial class MemoryRelabeler
         try
         {
             (json, _) = await ai.AskJsonAsync(AgentPrompts.MemoryRelabeler, Input(key, candidates.First().ProjectName, modules, knowledgeModules, ids, hints), MaxTokens, cancellationToken);
-            if (json is null) failure = "model tidak menjawab JSON";
+            if (json is null) failure = Lang.T("model tidak menjawab JSON", "the model did not answer with JSON");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -63,7 +64,7 @@ public sealed partial class MemoryRelabeler
             }
             else if (candidate.Attempts >= MaxAttempts)
             {
-                var reason = $"Gagal dilabeli otomatis {MaxAttempts} kali" + (failure is null ? "." : $": {failure}");
+                var reason = Lang.T($"Gagal dilabeli otomatis {MaxAttempts} kali", $"Could not be labeled automatically {MaxAttempts} times") + (failure is null ? "." : $": {failure}");
                 if (await SaveReviewAsync(candidate, reason, cancellationToken)) reviewedCount++;
             }
         }

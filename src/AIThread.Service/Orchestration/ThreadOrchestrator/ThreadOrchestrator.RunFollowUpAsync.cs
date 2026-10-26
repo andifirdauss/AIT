@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Models;
 using Microsoft.Extensions.Logging;
 
@@ -22,9 +23,9 @@ public sealed partial class ThreadOrchestrator
         var clock = Stopwatch.StartNew();
         try
         {
-            var report = TestingReport.FromJson(thread.TestingJson) ?? throw new AppValidationException("Thread ini belum punya hasil testing.");
+            var report = TestingReport.FromJson(thread.TestingJson) ?? throw new AppValidationException(Lang.T("Thread ini belum punya hasil testing.", "This thread has no testing result yet."));
             var followUp = report.FollowUps.FirstOrDefault(f => f.Number == number)
-                           ?? throw new AppValidationException($"Test lanjutan {number} tidak ada di thread ini.");
+                           ?? throw new AppValidationException(Lang.T($"Test lanjutan {number} tidak ada di thread ini.", $"Follow-up test {number} is not in this thread."));
             var test = plan.Test!;
             var followUpPlan = new ThreadPlan
             {
@@ -42,13 +43,13 @@ public sealed partial class ThreadOrchestrator
                 }
             };
 
-            recorder.Log(ActivityLevel.Info, $"Test lanjutan {number} dijalankan: {followUp.Title}");
+            recorder.Log(ActivityLevel.Info, Lang.T($"Test lanjutan {number} dijalankan: {followUp.Title}", $"Follow-up test {number} started: {followUp.Title}"));
             await recorder.UpdateThreadAsync(t =>
             {
                 t.Status = ThreadStatus.Testing;
                 t.TesterModel = tester.Model;
             });
-            await progress.PhaseAsync("🧭", $"Test lanjutan {number} · {followUp.Title} · {tester.Model}", cancellationToken);
+            await progress.PhaseAsync("🧭", Lang.T($"Test lanjutan {number} · {followUp.Title} · {tester.Model}", $"Follow-up test {number} · {followUp.Title} · {tester.Model}"), cancellationToken);
             var result = AskForLogin(await testerAgent.RunAsync(new TestingInput(tester, request, followUpPlan, execution, project, null, canAskLogin, report.Values),
                 recorder, progress, cancellationToken), thread.SessionId, project.ProjectId, thread.Id);
 
@@ -74,7 +75,7 @@ public sealed partial class ThreadOrchestrator
                 t.TesterModel = result.Node.Model;
             });
             var closing = TestingClosing(run);
-            recorder.Log(run.Outcome == TestingReport.Passed ? ActivityLevel.Success : ActivityLevel.Warning, $"Test lanjutan {number}: {closing}.");
+            recorder.Log(run.Outcome == TestingReport.Passed ? ActivityLevel.Success : ActivityLevel.Warning, Lang.T($"Test lanjutan {number}: {closing}.", $"Follow-up test {number}: {closing}."));
             await progress.StepAsync(closing, cancellationToken, last: true);
             // The parent's suggestions (with the new ones) go along, so the answer says what can run next.
             return result with { Report = WithFollowUps(run, report) };
@@ -88,7 +89,7 @@ public sealed partial class ThreadOrchestrator
         {
             var cancelled = ex is OperationCanceledException;
             if (!cancelled) logger.LogError(ex, "Follow-up test {Number} of thread {ThreadId} crashed", number, thread.Id);
-            recorder.Log(cancelled ? ActivityLevel.Warning : ActivityLevel.Error, cancelled ? "Test lanjutan dibatalkan." : $"Test lanjutan gagal: {ex.Message}");
+            recorder.Log(cancelled ? ActivityLevel.Warning : ActivityLevel.Error, cancelled ? Lang.T("Test lanjutan dibatalkan.", "Follow-up test cancelled.") : Lang.T($"Test lanjutan gagal: {ex.Message}", $"Follow-up test failed: {ex.Message}"));
             await recorder.UpdateThreadAsync(t => t.Status = ThreadStatus.Completed);
             return null;
         }

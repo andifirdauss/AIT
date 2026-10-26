@@ -1,5 +1,6 @@
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +24,7 @@ public sealed partial class ThreadOrchestrator
         {
             Prompt = $"{thread.Prompt}\n\n---\nAIT asked:{pending.Question.Question}\nDeveloper answered: {request.Prompt}"
         };
-        activityLog.Info("thread", $"Jawaban untuk pertanyaan planner diterima: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}", thread.Id, thread.ProjectId);
+        activityLog.Info("thread", Lang.T($"Jawaban untuk pertanyaan planner diterima: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}", $"Answer to the planner's question received: {Truncate(request.Prompt.ReplaceLineEndings(" "), 160)}"), thread.Id, thread.ProjectId);
         return new PreparedThread(thread, project, clarified, pending, request.Prompt);
     }
 }

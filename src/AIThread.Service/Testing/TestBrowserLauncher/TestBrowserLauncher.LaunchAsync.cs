@@ -1,3 +1,4 @@
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Playwright;
 
@@ -10,7 +11,7 @@ public sealed partial class TestBrowserLauncher
     {
         if (!await _gate.WaitAsync(0, cancellationToken))
         {
-            await notice("browser tester sedang dipakai thread lain — menunggu giliran");
+            await notice(Lang.T("browser tester sedang dipakai thread lain — menunggu giliran", "the tester browser is in use by another thread — waiting for its turn"));
             await _gate.WaitAsync(cancellationToken);
         }
 
@@ -34,7 +35,7 @@ public sealed partial class TestBrowserLauncher
                 logger.LogInformation("Tester browser opened: {Browser}", name);
                 return browser;
             }
-            throw new InvalidOperationException($"Browser tester tidak bisa dibuka ({string.Join("; ", failures)}).");
+            throw new InvalidOperationException(Lang.T($"Browser tester tidak bisa dibuka ({string.Join("; ", failures)}).", $"The tester browser cannot be opened ({string.Join("; ", failures)})."));
         }
         catch
         {

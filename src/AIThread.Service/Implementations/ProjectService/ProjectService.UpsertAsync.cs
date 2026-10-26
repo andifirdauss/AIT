@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
+using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,7 +41,7 @@ public sealed partial class ProjectService
         }
 
         eventBus.Publish(AppEvent.Create(AppEventTypes.ProjectChanged, new { project.Id, action = "created" }));
-        activityLog.Success("project", $"Project baru terdaftar: {project.Name} ({rootPath}).", projectId: project.Id);
+        activityLog.Success("project", Lang.T($"Project baru terdaftar: {project.Name} ({rootPath}).", $"New project registered: {project.Name} ({rootPath})."), projectId: project.Id);
         return project;
     }
 }

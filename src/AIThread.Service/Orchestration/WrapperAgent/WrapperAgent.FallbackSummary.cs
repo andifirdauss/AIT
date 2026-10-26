@@ -1,5 +1,6 @@
 using System.Text;
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -10,7 +11,7 @@ public sealed partial class WrapperAgent
         UnitTestReport? unitTests = null)
     {
         var builder = new StringBuilder();
-        builder.Append($"**Ringkasan:** {plan.Summary}\n\n");
+        builder.Append(Lang.T($"**Ringkasan:** {plan.Summary}\n\n", $"**Summary:** {plan.Summary}\n\n"));
         foreach (var result in execution.Results)
         {
             var icon = result.Status switch
@@ -26,13 +27,13 @@ public sealed partial class WrapperAgent
         {
             var outcome = verification.Outcome switch
             {
-                VerificationReport.Passed => "✅ lolos",
-                VerificationReport.Failed => "⚠️ masih ada masalah",
-                _ => "❔ tidak dapat dipastikan"
+                VerificationReport.Passed => Lang.T("✅ lolos", "✅ passed"),
+                VerificationReport.Failed => Lang.T("⚠️ masih ada masalah", "⚠️ issues remain"),
+                _ => Lang.T("❔ tidak dapat dipastikan", "❔ could not be determined")
             };
-            builder.Append($"\n**Verifikasi:** {outcome}");
+            builder.Append(Lang.T($"\n**Verifikasi:** {outcome}", $"\n**Verification:** {outcome}"));
             if (last.Build is { } build) builder.Append($" — {build.Headline}");
-            if (last.Review is { Error: null } review) builder.Append(review.Approved ? " · reviewer setuju" : $" · reviewer: {review.Issues.Count} masalah");
+            if (last.Review is { Error: null } review) builder.Append(review.Approved ? Lang.T(" · reviewer setuju", " · reviewer approved") : Lang.T($" · reviewer: {review.Issues.Count} masalah", $" · reviewer: {review.Issues.Count} issues"));
             builder.Append('\n');
             foreach (var error in last.Build?.Errors.Take(10) ?? []) builder.Append($"- `{error}`\n");
             foreach (var issue in last.Review?.Issues ?? []) builder.Append($"- `{issue.File}` — {issue.Problem}\n");

@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 using AIThread.Data.Context;
 using AIThread.Data.Messaging;
 using AIThread.Service.Interfaces;
@@ -48,7 +49,7 @@ public sealed class ThreadLifecycleWorker(
                     .SetProperty(t => t.CompletedAt, now)
                     .SetProperty(t => t.UpdatedAt, now), cancellationToken);
             if (waiting > 0)
-                activityLog.Warn("thread", $"{waiting} thread yang menunggu jawaban pertanyaan planner ditutup karena AIT di-restart.");
+                activityLog.Warn("thread", Lang.T($"{waiting} thread yang menunggu jawaban pertanyaan planner ditutup karena AIT di-restart.", $"{waiting} threads waiting for an answer to a planner question were closed because AIT restarted."));
 
             var threads = await db.Threads
                 .Where(t => t.Status == ThreadStatus.Pending || t.Status == ThreadStatus.Planning
@@ -68,7 +69,7 @@ public sealed class ThreadLifecycleWorker(
                     .SetProperty(t => t.CompletedAt, now)
                     .SetProperty(t => t.UpdatedAt, now), cancellationToken);
 
-            activityLog.Warn("thread", $"{threads} thread yang tertinggal dari sesi AIT sebelumnya ditandai dibatalkan.");
+            activityLog.Warn("thread", Lang.T($"{threads} thread yang tertinggal dari sesi AIT sebelumnya ditandai dibatalkan.", $"{threads} threads left over from the previous AIT session were marked cancelled."));
         }
         catch (Exception ex)
         {
@@ -89,8 +90,8 @@ public sealed class ThreadLifecycleWorker(
                 try
                 {
                     var closed = await UnansweredQuestions.CloseAsync(dbFactory, eventBus, expired.Select(q => q.ThreadId).ToList(),
-                        $"Pertanyaan planner tidak dijawab dalam {PendingQuestionStore.Lifetime.TotalHours:0} jam.");
-                    if (closed > 0) activityLog.Info("thread", $"{closed} thread ditutup karena pertanyaan planner tidak dijawab.");
+                        Lang.T($"Pertanyaan planner tidak dijawab dalam {PendingQuestionStore.Lifetime.TotalHours:0} jam.", $"The planner question was not answered within {PendingQuestionStore.Lifetime.TotalHours:0} hours."));
+                    if (closed > 0) activityLog.Info("thread", Lang.T($"{closed} thread ditutup karena pertanyaan planner tidak dijawab.", $"{closed} threads closed because the planner question was not answered."));
                 }
                 catch (Exception ex)
                 {

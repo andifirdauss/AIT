@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using AIThread.Common.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service.Verification;
@@ -46,7 +47,7 @@ public sealed partial class TestRunner
         {
             logger.LogWarning(ex, "Test build step {Command} could not start", prepare.Display);
             return new TestRunResult(command, false, null, [], string.Empty, 0,
-                $"'{prepare.FileName}' tidak bisa dijalankan ({ex.Message}). Apakah Visual Studio atau Build Tools terpasang?");
+                Lang.T($"'{prepare.FileName}' tidak bisa dijalankan ({ex.Message}). Apakah Visual Studio atau Build Tools terpasang?", $"'{prepare.FileName}' cannot be run ({ex.Message}). Is Visual Studio or Build Tools installed?"));
         }
 
         process.StandardInput.Close();
@@ -84,6 +85,6 @@ public sealed partial class TestRunner
         string outputTail;
         lock (tail) outputTail = string.Join('\n', tail);
         logger.LogInformation("Test build step {Command} failed (exit code {ExitCode})", prepare.Display, exitCode);
-        return new TestRunResult(command, timedOut, exitCode, [], outputTail, stopwatch.ElapsedMilliseconds, null, $"`{prepare.Display}` gagal sebelum test bisa dijalankan");
+        return new TestRunResult(command, timedOut, exitCode, [], outputTail, stopwatch.ElapsedMilliseconds, null, Lang.T($"`{prepare.Display}` gagal sebelum test bisa dijalankan", $"`{prepare.Display}` failed before the tests could run"));
     }
 }

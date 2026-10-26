@@ -44,7 +44,7 @@ public class BusinessMemoryTests
     public void Planner_reads_images_as_captions()
     {
         var text = BusinessMarkdown.ForPlanner("Form:\n![Form TO](asset:3f2a1b9c-0000-4000-8000-000000000001)");
-        Assert.Equal("Form:\n[gambar: Form TO]", text);
+        Assert.Equal("Form:\n[image: Form TO]", text);
     }
 
     [Theory]
@@ -188,7 +188,7 @@ public class BusinessMemoryTests
         var read = await business.GetForPlannerAsync([page.Id]);
 
         Assert.Equal(page.Id, Assert.Single(pages).Id);
-        Assert.Contains("[gambar: Form TO]", Assert.Single(read).Content);
+        Assert.Contains("[image: Form TO]", Assert.Single(read).Content);
     }
 
     [Fact]
