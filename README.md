@@ -165,14 +165,16 @@ diabaikan: tanpa orkestrasi, tanpa memory.
 
 ## Memory
 
-- Setelah thread selesai, wrapper model menyarikan maksimal 5 memory: **label** `Modul · Layer · Jenis` (mis.
-  `User · Logic · Rule`), maksimal 16 **keyword**, dan **deskripsi**, semuanya PascalCase. Modul dan layer diturunkan dari
-  **peta kode** (modul & layer tiap file, disimpan sekali per project key), modul dari daftar modul yang sama dengan wiki
-  bisnis; modul ganda digabung otomatis (bisa dibatalkan). Memory lama dilabeli ulang otomatis (dengan backup dulu).
+- Project memory ditulis seperti `MEMORY.md`: setelah thread selesai, wrapper model menulis satu **catatan perubahan**
+  (`Change`) — fitur yang berubah, **file yang berubah** (dari snapshot thread, bukan tebakan model), validasi dan flow
+  yang ditambah/diubah, catatan. Setelah masuk long memory, entri dilipat ke **ringkasan modul** (`Summary`: kondisi modul
+  saat ini). Label `Modul · Layer · Jenis` + keyword tetap ada untuk pencarian; modul dan layer diturunkan dari
+  **peta kode**, modul dari daftar modul yang sama dengan wiki bisnis. Memory berformat lama (Rule/Flow/Pitfall/…)
+  dimigrasi ke ringkasan modul (dengan backup dulu).
 - **Short memory** disimpan di Garnet (protokol Redis, di dalam AIT, tahan restart/crash) tanpa TTL; worker konsolidasi (tiap 10 menit) memindahkan yang berumur
   > 24 jam ke **long memory** di database dengan id yang sama (idempoten).
-- Planner menerima peta memory (modul → jumlah per layer/jenis) dan indeks label (lapis 1: modul dari file/istilah di
-  prompt; lapis 2: keyword), lalu memanggil `search_memory` (module/layer/kind/keywords) / `read_memory`, dan
+- Planner menerima ringkasan + catatan perubahan terbaru modul yang dibahas, ditulis utuh di brief; ditambah peta memory
+  (modul → jumlah per layer/jenis) dan indeks label (lapis 1: modul dari file/istilah di prompt; lapis 2: keyword), lalu memanggil `search_memory` (module/layer/kind/keywords) / `read_memory`, dan
   `set_module` untuk mengoreksi peta kode.
 - *Knowledge memory* tidak terikat project dan terlihat oleh semua project.
 - Memory project diikat ke **project key** (git remote, `.aithread/project.json`, atau key manual), bukan ke folder:

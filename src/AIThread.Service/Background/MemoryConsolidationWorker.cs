@@ -6,9 +6,11 @@ using Microsoft.Extensions.Options;
 
 namespace AIThread.Service.Background;
 
-// Dumps short memories (Redis) older than the short-term window into long memory (database).
+// Dumps short memories (Redis) older than the short-term window into long memory (database), then folds the change
+// entries that reached long memory (and the facts of older versions) into the summary of their module.
 public sealed class MemoryConsolidationWorker(
     IMemoryService memoryService,
+    IModuleSummaryWriter summaryWriter,
     IOptions<AIThreadOptions> options,
     ILogger<MemoryConsolidationWorker> logger) : BackgroundService
 {
@@ -23,6 +25,7 @@ public sealed class MemoryConsolidationWorker(
             try
             {
                 await memoryService.ConsolidateAsync(stoppingToken);
+                await summaryWriter.RunAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

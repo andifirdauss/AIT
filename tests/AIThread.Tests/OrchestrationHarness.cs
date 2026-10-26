@@ -250,6 +250,18 @@ public sealed class RecordingMemoryService : IMemoryService
     public Task<IReadOnlyList<MemoryModuleSummary>> GetModuleSummaryAsync(Guid? projectId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<MemoryModuleSummary>>([]);
 
+    // What GetModuleMemoryAsync returns (summaries and change entries), whatever the modules asked for.
+    public List<MemoryItemDto> ModuleMemory { get; } = [];
+
+    public List<IReadOnlyList<string>> ModuleMemoryRequests { get; } = [];
+
+    public Task<IReadOnlyList<MemoryItemDto>> GetModuleMemoryAsync(Guid? projectId, IReadOnlyList<string> modules, int changesPerModule,
+        CancellationToken cancellationToken = default)
+    {
+        lock (ModuleMemoryRequests) ModuleMemoryRequests.Add(modules);
+        return Task.FromResult<IReadOnlyList<MemoryItemDto>>(ModuleMemory.ToList());
+    }
+
     public Task<IReadOnlyList<MemoryItemDto>> GetManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<MemoryItemDto>>([]);
 

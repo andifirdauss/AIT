@@ -85,6 +85,11 @@ public sealed partial class PlannerAgent(
     private const int MaxOutlinedFiles = 6;
     private const int MaxOutlineChars = 12_000;
 
+    // The module memory written out in the brief: the change log of at most this many modules (summary + newest entries).
+    private const int MaxMemoryModules = 3;
+    private const int MemoryChangesPerModule = 3;
+    private const int MaxModuleMemoryChars = 14_000;
+
     // Step is the last step taken; MaxSteps is when the planner is told to submit (one forced step may follow).
     // Investigations and ToolsNodeTokens are fields: parallel investigate calls update them with Interlocked.
     private sealed class PlannerRun
