@@ -32,6 +32,9 @@
       + '</span>';
   }
 
+  // The shape AIT writes change entries in (ChangeLog.Render), shown in an empty description.
+  const changeTemplate = '### Tambah kolom Deskripsi di User\n**Fitur:** ...\n\n**File berubah:**\n- `path/ke/file` (ubah) — ...\n\n**Validasi:**\n- ...\n\n**Flow:**\n1. ...\n\n**Catatan:**\n- ...';
+
   function keywords(values) {
     return (values || []).map(k => `<span class="mem-kw">${escapeHtml(k)}</span>`).join('');
   }
@@ -295,8 +298,12 @@
     const knowledge = el('memoryType').value === 'Knowledge';
     el('memoryProject').disabled = knowledge;
     // Knowledge memory is never project specific: business rules, flows and conventions are project memory.
-    [...el('memoryKind').options].forEach(o => { o.disabled = knowledge && !['Pitfall', 'Pattern', 'Architecture'].includes(o.value); });
-    if (el('memoryKind').selectedOptions[0]?.disabled) el('memoryKind').value = 'Pattern';
+    // A module summary is written by AIT from the change entries (one per module): it can be edited, not added.
+    const adding = !el('memoryId').value;
+    [...el('memoryKind').options].forEach(o => {
+      o.disabled = (knowledge && !['Pitfall', 'Pattern', 'Architecture'].includes(o.value)) || (adding && o.value === 'Summary');
+    });
+    if (el('memoryKind').selectedOptions[0]?.disabled) el('memoryKind').value = knowledge ? 'Pattern' : 'Change';
     closeModuleEdit();
     syncModuleList(selected);
   }
@@ -307,7 +314,7 @@
     el('memoryType').value = memory?.type || 'Project';
     el('memoryProject').value = memory?.projectId || el('filterProject').value || (projects[0]?.id ?? '');
     extraModules = [...(memory?.extraModules || [])];
-    el('memoryKind').value = memory?.kind || 'Rule';
+    el('memoryKind').value = memory?.kind || 'Change';
     el('memoryArea').value = memory?.area || '';
     document.querySelectorAll('#memoryLayers input').forEach(box => { box.checked = (memory?.layers || []).includes(box.value); });
     // An unlabeled memory starts from its old keywords.
@@ -318,9 +325,12 @@
     el('memoryLegacy').textContent = legacy ? `Label lama: ${legacy}` : '';
     el('memoryLegacy').classList.toggle('d-none', !legacy);
     el('memoryDescription').value = memory?.description || '';
+    el('memoryDescription').placeholder = changeTemplate;
     el('memoryModalTitle').textContent = memory ? `Memory · ${memory.level === 'Short' ? 'Short' : 'Long'}` : 'Tambah memory (masuk ke short memory)';
     el('memoryMeta').textContent = memory
-      ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? ` · dipindah ke DB ${fmt.dateTime(memory.promotedAt)}` : ''}${memory.reviewReason ? ` · perlu review: ${memory.reviewReason}` : ''}`
+      ? `Dibuat ${fmt.dateTime(memory.createdAt)}${memory.promotedAt ? (memory.kind === 'Summary'
+        ? ` · memuat catatan perubahan sampai ${fmt.dateTime(memory.promotedAt)}`
+        : ` · dipindah ke DB ${fmt.dateTime(memory.promotedAt)}`) : ''}${memory.reviewReason ? ` · perlu review: ${memory.reviewReason}` : ''}`
       : '';
     syncProjectField(memory?.module || '');
     syncKeywordCount();

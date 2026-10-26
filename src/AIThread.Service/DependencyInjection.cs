@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddSingleton<ICodeMapper, CodeMapper>();
         services.AddSingleton<IModuleMerger, ModuleMerger>();
         services.AddSingleton<IMemoryRelabeler, MemoryRelabeler>();
+        services.AddSingleton<IModuleSummaryWriter, ModuleSummaryWriter>();
         services.AddSingleton<IMemoryCatalogService, MemoryCatalogService>();
         services.AddSingleton<ICodeStructureService, CodeStructureService>();
         services.AddSingleton<IFunctionCallStore, FunctionCallStore>();

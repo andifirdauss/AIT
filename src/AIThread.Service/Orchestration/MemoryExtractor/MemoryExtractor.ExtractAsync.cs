@@ -3,6 +3,7 @@ using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Common.Memory;
 using AIThread.Service.Interfaces;
+using AIThread.Service.Memory;
 using AIThread.Service.Models;
 using Microsoft.Extensions.Logging;
 
@@ -12,19 +13,22 @@ public sealed partial class MemoryExtractor
 {
     public async Task<MemoryExtraction> ExtractAsync(AiNode node, ThreadRun thread, ThreadPlan plan, ExecutionSummary? execution, string finalText, CancellationToken cancellationToken)
     {
+        // The change log belongs to a project; a thread whose project was deleted meanwhile keeps nothing.
+        if (thread.ProjectId is not { } projectId) return new MemoryExtraction(0, 0);
         var tokens = 0;
         try
         {
-            var project = thread.ProjectId is { } projectId ? await projectService.GetContextAsync(projectId, cancellationToken) : null;
-            var map = await MapFilesAsync(project, thread, plan, execution, cancellationToken);
+            var project = await projectService.GetContextAsync(projectId, cancellationToken);
+            var changed = await ChangedFilesAsync(thread.Id, execution, cancellationToken);
+            var map = await MapFilesAsync(project, thread, plan, changed, cancellationToken);
             var modules = string.IsNullOrEmpty(project?.Key) ? [] : await registry.ListAsync(project.Key, cancellationToken: cancellationToken);
-            var knowledgeModules = await registry.ListAsync(MemoryLabels.KnowledgeKey, cancellationToken: cancellationToken);
-            var existing = await memoryService.SearchAsync(new MemorySearch(thread.ProjectId, Modules: map.Select(h => h.Module).Distinct().ToList(),
-                Text: thread.Prompt, Take: 40), cancellationToken);
+            var changedModules = map.Where(h => changed.Any(f => string.Equals(f.Path, h.Path, StringComparison.OrdinalIgnoreCase))).Select(h => h.Module);
+            var existing = await memoryService.GetModuleMemoryAsync(projectId,
+                changedModules.Concat(map.Select(h => h.Module)).Distinct(StringComparer.OrdinalIgnoreCase).Take(4).ToList(), ExistingChanges, cancellationToken);
 
             // Counts against the node's Max paralel like any other call to it (usually the wrapper node), and falls
             // back like it.
-            var input = BuildInput(thread, plan, execution, finalText, map, modules, knowledgeModules, existing);
+            var input = BuildInput(thread, plan, execution, finalText, changed, map, modules, existing);
             var reply = await caller.ChatAsync(node, candidate => Task.FromResult(new ChatCompletionRequest
             {
                 Model = candidate.Model,
@@ -42,38 +46,39 @@ public sealed partial class MemoryExtractor
             });
 
             tokens = reply.Result.TotalTokens;
-            var saved = new List<MemoryItemDto>();
-            foreach (var memory in Parse(reply.Result.Content).Take(MaxMemories))
-            {
-                // Without a registered project only knowledge memory can be kept.
-                var type = thread.ProjectId is null ? MemoryType.Knowledge : memory.Type;
-                var kind = MemoryLabels.KindAllowedFor(type, memory.Kind) ? memory.Kind : MemoryKind.Pattern;
-                var memoryModules = memory.OtherModules.Prepend(memory.Module).ToList();
-                var fromMap = type == MemoryType.Project ? map.Where(h => memoryModules.Contains(h.Module, StringComparer.OrdinalIgnoreCase)).ToList() : [];
-                var layers = memory.Layers.Count > 0 ? memory.Layers : fromMap.Select(h => h.Layer).Distinct().ToList();
-                var areas = fromMap.Select(h => h.Area).Distinct().ToList();
-                var area = areas is [{ } single] ? single : null;
-                try
-                {
-                    // Memory outlives the thread and may be shared with the team: a secret the model repeated stays masked.
-                    saved.Add(await memoryService.AddShortAsync(new SaveMemoryRequest(type, thread.ProjectId, memory.Module, kind, memory.Keywords,
-                        secrets.Redact(memory.Description), layers, area, memory.OtherModules), thread.Id, cancellationToken));
-                }
-                catch (AppValidationException ex)
-                {
-                    logger.LogInformation("Extracted memory skipped: {Reason}", ex.Message);
-                }
-            }
+            if (Parse(reply.Result.Content) is not { } extracted) return new MemoryExtraction(0, tokens);
 
-            if (saved.Count > 0)
+            // The module from the model when it gave one, else the module most changed files belong to.
+            var module = extracted.Module
+                ?? map.Where(h => changed.Any(f => string.Equals(f.Path, h.Path, StringComparison.OrdinalIgnoreCase)))
+                    .GroupBy(h => h.Module, StringComparer.OrdinalIgnoreCase)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .FirstOrDefault();
+            if (module is null) return new MemoryExtraction(0, tokens);
+
+            var memoryModules = extracted.OtherModules.Prepend(module).ToList();
+            var fromMap = map.Where(h => memoryModules.Contains(h.Module, StringComparer.OrdinalIgnoreCase)).ToList();
+            var layers = fromMap.Select(h => h.Layer).Distinct().ToList();
+            var areas = fromMap.Select(h => h.Area).Distinct().ToList();
+            var area = areas is [{ } single] ? single : null;
+            var entry = extracted.Entry with { Files = ChangeLog.MergeFiles(changed, extracted.Entry.Files) };
+            var keywords = extracted.Keywords.Count > 0 ? extracted.Keywords : MemoryLabels.Tokens(entry.Title, 8);
+            try
             {
-                var shortCount = saved.Count(m => m.Level == MemoryLevel.Short);
+                // Memory outlives the thread and may be shared with the team: a secret the model repeated stays masked.
+                var saved = await memoryService.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, projectId, module, MemoryKind.Change, keywords,
+                    secrets.Redact(ChangeLog.Render(entry)), layers, area, extracted.OtherModules), thread.Id, cancellationToken);
                 activityLog.Info("memory",
-                    $"{saved.Count} memory baru dari thread ini ({shortCount} short/Redis, {saved.Count - shortCount} long/DB): " +
-                    string.Join("; ", saved.Select(m => m.Label)),
+                    $"Catatan perubahan baru dari thread ini ({(saved.Level == MemoryLevel.Short ? "short" : "long")} memory): {saved.Label} — {entry.Title}",
                     thread.Id, thread.ProjectId);
+                return new MemoryExtraction(1, tokens);
             }
-            return new MemoryExtraction(saved.Count, tokens);
+            catch (AppValidationException ex)
+            {
+                logger.LogInformation("Extracted change entry skipped: {Reason}", ex.Message);
+                return new MemoryExtraction(0, tokens);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

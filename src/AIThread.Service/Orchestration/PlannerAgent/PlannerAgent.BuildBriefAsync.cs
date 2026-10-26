@@ -93,15 +93,35 @@ public sealed partial class PlannerAgent
             builder.Append(PlannerToolRunner.FormatModuleMap(summary)).Append('\n');
         }
 
-        builder.Append("# Memory index (labels only — call read_memory with ids to read the details)\n");
         var focusModules = input.CodeMap?.Select(h => h.Module).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         // A follow-up's own words rarely match a keyword ("berlaku buat yang lainnya"): the prompt it follows joins them.
         var searchText = input.LabelsFromSession?.Prompt is { Length: > 0 } earlier
             ? request.Prompt + "\n" + PlannerToolRunner.Limit(earlier, MaxSessionPromptChars)
             : request.Prompt;
         var relevant = await memoryService.SearchAsync(new MemorySearch(project.ProjectId, Text: searchText, Take: 20, Modules: focusModules), cancellationToken);
+
+        // The change log of the modules the request concerns, in full: what was built, where, and which rules hold now.
+        var memoryModules = (focusModules is { Count: > 0 } ? focusModules : relevant.Where(e => e.Labeled && e.Type == MemoryType.Project).Select(e => e.Module!))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(MaxMemoryModules)
+            .ToList();
+        var moduleMemory = await memoryService.GetModuleMemoryAsync(project.ProjectId, memoryModules, MemoryChangesPerModule, cancellationToken);
+        if (moduleMemory.Count > 0)
+        {
+            builder.Append(memoryModules.Count > 0
+                ? "# Module memory (the change log of the modules this request concerns: the current state of each, then its newest changes)\n"
+                : "# Recent changes in this project (newest first)\n");
+            builder.Append(PlannerToolRunner.Limit(FormatModuleMemory(moduleMemory), MaxModuleMemoryChars)).Append('\n');
+        }
+
+        builder.Append("# Memory index (labels only — call read_memory with ids to read the details)\n");
+        var shown = moduleMemory.Select(m => m.Id).ToHashSet();
         var recent = await memoryService.GetIndexAsync(project.ProjectId, null, 10, cancellationToken);
-        var index = relevant.Concat(recent.Where(r => r.Level is MemoryLevel.Short or MemoryLevel.Business)).DistinctBy(e => e.Id).Take(25).ToList();
+        var index = relevant.Concat(recent.Where(r => r.Level is MemoryLevel.Short or MemoryLevel.Business))
+            .Where(e => !shown.Contains(e.Id))
+            .DistinctBy(e => e.Id)
+            .Take(25)
+            .ToList();
         builder.Append(index.Count == 0 ? "(empty)\n" : PlannerToolRunner.FormatIndex(index)).Append('\n');
 
         if (input.SessionChanges is { Count: > 0 } sessionChanges)
@@ -119,6 +139,6 @@ public sealed partial class PlannerAgent
         builder.Append("# Developer request\n");
         builder.Append(PlannerToolRunner.Limit(request.Prompt, MaxRequestChars)).Append('\n');
 
-        return (builder.ToString(), relevant.Count);
+        return (builder.ToString(), relevant.Select(e => e.Id).Union(moduleMemory.Select(m => m.Id)).Count());
     }
 }

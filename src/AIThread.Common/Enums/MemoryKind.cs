@@ -1,7 +1,8 @@
 namespace AIThread.Common.Enums;
 
-// What kind of fact a memory states: the last part of its label. Chosen by the ordered questions in
-// AgentPrompts.MemoryKindRules (the first "yes" wins), so an ambiguous fact always lands on the same kind.
+// What kind of fact a memory states: the last part of its label. Pitfall..Pattern are the facts of older versions,
+// chosen by the ordered questions in AgentPrompts.MemoryLabelRules; ModuleSummaryWriter folds them into the Summary of
+// their module. New project memory is a Change entry per thread plus that Summary.
 public enum MemoryKind
 {
     // A mistake or trap to avoid, with its fix.
@@ -20,5 +21,13 @@ public enum MemoryKind
     Architecture = 5,
 
     // A reusable technical solution, useful in other projects too.
-    Pattern = 6
+    Pattern = 6,
+
+    // One entry of the module's change log, written after a thread: the feature that changed, the files the thread
+    // changed, and the validations and flows it changed (or, for a thread that changed no file, what it found).
+    Change = 7,
+
+    // The current state of one module (features, main files, validations, flows, notes), one per project key and
+    // module, long memory only. ModuleSummaryWriter folds the change entries into it once they reach long memory.
+    Summary = 8
 }

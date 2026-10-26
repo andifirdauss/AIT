@@ -3,7 +3,8 @@ using AIThread.Common.Enums;
 
 namespace AIThread.Service.Interfaces;
 
-// Short memory lives in Redis for one day, then is consolidated into long memory in the database.
+// Short memory lives in Redis for one day, then is consolidated into long memory in the database. Project memory is a
+// change log: one Change entry per thread plus one Summary per module (ModuleSummaryWriter).
 public interface IMemoryService
 {
     Task<MemoryItemDto> AddShortAsync(SaveMemoryRequest request, Guid? sourceThreadId = null, CancellationToken cancellationToken = default);
@@ -17,6 +18,11 @@ public interface IMemoryService
 
     // The planner's memory map: labeled memories per module, layer and kind.
     Task<IReadOnlyList<MemoryModuleSummary>> GetModuleSummaryAsync(Guid? projectId, CancellationToken cancellationToken = default);
+
+    // The project memory of the modules, written out in full: per module its summary (MemoryKind.Summary) and its newest
+    // change entries (MemoryKind.Change), short and long. Without modules, the newest change entries of the project.
+    Task<IReadOnlyList<MemoryItemDto>> GetModuleMemoryAsync(Guid? projectId, IReadOnlyList<string> modules, int changesPerModule,
+        CancellationToken cancellationToken = default);
 
     // Full descriptions for the ids the planner decided to read.
     Task<IReadOnlyList<MemoryItemDto>> GetManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);

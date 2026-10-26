@@ -3,6 +3,47 @@
 Memory membuat planner makin paham konteks bisnis dan teknis project dari waktu ke waktu, tanpa Anda mengulang
 penjelasan.
 
+## Catatan perubahan (project memory)
+
+Project memory ditulis seperti sebuah `MEMORY.md`: yang disimpan adalah **apa yang berubah**, bukan fakta teknis
+yang lepas-lepas. Isinya dua jenis:
+
+| Jenis | Isi | Jumlah |
+|---|---|---|
+| `Change` | Satu entri per thread: judul, fitur yang berubah, **file yang berubah**, validasi yang ditambah/diubah (`sebelum → sesudah`), flow yang ditambah/diubah, dan catatan (jebakan, keputusan, pekerjaan yang belum selesai). | Satu per thread |
+| `Summary` | **Kondisi modul saat ini**: fitur, file utama dan perannya, validasi dan flow yang berlaku, catatan. Diperbarui dari entri `Change` modul itu. | Satu per modul (per project key) |
+
+Contoh entri `Change`:
+
+```markdown
+### Tambah kolom Deskripsi di User
+**Fitur:** User bisa mengisi deskripsi (opsional) saat tambah/edit user.
+
+**File berubah:**
+- `Views/User/Index.cshtml` (ubah) — input `#txtDescription`
+- `wwwroot/js/pages/user.js` (ubah) — `saveUser()` mengirim `description`
+- `Migrations/20261026_AddUserDescription.cs` (baru) — kolom `Users.Description nvarchar(500)`
+
+**Validasi:**
+- `Description` maks 500 karakter → "Deskripsi maksimal 500 karakter"
+
+**Flow:**
+1. `user.js` `saveUser()` → `POST /User/Save`
+2. `UserService.Save` memvalidasi lalu `UserRepository.Upsert`
+
+**Catatan:**
+- Migrasi belum dijalankan di server dev.
+```
+
+- **Daftar file diambil dari file yang benar-benar diubah thread** (snapshot rollback), bukan dari model: file yang
+  disebut model tapi tidak diubah dibuang, file yang diubah tapi tidak dijelaskan model tetap dicantumkan. Model hanya
+  menulis judul, fitur, keterangan per file, validasi, flow, dan catatan. Formatnya ditulis AIT sendiri, jadi semua entri
+  seragam.
+- Isi ditulis dalam bahasa developer; identifier, path, nilai, dan pesan di dalam backtick.
+- `Summary` hanya ada di long memory dan ditulis ulang otomatis — lihat [Ringkasan modul](#ringkasan-modul).
+- Memory dengan jenis lama (`Pitfall`, `Rule`, `Flow`, …) dimigrasi ke `Summary` modulnya — lihat
+  [Migrasi memory lama](#migrasi-memory-lama-ke-ringkasan-modul). Knowledge memory tetap memakai jenis lama.
+
 ## Isi satu memory
 
 | Bagian | Fungsi |
@@ -77,6 +118,10 @@ Peran file di codebase-nya sendiri, bukan posisinya di FE atau BE. Satu memory b
 
 ### Jenis
 
+Project memory baru selalu `Change` (catatan perubahan) atau `Summary` (kondisi modul) — lihat
+[Catatan perubahan](#catatan-perubahan-project-memory). Jenis di bawah ini adalah format fakta dari versi sebelumnya,
+masih dipakai knowledge memory; untuk project memory dilipat ke `Summary` modulnya.
+
 Macam fakta yang disimpan. Ditentukan dengan pertanyaan **berurutan** — jawaban "ya" pertama yang dipakai, supaya kasus
 ambigu selalu jatuh ke jenis yang sama:
 
@@ -87,7 +132,7 @@ ambigu selalu jatuh ke jenis yang sama:
 5. Susunan/hubungan komponen atau alasan desain? → `Architecture`
 6. Selain itu → `Pattern`
 
-Knowledge memory hanya boleh `Pitfall`, `Pattern`, atau `Architecture`. Satu memory satu jenis; fakta dengan dua jenis
+Knowledge memory hanya boleh `Pitfall`, `Pattern`, atau `Architecture` (tidak pernah `Change`/`Summary`). Satu memory satu jenis; fakta dengan dua jenis
 dipecah jadi dua memory.
 
 ### Area
@@ -112,11 +157,14 @@ terdekat, tanpa awalan yang sama di semua area. Hanya diisi bila manifest-nya be
 | **Long** | Default: tabel `LongMemories` di database utama. Bisa diganti — lihat [Penyimpanan memory](#penyimpanan-memory). | Permanen sampai dihapus. |
 
 ```
-thread selesai ─► ekstraksi (model wrapper) ─► short memory (Garnet)
+thread selesai ─► entri Change (model wrapper) ─► short memory (Garnet)
                                                     │  worker konsolidasi, tiap 10 menit:
                                                     │  umur > 24 jam ─► long memory (DB, id sama)
                                                     ▼
                                              long memory (database)
+                                                    │  lalu, di putaran yang sama:
+                                                    ▼
+                                             Summary modul diperbarui (node Tools → Wrapper → Planner)
 ```
 
 - Memory dipindah oleh worker, bukan oleh kedaluwarsa (TTL) — jadi tidak ada yang hilang walau aplikasi mati saat
@@ -205,14 +253,56 @@ berlaku tanpa restart.
 
 ## Kapan memory dibuat
 
-Setelah thread selesai (minimal satu tugas berhasil, atau planner menjawab langsung), file yang direncanakan, disentuh
-tugas, dan disebut di prompt dipetakan dulu ke modul dan layer ([peta kode](#peta-kode); bila perlu menunggu model peta
-kode). Lalu model **Wrapper** membaca permintaan, rencana, kontrak, hasil tugas, ringkasan, peta kode file itu, daftar
-modul, dan memory yang sudah ada **di modul yang sama**, lalu menulis **maksimal 5** memory baru lengkap dengan label
-(modul dari daftar, layer dari peta kode, jenis lewat pertanyaan berurutan, keyword). AIT memvalidasi dan
-menormalisasi hasilnya; memory yang labelnya tidak lengkap dilewati. Karena hanya sesi di dalam sebuah project (folder dengan `.git` atau file build) yang diorkestrasi,
-setiap thread selalu punya project; bila project dihapus saat thread berjalan, hanya knowledge memory yang disimpan.
+Setelah thread selesai (minimal satu tugas berhasil, atau planner menjawab langsung):
+
+1. AIT mengambil **file yang diubah thread** dari snapshot rollback-nya (`baru`/`ubah`/`hapus`). Tanpa snapshot (thread
+   lama), file tugas yang berhasil dipakai.
+2. File itu, file yang direncanakan, dan file yang disebut prompt dipetakan ke modul dan layer
+   ([peta kode](#peta-kode); bila perlu menunggu model peta kode).
+3. Model **Wrapper** membaca permintaan, rencana, kontrak, hasil tugas, daftar file yang berubah, jawaban akhir, peta
+   kode, daftar modul, serta `Summary` dan 2 entri terbaru modul itu (supaya tidak mengulang), lalu menulis **satu**
+   entri `Change`.
+4. AIT menyusun teksnya (lihat [Catatan perubahan](#catatan-perubahan-project-memory)), menyamarkan secret, dan
+   menyimpannya sebagai short memory. Modul dari model (dari daftar modul) atau, bila kosong, modul terbanyak dari file
+   yang berubah; layer dan area dari peta kode.
+
+Thread yang **tidak mengubah file** (tanya-jawab, investigasi, review) hanya dicatat bila model menilai ada temuan
+yang perlu diingat thread berikutnya — penyebab bug, keputusan, aturan atau flow yang tadinya tidak jelas. Selain itu
+tidak ada entri. Thread tanpa project (project dihapus saat thread berjalan) tidak dicatat.
 Proses ini berjalan di belakang dan tidak menunda balasan ke CLI.
+
+## Ringkasan modul
+
+Setiap putaran worker konsolidasi (tiap `MemoryConsolidationIntervalMinutes`, default 10 menit), setelah short memory
+dipindah ke long memory, AIT memperbarui `Summary` setiap modul yang punya entri `Change` baru di long memory:
+
+- Model murah (node Tools, lalu Wrapper, lalu Planner) menerima ringkasan saat ini + entri baru (terlama dulu, maks 15
+  per panggilan) dan menulis ulang kondisi modul: entri yang lebih baru menang, yang sudah diganti dihapus, duplikat
+  digabung. Entri yang menyebut beberapa modul ikut ke ringkasan setiap modul itu.
+- `Summary` punya id tetap per project key + modul, jadi beberapa mesin yang berbagi store tidak membuat ringkasan
+  ganda. Kolom *dipindah ke DB* pada ringkasan berarti **waktu entri terakhir yang sudah dilipat**; entri setelahnya
+  diproses di putaran berikutnya.
+- Entri `Change` tetap disimpan (riwayat); ringkasan hanya tambahan di atasnya.
+- Modul yang digabung membawa ringkasannya masing-masing; keduanya dilebur menjadi satu pada putaran berikutnya.
+- Maks 30 modul per putaran; sisanya menunggu putaran berikutnya. Tanpa node model aktif, ringkasan menunggu.
+
+## Migrasi memory lama ke ringkasan modul
+
+Project memory berformat lama (`Pitfall`, `Rule`, `Flow`, `Convention`, `Architecture`, `Pattern`) yang sudah berlabel
+dan punya project key dimigrasi otomatis oleh worker yang sama:
+
+1. **Backup** sekali: semua long project memory ke
+   `%LOCALAPPDATA%\AIThread\backup\memory-before-changelog-<waktu>.json` (format import menu Memory). Bila backup gagal,
+   migrasi ditunda (ringkasan dari entri `Change` tetap jalan).
+2. Per modul, fakta lama (maks 40 per panggilan) dilipat ke `Summary` modul itu bersama entri `Change` yang menunggu:
+   `Rule` → validasi, `Flow` → flow, `Pitfall`/`Convention`/`Architecture` → catatan, dst.
+3. Fakta yang sudah dilipat **dihapus** — isinya kini ada di ringkasan (dan di file backup).
+
+Memory lama yang belum berlabel dilabeli dulu oleh [migrasi label](#migrasi-label-memory-lama), lalu ikut dimigrasi.
+Memory yang menunggu review tidak disentuh. Knowledge memory tidak dimigrasi.
+
+> **Store bersama**: AIT versi sebelum catatan perubahan tidak mengenal jenis `Change`/`Summary`. Bila long memory
+> dipakai bersama tim, perbarui AIT semua developer.
 
 ## Cara planner memakai memory
 
@@ -226,8 +316,13 @@ read_memory                        → baru deskripsinya dibaca
    yang ragu dipetakan model di belakang tanpa menahan planner).
 2. Brief planner berisi:
    - **Peta kode** file yang disebut prompt (`path: Modul · Layer`);
+   - **Memory modul** (`# Module memory`), ditulis **utuh**, bukan hanya label: untuk maks 3 modul yang dibahas
+     permintaan (dari peta kode, atau modul memory teratas hasil pencarian), `Summary` modul lalu 3 entri `Change`
+     terbarunya (short maupun long), maks ±14.000 karakter. Tanpa modul: 3 entri `Change` terbaru project
+     (`# Recent changes in this project`). Planner diminta mengikuti validasi dan flow di dalamnya kecuali permintaan
+     mengubahnya, dan tetap membaca kode terbaru sebelum merencanakan perubahan;
    - **Peta memory**: tiap modul dengan jumlah memory per layer dan jenis, mis. `User (12): Logic 5 · Entry 3 | Rule 4 · Flow 3`;
-   - **Indeks memory** (id + label + keyword, maks 25 baris): memory modul dari peta kode atau yang disebut prompt (nama
+   - **Indeks memory** (id + label + keyword, maks 25 baris, tanpa yang sudah ditulis utuh di atas): memory modul dari peta kode atau yang disebut prompt (nama
      atau alias modul), diurutkan berdasarkan keyword; ditambah short memory terbaru. Halaman wiki bisnis punya jatah
      sendiri (maks 8), memory lama yang belum berlabel juga (tanda `unlabeled`).
 3. `search_memory` menerima `module`, `layer`, `kind`, dan `keywords`. Tanpa modul, modul yang disebut di keyword dipakai;
@@ -381,9 +476,11 @@ berbagi store, jadi isinya tidak dipercaya mentah-mentah.
 
 ## Mengelola dari menu Memory
 
-- **Tambah memory**: tulis pengetahuan yang ingin selalu diingat planner, mis. aturan bisnis penting atau konvensi
-  tim. Isi modul (saran dari daftar modul), jenis, layer, keyword (maks 16), dan deskripsi. Masuk sebagai short memory,
-  lalu otomatis pindah ke long memory.
+- **Tambah memory**: tulis pengetahuan yang ingin selalu diingat planner, mis. perubahan yang dikerjakan di luar AIT
+  atau keputusan tim. Jenis bawaan `Change`; deskripsi kosong menampilkan contoh formatnya. Isi modul (saran dari daftar
+  modul), layer, keyword (maks 16), dan deskripsi. Masuk sebagai short memory, lalu otomatis pindah ke long memory dan
+  ikut ke ringkasan modulnya. `Summary` tidak bisa ditambah (ditulis AIT), tapi bisa dibuka dan diedit; jenis lama untuk
+  project memory akan dilipat ke ringkasan modul.
 - **Buka**: ubah tipe, project, label, deskripsi. Perbaiki memory yang kurang tepat — planner mempercayainya.
   Menyimpan memory yang belum berlabel memberinya label (label lamanya tetap tercatat).
 - **Filter** modul, layer, jenis, dan *berlabel / belum berlabel* di atas tabel; banner *Migrasi label memory* tampil
