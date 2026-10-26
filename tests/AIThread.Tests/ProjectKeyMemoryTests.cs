@@ -102,6 +102,34 @@ public class ProjectKeyMemoryTests
     }
 
     [Fact]
+    public async Task Memory_from_a_commit_made_outside_AIT_takes_the_commit_as_its_origin()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+        var ingestId = Guid.NewGuid();
+        await using (var shared = await harness.Service<LongMemoryStore>().CreateGitAsync())
+        {
+            shared.ThreadChanges.Add(new ThreadChange
+            {
+                Id = ingestId, ProjectKey = "github.com/org/eep", Ingested = true, State = GitChangeState.Pushed, GitAuthor = "Budi <budi@example.com>",
+                GitBranch = "origin/develop", GitBaseCommit = "abcdef0123456789abcdef0123456789abcdef01", Commits = "abcdef0123456789abcdef0123456789abcdef01"
+            });
+            await shared.SaveChangesAsync();
+        }
+
+        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Change, ["Approval"],
+            "TO above 10M needs approval."), ingestId);
+        Assert.True(await memory.Service.PromoteAsync(saved.Id));
+
+        var item = Assert.Single((await memory.Service.QueryAsync(new MemoryQuery(MemoryLevel.Long, null, harness.ProjectId, null))).Items);
+        Assert.Equal(("Budi <budi@example.com>", "origin/develop", "abcdef0123456789abcdef0123456789abcdef01"), (item.GitAuthor, item.GitBranch, item.GitCommit));
+        Assert.True(item.FromCommit);
+        Assert.Equal(GitChangeState.Pushed, item.GitState);
+    }
+
+    [Fact]
     public async Task Unreachable_long_memory_database_only_hides_long_memory()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();

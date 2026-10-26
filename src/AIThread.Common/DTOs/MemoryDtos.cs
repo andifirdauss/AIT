@@ -34,7 +34,9 @@ public record MemoryItemDto(
     // and the note the planner reads when it is not in this branch.
     GitChangeState? GitState = null,
     MemoryGitPlace? GitPlace = null,
-    string? GitNote = null);
+    string? GitNote = null,
+    // The source is a commit made outside AIT (SourceThreadId is its ingest id, GitCommit the commit), not a thread.
+    bool FromCommit = false);
 
 // What the planner scans to pick topics without reading descriptions. Labeled entries carry the structured label;
 // unlabeled ones (older memory waiting for relabeling) only Label. Change entries also carry their title.

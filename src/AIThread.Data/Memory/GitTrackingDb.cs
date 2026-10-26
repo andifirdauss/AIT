@@ -10,6 +10,8 @@ public interface IGitTrackingDb : IAsyncDisposable
     DbSet<ThreadChange> ThreadChanges { get; }
     DbSet<ProjectEnvironment> ProjectEnvironments { get; }
     DbSet<ChangePresence> ChangePresences { get; }
+    DbSet<CommitIngestSettings> CommitIngestSettings { get; }
+    DbSet<IngestedCommit> IngestedCommits { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
@@ -57,6 +59,32 @@ public static class GitTrackingModel
             e.HasIndex(x => new { x.ThreadId, x.Environment }).IsUnique();
             e.HasIndex(x => new { x.ProjectKey, x.Environment });
         });
+
+        modelBuilder.Entity<CommitIngestSettings>(e =>
+        {
+            e.ToTable("CommitIngestSettings");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength).IsRequired();
+            e.Property(x => x.Ref).HasMaxLength(ProjectEnvironment.MaxRefLength);
+            e.Property(x => x.UpdatedBy).HasMaxLength(MemorySchema.GitAuthorLength);
+            e.HasIndex(x => x.ProjectKey).IsUnique();
+        });
+
+        modelBuilder.Entity<IngestedCommit>(e =>
+        {
+            e.ToTable("IngestedCommits");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength).IsRequired();
+            e.Property(x => x.Commit).HasMaxLength(MemorySchema.GitCommitLength).IsRequired();
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Title).HasMaxLength(ThreadChange.MaxTitleLength);
+            e.Property(x => x.Author).HasMaxLength(MemorySchema.GitAuthorLength);
+            e.Property(x => x.ClaimedBy).HasMaxLength(MemorySchema.GitAuthorLength);
+            e.Property(x => x.Digest).HasMaxLength(IngestedCommit.MaxDigestLength);
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.HasIndex(x => new { x.ProjectKey, x.Commit }).IsUnique();
+            e.HasIndex(x => new { x.ProjectKey, x.Status, x.BusinessDigestedAt });
+        });
     }
 }
 
@@ -66,6 +94,8 @@ public sealed class GitTrackingDbContext(DbContextOptions<GitTrackingDbContext> 
     public DbSet<ThreadChange> ThreadChanges => Set<ThreadChange>();
     public DbSet<ProjectEnvironment> ProjectEnvironments => Set<ProjectEnvironment>();
     public DbSet<ChangePresence> ChangePresences => Set<ChangePresence>();
+    public DbSet<CommitIngestSettings> CommitIngestSettings => Set<CommitIngestSettings>();
+    public DbSet<IngestedCommit> IngestedCommits => Set<IngestedCommit>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.Properties<DateTime>().HaveConversion<MemoryUtcDateTimeConverter>();

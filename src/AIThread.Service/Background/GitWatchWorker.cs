@@ -14,11 +14,13 @@ namespace AIThread.Service.Background;
 // reset, stash, merge or fetch touches HEAD, the index, refs or the reflog, and the project is looked at again a moment
 // later. Edits in the working tree do not touch .git, so the projects are also looked at every few minutes. The remotes
 // of the projects in use are fetched every Project.GitFetchMinutes (default 15), one project at a time, so other
-// developers' pushes and merges show too.
+// developers' pushes and merges show too; after a fetch the environments are checked and, where turned on, the commits
+// made outside AIT are summarized (CommitIngestor).
 public sealed class GitWatchWorker(
     IDbContextFactory<AIThreadDbContext> dbFactory,
     IGitChangeTracker tracker,
     IGitEnvironmentTracker environments,
+    ICommitIngestor ingestor,
     ILogger<GitWatchWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan SyncInterval = TimeSpan.FromMinutes(1);
@@ -102,6 +104,8 @@ public sealed class GitWatchWorker(
                         tracker.ProjectChanged(project);
                         // Manual wiki edits and changes seen by other developers' AIT reach the environment pages here too.
                         await environments.RefreshAsync(project, stoppingToken);
+                        // Commits pulled by hand (or with the automatic fetch off) are summarized too, when turned on.
+                        await ingestor.RunAsync(project, stoppingToken);
                     }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -124,7 +128,10 @@ public sealed class GitWatchWorker(
                 {
                     if (tracker.LastFetch(id) is { } last && DateTime.UtcNow - last.At < TimeSpan.FromMinutes(minutes)) continue;
                     // What arrived with the fetch may have reached an environment.
-                    if (await tracker.FetchAsync(id, stoppingToken) is { Error: null }) await environments.RefreshAsync(id, stoppingToken);
+                    if (await tracker.FetchAsync(id, stoppingToken) is not { Error: null }) continue;
+                    await environments.RefreshAsync(id, stoppingToken);
+                    // Does nothing unless commit ingest is turned on for the project key.
+                    await ingestor.RunAsync(id, stoppingToken);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

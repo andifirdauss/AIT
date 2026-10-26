@@ -229,7 +229,8 @@ Status git perubahan thread dibagi ke tim lewat tabel `ThreadChanges` di databas
 [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread)). Dari situ:
 
 - **Menu Memori** menampilkan badge status perubahan memory di clone author-nya (*di-commit*, *di-push*, *dibuang*,
-  *di branch lain*, …) di bawah tautan *thread*.
+  *di branch lain*, …) di bawah tautan *thread*. Memory yang dirangkum dari
+  [commit di luar AIT](07-cara-kerja.md#commit-di-luar-ait) menyebut *commit &lt;id&gt;* sebagai sumbernya.
 - **Planner** memeriksa clone yang sedang dipakai:
 
   | Perubahan memory | Planner |

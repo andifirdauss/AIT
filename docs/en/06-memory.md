@@ -237,7 +237,8 @@ The git state of every thread's change is shared with the team through the `Thre
 database (see [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)). From there:
 
 - The **Memory menu** shows a badge with the state of the memory's change in its author's clone (*committed*, *pushed*,
-  *discarded*, *on another branch*, …) under the *thread* link.
+  *discarded*, *on another branch*, …) under the *thread* link. Memory summarized from a
+  [commit made outside AIT](07-cara-kerja.md#commits-made-outside-ait) names *commit &lt;id&gt;* as its source.
 - The **planner** checks the clone in use:
 
   | The memory's change | Planner |

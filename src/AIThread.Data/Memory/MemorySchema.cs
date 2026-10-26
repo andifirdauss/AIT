@@ -60,7 +60,7 @@ public static class MemorySchema
     }
 
     // Columns added to a memory table after a release created it: a table made by an older version gets the missing
-    // ones (nullable) here, since external stores are not migrated. The SQL comes from the provider's own migrations
+    // ones (nullable, or with the type's default when the value cannot be null) here, since external stores are not migrated. The SQL comes from the provider's own migrations
     // generator, so it is valid on every supported database.
     public static async Task EnsureColumnsAsync<TEntity>(DbContext db, CancellationToken cancellationToken, params string[] properties)
         where TEntity : class
@@ -91,6 +91,8 @@ public static class MemorySchema
                 // Column missing (a connection problem fails again below, with the provider's own message).
             }
 
+            // A value that cannot be null (a bool flag) gets its default for the rows already there.
+            var required = !property.IsNullable && property.ClrType.IsValueType;
             (missing ??= []).Add(new AddColumnOperation
             {
                 Table = table,
@@ -99,7 +101,8 @@ public static class MemorySchema
                 ClrType = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType,
                 ColumnType = property.GetRelationalTypeMapping().StoreType,
                 MaxLength = property.GetMaxLength(),
-                IsNullable = true
+                IsNullable = !required,
+                DefaultValue = required ? Activator.CreateInstance(property.ClrType) : null
             });
         }
 

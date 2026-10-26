@@ -47,3 +47,25 @@ public record SaveProjectEnvironment(string Name, string Ref, bool IsProduction 
 
 // The whole list, in display order: environments left out are removed.
 public record SaveProjectEnvironmentsRequest(IReadOnlyList<SaveProjectEnvironment> Environments);
+
+// Summarizing commits made outside AIT (shared per project key). Ref = as set (null = the production environment's
+// ref, else origin/HEAD); EffectiveRef = what is read in this clone (null: none found). Counts per status.
+public record CommitIngestDto(
+    bool Enabled,
+    string? Ref,
+    string? EffectiveRef,
+    DateTime Since,
+    int MaxPerRun,
+    int Done,
+    int Skipped,
+    int Failed,
+    DateTime? LastIngestedAt,
+    IReadOnlyList<IngestedCommitDto> Recent);
+
+public record IngestedCommitDto(Guid Id, string Commit, IngestStatus Status, string? Title, string? Author, DateTime? CommittedAt, string? ClaimedBy,
+    Guid? MemoryId, string? Note, DateTime CreatedAt);
+
+// Since: null keeps the stored moment (turning it on for the first time starts now).
+public record SaveCommitIngestRequest(bool Enabled, string? Ref, DateTime? Since, int? MaxPerRun);
+
+public record CommitIngestResultDto(int Ingested, int Skipped, int Failed, string? Problem);

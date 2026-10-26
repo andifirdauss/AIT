@@ -145,7 +145,9 @@ The list of codebases AIT knows. One project = one root folder, i.e. a folder ho
 the last fetch and its error, the number of threads followed, the *Fetch now* and *Sync* buttons; see
 [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change); then the team's shared
 **Environments**: name, ref, *prod* mark, number of changes that reached it, *Save environments* and *Check now*; see
-[Environments](07-cara-kerja.md#environments)), the solution/build files found in the
+[Environments](07-cara-kerja.md#environments); then *Commits made outside AIT*: on/off (costs tokens), ref, commits per
+pass, how many summarized/skipped/failed, the newest commits, *Summarize now*; see
+[Commits made outside AIT](07-cara-kerja.md#commits-made-outside-ait)), the solution/build files found in the
 project, CLI sessions (session id, number of threads, last active), this project's
 threads, and a link to its memory. The session, thread, module, code map and module merge history tables show 10 rows
 per page (*‹ Previous* / *Next ›*; the navigation only shows when there are more than 10). The open page stays when the
