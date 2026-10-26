@@ -32,6 +32,9 @@ public sealed partial class MemoryService(
     // Change entries read from long memory per GetModuleMemoryAsync call: enough for the newest ones of a few modules.
     private const int MaxChangeRows = 300;
 
+    // Characters of a change entry read for its title in the memory index.
+    private const int TitleHeadChars = 200;
+
     // While the long memory database is down the planner keeps running without it; the activity log says so at most
     // this often instead of once per thread.
     private static readonly TimeSpan LongStoreNoticeInterval = TimeSpan.FromMinutes(10);

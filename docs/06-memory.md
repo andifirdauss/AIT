@@ -322,11 +322,14 @@ read_memory                        → baru deskripsinya dibaca
      (`# Recent changes in this project`). Planner diminta mengikuti validasi dan flow di dalamnya kecuali permintaan
      mengubahnya, dan tetap membaca kode terbaru sebelum merencanakan perubahan;
    - **Peta memory**: tiap modul dengan jumlah memory per layer dan jenis, mis. `User (12): Logic 5 · Entry 3 | Rule 4 · Flow 3`;
-   - **Indeks memory** (id + label + keyword, maks 25 baris, tanpa yang sudah ditulis utuh di atas): memory modul dari peta kode atau yang disebut prompt (nama
+   - **Indeks memory** (id + label + keyword, maks 25 baris, tanpa yang sudah ditulis utuh di atas; entri `Change` ikut
+     tanggal dan judulnya, mis. `User · UI/Logic · Change "Tambah kolom Deskripsi di User" — Description, Deskripsi`): memory modul dari peta kode atau yang disebut prompt (nama
      atau alias modul), diurutkan berdasarkan keyword; ditambah short memory terbaru. Halaman wiki bisnis punya jatah
      sendiri (maks 8), memory lama yang belum berlabel juga (tanda `unlabeled`).
-3. `search_memory` menerima `module`, `layer`, `kind`, dan `keywords`. Tanpa modul, modul yang disebut di keyword dipakai;
-   bila lapis 2 kosong, seluruh isi lapis 1 dikembalikan supaya planner tidak buta.
+3. `search_memory` menerima `module`, `layer`, `kind` (`Change`, `Summary`, atau jenis lama), dan `keywords`. Tanpa modul,
+   modul yang disebut di keyword dipakai; bila lapis 2 kosong, seluruh isi lapis 1 dikembalikan supaya planner tidak buta.
+   Untuk riwayat yang lebih lama dari 3 entri di brief, planner mencari `kind: Change` + keyword fitur; hasilnya juga
+   memuat tanggal dan judul tiap entri.
 4. `read_memory` membaca deskripsi (atau isi halaman wiki, gambar diganti keterangannya, maks 15.000 karakter); planner
    diminta membaca halaman modul sebelum mengubah perilakunya dan mengikuti aturannya.
 5. Setiap kali long memory dibaca, kolom *Dipakai* bertambah — penanda memory yang bernilai.
