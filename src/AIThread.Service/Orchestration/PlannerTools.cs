@@ -204,14 +204,14 @@ public static class PlannerTools
             }
             """)),
         SearchMemory => ChatMessages.Function(SearchMemory,
-            "Search memory (project facts, reusable knowledge and the project's business wiki pages) in two layers: module (optionally layer and kind) narrows the list, keywords rank inside it. Returns ids and labels only. Without a module, the modules named in the keywords are used, else all memories are ranked by keywords.",
+            "Search memory (the project's change log, reusable knowledge and the project's business wiki pages) in two layers: module (optionally layer and kind) narrows the list, keywords rank inside it. Returns ids and labels only (change entries with their date and title). Use it for the history beyond the module memory in the brief, e.g. kind \"Change\" with keywords for earlier changes of a feature. Without a module, the modules named in the keywords are used, else all memories are ranked by keywords.",
             Schema("""
             {
               "type": "object",
               "properties": {
                 "module": { "type": "string", "description": "Module from the memory map or the code map, e.g. \"User\"." },
                 "layer": { "type": "string", "enum": ["UI", "Entry", "Logic", "Data", "Infra", "Test"], "description": "Optional: only memories about this layer." },
-                "kind": { "type": "string", "enum": ["Pitfall", "Rule", "Flow", "Convention", "Architecture", "Pattern"], "description": "Optional: only memories of this kind." },
+                "kind": { "type": "string", "enum": ["Change", "Summary", "Pitfall", "Rule", "Flow", "Convention", "Architecture", "Pattern"], "description": "Optional: only memories of this kind. Change = one entry of the change log (what a thread changed: feature, files, validations, flows); Summary = the current state of a module; the others are facts written by older versions and knowledge memory." },
                 "keywords": { "type": "array", "items": { "type": "string" }, "description": "Search terms: entities, fields, identifiers, in English and in the developer's words, e.g. [\"Description\", \"Deskripsi\", \"UserValidator\"]." },
                 "query": { "type": "string", "description": "Free text instead of keywords." }
               }

@@ -11,6 +11,7 @@ using AIThread.Service.Implementations;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Memory;
 using AIThread.Service.Models;
+using AIThread.Service.Orchestration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -357,6 +358,32 @@ public class MemoryLabelTests
     }
 
     [Fact]
+    public async Task Change_entries_are_searched_by_kind_and_listed_with_their_title()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        using var shortDb = new TempWorkspace();
+        var memory = CreateMemoryService(harness, shortDb);
+        var older = await AddLabeledLongAsync(harness, "k", "User", MemoryKind.Change, ["Email"],
+            description: "### Email user wajib unik\n**Fitur:** Email tidak boleh dobel.");
+        await AddLabeledLongAsync(harness, "k", "User", MemoryKind.Rule, ["Email"]);
+        var newer = await memory.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "User", MemoryKind.Change,
+            ["Description"], "### Tambah kolom Deskripsi\n**Fitur:** ..."));
+
+        var results = await memory.SearchAsync(new MemorySearch(harness.ProjectId, Module: "User", Kind: MemoryKind.Change));
+
+        // The Rule fact of the same module is filtered out by the kind.
+        Assert.Equal(new[] { newer.Id, older }.Order(), results.Select(e => e.Id).Order());
+        Assert.All(results, e => Assert.Equal(MemoryKind.Change, e.Kind));
+        Assert.Equal("Email user wajib unik", results.Single(e => e.Id == older).Title);
+        var lines = PlannerToolRunner.FormatIndex(results);
+        Assert.Contains($"- {older} [long/project, ", lines);
+        Assert.Contains("] User · Change \"Email user wajib unik\" — Email\n", lines);
+        Assert.Contains("] User · Change \"Tambah kolom Deskripsi\" — Description\n", lines);
+        Assert.True(MemoryLabels.TryParseKind("change", out var kind) && kind == MemoryKind.Change);
+    }
+
+    [Fact]
     public async Task Memory_of_several_modules_is_found_through_each_of_them()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
@@ -625,12 +652,12 @@ public class MemoryLabelTests
     }
 
     private static async Task<Guid> AddLabeledLongAsync(OrchestrationHarness harness, string key, string module, MemoryKind kind, IReadOnlyList<string> keywords,
-        IReadOnlyList<string>? extraModules = null)
+        IReadOnlyList<string>? extraModules = null, string description = "d")
     {
         await using var db = await harness.CreateDbAsync();
         var row = new LongMemory
         {
-            Id = Guid.NewGuid(), ProjectId = harness.ProjectId, ProjectKey = key, Type = MemoryType.Project, Description = "d",
+            Id = Guid.NewGuid(), ProjectId = harness.ProjectId, ProjectKey = key, Type = MemoryType.Project, Description = description,
             Module = module, ExtraModules = MemoryLabels.JoinCsv(extraModules), Kind = kind, Keywords = MemoryLabels.JoinCsv(keywords),
             LabelVersion = MemoryLabels.CurrentVersion, Label = MemoryLabels.Compose(MemoryLabels.Display(null, module, [], kind, extraModules), keywords)
         };
