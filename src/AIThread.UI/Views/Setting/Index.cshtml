@@ -385,6 +385,36 @@
                 <button type="submit" class="btn btn-primary">@Lang.T("Simpan pengaturan keamanan", "Save security settings")</button>
             </div>
         </form>
+
+        <div class="card mt-3">
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                <span>@Lang.T("Secret yang terdeteksi", "Detected secrets")</span>
+                <span class="badge text-bg-secondary" id="secretCount">0</span>
+                <input type="search" class="form-control form-control-sm ms-auto" id="secretFilter" style="max-width: 220px"
+                       placeholder="@Lang.T("Cari label…", "Search label…")" aria-label="@Lang.T("Cari label", "Search label")" />
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnSecretsRefresh">@Lang.T("Muat ulang", "Reload")</button>
+            </div>
+            <div class="card-body">
+                <p class="small text-secondary mb-2">
+                    @Html.Raw(Lang.T("Nilai yang disamarkan sejak AIT berjalan, beserta label tempat ia ditemukan (nama pengaturan atau jenis token). Bila yang tersamarkan ternyata bukan secret, misalnya nama class, nama file, atau kode, klik <strong>Bukan secret</strong>: nilai itu tidak disamarkan lagi di mesin ini. Yang disimpan hanya id placeholder dan cuplikannya, bukan nilai aslinya; placeholder yang sudah terkirim tetap bisa dipulihkan.",
+                        "Values masked since AIT started, with the label of where they were found (the setting name or the kind of token). When a masked value turns out not to be a secret, for example a class name, a file name or code, click <strong>Not secret</strong>: that value is no longer masked on this machine. Only the placeholder id and its preview are stored, not the real value; placeholders already sent can still be restored."))
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>@Lang.T("Label", "Label")</th>
+                                <th>@Lang.T("Nilai", "Value")</th>
+                                <th class="text-end">@Lang.T("Disamarkan", "Masked")</th>
+                                <th>@Lang.T("Terakhir", "Last seen")</th>
+                                <th class="text-end">@Lang.T("Aksi", "Action")</th>
+                            </tr>
+                        </thead>
+                        <tbody id="secretRows"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

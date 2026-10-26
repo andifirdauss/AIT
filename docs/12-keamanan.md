@@ -146,6 +146,23 @@ Tab ini juga menampilkan hitungan sejak AIT berjalan: secret yang disamarkan, se
 berapa kali dipasang kembali, dan akses file kredensial yang ditolak. Di akhir setiap thread, footer laporan
 menampilkan `🔒 N secret disamarkan` dan log aktivitas mencatatnya di kategori `keamanan`.
 
+### Secret yang terdeteksi (bukan secret)
+
+Kartu **Secret yang terdeteksi** di tab yang sama mendaftar nilai yang disamarkan sejak AIT berjalan: label tempat ia
+ditemukan (nama pengaturan seperti `ref_token`, atau jenis token seperti `jwt`), cuplikan beberapa karakter di kedua
+ujungnya, panjangnya, berapa kali disamarkan, dan kapan terakhir terlihat. **Tampilkan** memperlihatkan nilai aslinya,
+hanya dari browser di komputer ini.
+
+Bila yang tersamarkan ternyata bukan secret, misalnya nama class, nama file, atau potongan kode, klik **Bukan secret**:
+
+- Nilai itu tidak disamarkan lagi di mesin ini, di mana pun ia muncul (prompt, isi file, output tool, passthrough).
+- Yang disimpan di database hanya id placeholder (HMAC dengan kunci mesin ini), label, dan cuplikannya, bukan nilai
+  aslinya. Daftarnya berlaku per mesin dan tetap ada setelah restart.
+- Placeholder yang sudah terkirim sebelumnya tetap bisa dipulihkan.
+- **Samarkan lagi** mengembalikannya ke perilaku semula.
+
+Setelah AIT di-restart, nilai yang belum ditandai baru muncul lagi di daftar saat disamarkan lagi.
+
 ## Data yang disimpan dan dikirim
 
 - **Disimpan lokal**: database AIT (SQL Server), short memory (Garnet di dalam proses), log di `%LOCALAPPDATA%\AIThread`,

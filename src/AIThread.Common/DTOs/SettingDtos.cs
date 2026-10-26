@@ -80,3 +80,20 @@ public record SecurityStatusDto(
     long BlockedReads);
 
 public record UpdateSecurityRequest(bool MaskingEnabled, bool PassthroughMasking);
+
+// A value masked since AIT started (or marked as not secret earlier): its placeholder id and label, a preview that does
+// not give the value away, and how often it was masked. Allowed: marked as not secret, so no longer masked.
+public record DetectedSecretDto(
+    string Id,
+    string Label,
+    string Preview,
+    int Length,
+    long Count,
+    DateTime? FirstSeen,
+    DateTime? LastSeen,
+    bool Allowed,
+    DateTime? AllowedAt);
+
+public record DetectedSecretsDto(IReadOnlyList<DetectedSecretDto> Items, int Total);
+
+public record SecretValueDto(string Id, string Value);

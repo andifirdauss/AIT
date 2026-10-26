@@ -8,6 +8,19 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.8.1
+
+- **Nama class dan file tidak lagi ikut tersamarkan sebagai secret**: nilai yang hanya berisi huruf (mis.
+  `LunchClaimRateHeaderDto`, `NewESS.Common.Dto`) dianggap nama kode. Ia tetap disamarkan di tempat ia menjadi secret,
+  tapi tidak lagi di semua teks, sehingga nama class/file tidak berubah menjadi `{{AIT_SECRET:…}}`.
+- **Path yang terlanjur tersamarkan tetap bisa dipakai**: placeholder di argumen tool planner (`read_file`,
+  `find_references`, …) dan di file tugas `submit_plan` dipulihkan sebelum tool berjalan dan sebelum rencana divalidasi,
+  jadi file tersebut bisa dibaca dan diedit executor. Output tool tetap disamarkan lagi.
+- **Daftar secret yang terdeteksi + whitelist**: Pengaturan → Keamanan & privasi → *Secret yang terdeteksi* mendaftar
+  nilai yang disamarkan (label, cuplikan, jumlah, terakhir terlihat; nilai asli bisa ditampilkan dari komputer ini).
+  Klik **Bukan secret** untuk nama class, file, atau kode yang salah terdeteksi: nilai itu tidak disamarkan lagi di mesin
+  ini. Yang disimpan hanya id placeholder dan cuplikannya, bukan nilai aslinya.
+
 ## Yang baru di 1.8.0
 
 - **AIT kini dua bahasa (Indonesia / English)**: pilih di kotak bahasa di bawah sidebar. Halaman web, menu

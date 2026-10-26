@@ -380,7 +380,73 @@
     } catch (error) {
       toast(error.message, 'error');
     }
+    loadSecrets();
   }
+
+  // Detected secrets: the whitelist ("not secret") per machine. The real value is fetched only when asked for.
+  let secretItems = [];
+
+  function renderSecrets() {
+    const filter = el('secretFilter').value.trim().toLowerCase();
+    const items = filter ? secretItems.filter(s => s.label.toLowerCase().includes(filter)) : secretItems;
+    el('secretCount').textContent = fmt.number(secretItems.length);
+    if (items.length === 0) {
+      el('secretRows').innerHTML = `<tr><td colspan="5" class="text-secondary small">${escapeHtml(secretItems.length
+        ? t('Tidak ada yang cocok dengan pencarian.', 'Nothing matches the search.')
+        : t('Belum ada nilai yang disamarkan sejak AIT berjalan.', 'No value has been masked since AIT started.'))}</td></tr>`;
+      return;
+    }
+    el('secretRows').innerHTML = items.map(s => `
+      <tr data-id="${escapeHtml(s.id)}">
+        <td class="mono small">${escapeHtml(s.label)}${s.allowed ? ` <span class="badge text-bg-success">${escapeHtml(t('Bukan secret', 'Not secret'))}</span>` : ''}</td>
+        <td class="mono small">
+          <span data-secret-value>${escapeHtml(s.preview)}</span>
+          <span class="text-secondary">· ${escapeHtml(isEn ? `${s.length} chars` : `${s.length} karakter`)}</span>
+          <button type="button" class="btn btn-link btn-sm p-0 ms-1" data-secret-reveal>${escapeHtml(t('Tampilkan', 'Show'))}</button>
+        </td>
+        <td class="text-end">${fmt.number(s.count)}</td>
+        <td class="small text-nowrap" title="${s.lastSeen ? escapeHtml(fmt.dateTime(s.lastSeen)) : ''}">${s.lastSeen ? escapeHtml(fmt.relative(s.lastSeen)) : '–'}</td>
+        <td class="text-end text-nowrap">${s.allowed
+          ? `<button type="button" class="btn btn-outline-secondary btn-sm" data-secret-disallow>${escapeHtml(t('Samarkan lagi', 'Mask again'))}</button>`
+          : `<button type="button" class="btn btn-outline-primary btn-sm" data-secret-allow>${escapeHtml(t('Bukan secret', 'Not secret'))}</button>`}</td>
+      </tr>`).join('');
+  }
+
+  async function loadSecrets() {
+    try {
+      secretItems = (await api.get('/api/security/secrets')).items;
+      renderSecrets();
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  }
+
+  el('secretFilter').addEventListener('input', debounce(renderSecrets, 150));
+  el('btnSecretsRefresh').addEventListener('click', loadSecrets);
+
+  el('secretRows').addEventListener('click', async event => {
+    const row = event.target.closest('tr[data-id]');
+    if (!row) return;
+    const id = row.dataset.id;
+    try {
+      if (event.target.closest('[data-secret-reveal]')) {
+        const shown = await api.get(`/api/security/secrets/${id}/value`);
+        row.querySelector('[data-secret-value]').textContent = shown.value;
+        event.target.closest('[data-secret-reveal]').remove();
+      } else if (event.target.closest('[data-secret-allow]')) {
+        if (!confirm(t('Tandai nilai ini bukan secret? Nilai ini akan dikirim ke model apa adanya di mesin ini.', 'Mark this value as not secret? It will be sent to the model as it is on this machine.'))) return;
+        await api.post(`/api/security/secrets/${id}/allow`);
+        toast(t('Ditandai bukan secret: nilai ini tidak disamarkan lagi.', 'Marked as not secret: this value is no longer masked.'));
+        await loadSecrets();
+      } else if (event.target.closest('[data-secret-disallow]')) {
+        await api.del(`/api/security/secrets/${id}/allow`);
+        toast(t('Nilai ini disamarkan lagi.', 'This value is masked again.'));
+        await loadSecrets();
+      }
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
 
   el('secMasking').addEventListener('change', () => { el('secPassthrough').disabled = !el('secMasking').checked; });
 
