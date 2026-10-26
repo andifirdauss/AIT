@@ -1000,6 +1000,13 @@ namespace AIThread.Data.Migrations
                     b.Property<bool>("TelegramEnabled")
                         .HasColumnType("bit");
 
+                    b.Property<string>("UiLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("id");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 

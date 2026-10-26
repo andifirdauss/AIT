@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AIThread.Common.Localization;
 
 namespace AIThread.UI.Hosting;
 
@@ -6,6 +7,22 @@ namespace AIThread.UI.Hosting;
 public sealed class CliSettings
 {
     public int Port { get; set; } = AppPaths.DefaultPort;
+
+    // Language of the menu (Lang), kept in step with Setting → language by the server (ServerHost), so the menu speaks
+    // it even while the server is not running.
+    public string Language { get; set; } = Lang.Indonesian;
+
+    public static void SaveLanguage(string language)
+    {
+        try
+        {
+            var settings = Load();
+            if (settings.Language == language) return;
+            settings.Language = language;
+            settings.Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+    }
 
     public static CliSettings Load()
     {

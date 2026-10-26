@@ -4,7 +4,7 @@
     string Active(string name) =>string.Equals(controller, name, StringComparison.OrdinalIgnoreCase) ? "active" : "";
 }
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="dark">
+<html lang="@Lang.Current" data-bs-theme="dark">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -71,6 +71,10 @@
                     <span class="status-dot"></span><span class="router-pill-text">9router…</span>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-secondary btn-sidebar w-100 mt-2" id="themeToggle">Ganti tema</button>
+                <select class="form-select form-select-sm btn-sidebar w-100 mt-2" id="languageSelect" aria-label="Bahasa / Language" title="Bahasa AIT: UI, output ke CLI, log / AIT language: UI, CLI output, logs">
+                    <option value="id">🌐 Bahasa Indonesia</option>
+                    <option value="en">🌐 English</option>
+                </select>
             </div>
         </aside>
         <main class="app-main" role="main">
