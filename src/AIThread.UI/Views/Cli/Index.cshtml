@@ -5,23 +5,22 @@
 <div class="page-header">
     <div>
         <h1>CLI</h1>
-        <p class="page-subtitle">Arahkan CLI coding ke proxy AIT. Tiap CLI bisa diaktifkan secara global atau per project, dan dimatikan kapan saja.</p>
+        <p class="page-subtitle">@Lang.T("Arahkan CLI coding ke proxy AIT. Tiap CLI bisa diaktifkan secara global atau per project, dan dimatikan kapan saja.", "Point coding CLIs to the AIT proxy. Each CLI can be turned on globally or per project, and turned off at any time.")</p>
     </div>
 </div>
 
 <div class="card mb-3">
     <div class="card-body">
-        <label class="form-label small" for="proxyUrl">URL proxy AIT</label>
+        <label class="form-label small" for="proxyUrl">@Lang.T("URL proxy AIT", "AIT proxy URL")</label>
         <input type="url" class="form-control mono" id="proxyUrl" />
         <div class="form-text">
-            Alamat yang ditulis ke konfigurasi CLI. Gunakan HTTP — CLI berbasis Node/Bun tidak mempercayai sertifikat development ASP.NET.
-            Bila <em>Proxy API key</em> di Setting diubah, matikan lalu aktifkan lagi agar key baru ikut tertulis.
+            @Html.Raw(Lang.T("Alamat yang ditulis ke konfigurasi CLI. Gunakan HTTP — CLI berbasis Node/Bun tidak mempercayai sertifikat development ASP.NET. Bila <em>Proxy API key</em> di Setting diubah, matikan lalu aktifkan lagi agar key baru ikut tertulis.", "The address written to the CLI configuration. Use HTTP — Node/Bun based CLIs do not trust the ASP.NET development certificate. When the <em>Proxy API key</em> in Setting changes, turn it off and on again so the new key is written too."))
         </div>
     </div>
 </div>
 
 <div id="cliCards" class="row g-3">
-    <div class="col-12 text-secondary small">Memuat…</div>
+    <div class="col-12 text-secondary small">@Lang.T("Memuat…", "Loading…")</div>
 </div>
 
 @section Scripts {

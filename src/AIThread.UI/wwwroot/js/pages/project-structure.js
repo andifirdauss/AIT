@@ -3,7 +3,7 @@
 // → members. A declaration row copies "path:line" for pasting into a prompt.
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, debounce } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, fmt, debounce } = window.AIThread;
   const projectId = window.projectId;
   const el = id => document.getElementById(id);
   const base = `/api/projects/${projectId}/structure`;
@@ -33,9 +33,11 @@
 
   // A declaration: clicking copies where it is.
   function leaf({ badge, badgeClass = '', name, meta = '', ref, dim = false }) {
-    return `<div class="st-node st-leaf${dim ? ' st-dim' : ''}" role="treeitem">
+    return (isEn ? `<div class="st-node st-leaf${dim ? ' st-dim' : ''}" role="treeitem">
+      <button type="button" class="st-row" data-ref="${escapeHtml(ref)}" title="Click to copy ${escapeHtml(ref)}"><span class="st-caret" aria-hidden="true"></span>${badgeHtml(badge, badgeClass)}<span class="st-name">${escapeHtml(name)}</span><span class="st-meta">${meta}</span></button>
+    </div>` : `<div class="st-node st-leaf${dim ? ' st-dim' : ''}" role="treeitem">
       <button type="button" class="st-row" data-ref="${escapeHtml(ref)}" title="Klik untuk menyalin ${escapeHtml(ref)}"><span class="st-caret" aria-hidden="true"></span>${badgeHtml(badge, badgeClass)}<span class="st-name">${escapeHtml(name)}</span><span class="st-meta">${meta}</span></button>
-    </div>`;
+    </div>`);
   }
 
   // A preloaded branch (a type inside an opened file): its members are already known.
@@ -62,7 +64,7 @@
   }
 
   function typeBranch(type, path) {
-    const meta = `${escapeHtml(type.kind)}${type.isPartial ? ' · partial' : ''}${type.container ? ` · di ${escapeHtml(type.container)}` : ''} · ${count(type.members.length, 'member')} · :${type.line}`;
+    const meta = `${escapeHtml(type.kind)}${type.isPartial ? ' · partial' : ''}${type.container ? (isEn ? ` · in ${escapeHtml(type.container)}` : ` · di ${escapeHtml(type.container)}`) : ''} · ${count(type.members.length, 'member')} · :${type.line}`;
     const head = leaf({ badge: '↳', name: 'deklarasi', meta: `${escapeHtml(path)}:${type.line}`, ref: `${path}:${type.line}` });
     return openBranch({ badge: typeBadges[type.kind] || 'C', badgeClass: 't-type', name: type.name, meta }, head + type.members.map(m => memberLeaf(m, path)).join(''));
   }
@@ -82,17 +84,17 @@
       data: { load: 'folder', path: f.path }
     })).join('');
     const files = folder.files.map(fileRow).join('');
-    const hidden = folder.hiddenFiles ? note(`${fmt.number(folder.hiddenFiles)} file lain tidak ditampilkan; pakai pencarian.`) : '';
-    return folders + files + hidden || note('Folder kosong.');
+    const hidden = folder.hiddenFiles ? note((isEn ? `${fmt.number(folder.hiddenFiles)} more files not shown; use the search.` : `${fmt.number(folder.hiddenFiles)} file lain tidak ditampilkan; pakai pencarian.`)) : '';
+    return folders + files + hidden || note(t('Folder kosong.', 'Empty folder.'));
   }
 
   function fileRow(f) {
     const badge = languageBadges[f.language] || '·';
     if (!f.parsed) {
-      const why = f.thirdParty ? 'pihak ketiga' : f.language ? 'tidak dibaca' : '';
+      const why = f.thirdParty ? (isEn ? 'third party' : 'pihak ketiga') : f.language ? t('tidak dibaca', 'not read') : '';
       return leaf({ badge, name: f.name, meta: why, ref: `${f.path}:1`, dim: f.thirdParty });
     }
-    if (!f.types && !f.members) return leaf({ badge, badgeClass: 't-file', name: f.name, meta: 'tanpa deklarasi', ref: `${f.path}:1` });
+    if (!f.types && !f.members) return leaf({ badge, badgeClass: 't-file', name: f.name, meta: t('tanpa deklarasi', 'no declarations'), ref: `${f.path}:1` });
     return branch({
       badge,
       badgeClass: 't-file',
@@ -106,17 +108,17 @@
     const file = await api.get(url('/file', { path }));
     const types = file.types.map(t => typeBranch(t, file.path)).join('');
     const functions = file.functions.map(m => memberLeaf(m, file.path)).join('');
-    return types + functions || note('Tidak ada class atau fungsi di file ini.');
+    return types + functions || note(t('Tidak ada class atau fungsi di file ini.', 'No class or function in this file.'));
   }
 
   async function loadGroups() {
     const groups = await api.get(url('/groups'));
-    if (!groups.length) return note('Belum ada class terbaca di project ini.');
+    if (!groups.length) return note(t('Belum ada class terbaca di project ini.', 'No class read in this project yet.'));
     return groups.map(g => branch({
       badge: g.isFolder ? '▤' : '{}',
       badgeClass: g.isFolder ? 't-folder' : 't-ns',
       name: g.name,
-      meta: `${count(g.types, 'type')}${g.isFolder ? ' · folder (tanpa namespace)' : ''}`,
+      meta: `${count(g.types, 'type')}${g.isFolder ? t(' · folder (tanpa namespace)', ' · folder (no namespace)') : ''}`,
       data: { load: 'group', group: g.key }
     })).join('');
   }
@@ -129,7 +131,7 @@
       name: t.container ? `${t.container}.${t.name}` : t.name,
       meta: `${escapeHtml(t.kind)}${t.isPartial ? ' · partial' : ''}${t.files > 1 ? ` · ${count(t.files, 'file')}` : ''} · ${count(t.members, 'member')}`,
       data: { load: 'class', group, name: t.name, container: t.container || '' }
-    })).join('') || note('Tidak ada type.');
+    })).join('') || note(t('Tidak ada type.', 'No type.'));
   }
 
   async function loadClass(group, name, container) {
@@ -138,9 +140,9 @@
     // One file: its declaration line; a partial class: its files folded below the members.
     const files = type.files.length === 1
       ? fileLeaf(type.files[0])
-      : openBranch({ badge: '↳', name: `Dideklarasikan di ${type.files.length} file`, meta: '' }, type.files.map(fileLeaf).join(''));
+      : openBranch({ badge: '↳', name: (isEn ? `Declared in ${type.files.length} file(s)` : `Dideklarasikan di ${type.files.length} file`), meta: '' }, type.files.map(fileLeaf).join(''));
     const members = type.members.map(m => memberLeaf(m, type.files[0]?.path || '')).join('');
-    return type.files.length === 1 ? files + members : (members || note('Tidak ada member.')) + files;
+    return type.files.length === 1 ? files + members : (members || note(t('Tidak ada member.', 'No member.'))) + files;
   }
 
   const callBadges = { Function: 'f', Method: 'm', Http: 'http', View: 'view', Sql: 'sql', Other: '·' };
@@ -155,13 +157,13 @@
       name: c.target,
       meta: c.resolvedPath
         ? `→ ${escapeHtml(c.resolvedSymbol || fileName(c.resolvedPath))} · ${escapeHtml(c.resolvedPath)}:${c.resolvedLine ?? 1}`
-        : `:${c.line} · belum ditemukan di project`,
+        : (isEn ? `:${c.line} · not found in the project yet` : `:${c.line} · belum ditemukan di project`),
       ref: c.resolvedPath ? `${c.resolvedPath}:${c.resolvedLine ?? 1}` : `${fn.path}:${c.line}`,
       dim: !c.resolvedPath
     })).join('');
-    const changed = fn.changed ? note('Isi function sudah berubah sejak dibaca; dibaca ulang saat planner membacanya atau thread mengubahnya.', 'text-warning') : '';
-    return head + (calls || note('Tidak memanggil kode project.')) + changed
-      + note(`Dibaca ${fmt.relative(fn.scannedAt)}${fn.model ? ` oleh ${escapeHtml(fn.model)}` : ''}.`);
+    const changed = fn.changed ? note(t('Isi function sudah berubah sejak dibaca; dibaca ulang saat planner membacanya atau thread mengubahnya.', 'The function body changed since it was read; it is read again when the planner reads it or a thread changes it.'), 'text-warning') : '';
+    return head + (calls || note(t('Tidak memanggil kode project.', 'Calls no project code.'))) + changed
+      + note((isEn ? `Read ${fmt.relative(fn.scannedAt)}${fn.model ? ` by ${escapeHtml(fn.model)}` : ''}.` : `Dibaca ${fmt.relative(fn.scannedAt)}${fn.model ? ` oleh ${escapeHtml(fn.model)}` : ''}.`));
   }
 
   const loaders = {
@@ -178,7 +180,7 @@
     node.setAttribute('aria-expanded', String(open));
     if (!open || children.dataset.loaded) return;
     children.dataset.loaded = '1';
-    children.innerHTML = note('Memuat…');
+    children.innerHTML = note(t('Memuat…', 'Loading…'));
     try {
       children.innerHTML = await loaders[node.dataset.load](node);
     } catch (error) {
@@ -190,7 +192,7 @@
   async function copy(ref) {
     try {
       await navigator.clipboard.writeText(ref);
-      toast(`Disalin: ${ref}`, 'info');
+      toast((isEn ? `Copied: ${ref}` : `Disalin: ${ref}`), 'info');
     } catch {
       toast(ref, 'info');
     }
@@ -208,16 +210,16 @@
   function renderSummary(s) {
     const languages = s.languages.map(l => `<span class="chip">${escapeHtml(l.language)} ${fmt.number(l.files)}</span>`).join('');
     el('structureSummary').innerHTML = `${count(s.folders, 'folder')} · ${count(s.files, 'file')} · <strong>${count(s.types, 'class/type')}</strong> · ${count(s.members, 'member')}`
-      + ` · ${fmt.number(s.parsedFiles)} file dibaca${s.thirdPartyFiles ? ` · ${fmt.number(s.thirdPartyFiles)} file pihak ketiga/build dilewati` : ''}`
-      + ` · scan ${fmt.number(s.scanMs)} ms (${fmt.number(s.reparsed)} file dibaca ulang) · ${fmt.relative(s.scannedAt)}`
-      + (s.functionsWithCalls ? ` · <span class="st-calls">${count(s.functionsWithCalls, 'function')} sudah dibaca panggilannya</span>` : '')
+      + (isEn ? ` · ${fmt.number(s.parsedFiles)} files read${s.thirdPartyFiles ? ` · ${fmt.number(s.thirdPartyFiles)} third-party/build files skipped` : ''}` : ` · ${fmt.number(s.parsedFiles)} file dibaca${s.thirdPartyFiles ? ` · ${fmt.number(s.thirdPartyFiles)} file pihak ketiga/build dilewati` : ''}`)
+      + (isEn ? ` · scan ${fmt.number(s.scanMs)} ms (${fmt.number(s.reparsed)} files read again) · ${fmt.relative(s.scannedAt)}` : ` · scan ${fmt.number(s.scanMs)} ms (${fmt.number(s.reparsed)} file dibaca ulang) · ${fmt.relative(s.scannedAt)}`)
+      + (s.functionsWithCalls ? (isEn ? ` · <span class="st-calls">${count(s.functionsWithCalls, 'function')} with their calls read</span>` : ` · <span class="st-calls">${count(s.functionsWithCalls, 'function')} sudah dibaca panggilannya</span>`) : '')
       + (languages ? `<div class="mt-1">${languages}</div>` : '')
-      + (s.truncated ? '<div class="text-warning mt-1">Project terlalu besar: hanya 100.000 file pertama yang ditampilkan.</div>' : '');
+      + (s.truncated ? t('<div class="text-warning mt-1">Project terlalu besar: hanya 100.000 file pertama yang ditampilkan.</div>', '<div class="text-warning mt-1">Project too big: only the first 100,000 files are shown.</div>') : '');
   }
 
   async function renderRoot() {
     if (el('structureSearch').value.trim().length >= 2) return search();
-    tree.innerHTML = note('Memuat…');
+    tree.innerHTML = note(t('Memuat…', 'Loading…'));
     try {
       tree.innerHTML = view === 'class' ? await loadGroups() : await loadFolder('');
     } catch (error) {
@@ -227,7 +229,7 @@
 
   async function load(rescan = false) {
     el('btnStructureRescan').disabled = true;
-    if (rescan) el('structureSummary').textContent = 'Memindai ulang…';
+    if (rescan) el('structureSummary').textContent = t('Memindai ulang…', 'Scanning again…');
     try {
       renderSummary(await api.get(url('', { rescan })));
       await renderRoot();
@@ -244,7 +246,7 @@
   async function search() {
     const q = el('structureSearch').value.trim();
     if (q.length < 2) return renderRoot();
-    tree.innerHTML = note('Mencari…');
+    tree.innerHTML = note((isEn ? 'Searching…' : 'Mencari…'));
     try {
       const hits = await api.get(url('/search', { q }));
       tree.innerHTML = hits.length
@@ -254,8 +256,8 @@
             name: h.name,
             meta: `${h.detail ? `${escapeHtml(h.detail)} · ` : ''}${escapeHtml(h.path)}:${h.line}`,
             ref: `${h.path}:${h.line}`
-          })).join('') + (hits.length >= 100 ? note('Menampilkan 100 hasil teratas; perjelas pencarian.') : '')
-        : note(`Tidak ada yang cocok dengan "${escapeHtml(q)}".`);
+          })).join('') + (hits.length >= 100 ? note(t('Menampilkan 100 hasil teratas; perjelas pencarian.', 'Showing the top 100 results; refine the search.')) : '')
+        : note((isEn ? `Nothing matches "${escapeHtml(q)}".` : `Tidak ada yang cocok dengan "${escapeHtml(q)}".`));
     } catch (error) {
       tree.innerHTML = note(escapeHtml(error.message), 'text-danger');
     }

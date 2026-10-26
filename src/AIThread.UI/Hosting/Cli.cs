@@ -13,7 +13,7 @@ namespace AIThread.UI.Hosting;
 [SupportedOSPlatform("windows")]
 public static class Cli
 {
-    private const string Help = """
+    private const string HelpIndonesian = """
         AIThread - proxy, planner, dan orkestrasi multi-agent untuk CLI coding (Claude Code, Codex, Gemini CLI, ...)
 
         Pemakaian: AIThread.exe [perintah] [opsi]
@@ -40,6 +40,36 @@ public static class Cli
 
         Konfigurasi ada di appsettings.json di samping AIThread.exe; data dan log di %LOCALAPPDATA%\AIThread.
         """;
+
+    private const string HelpEnglish = """
+        AIThread - proxy, planner and multi-agent orchestration for coding CLIs (Claude Code, Codex, Gemini CLI, ...)
+
+        Usage: AIThread.exe [command] [options]
+
+          (no command)      Interactive menu: Web UI, hide to the tray, log, restart, port, autostart
+          serve             Run the server in this window, log shown in the console (Ctrl+C to stop)
+          tray              Run in the background with a tray icon, without a window
+          stop              Stop the running instance cleanly
+          status            Show the status of the instance, port, log and autostart
+          logs              Show the latest log (-f to keep following)
+          open              Open the Web UI in the browser
+          autostart on|off  Run the tray automatically at Windows login
+          setup             Open the Setup page (every first step on one page)
+          setup export <f>  Write the team setup profile to file f (without API keys and passwords)
+          setup import <f>  Apply the team setup profile from file f; API keys and passwords are asked here
+          version           Show the version
+          help              This help
+
+        Options:
+          --port <n>        Server port (default 5225 or the one last saved from the menu)
+          --open            serve/tray: open the Web UI in the browser once ready
+          -f                logs: keep following new log lines
+          --yes             setup import: apply without confirmation
+
+        Configuration is in appsettings.json next to AIThread.exe; data and logs in %LOCALAPPDATA%\AIThread.
+        """;
+
+    private static string Help => Lang.T(HelpIndonesian, HelpEnglish);
 
     private static readonly string[] Commands = ["serve", "tray", "stop", "status", "logs", "open", "autostart", "setup", "version", "help", "menu"];
 
@@ -104,7 +134,7 @@ public static class Cli
         using var client = new ServerClient(port);
         if (await client.GetInfoAsync() is { } running)
         {
-            Console.Error.WriteLine($"AIT sudah berjalan di {client.BaseUrl} (PID {running.ProcessId}). Jalankan 'AIThread.exe stop' dulu.");
+            Console.Error.WriteLine(Lang.T($"AIT sudah berjalan di {client.BaseUrl} (PID {running.ProcessId}). Jalankan 'AIThread.exe stop' dulu.", $"AIT is already running at {client.BaseUrl} (PID {running.ProcessId}). Run 'AIThread.exe stop' first."));
             return 1;
         }
 
@@ -137,7 +167,7 @@ public static class Cli
         catch (Exception ex)
         {
             Console.Error.WriteLine(ex);
-            ShowError($"AIT gagal start di port {port}.\n\n{ex.Message}\n\nLog: {LogFile.CurrentPath}");
+            ShowError(Lang.T($"AIT gagal start di port {port}.\n\n{ex.Message}\n\nLog: {LogFile.CurrentPath}", $"AIT failed to start on port {port}.\n\n{ex.Message}\n\nLog: {LogFile.CurrentPath}"));
             await server.StopAsync();
             return 1;
         }
@@ -148,7 +178,7 @@ public static class Cli
         {
             if (stopping) return;
             stopping = true;
-            tray!.SetTooltip("AIT - menghentikan ...");
+            tray!.SetTooltip(Lang.T("AIT - menghentikan ...", "AIT - stopping ..."));
             _ = Task.Run(async () =>
             {
                 await server.StopAsync();
@@ -158,19 +188,19 @@ public static class Cli
 
         tray = new TrayIcon(
             $"AIT - http://localhost:{port}",
-            $"Berjalan di http://localhost:{port}. Klik kanan ikon ini untuk menu.",
+            Lang.T($"Berjalan di http://localhost:{port}. Klik kanan ikon ini untuk menu.", $"Running at http://localhost:{port}. Right-click this icon for the menu."),
             [
-                new TrayIcon.Item("Buka Web UI", () => OpenBrowser(client.BaseUrl)),
-                new TrayIcon.Item("Lihat log", () => OpenPath(LogFile.CurrentPath!)),
-                new TrayIcon.Item("Buka folder log", () => OpenPath(AppPaths.LogDir)),
+                new TrayIcon.Item(Lang.T("Buka Web UI", "Open Web UI"), () => OpenBrowser(client.BaseUrl)),
+                new TrayIcon.Item(Lang.T("Lihat log", "View log"), () => OpenPath(LogFile.CurrentPath!)),
+                new TrayIcon.Item(Lang.T("Buka folder log", "Open the log folder"), () => OpenPath(AppPaths.LogDir)),
                 TrayIcon.Item.Separator,
-                new TrayIcon.Item("Jalankan saat login Windows", () =>
+                new TrayIcon.Item(Lang.T("Jalankan saat login Windows", "Run at Windows login"), () =>
                 {
                     try { Autostart.Toggle(); }
                     catch (Exception ex) { ShowError(ex.Message); }
                 }, Autostart.IsEnabled),
                 TrayIcon.Item.Separator,
-                new TrayIcon.Item("Keluar (matikan AIT)", Exit)
+                new TrayIcon.Item(Lang.T("Keluar (matikan AIT)", "Exit (stop AIT)"), Exit)
             ],
             onDefault: () => OpenBrowser(client.BaseUrl));
 
@@ -189,24 +219,24 @@ public static class Cli
         var info = await client.GetInfoAsync();
         if (info is null)
         {
-            Console.WriteLine($"AIT tidak berjalan di {client.BaseUrl}.");
+            Console.WriteLine(Lang.T($"AIT tidak berjalan di {client.BaseUrl}.", $"AIT is not running at {client.BaseUrl}."));
             return 0;
         }
 
         Console.WriteLine($"Mematikan AIT (PID {info.ProcessId}) ...");
         if (!await client.ShutdownAsync())
         {
-            Console.Error.WriteLine("Permintaan shutdown ditolak. Tutup prosesnya secara manual.");
+            Console.Error.WriteLine(Lang.T("Permintaan shutdown ditolak. Tutup prosesnya secara manual.", "Shutdown request refused. Close the process by hand."));
             return 1;
         }
 
         if (!await WaitUntilAsync(async () => await client.GetInfoAsync() is null, TimeSpan.FromSeconds(45)))
         {
-            Console.Error.WriteLine("AIT belum berhenti setelah 45 detik.");
+            Console.Error.WriteLine(Lang.T("AIT belum berhenti setelah 45 detik.", "AIT did not stop after 45 seconds."));
             return 1;
         }
 
-        Console.WriteLine("AIT berhenti.");
+        Console.WriteLine(Lang.T("AIT berhenti.", "AIT stopped."));
         return 0;
     }
 
@@ -214,17 +244,17 @@ public static class Cli
     {
         using var client = new ServerClient(port);
         var info = await client.GetInfoAsync();
-        if (info is null) Console.WriteLine($"AIT tidak berjalan di {client.BaseUrl}.");
+        if (info is null) Console.WriteLine(Lang.T($"AIT tidak berjalan di {client.BaseUrl}.", $"AIT is not running at {client.BaseUrl}."));
         else
         {
-            Console.WriteLine($"AIT berjalan di {client.BaseUrl}");
+            Console.WriteLine(Lang.T($"AIT berjalan di {client.BaseUrl}", $"AIT running at {client.BaseUrl}"));
             Console.WriteLine($"  PID       : {info.ProcessId}");
-            Console.WriteLine($"  Sejak     : {info.StartedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}");
+            Console.WriteLine(Lang.T($"  Sejak     : {info.StartedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}", $"  Since     : {info.StartedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}"));
             Console.WriteLine($"  Folder    : {info.ContentRoot}");
         }
 
-        Console.WriteLine($"  Log       : {AppPaths.LatestLog()?.FullName ?? "(belum ada)"}");
-        Console.WriteLine($"  Autostart : {(Autostart.IsEnabled() ? "aktif (saat login Windows)" : "tidak aktif")}");
+        Console.WriteLine(Lang.T($"  Log       : {AppPaths.LatestLog()?.FullName ?? "(belum ada)"}", $"  Log       : {AppPaths.LatestLog()?.FullName ?? "(none yet)"}"));
+        Console.WriteLine(Lang.T($"  Autostart : {(Autostart.IsEnabled() ? "aktif (saat login Windows)" : "tidak aktif")}", $"  Autostart : {(Autostart.IsEnabled() ? "on (at Windows login)" : "off")}"));
         return 0;
     }
 
@@ -233,7 +263,7 @@ public static class Cli
         var log = AppPaths.LatestLog();
         if (log is null)
         {
-            Console.WriteLine($"Belum ada log di {AppPaths.LogDir}.");
+            Console.WriteLine(Lang.T($"Belum ada log di {AppPaths.LogDir}.", $"No log yet in {AppPaths.LogDir}."));
             return 0;
         }
 
@@ -263,9 +293,9 @@ public static class Cli
         {
             switch (value)
             {
-                case "on": Autostart.Enable(); Console.WriteLine("Autostart aktif: AIT berjalan di tray saat login Windows."); return 0;
-                case "off": Autostart.Disable(); Console.WriteLine("Autostart dimatikan."); return 0;
-                default: Console.Error.WriteLine("Pemakaian: AIThread.exe autostart on|off"); return 2;
+                case "on": Autostart.Enable(); Console.WriteLine(Lang.T("Autostart aktif: AIT berjalan di tray saat login Windows.", "Autostart on: AIT runs in the tray at Windows login.")); return 0;
+                case "off": Autostart.Disable(); Console.WriteLine(Lang.T("Autostart dimatikan.", "Autostart turned off.")); return 0;
+                default: Console.Error.WriteLine(Lang.T("Pemakaian: AIThread.exe autostart on|off", "Usage: AIThread.exe autostart on|off")); return 2;
             }
         }
         catch (InvalidOperationException ex)
@@ -281,7 +311,7 @@ public static class Cli
     public static void OpenPath(string target)
     {
         try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { Console.Error.WriteLine($"Tidak bisa membuka {target}: {ex.Message}"); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { Console.Error.WriteLine(Lang.T($"Tidak bisa membuka {target}: {ex.Message}", $"Cannot open {target}: {ex.Message}")); }
     }
 
     // A detached copy in tray mode: no console window, survives the terminal that started it.

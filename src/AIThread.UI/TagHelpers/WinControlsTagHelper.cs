@@ -1,4 +1,5 @@
 using System.Net;
+using AIThread.Common.Localization;
 using Microsoft.AspNetCore.Razor.TagHelpers;
 
 namespace AIThread.UI.TagHelpers;
@@ -32,13 +33,13 @@ public sealed class WinControlsTagHelper : TagHelper
         output.TagMode = TagMode.StartTagAndEndTag;
         output.Attributes.SetAttribute("class", "win-controls");
         output.Attributes.SetAttribute("role", "group");
-        output.Attributes.SetAttribute("aria-label", "Kontrol jendela");
+        output.Attributes.SetAttribute("aria-label", Lang.T("Kontrol jendela", "Window controls"));
 
-        var html = Button("close", CloseLabel ?? "Tutup", dismiss, disabled);
+        var html = Button("close", CloseLabel ?? Lang.T("Tutup", "Close"), dismiss, disabled);
         if (!closeOnly)
         {
-            var minLabel = For == "modal" ? "Kecilkan" : "Lipat";
-            html += Button("min", minLabel, " data-win=\"min\"", disabled) + Button("max", "Layar penuh", " data-win=\"max\"", disabled);
+            var minLabel = For == "modal" ? Lang.T("Kecilkan", "Shrink") : Lang.T("Lipat", "Minimize");
+            html += Button("min", minLabel, " data-win=\"min\"", disabled) + Button("max", Lang.T("Layar penuh", "Full screen"), " data-win=\"max\"", disabled);
         }
         output.Content.SetHtmlContent(html);
     }

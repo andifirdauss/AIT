@@ -7,16 +7,14 @@
 <div class="page-header">
     <div>
         <h1>Docs</h1>
-        <p class="page-subtitle">Panduan pemakaian AIT, dibaca langsung dari folder <span class="mono">docs/</span> di repo.</p>
+        <p class="page-subtitle">@Html.Raw(Lang.T("Panduan pemakaian AIT, dibaca langsung dari folder <span class=\"mono\">docs/</span> di repo.", "The AIT user guide, read straight from the <span class=\"mono\">docs/</span> folder of the repo."))</p>
     </div>
 </div>
 
 @if (!Model.DocsFound)
 {
     <div class="alert alert-warning">
-        Folder <span class="mono">docs/</span> tidak ditemukan. Jalankan aplikasi dari repo (folder <span class="mono">docs/</span> dua tingkat di atas
-        <span class="mono">src/AIThread.UI</span>), build ulang agar dokumen tersalin ke folder output, atau atur <span class="mono">AIThread:DocsPath</span>
-        di <span class="mono">appsettings.json</span>.
+        @Html.Raw(Lang.T("Folder <span class=\"mono\">docs/</span> tidak ditemukan. Jalankan aplikasi dari repo (folder <span class=\"mono\">docs/</span> dua tingkat di atas <span class=\"mono\">src/AIThread.UI</span>), build ulang agar dokumen tersalin ke folder output, atau atur <span class=\"mono\">AIThread:DocsPath</span> di <span class=\"mono\">appsettings.json</span>.", "The <span class=\"mono\">docs/</span> folder was not found. Run the application from the repo (the <span class=\"mono\">docs/</span> folder two levels above <span class=\"mono\">src/AIThread.UI</span>), rebuild so the documents are copied to the output folder, or set <span class=\"mono\">AIThread:DocsPath</span> in <span class=\"mono\">appsettings.json</span>."))
     </div>
 }
 else
@@ -24,7 +22,7 @@ else
     <div class="row g-3">
         <div class="col-lg-3">
             <div class="docs-sidebar">
-                <input type="search" class="form-control form-control-sm mb-2" id="docsFilter" placeholder="Cari judul…" aria-label="Cari judul dokumen" />
+                <input type="search" class="form-control form-control-sm mb-2" id="docsFilter" placeholder="@Lang.T("Cari judul…", "Search titles…")" aria-label="@Lang.T("Cari judul dokumen", "Search document titles")" />
                 <nav class="list-group list-group-flush docs-nav" id="docsNav">
                     @foreach (var entry in Model.Entries)
                     {
@@ -36,7 +34,7 @@ else
                 @if (Model.Page is { Headings.Count: > 0 } page)
                 {
                     <div class="docs-toc mt-3">
-                        <div class="small text-secondary text-uppercase mb-1">Di halaman ini</div>
+                        <div class="small text-secondary text-uppercase mb-1">@Lang.T("Di halaman ini", "On this page")</div>
                         @foreach (var heading in page.Headings)
                         {
                             <a class="level-@heading.Level" href="#@heading.Id">@heading.Text</a>
@@ -51,7 +49,7 @@ else
             {
                 <div class="card">
                     <div class="card-body empty-state">
-                        Halaman dokumentasi tidak ditemukan. <a href="@DocUrl("")">Kembali ke daftar isi</a>.
+                        @Lang.T("Halaman dokumentasi tidak ditemukan.", "Documentation page not found.") <a href="@DocUrl("")">@Lang.T("Kembali ke daftar isi", "Back to the contents")</a>.
                     </div>
                 </div>
             }

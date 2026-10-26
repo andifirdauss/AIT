@@ -3,7 +3,7 @@
 // instead of overwriting someone else's change.
 (() => {
   'use strict';
-  const { api, toast, escapeHtml, fmt, stream, debounce } = window.AIThread;
+  const { isEn, t, api, toast, escapeHtml, fmt, stream, debounce } = window.AIThread;
   const el = id => document.getElementById(id);
   const projectKeyStorage = 'aithread-business-project';
 
@@ -16,7 +16,7 @@
   let editorDirty = false;
   let selectedRevision = null;
 
-  const editKinds = { Ai: 'AI', Manual: 'manual', Restore: 'dipulihkan' };
+  const editKinds = { Ai: 'AI', Manual: 'manual', Restore: t('dipulihkan', 'restored') };
 
   // --- Tabs: #bisnis opens this tab, and the hash follows the open tab ---
 
@@ -41,7 +41,7 @@
       const select = el('bizProject');
       select.innerHTML = projects.length
         ? projects.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')
-        : '<option value="">Belum ada project</option>';
+        : t('<option value="">Belum ada project</option>', '<option value="">No project yet</option>');
       const wanted = [window.initialProjectId, storedProject()].find(id => id && projects.some(p => p.id === id));
       if (wanted) select.value = wanted;
       await loadOverview();
@@ -56,7 +56,7 @@
 
   async function loadOverview() {
     if (!projectId()) {
-      el('bizPages').innerHTML = '<div class="list-group-item text-secondary">Daftarkan project dulu di menu Project.</div>';
+      el('bizPages').innerHTML = t('<div class="list-group-item text-secondary">Daftarkan project dulu di menu Project.</div>', '<div class="list-group-item text-secondary">Register a project first in the Project menu.</div>');
       return;
     }
     try {
@@ -73,12 +73,12 @@
     const o = overview;
     const key = o.keyIsShared
       ? `🔑 <span class="mono">${escapeHtml(o.projectKey)}</span>`
-      : '<span class="badge text-bg-warning" title="Tambah git remote, file .aithread/project.json, atau isi key manual di detail project.">key lokal — wiki belum dibagi</span>';
+      : t('<span class="badge text-bg-warning" title="Tambah git remote, file .aithread/project.json, atau isi key manual di detail project.">key lokal — wiki belum dibagi</span>', '<span class="badge text-bg-warning" title="Add a git remote, a .aithread/project.json file, or fill in a manual key in the project detail.">local key — wiki not shared yet</span>');
     const pending = o.pendingThreads > 0
-      ? `<strong>${fmt.number(o.pendingThreads)}</strong> thread menunggu dirangkum`
-      : 'semua thread sudah dirangkum';
-    const last = o.lastDigestAt ? ` · terakhir dirangkum ${fmt.relative(o.lastDigestAt)}` : '';
-    const running = o.digestRunning ? ' · <span class="badge text-bg-info">sedang merangkum…</span>' : '';
+      ? (isEn ? `<strong>${fmt.number(o.pendingThreads)}</strong> thread(s) waiting to be summarized` : `<strong>${fmt.number(o.pendingThreads)}</strong> thread menunggu dirangkum`)
+      : t('semua thread sudah dirangkum', 'every thread is summarized');
+    const last = o.lastDigestAt ? (isEn ? ` · last summarized ${fmt.relative(o.lastDigestAt)}` : ` · terakhir dirangkum ${fmt.relative(o.lastDigestAt)}`) : '';
+    const running = o.digestRunning ? t(' · <span class="badge text-bg-info">sedang merangkum…</span>', ' · <span class="badge text-bg-info">summarizing…</span>') : '';
     el('bizInfo').innerHTML = `${key} · ${pending}${last}${running} · <span title="Store business memory">${escapeHtml(o.storeDescription)}</span>`;
     el('btnBizDigest').disabled = o.digestRunning;
   }
@@ -88,7 +88,7 @@
     const pages = overview.pages.filter(p => !filter
       || `${p.module} ${p.title} ${p.labels} ${p.summary || ''}`.toLowerCase().includes(filter));
     if (pages.length === 0) {
-      el('bizPages').innerHTML = `<div class="list-group-item text-secondary">${overview.pages.length ? 'Tidak ada yang cocok.' : 'Belum ada halaman. Klik <strong>Perbarui sekarang</strong> atau <strong>Halaman baru</strong>.'}</div>`;
+      el('bizPages').innerHTML = `<div class="list-group-item text-secondary">${overview.pages.length ? t('Tidak ada yang cocok.', 'Nothing matches.') : t('Belum ada halaman. Klik <strong>Perbarui sekarang</strong> atau <strong>Halaman baru</strong>.', 'No page yet. Click <strong>Update now</strong> or <strong>New page</strong>.')}</div>`;
       return;
     }
 
@@ -145,9 +145,11 @@
     el('bizEmpty').classList.add('d-none');
     el('bizPage').classList.remove('d-none');
     const when = p.updatedAt || p.createdAt;
-    el('bizPageMeta').innerHTML = `<span class="badge text-bg-secondary">${escapeHtml(p.module)}</span> versi ${p.version}
+    el('bizPageMeta').innerHTML = (isEn ? `<span class="badge text-bg-secondary">${escapeHtml(p.module)}</span> version ${p.version}
+      · ${editKinds[p.lastEditKind] || p.lastEditKind} by ${escapeHtml(p.updatedBy || '–')}
+      · <span title="${fmt.dateTime(when)}">${fmt.relative(when)}</span>` : `<span class="badge text-bg-secondary">${escapeHtml(p.module)}</span> versi ${p.version}
       · ${editKinds[p.lastEditKind] || p.lastEditKind} oleh ${escapeHtml(p.updatedBy || '–')}
-      · <span title="${fmt.dateTime(when)}">${fmt.relative(when)}</span>`;
+      · <span title="${fmt.dateTime(when)}">${fmt.relative(when)}</span>`);
     el('bizAutoUpdate').checked = p.autoUpdate;
     el('bizContent').innerHTML = current.html;
   }
@@ -158,7 +160,7 @@
       current = await api.put(`/api/business/pages/${p.id}`, {
         projectId: projectId(), module: p.module, title: p.title, summary: p.summary, labels: p.labels,
         content: current.content, autoUpdate: el('bizAutoUpdate').checked, version: p.version,
-        changeNote: el('bizAutoUpdate').checked ? 'Boleh diperbarui AI lagi' : 'Dikunci dari pembaruan AI'
+        changeNote: el('bizAutoUpdate').checked ? t('Boleh diperbarui AI lagi', 'AI may update it again') : t('Dikunci dari pembaruan AI', 'Locked from AI updates')
       });
       renderPage();
       loadOverview();
@@ -170,10 +172,10 @@
 
   el('btnBizDelete').addEventListener('click', async () => {
     const p = current.page;
-    if (!confirm(`Hapus halaman "${p.module} — ${p.title}" beserta riwayatnya? Halaman ini hilang untuk semua developer yang memakai store business memory yang sama.`)) return;
+    if (!confirm((isEn ? `Delete page "${p.module} — ${p.title}" with its history? The page disappears for every developer using the same business memory store.` : `Hapus halaman "${p.module} — ${p.title}" beserta riwayatnya? Halaman ini hilang untuk semua developer yang memakai store business memory yang sama.`))) return;
     try {
       await api.del(`/api/business/pages/${p.id}`);
-      toast('Halaman dihapus.');
+      toast(t('Halaman dihapus.', 'Page deleted.'));
       showEmpty();
       loadOverview();
     } catch (error) {
@@ -185,7 +187,7 @@
 
   function openEditor(page) {
     editing = page ? { id: page.page.id, version: page.page.version } : { id: null, version: null };
-    el('bizEditorTitle').textContent = page ? `Edit · ${page.page.module} — ${page.page.title} (versi ${page.page.version})` : 'Halaman baru';
+    el('bizEditorTitle').textContent = page ? (isEn ? `Edit · ${page.page.module} — ${page.page.title} (version ${page.page.version})` : `Edit · ${page.page.module} — ${page.page.title} (versi ${page.page.version})`) : t('Halaman baru', 'New page');
     el('bizModule').value = page?.page.module || '';
     el('bizTitle').value = page?.page.title || '';
     el('bizSummary').value = page?.page.summary || '';
@@ -208,22 +210,22 @@
   }
 
   function confirmLeaveEditor() {
-    return !editing || !editorDirty || confirm('Perubahan di editor belum disimpan. Tinggalkan?');
+    return !editing || !editorDirty || confirm(t('Perubahan di editor belum disimpan. Tinggalkan?', 'The editor has unsaved changes. Leave?'));
   }
 
   function newPageTemplate() {
     return [
-      '# Modul — Judul', '', '> Ringkasan singkat modul ini.', '',
-      '## Tujuan', '', '## Alur & status', '', '| Status | Arti | Pelaku | Berikutnya |', '|---|---|---|---|', '|  |  |  |  |', '',
-      '## Aturan bisnis', '', '1. **BR-XX-01** — ', '',
-      '## Validasi', '', '| Field | Aturan | Pesan |', '|---|---|---|', '|  |  |  |', '',
-      '## Tampilan', ''
+      t('# Modul — Judul', '# Module — Title'), '', t('> Ringkasan singkat modul ini.', '> A short summary of this module.'), '',
+      t('## Tujuan', '## Purpose'), '', t('## Alur & status', '## Flow & status'), '', t('| Status | Arti | Pelaku | Berikutnya |', '| Status | Meaning | Actor | Next |'), '|---|---|---|---|', '|  |  |  |  |', '',
+      t('## Aturan bisnis', '## Business rules'), '', '1. **BR-XX-01** — ', '',
+      t('## Validasi', '## Validation'), '', t('| Field | Aturan | Pesan |', '| Field | Rule | Message |'), '|---|---|---|', '|  |  |  |', '',
+      t('## Tampilan', '## Screens'), ''
     ].join('\n');
   }
 
   el('bizEditor').addEventListener('input', () => { editorDirty = true; });
   el('btnBizNew').addEventListener('click', () => {
-    if (!projectId()) return toast('Pilih project dulu.', 'warning');
+    if (!projectId()) return toast(t('Pilih project dulu.', 'Choose a project first.'), 'warning');
     if (confirmLeaveEditor()) openEditor(null);
   });
   el('btnBizEdit').addEventListener('click', () => openEditor(current));
@@ -242,7 +244,7 @@
       version: editing.version,
       changeNote: el('bizChangeNote').value.trim() || null
     };
-    if (!body.module || !body.title || !body.content.trim()) return toast('Modul, judul, dan isi wajib diisi.', 'warning');
+    if (!body.module || !body.title || !body.content.trim()) return toast(t('Modul, judul, dan isi wajib diisi.', 'Module, title and content are required.'), 'warning');
 
     const button = el('btnBizSave');
     button.disabled = true;
@@ -250,7 +252,7 @@
       current = editing.id
         ? await api.put(`/api/business/pages/${editing.id}`, body)
         : await api.post('/api/business/pages', body);
-      toast('Halaman disimpan.');
+      toast(t('Halaman disimpan.', 'Page saved.'));
       closeEditor();
       renderPage();
       loadOverview();
@@ -268,7 +270,7 @@
     el('bizBody').classList.toggle('d-none', on);
     el('bizPreview').classList.toggle('d-none', !on);
     if (!on) return;
-    el('bizPreview').innerHTML = '<span class="text-secondary">Memuat pratinjau…</span>';
+    el('bizPreview').innerHTML = t('<span class="text-secondary">Memuat pratinjau…</span>', '<span class="text-secondary">Loading preview…</span>');
     try {
       el('bizPreview').innerHTML = await api.post('/api/business/preview', { content: el('bizBody').value });
     } catch (error) {
@@ -285,7 +287,7 @@
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error('Gambar tidak dapat dibaca.'));
+      reader.onerror = () => reject(new Error(t('Gambar tidak dapat dibaca.', 'The image cannot be read.')));
       reader.readAsDataURL(file);
     });
   }
@@ -302,8 +304,8 @@
 
   async function uploadImage(file) {
     if (!file.type.startsWith('image/')) return;
-    if (file.size > 5 * 1024 * 1024) return toast('Gambar maksimal 5 MB.', 'warning');
-    const placeholder = `![mengunggah ${escapeHtml(file.name || 'gambar')}…]()`;
+    if (file.size > 5 * 1024 * 1024) return toast(t('Gambar maksimal 5 MB.', 'Images are at most 5 MB.'), 'warning');
+    const placeholder = `![mengunggah ${escapeHtml(file.name || t('gambar', 'image'))}…]()`;
     insertAtCursor(placeholder);
     try {
       const caption = (file.name && !/^image\.\w+$/i.test(file.name)) ? file.name.replace(/\.\w+$/, '') : 'Screenshot';
@@ -334,20 +336,25 @@
 
   el('btnBizHistory').addEventListener('click', async () => {
     selectedRevision = null;
-    el('bizHistoryTitle').textContent = `Riwayat · ${current.page.module} — ${current.page.title}`;
+    el('bizHistoryTitle').textContent = (isEn ? `History · ${current.page.module} — ${current.page.title}` : `Riwayat · ${current.page.module} — ${current.page.title}`);
     el('bizRevisionMeta').textContent = '';
     el('btnBizRestore').classList.add('d-none');
-    el('bizRevisionContent').innerHTML = '<span class="text-secondary">Pilih versi.</span>';
-    el('bizRevisions').innerHTML = '<div class="list-group-item text-secondary">Memuat…</div>';
+    el('bizRevisionContent').innerHTML = t('<span class="text-secondary">Pilih versi.</span>', '<span class="text-secondary">Choose a version.</span>');
+    el('bizRevisions').innerHTML = t('<div class="list-group-item text-secondary">Memuat…</div>', '<div class="list-group-item text-secondary">Loading…</div>');
     historyModal.show();
     try {
       const revisions = await api.get(`/api/business/pages/${current.page.id}/revisions`);
-      el('bizRevisions').innerHTML = revisions.map(r => `<button type="button" class="list-group-item list-group-item-action" data-version="${r.version}">
+      el('bizRevisions').innerHTML = revisions.map(r => (isEn ? `<button type="button" class="list-group-item list-group-item-action" data-version="${r.version}">
+          <div class="d-flex"><strong>Version ${r.version}</strong><span class="ms-auto text-secondary" title="${fmt.dateTime(r.createdAt)}">${fmt.relative(r.createdAt)}</span></div>
+          <div>${escapeHtml(editKinds[r.editKind] || r.editKind)} · ${escapeHtml(r.author || '–')}</div>
+          ${r.changeNote ? `<div class="text-secondary">${escapeHtml(r.changeNote)}</div>` : ''}
+          ${r.sourceThreadIds.length ? `<div class="text-secondary">${r.sourceThreadIds.length} thread</div>` : ''}
+        </button>` : `<button type="button" class="list-group-item list-group-item-action" data-version="${r.version}">
           <div class="d-flex"><strong>Versi ${r.version}</strong><span class="ms-auto text-secondary" title="${fmt.dateTime(r.createdAt)}">${fmt.relative(r.createdAt)}</span></div>
           <div>${escapeHtml(editKinds[r.editKind] || r.editKind)} · ${escapeHtml(r.author || '–')}</div>
           ${r.changeNote ? `<div class="text-secondary">${escapeHtml(r.changeNote)}</div>` : ''}
           ${r.sourceThreadIds.length ? `<div class="text-secondary">${r.sourceThreadIds.length} thread</div>` : ''}
-        </button>`).join('') || '<div class="list-group-item text-secondary">Belum ada riwayat.</div>';
+        </button>`)).join('') || t('<div class="list-group-item text-secondary">Belum ada riwayat.</div>', '<div class="list-group-item text-secondary">No history yet.</div>');
     } catch (error) {
       el('bizRevisions').innerHTML = `<div class="list-group-item text-danger">${escapeHtml(error.message)}</div>`;
     }
@@ -362,7 +369,7 @@
       const revision = await api.get(`/api/business/pages/${current.page.id}/revisions/${item.dataset.version}`);
       selectedRevision = revision.version;
       const threads = revision.sourceThreadIds.map((id, i) => `<a href="/Thread/Detail/${id}">thread ${i + 1}</a>`).join(', ');
-      el('bizRevisionMeta').innerHTML = `Versi ${revision.version} · ${escapeHtml(revision.author || '–')}${threads ? ` · dari ${threads}` : ''}`;
+      el('bizRevisionMeta').innerHTML = (isEn ? `Version ${revision.version} · ${escapeHtml(revision.author || '–')}${threads ? ` · from ${threads}` : ''}` : `Versi ${revision.version} · ${escapeHtml(revision.author || '–')}${threads ? ` · dari ${threads}` : ''}`);
       el('btnBizRestore').classList.toggle('d-none', revision.version === current.page.version);
       el('bizRevisionContent').innerHTML = await api.post('/api/business/preview', { content: revision.content });
     } catch (error) {
@@ -371,11 +378,11 @@
   });
 
   el('btnBizRestore').addEventListener('click', async () => {
-    if (selectedRevision === null || !confirm(`Pulihkan halaman ke versi ${selectedRevision}? Versi sekarang tetap ada di riwayat.`)) return;
+    if (selectedRevision === null || !confirm((isEn ? `Restore the page to version ${selectedRevision}? The current version stays in the history.` : `Pulihkan halaman ke versi ${selectedRevision}? Versi sekarang tetap ada di riwayat.`))) return;
     try {
       current = await api.post(`/api/business/pages/${current.page.id}/revisions/${selectedRevision}/restore`);
       historyModal.hide();
-      toast(`Halaman dipulihkan dari versi ${selectedRevision}.`);
+      toast((isEn ? `Page restored from version ${selectedRevision}.` : `Halaman dipulihkan dari versi ${selectedRevision}.`));
       renderPage();
       loadOverview();
     } catch (error) {
@@ -388,17 +395,17 @@
   el('btnBizDigest').addEventListener('click', async () => {
     const button = el('btnBizDigest');
     button.disabled = true;
-    button.textContent = 'Merangkum…';
+    button.textContent = (isEn ? 'Summarizing…' : 'Merangkum…');
     try {
       const result = await api.post(`/api/business/digest?projectId=${projectId()}`);
       toast(result.threads === 0 && result.warnings.length ? result.warnings[0]
-        : `${result.threads} thread dirangkum: ${result.pagesCreated} halaman baru, ${result.pagesUpdated} diperbarui.`,
+        : (isEn ? `${result.threads} thread(s) summarized: ${result.pagesCreated} new page(s), ${result.pagesUpdated} updated.` : `${result.threads} thread dirangkum: ${result.pagesCreated} halaman baru, ${result.pagesUpdated} diperbarui.`),
         result.threads === 0 ? 'info' : 'success');
       result.warnings.filter(w => result.threads > 0).forEach(w => toast(w, 'warning'));
     } catch (error) {
       toast(error.message, 'error');
     } finally {
-      button.textContent = 'Perbarui sekarang';
+      button.textContent = t('Perbarui sekarang', 'Update now');
       loadOverview();
       if (current && !editing) openPage(current.page.id);
     }
