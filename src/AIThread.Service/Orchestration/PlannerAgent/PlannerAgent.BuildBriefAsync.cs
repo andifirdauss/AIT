@@ -122,7 +122,10 @@ public sealed partial class PlannerAgent
             .DistinctBy(e => e.Id)
             .Take(25)
             .ToList();
-        builder.Append(index.Count == 0 ? "(empty)\n" : PlannerToolRunner.FormatIndex(index)).Append('\n');
+        builder.Append(index.Count == 0 ? "(empty)\n" : PlannerToolRunner.FormatIndex(index));
+        if (index.Any(e => e.GitNote is not null) || moduleMemory.Any(m => m.GitNote is not null))
+            builder.Append(NotInThisBranch);
+        builder.Append('\n');
 
         if (input.SessionChanges is { Count: > 0 } sessionChanges)
             builder.Append(SessionChanges.Brief(sessionChanges, input.CanAsk, input.UnitTests, DateTime.UtcNow)).Append('\n');

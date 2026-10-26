@@ -223,6 +223,27 @@ dibuang, di branch lain) tampil di halaman thread — lihat
 
 Knowledge memory dan memory dari versi lama tidak punya asal-usul git.
 
+### Memory dan git
+
+Status git perubahan thread dibagi ke tim lewat tabel `ThreadChanges` di database long memory (lihat
+[Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread)). Dari situ:
+
+- **Menu Memori** menampilkan badge status perubahan memory di clone author-nya (*di-commit*, *di-push*, *dibuang*,
+  *di branch lain*, …) di bawah tautan *thread*.
+- **Planner** memeriksa clone yang sedang dipakai:
+
+  | Perubahan memory | Planner |
+  |---|---|
+  | Ada di branch yang sedang aktif (commit-nya ada di `HEAD`, atau semua blob-nya, mis. setelah squash merge) | Dibaca seperti biasa |
+  | Di branch lain yang belum di-merge ke sini | Dibaca dengan tanda `(not in this branch: committed on <branch> by <author>)`, ditaruh setelah memory lain |
+  | Belum di-commit atau di-stash di mesin author | Dibaca dengan tanda `(not in this branch: not committed yet …)`, ditaruh setelah memory lain |
+  | Dibuang atau commit-nya hilang | Tidak dibaca |
+  | Tidak diketahui (knowledge, memory lama, bukan repository git) | Dibaca seperti biasa |
+
+- **Ringkasan modul** tidak memasukkan catatan perubahan yang dibuang atau commit-nya hilang. Catatan itu tetap
+  menunggu, jadi ikut dirangkum bila perubahannya kembali (mis. `stash pop`, branch dipulihkan). Catatan yang sudah
+  terlanjur masuk ringkasan sebelum dibuang tidak dikeluarkan lagi.
+
 ## Penyimpanan memory
 
 Menu **Pengaturan → Penyimpanan memory** (`/Setting#memory`) menentukan di mana tiap level disimpan. Perubahan langsung

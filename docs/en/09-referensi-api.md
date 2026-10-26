@@ -121,6 +121,9 @@ the others `projectFile` in the CLI list is `null`, `/projects` returns an empty
 | `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Result: `root`, `projects[]` (the same shape as `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
 | `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — a manual key (empty/`null` = remove); `.aithread/project.json` still wins. Memory under the old local key moves along (so do its module list & code map) |
 | `POST` | `/api/projects/{id}/git/refresh` | — → the number of threads whose state changed. Asks git again for the change state of every followed thread of the project (last 30 days); each change is sent over SSE `thread.git` |
+| `GET` | `/api/projects/{id}/git` | — → `isRepository`, `hasRemote`, `fetchMinutes` (as set; `null` = the default), `effectiveFetchMinutes`, `lastFetchAt`, `lastFetchError`, `followedThreads` |
+| `PUT` | `/api/projects/{id}/git` | `{ "fetchMinutes": 15 \| 0 \| null }` — the automatic `git fetch` interval (0–1440 minutes, 0 = off, `null` = the default 15) → same shape as `GET` |
+| `POST` | `/api/projects/{id}/git/fetch` | — → `git fetch --all --prune` now, then the followed threads are checked again; same shape as `GET` (failure = `lastFetchError`) |
 | `GET` | `/api/projects/{id}/codemap?search=&module=` | the code map: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (at most 500 rows) |
 | `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — a manual correction, never overwritten; a class/file name is looked up in the project files (400 when it does not exist or matches more than one) |
 | `POST` | `/api/projects/{id}/codemap/scan` | maps the source files not mapped yet (at most 3,000) → `files`, `mapped`, `modules` |
@@ -166,7 +169,7 @@ no key yet). Responses **never** hold the snapshot of a test file's content; onl
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (at most 200) |
+| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (at most 200). Each memory holds `gitAuthor`, `gitBranch`, `gitCommit` (origin) and `gitState` (the state of its change in the author's clone, from `ThreadChanges`) |
 | `GET` | `/api/memory/stats` | — (+ `unlabeledCount`, `reviewCount`) |
 | `GET` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "extraModules": ["Invoice"], "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → a short memory. `module`, `kind`, at least one keyword (at most 16) and `description` are required; `extraModules` is optional (at most 3); knowledge only `Pitfall`/`Pattern`/`Architecture`. The module is matched to the module list (name/alias/plural) or added; everything is normalized to PascalCase (capitalized abbreviations in module names are kept: `MKPP`, `KlaimDF`). A memory response holds `extraModules[]`; the `module` filter of `GET /api/memory` matches the other modules too |
@@ -236,7 +239,7 @@ machine; pages are stored per project key.
 | `GET` | `/api/health` | — |
 
 The thread detail (`GET /api/threads/{id}`) also holds `git` (`null` outside a git repository): `branch`, `baseCommit`,
-`author` (the origin when the thread started), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`).
+`author` (the origin when the thread started), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`, `edited`).
 The thread summary (`GET /api/threads`) holds `gitState`. See [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change).
 
 ### System
@@ -298,7 +301,7 @@ sent every 15 seconds when it is quiet.
 | `router.status` | the 9router status (sent every monitor interval; also when the connection opens without `threadId`) |
 | `thread.created` | `id`, `projectId`, `status` |
 | `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
-| `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`ModifiedOutside`/`Discarded`/`OnOtherBranch`), `commits[]` — the git state of a thread's change changed |
+| `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`Pushed`/`ModifiedOutside`/`Stashed`/`OnOtherBranch`/`Discarded`/`Lost`), `commits[]` — the git state of a thread's change changed |
 | `thread.output` | planner activity: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | the full task object (status, node, duration, diff, error, …) |
 | `task.output` | a piece of executor model output: `taskId`, `taskKey`, `text` |
