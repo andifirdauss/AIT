@@ -1,8 +1,8 @@
 # 5. Panduan menu
 
 Semua halaman memperbarui diri secara live lewat Server-Sent Events — tidak perlu refresh. Menu sidebar dikelompokkan
-menjadi *Ruang kerja* (Dashboard, Project, Memory — dipakai sehari-hari), *Konfigurasi* (Setup, Node, CLI, Setting) dan
-*Bantuan* (Docs, Panduan memulai). Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
+menjadi *Ruang kerja* (Dasbor, Project, Memory — dipakai sehari-hari), *Konfigurasi* (Penyiapan, Node, CLI, Pengaturan) dan
+*Bantuan* (Dokumentasi, Panduan memulai). Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
 antara mode gelap dan terang, dan kotak bahasa beralih antara Bahasa Indonesia dan English
 ([Bahasa tampilan](02-konfigurasi.md#bahasa-tampilan)).
 
@@ -18,39 +18,39 @@ bar (simbolnya muncul saat kursor di atasnya):
 Double-click title bar = layar penuh; Esc keluar dari layar penuh. Status lipat panel log diingat browser. Banner dan
 notifikasi hanya punya tombol merah.
 
-**Setup belum selesai.** Selama masih ada langkah wajib [Setup](#setup) yang belum selesai, link *Setup* di sidebar
-menampilkan angka (mis. `2/4`) dan di atas tiap halaman muncul banner *Setup AIT belum selesai* berisi langkah yang
+**Penyiapan belum selesai.** Selama masih ada langkah wajib [Penyiapan](#penyiapan) yang belum selesai, link *Penyiapan* di sidebar
+menampilkan angka (mis. `2/4`) dan di atas tiap halaman muncul banner *Penyiapan AIT belum selesai* berisi langkah yang
 tersisa. Tombol merah banner menyembunyikannya sampai ada langkah lain yang belum selesai. Saat AIT pertama kali dibuka
-(belum ada pipeline node), Dashboard langsung membuka halaman Setup, sekali per browser.
+(belum ada pipeline node), Dasbor langsung membuka halaman Penyiapan, sekali per browser.
 
 **Panduan memulai.** Popup bergambar berisi 9 langkah: mengenal AIT, memasang AIT, menyiapkan 9router, koneksi 9router,
 model per peran, Project, CLI, mulai bekerja, dan selesai. Geser, klik titik, atau pakai tombol panah ← → untuk berpindah
-langkah; tombol *Kerjakan di Setup* membuka langkah yang sama di halaman Setup. Buka lewat menu *Panduan memulai* di
-grup *Bantuan* sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Panduan bergambar* di halaman Setup.
+langkah; tombol *Kerjakan di Penyiapan* membuka langkah yang sama di halaman Penyiapan. Buka lewat menu *Panduan memulai* di
+grup *Bantuan* sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Panduan bergambar* di halaman Penyiapan.
 
-## Dashboard
+## Dasbor
 
 **Kartu status**
 
 | Kartu | Isi |
 |---|---|
 | 9router | Online/Offline, latency, jumlah model & combo, status API key. Tombol *Cek ulang 9router* memaksa pengecekan. |
-| Short memory | Terhubung atau tidak, jumlah short memory aktif, dan store yang dipakai (menu Setting → Penyimpanan memory). |
+| Short memory | Terhubung atau tidak, jumlah short memory aktif, dan store yang dipakai (menu Pengaturan → Penyimpanan memory). |
 | Database | Terhubung atau tidak, jumlah long memory dan thread. |
 | Pipeline node | Siap / belum lengkap, beserta catatannya. |
 
 **Statistik**: thread hari ini (dan total), thread yang sedang berjalan, success rate 100 thread terakhir,
 rata-rata speedup paralel, token hari ini (planner + executor + wrapper), jumlah project dan memory.
 
-**Thread terbaru**: 25 thread terakhir — waktu & sumber (*CLI*, *Dashboard*, *Telegram*), project, prompt,
+**Thread terbaru**: 25 thread terakhir — waktu & sumber (*CLI*, *Dasbor*, *Telegram*), project, prompt,
 status, tugas berhasil/total, durasi, speedup, token. Klik baris untuk detail.
 
 **Log langsung**: log terbaru di atas. Filter level (*Info+* default, *Semua (debug)*, *Warning+*, *Error*) dan
 tombol *Jeda*. Log debug berisi panggilan tool planner dan request passthrough.
 
-## Setup
+## Penyiapan
 
-Semua langkah awal di satu halaman (`/Setup`), jadi tidak perlu berpindah antara Setting, Node, Project, dan CLI. Status
+Semua langkah awal di satu halaman (`/Setup`), jadi tidak perlu berpindah antara Pengaturan, Node, Project, dan CLI. Status
 tiap langkah dihitung dari kondisi AIT saat itu (bukan disimpan), sehingga halaman ini juga dipakai untuk memeriksa ulang:
 *Cek ulang* memeriksa semuanya, dan halaman memeriksa lagi sendiri saat Anda kembali dari tab lain (mis. dashboard 9router).
 Langkah wajib pertama yang belum selesai terbuka otomatis; begitu selesai, langkah itu dilipat dan langkah berikutnya dibuka.
@@ -60,9 +60,9 @@ Langkah wajib pertama yang belum selesai terbuka otomatis; begitu selesai, langk
 | 1 | Database & short memory | Ya | database utama dan short memory terhubung | — (disiapkan otomatis saat start; tautan ke Instalasi/Troubleshooting) |
 | 2 | Hubungkan 9router | Ya | 9router online, API key diterima (atau tidak diwajibkan), dan minimal satu model tersedia | *Jalankan 9router*, tautan ke dashboard 9router, Base URL + API key → **Test & simpan** (hanya disimpan bila koneksi dan key-nya benar) |
 | 3 | Pilih model untuk tiap peran | Ya | pipeline siap (Planner, Executor, Wrapper aktif) | pilih **model kuat** dan **model murah** → **Buat node & uji** |
-| 4 | Daftarkan project | Tidak | minimal satu project terdaftar | path manual, *Telusuri…* (penelusur yang sama dengan menu Project) |
+| 4 | Daftarkan project | Tidak | minimal satu project terdaftar | path manual, *Telusuri…* (penelusur yang sama dengan menu Proyek) |
 | 5 | Arahkan CLI coding ke AIT | Ya | minimal satu CLI diarahkan ke AIT, global atau per project | switch **global** tiap CLI; per project lewat menu CLI |
-| 6 | Memory bersama tim | Tidak | Long atau Business memory memakai database eksternal | *Import profil tim*, tautan ke Setting → Penyimpanan memory |
+| 6 | Memory bersama tim | Tidak | Long atau Business memory memakai database eksternal | *Import profil tim*, tautan ke Pengaturan → Penyimpanan memory |
 
 **Model (preset pipeline).** Dua pilihan model menggantikan pengisian node satu per satu. Pilihan awal ditebak dari nama model
 (mis. `opus`/`fable` sebagai model kuat, `haiku`/`flash` dari provider yang sama sebagai model murah) dan bisa diganti.
@@ -102,7 +102,7 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 | Waktu & token | Model planner/reviewer/tester/wrapper, jumlah langkah planner, waktu planning / eksekusi nyata / eksekusi jika sekuensial / verifikasi / unit test / testing / wrapping / total, speedup, token per peran (token tester termasuk triase unit test). |
 | Aktivitas | Log thread ini, termasuk setiap panggilan tool planner dan penolakan validator. |
 
-## Project
+## Proyek
 
 Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder yang berisi `.git` atau file build
 (`.sln`, `pom.xml`, `package.json`, `go.mod`, dst.), apa pun bahasanya.
@@ -157,7 +157,7 @@ Di bawah kedua kolom, selebar halaman:
 ### Unit test
 
 Kartu **Unit test** (di bawah Modul) menampilkan [katalog unit test](07-cara-kerja.md#unit-test) project ini. Katalog
-dan setting-nya dipakai bersama semua developer project (lewat project key) dan disimpan bersama long memory.
+dan pengaturannya dipakai bersama semua developer project (lewat project key) dan disimpan bersama long memory.
 
 - Baris info: mode, aturan test baru, runner yang dikenali beserta masalahnya (mis. *jalankan npm install dulu*),
   dan peringatan bila belum ada node Tester aktif.
@@ -171,9 +171,9 @@ dan setting-nya dipakai bersama semua developer project (lewat project key) dan 
   dan skenario dengan model murah. **Jalankan semua** / **Jalankan** per test: menjalankan sekarang (termasuk test
   karantina yang dipilih) dan mencatat hasilnya ke katalog.
 - Test *Obsolete*: **Kembalikan** (aktif lagi) atau **Konfirmasi hapus** — status menjadi *Dihapus*, snapshot ikut
-  dihapus, test tidak pernah dipulihkan lagi, dan sebuah thread Dashboard menghapus kode test-nya (bisa di-rollback
+  dihapus, test tidak pernah dipulihkan lagi, dan sebuah thread Dasbor menghapus kode test-nya (bisa di-rollback
   dari halaman thread itu). Test *Karantina*: **Aktifkan**.
-- **Setting**: *Test yang dijalankan tiap thread* (*Relevan saja* — default, *Semua test aktif*, *Mati*), *Buat unit
+- **Pengaturan**: *Test yang dijalankan tiap thread* (*Relevan saja* — default, *Semua test aktif*, *Mati*), *Buat unit
   test baru* (*Hanya saat diminta* — default, *Otomatis untuk perubahan logika bisnis*, *Tidak pernah*), *Simpan
   snapshot test* (default menyala; mematikannya menghapus snapshot yang ada), dan *Batas waktu run test* (10–3600
   detik; kosong = ikut *Timeout build*).
@@ -237,7 +237,7 @@ yang disebut prompt langsung di-outline di brief planner (lihat [Cara kerja](07-
   (scan pertama ±1 detik untuk ±1.100 file C#, ±2–4 detik untuk ±14.000 file PHP/JS). Hasil disimpan di memori server
   untuk 4 project yang terakhir dibuka; maks 100.000 file per project.
 
-## Memory
+## Memori
 
 Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi tiga tab: **Short & long memory**, **Perlu review**
 (`/Memory#review`), dan **Business memory** (`/Memory#bisnis`). Selama masih ada memory lama yang menunggu label, banner
@@ -325,11 +325,11 @@ global dan tidak mengalihkan sesi lain: CLI itu mendapat pilihan `aithread` di s
   Anda, atau JSON opencode/Qwen Code berisi komentar.
 - Kartu Claude Code juga memuat **Context Keeper untuk /clear** (*Pasang hook* / *Lepas hook*; lihat
   [Integrasi CLI](03-integrasi-cli.md#context-keeper-untuk-clear)).
-- Bila *Proxy API key* di Setting diubah, matikan lalu nyalakan lagi agar key baru ikut tertulis.
+- Bila *Proxy API key* di Pengaturan diubah, matikan lalu nyalakan lagi agar key baru ikut tertulis.
 
 Detail tiap CLI: [Integrasi CLI](03-integrasi-cli.md).
 
-## Setting
+## Pengaturan
 
 Halaman dibagi menjadi tab. Tab yang terbuka tercatat di URL (mis. `/Setting#telegram`), jadi tetap sama setelah
 refresh dan bisa ditautkan langsung.
@@ -349,10 +349,10 @@ refresh dan bisa ditautkan langsung.
   terpisah lewat **Simpan Skill**.
 - **Keamanan & privasi** (`#keamanan`) — saklar penyamaran secret dan penyamaran request passthrough, hitungan sejak AIT
   berjalan (disamarkan, bisa dipasang kembali, dipasang kembali, akses file kredensial ditolak), contoh aturan
-  `.aithread/project.json`, dan tombol untuk membuka penjelasan lengkap. Disimpan lewat **Simpan setting keamanan**
+  `.aithread/project.json`, dan tombol untuk membuka penjelasan lengkap. Disimpan lewat **Simpan pengaturan keamanan**
   ([Keamanan & privasi](12-keamanan.md)).
 
-Tiga tab pertama adalah satu form: **Simpan setting** di tab mana pun menyimpan isi ketiganya sekaligus, dan field
+Tiga tab pertama adalah satu form: **Simpan pengaturan** di tab mana pun menyimpan isi ketiganya sekaligus, dan field
 yang tidak valid membuka tabnya sendiri. Tab Telegram, Skill, dan Keamanan & privasi disimpan terpisah lewat tombolnya
 masing-masing.
 
@@ -365,7 +365,7 @@ dibuka lagi lewat tombol **Keamanan & privasi** di grup Bantuan sidebar.
 
 Detail di [Konfigurasi](02-konfigurasi.md) dan [Prompt dari Telegram](11-telegram.md).
 
-## Docs
+## Dokumentasi
 
 Dokumentasi ini, ditampilkan di aplikasi. Kolom kiri berisi daftar dokumen (dengan pencarian judul) dan daftar
 isi halaman yang sedang dibuka; tombol di bawah halaman berpindah ke dokumen sebelum/berikutnya. Tautan antar-dokumen

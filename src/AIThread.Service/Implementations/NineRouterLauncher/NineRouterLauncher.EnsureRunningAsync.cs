@@ -30,7 +30,7 @@ public sealed partial class NineRouterLauncher
             {
                 var mayInstall = manual || (Settings.AutoInstall && Interlocked.Exchange(ref _autoInstallTried, 1) == 0);
                 if (!mayInstall)
-                    return Fail(Lang.T("9router belum terpasang. Pasang dengan `npm install -g 9router`, klik Jalankan 9router di Dashboard, atau aktifkan AIThread:NineRouter:AutoInstall.", "9router is not installed yet. Install it with `npm install -g 9router`, click Start 9router on the Dashboard, or turn on AIThread:NineRouter:AutoInstall."));
+                    return Fail(Lang.T("9router belum terpasang. Pasang dengan `npm install -g 9router`, klik Jalankan 9router di Dasbor, atau aktifkan AIThread:NineRouter:AutoInstall.", "9router is not installed yet. Install it with `npm install -g 9router`, click Start 9router on the Dashboard, or turn on AIThread:NineRouter:AutoInstall."));
 
                 var error = await InstallAsync(node, dirs, cancellationToken);
                 if (error is not null) return Fail(error);

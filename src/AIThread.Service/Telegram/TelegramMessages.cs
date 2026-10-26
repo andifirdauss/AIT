@@ -33,7 +33,7 @@ public static class TelegramMessages
     public static string NothingToCancel => Lang.T("Tidak ada thread berjalan dari chat ini. Untuk thread lain: <code>/cancel &lt;id&gt;</code> (lihat /status).", "No thread running from this chat. For another thread: <code>/cancel &lt;id&gt;</code> (see /status).");
     public static string NoThreadYet => Lang.T("Belum ada thread dari chat ini.", "No thread from this chat yet.");
     public static string Revoked => Lang.T("🔒 Akses chat ini ke AIT dicabut.", "🔒 This chat's access to AIT was revoked.");
-    public static string DiffTruncated => Lang.T("… diff terlalu panjang untuk Telegram; lihat detail thread di dashboard AIT.", "… the diff is too long for Telegram; see the thread detail in the AIT dashboard.");
+    public static string DiffTruncated => Lang.T("… diff terlalu panjang untuk Telegram; lihat detail thread di Dasbor AIT.", "… the diff is too long for Telegram; see the thread detail in the AIT dashboard.");
 
     private const int MaxListedTasks = 25;
     private const int MaxListedProjects = 30;
@@ -85,7 +85,7 @@ public static class TelegramMessages
     public static string NotAllowed(string displayName, long chatId) => Lines(
         Lang.T("🔒 Chat ini belum diizinkan memakai AIT.", "🔒 This chat is not allowed to use AIT yet."),
         "",
-        Lang.T($"Di komputer yang menjalankan AIT, buka <b>Setting → Telegram</b> lalu klik <b>Izinkan</b> pada chat <b>{Escape(displayName)}</b> (ID <code>{chatId}</code>).", $"On the computer running AIT, open <b>Setting → Telegram</b> and click <b>Allow</b> on the chat <b>{Escape(displayName)}</b> (ID <code>{chatId}</code>)."));
+        Lang.T($"Di komputer yang menjalankan AIT, buka <b>Pengaturan → Telegram</b> lalu klik <b>Izinkan</b> pada chat <b>{Escape(displayName)}</b> (ID <code>{chatId}</code>).", $"On the computer running AIT, open <b>Setting → Telegram</b> and click <b>Allow</b> on the chat <b>{Escape(displayName)}</b> (ID <code>{chatId}</code>)."));
 
     public static string Allowed(string? activeProject) => Lines(Lang.T("✅ Chat ini sekarang diizinkan memakai AIT.", "✅ This chat is now allowed to use AIT."), "", Help(activeProject));
 
@@ -269,7 +269,7 @@ public static class TelegramMessages
     {
         ThreadSource.ClaudeCode => "CLI",
         ThreadSource.Telegram => "Telegram",
-        _ => "Dashboard"
+        _ => Lang.T("Dasbor", "Dashboard")
     };
 
     private static string Lines(params string[] lines) => string.Join("\n", lines);

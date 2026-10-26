@@ -46,9 +46,9 @@
         </div>
         <div class="small text-secondary mt-3">
             <span class="mono">@Lang.T("📝 instruksi", "📝 instructions")</span> @Lang.T("= node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).", "= the node has extra instructions appended to the default prompt of its role (hover to see them).")
-            <span class="mono">🧩 n</span> @Lang.T("= node memakai n skill dari gudang (Setting → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.", "= the node uses n skills from the store (Setting → Skill; names in the tooltip); the skill content goes into the node's system prompt.")
+            <span class="mono">🧩 n</span> @Lang.T("= node memakai n skill dari gudang (Pengaturan → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.", "= the node uses n skills from the store (Setting → Skill; names in the tooltip); the skill content goes into the node's system prompt.")
             <span class="mono">🛰 n tool</span> @Lang.T("= planner menyerahkan n tool ke tools node (detail di tooltip).", "= the planner hands n tools to the tools node (details in the tooltip).")
-            <span class="mono">🧪 auto test</span> @Lang.T("= Auto Testing planner menyala: perubahan dites node Tester setelah verifikasi. Detail lengkap:", "= the planner's Auto Testing is on: changes are tested by the Tester node after verification. Full details:") <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">@Lang.T("Docs → Konfigurasi", "Docs → Configuration")</a>.
+            <span class="mono">🧪 auto test</span> @Lang.T("= Auto Testing planner menyala: perubahan dites node Tester setelah verifikasi. Detail lengkap:", "= the planner's Auto Testing is on: changes are tested by the Tester node after verification. Full details:") <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">@Lang.T("Dokumentasi → Konfigurasi", "Docs → Configuration")</a>.
         </div>
     </div>
 </details>
@@ -149,7 +149,7 @@
                         <input type="number" class="form-control" id="nodeMaxTokens" min="256" max="200000" step="256" required />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small" for="nodeConcurrency">Max paralel</label>
+                        <label class="form-label small" for="nodeConcurrency">@Lang.T("Max paralel", "Max parallel")</label>
                         <input type="number" class="form-control" id="nodeConcurrency" min="1" max="64" required />
                     </div>
                     <div class="col-md-3">

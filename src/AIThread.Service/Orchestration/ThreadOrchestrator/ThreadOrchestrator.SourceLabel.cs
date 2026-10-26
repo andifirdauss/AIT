@@ -1,4 +1,5 @@
 using AIThread.Common.Enums;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -8,6 +9,6 @@ public sealed partial class ThreadOrchestrator
     {
         ThreadSource.ClaudeCode => "CLI",
         ThreadSource.Telegram => "Telegram",
-        _ => "dashboard"
+        _ => Lang.T("dasbor", "dashboard")
     };
 }

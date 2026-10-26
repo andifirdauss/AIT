@@ -31,7 +31,7 @@ public sealed partial class TelegramService
         await settingService.UpdateTelegramAsync(request with { BotToken = token }, cancellationToken);
         runtime.Reload();
         activityLog.Info("telegram", request.Enabled
-            ? Lang.T($"Setting Telegram disimpan{(botUsername is null ? "" : $" (bot @{botUsername})")}.", $"Telegram settings saved{(botUsername is null ? "" : $" (bot @{botUsername})")}.")
+            ? Lang.T($"Pengaturan Telegram disimpan{(botUsername is null ? "" : $" (bot @{botUsername})")}.", $"Telegram settings saved{(botUsername is null ? "" : $" (bot @{botUsername})")}.")
             : Lang.T("Bot Telegram dinonaktifkan.", "Telegram bot turned off."));
         return await GetStatusAsync(cancellationToken);
     }

@@ -10,7 +10,7 @@ public sealed partial class UnitTestCatalog
 {
     public async Task<UnitTestSettings> SaveSettingsAsync(string projectKey, SaveUnitTestSettingsRequest request, string by, CancellationToken cancellationToken)
     {
-        if (!Enum.IsDefined(request.Mode) || !Enum.IsDefined(request.Authoring)) throw new AppValidationException(Lang.T("Setting unit test tidak valid.", "Invalid unit test settings."));
+        if (!Enum.IsDefined(request.Mode) || !Enum.IsDefined(request.Authoring)) throw new AppValidationException(Lang.T("Pengaturan unit test tidak valid.", "Invalid unit test settings."));
         if (request.TimeoutSeconds is { } timeout && (timeout < MinTimeoutSeconds || timeout > MaxTimeoutSeconds))
             throw new AppValidationException(Lang.T($"Batas waktu run test harus {MinTimeoutSeconds}–{MaxTimeoutSeconds} detik, atau kosong (ikut batas build).", $"The test run time limit must be {MinTimeoutSeconds}–{MaxTimeoutSeconds} seconds, or empty (follows the build limit)."));
 

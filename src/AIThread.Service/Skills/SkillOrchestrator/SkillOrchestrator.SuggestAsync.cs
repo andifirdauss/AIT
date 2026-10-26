@@ -18,7 +18,7 @@ public sealed partial class SkillOrchestrator
         var all = await db.Skills.AsNoTracking()
             .Select(s => new SkillCandidate(s.Id, s.Name, s.Description, s.Tags, s.SkillSource!.Name))
             .ToListAsync(cancellationToken);
-        if (all.Count == 0) throw new AppValidationException(Lang.T("Gudang skill masih kosong. Tambahkan link skill di Setting → Skill.", "The skill store is still empty. Add a skill link in Setting → Skill."));
+        if (all.Count == 0) throw new AppValidationException(Lang.T("Gudang skill masih kosong. Tambahkan link skill di Pengaturan → Skill.", "The skill store is still empty. Add a skill link in Setting → Skill."));
 
         var candidates = Prefilter(all, prompt, MaxCandidates);
         var (json, _, _) = await ai.AskJsonAsync(AgentPrompts.SkillMatcher, BuildInput(prompt, request.Role?.ToString(), candidates), 2_000, cancellationToken);

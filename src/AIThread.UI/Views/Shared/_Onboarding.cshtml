@@ -25,7 +25,7 @@
                             <figure class="onboarding-figure">
                                 <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="@Lang.T("Alur: Anda memakai CLI coding, CLI mengirim ke AIT; planner menyusun rencana, beberapa executor bekerja paralel, wrapper merangkum; semua model berasal dari 9router", "Flow: you use a coding CLI, the CLI sends to AIT; the planner makes a plan, several executors work in parallel, the wrapper summarizes; every model comes from 9router")">
                                     <rect class="ob-panel" x="8" y="88" width="72" height="54" rx="10" />
-                                    <text class="ob-t ob-strong" x="44" y="120" text-anchor="middle">Anda</text>
+                                    <text class="ob-t ob-strong" x="44" y="120" text-anchor="middle">@Lang.T("Anda", "You")</text>
                                     <path class="ob-arrow" d="M82 115 H104" />
                                     <rect class="ob-panel" x="106" y="78" width="104" height="74" rx="10" />
                                     <text class="ob-t ob-strong" x="158" y="104" text-anchor="middle">CLI coding</text>
@@ -35,13 +35,13 @@
 
                                     <rect class="ob-panel ob-accent-stroke" x="236" y="14" width="316" height="202" rx="14" />
                                     <text class="ob-t ob-strong ob-accent-text" x="252" y="38">AIT</text>
-                                    <text class="ob-m" x="282" y="38">proxy + orkestrasi</text>
+                                    <text class="ob-m" x="282" y="38">@Lang.T("proxy + orkestrasi", "proxy + orchestration")</text>
                                     <path class="ob-arrow" d="M505 84 V58 H158 V76" />
                                     <text class="ob-m" x="330" y="53">@Lang.T("jawaban akhir", "final answer")</text>
 
                                     <rect class="ob-accent" x="252" y="86" width="82" height="50" rx="8" />
                                     <text class="ob-on-accent ob-strong" x="293" y="108" text-anchor="middle">Planner</text>
-                                    <text class="ob-on-accent ob-xs" x="293" y="124" text-anchor="middle">rencana</text>
+                                    <text class="ob-on-accent ob-xs" x="293" y="124" text-anchor="middle">@Lang.T("rencana", "plan")</text>
                                     <path class="ob-arrow" d="M336 111 L360 78" />
                                     <path class="ob-arrow" d="M336 111 H360" />
                                     <path class="ob-arrow" d="M336 111 L360 144" />
@@ -91,7 +91,7 @@
                                     <rect class="ob-cursor" x="64" y="183" width="8" height="15" />
 
                                     <rect class="ob-panel" x="436" y="96" width="110" height="120" rx="10" />
-                                    <text class="ob-m" x="491" y="118" text-anchor="middle">Tray Windows</text>
+                                    <text class="ob-m" x="491" y="118" text-anchor="middle">@Lang.T("Tray Windows", "Windows tray")</text>
                                     <rect class="ob-soft" x="452" y="132" width="22" height="22" rx="5" />
                                     <image href="@Url.Content("~/img/aithread.svg")" x="480" y="129" width="28" height="28" />
                                     <rect class="ob-soft" x="514" y="132" width="22" height="22" rx="5" />
@@ -133,7 +133,7 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <text class="ob-m" x="518" y="93" text-anchor="end">@Lang.T("terhubung", "connected")</text>
                                     <rect class="ob-soft" x="248" y="110" width="282" height="30" rx="6" />
                                     <circle class="ob-ok" cx="262" cy="125" r="5" />
-                                    <text class="ob-t ob-sm" x="274" y="129">OpenRouter (gratis)</text>
+                                    <text class="ob-t ob-sm" x="274" y="129">@Lang.T("OpenRouter (gratis)", "OpenRouter (free)")</text>
                                     <text class="ob-m" x="518" y="129" text-anchor="end">@Lang.T("terhubung", "connected")</text>
                                     <rect class="ob-panel ob-accent-stroke" x="248" y="152" width="282" height="48" rx="8" />
                                     <text class="ob-m" x="260" y="170">API key</text>
@@ -142,7 +142,7 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <text class="ob-on-accent ob-sm" x="490" y="180" text-anchor="middle">@Lang.T("Salin", "Copy")</text>
                                 </svg>
                             </figure>
-                            <h4 class="onboarding-title">2. Siapkan 9router</h4>
+                            <h4 class="onboarding-title">@Lang.T("2. Siapkan 9router", "2. Prepare 9router")</h4>
                             <p>
                                 @Html.Raw(Lang.T("9router adalah sumber semua model AI. Pasang dengan <span class=\"mono\">npm i -g 9router</span>, jalankan <span class=\"mono\">9router</span>, lalu di dashboard-nya hubungkan <strong>minimal satu provider</strong> (idealnya satu yang kuat dan satu yang murah/gratis) dan <strong>salin API key</strong>.", "9router is the source of every AI model. Install it with <span class=\"mono\">npm i -g 9router</span>, run <span class=\"mono\">9router</span>, then in its dashboard connect <strong>at least one provider</strong> (ideally a strong one and a cheap/free one) and <strong>copy the API key</strong>."))
                             </p>
@@ -152,16 +152,16 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                         @* 4. Setting *@
                         <div class="carousel-item">
                             <figure class="onboarding-figure">
-                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="@Lang.T("Menu Setting tab Koneksi 9router: isi URL dan API key, klik Test koneksi lalu Simpan; status berubah menjadi Terhubung", "Setting menu, 9router connection tab: fill in the URL and API key, click Test connection then Save; the status turns Connected")">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="@Lang.T("Menu Pengaturan tab Koneksi 9router: isi URL dan API key, klik Test koneksi lalu Simpan; status berubah menjadi Terhubung", "Setting menu, 9router connection tab: fill in the URL and API key, click Test connection then Save; the status turns Connected")">
                                     <rect class="ob-panel" x="14" y="10" width="532" height="210" rx="10" />
                                     <path class="ob-soft" d="M14 20 a10 10 0 0 1 10 -10 H536 a10 10 0 0 1 10 10 V38 H14 z" />
                                     <rect class="ob-panel" x="160" y="16" width="240" height="16" rx="8" />
                                     <text class="ob-m ob-mono" x="172" y="28">localhost:5225/Setting</text>
                                     <text class="ob-t ob-strong ob-sm" x="32" y="62">@Lang.T("Koneksi 9router", "9router connection")</text>
                                     <rect class="ob-accent" x="32" y="68" width="100" height="2.5" />
-                                    <text class="ob-m" x="152" y="62">Proxy &amp; orkestrasi</text>
+                                    <text class="ob-m" x="152" y="62">@Html.Raw(Lang.T("Proxy &amp; orkestrasi", "Proxy &amp; orchestration"))</text>
                                     <text class="ob-m" x="268" y="62">Build</text>
-                                    <text class="ob-m" x="312" y="62">Memory</text>
+                                    <text class="ob-m" x="312" y="62">@Lang.T("Memori", "Memory")</text>
                                     <text class="ob-m" x="366" y="62">Telegram</text>
                                     <path class="ob-line" d="M32 71 H528" />
                                     <text class="ob-m" x="32" y="94">URL 9router</text>
@@ -184,9 +184,9 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                             </figure>
                             <h4 class="onboarding-title">@Lang.T("3. Hubungkan AIT ke 9router", "3. Connect AIT to 9router")</h4>
                             <p>
-                                @Html.Raw(Lang.T("Menu <strong>Setup</strong> → langkah <em>Hubungkan 9router</em>: isi URL (default <span class=\"mono\">http://localhost:20128</span>) dan API key, lalu <strong>Test &amp; simpan</strong> (sekali klik). Pill status di kiri bawah sidebar berubah hijau. Pengaturan yang sama ada di Setting → <em>Koneksi 9router</em>.", "The <strong>Setup</strong> menu → step <em>Connect 9router</em>: fill in the URL (default <span class=\"mono\">http://localhost:20128</span>) and the API key, then <strong>Test &amp; save</strong> (one click). The status pill at the bottom left of the sidebar turns green. The same settings are in Setting → <em>9router connection</em>."))
+                                @Html.Raw(Lang.T("Menu <strong>Penyiapan</strong> → langkah <em>Hubungkan 9router</em>: isi URL (default <span class=\"mono\">http://localhost:20128</span>) dan API key, lalu <strong>Test &amp; simpan</strong> (sekali klik). Pill status di kiri bawah sidebar berubah hijau. Pengaturan yang sama ada di Pengaturan → <em>Koneksi 9router</em>.", "The <strong>Setup</strong> menu → step <em>Connect 9router</em>: fill in the URL (default <span class=\"mono\">http://localhost:20128</span>) and the API key, then <strong>Test &amp; save</strong> (one click). The status pill at the bottom left of the sidebar turns green. The same settings are in Setting → <em>9router connection</em>."))
                             </p>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-router">@Lang.T("Kerjakan di Setup →", "Do it in Setup →")</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-router">@Lang.T("Kerjakan di Penyiapan →", "Do it in Setup →")</a>
                         </div>
 
                         @* 5. Nodes *@
@@ -205,37 +205,37 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
 
                                     <rect class="ob-panel" x="28" y="52" width="140" height="66" rx="8" />
                                     <rect class="ob-accent" x="28" y="52" width="4" height="66" rx="2" />
-                                    <text class="ob-t ob-sm ob-strong" x="42" y="74">Model terkuat</text>
+                                    <text class="ob-t ob-sm ob-strong" x="42" y="74">@Lang.T("Model terkuat", "Strongest model")</text>
                                     <text class="ob-m" x="42" y="93">tool calling ✓</text>
-                                    <text class="ob-m" x="42" y="108">menyusun rencana</text>
+                                    <text class="ob-m" x="42" y="108">@Lang.T("menyusun rencana", "writes the plan")</text>
 
                                     <rect class="ob-panel" x="210" y="52" width="140" height="66" rx="8" />
                                     <rect class="ob-ok" x="210" y="52" width="4" height="66" rx="2" />
                                     <text class="ob-t ob-sm ob-strong" x="224" y="74">Executor A</text>
                                     <text class="ob-m" x="224" y="93">@Html.Raw(Lang.T("murah &amp; cepat", "cheap &amp; fast"))</text>
-                                    <text class="ob-m" x="224" y="108">max paralel 4</text>
+                                    <text class="ob-m" x="224" y="108">@Lang.T("max paralel 4", "max parallel 4")</text>
                                     <rect class="ob-panel" x="210" y="126" width="140" height="66" rx="8" />
                                     <rect class="ob-ok" x="210" y="126" width="4" height="66" rx="2" />
                                     <text class="ob-t ob-sm ob-strong" x="224" y="148">Executor B</text>
-                                    <text class="ob-m" x="224" y="167">provider lain</text>
-                                    <text class="ob-m" x="224" y="182">max paralel 4</text>
+                                    <text class="ob-m" x="224" y="167">@Lang.T("provider lain", "another provider")</text>
+                                    <text class="ob-m" x="224" y="182">@Lang.T("max paralel 4", "max parallel 4")</text>
 
                                     <rect class="ob-panel" x="392" y="52" width="140" height="66" rx="8" />
                                     <rect class="ob-warn" x="392" y="52" width="4" height="66" rx="2" />
-                                    <text class="ob-t ob-sm ob-strong" x="406" y="74">Model murah</text>
+                                    <text class="ob-t ob-sm ob-strong" x="406" y="74">@Lang.T("Model murah", "Cheap model")</text>
                                     <text class="ob-m" x="406" y="93">@Lang.T("merangkum hasil", "summarizes the results")</text>
-                                    <text class="ob-m" x="406" y="108">+ ekstraksi memory</text>
+                                    <text class="ob-m" x="406" y="108">@Lang.T("+ ekstraksi memory", "+ memory extraction")</text>
                                     <rect class="ob-dashed" x="392" y="126" width="140" height="66" rx="8" />
                                     <text class="ob-m" x="462" y="155" text-anchor="middle">+ Reviewer</text>
-                                    <text class="ob-m" x="462" y="171" text-anchor="middle">(opsional)</text>
+                                    <text class="ob-m" x="462" y="171" text-anchor="middle">@Lang.T("(opsional)", "(optional)")</text>
                                 </svg>
                             </figure>
                             <h4 class="onboarding-title">@Lang.T("4. Pilih model untuk tiap peran", "4. Choose a model for each role")</h4>
                             <p>
-                                @Html.Raw(Lang.T("Paling cepat: menu <strong>Setup</strong> → pilih <strong>model kuat</strong> (planner, mendukung tool calling) dan <strong>model murah</strong> (executor, wrapper, dll.). AIT membuat node tiap peran dan langsung mengujinya. Detail per node (Reviewer, executor tambahan, node cadangan, skill) diatur di menu <strong>Node</strong>.", "Fastest: the <strong>Setup</strong> menu → choose a <strong>strong model</strong> (the planner, with tool calling) and a <strong>cheap model</strong> (executor, wrapper, etc.). AIT creates a node per role and tests it right away. Details per node (Reviewer, extra executors, fallback nodes, skills) are set in the <strong>Node</strong> menu."))
+                                @Html.Raw(Lang.T("Paling cepat: menu <strong>Penyiapan</strong> → pilih <strong>model kuat</strong> (planner, mendukung tool calling) dan <strong>model murah</strong> (executor, wrapper, dll.). AIT membuat node tiap peran dan langsung mengujinya. Detail per node (Reviewer, executor tambahan, node cadangan, skill) diatur di menu <strong>Node</strong>.", "Fastest: the <strong>Setup</strong> menu → choose a <strong>strong model</strong> (the planner, with tool calling) and a <strong>cheap model</strong> (executor, wrapper, etc.). AIT creates a node per role and tests it right away. Details per node (Reviewer, extra executors, fallback nodes, skills) are set in the <strong>Node</strong> menu."))
                             </p>
                             <div class="d-flex flex-wrap gap-2">
-                                <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-nodes">@Lang.T("Kerjakan di Setup →", "Do it in Setup →")</a>
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-nodes">@Lang.T("Kerjakan di Penyiapan →", "Do it in Setup →")</a>
                                 <a class="btn btn-sm btn-outline-secondary" asp-controller="Node" asp-action="Index">@Lang.T("Buka Node", "Open Node")</a>
                             </div>
                         </div>
@@ -248,9 +248,9 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <path class="ob-soft" d="M14 20 a10 10 0 0 1 10 -10 H536 a10 10 0 0 1 10 10 V38 H14 z" />
                                     <rect class="ob-panel" x="160" y="16" width="240" height="16" rx="8" />
                                     <text class="ob-m ob-mono" x="172" y="28">localhost:5225/Project</text>
-                                    <text class="ob-t ob-strong" x="32" y="68">Project</text>
+                                    <text class="ob-t ob-strong" x="32" y="68">@Lang.T("Proyek", "Project")</text>
                                     <rect class="ob-accent" x="426" y="52" width="102" height="24" rx="6" />
-                                    <text class="ob-on-accent ob-sm" x="477" y="68" text-anchor="middle">Telusuri…</text>
+                                    <text class="ob-on-accent ob-sm" x="477" y="68" text-anchor="middle">@Lang.T("Telusuri…", "Browse…")</text>
 
                                     <rect class="ob-soft" x="32" y="88" width="496" height="34" rx="6" />
                                     <path class="ob-folder" d="M46 99 h7 l3 3 h12 v12 h-22 z" />
@@ -264,7 +264,7 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <rect class="ob-soft" x="32" y="130" width="496" height="34" rx="6" />
                                     <path class="ob-folder" d="M46 141 h7 l3 3 h12 v12 h-22 z" />
                                     <text class="ob-t ob-mono ob-sm" x="78" y="152">D:\Source\erp-api</text>
-                                    <text class="ob-m ob-xs" x="376" y="151" text-anchor="end">via Telusuri…</text>
+                                    <text class="ob-m ob-xs" x="376" y="151" text-anchor="end">@Lang.T("via Telusuri…", "via Browse…")</text>
                                     <rect class="ob-panel" x="388" y="138" width="66" height="18" rx="9" />
                                     <text class="ob-m" x="421" y="151" text-anchor="middle">.NET</text>
                                     <circle class="ob-ok" cx="508" cy="147" r="8" />
@@ -273,21 +273,21 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <rect class="ob-soft" x="32" y="172" width="496" height="34" rx="6" />
                                     <path class="ob-folder" d="M46 183 h7 l3 3 h12 v12 h-22 z" />
                                     <text class="ob-t ob-mono ob-sm" x="78" y="194">D:\Source\gudang</text>
-                                    <text class="ob-m ob-xs" x="376" y="193" text-anchor="end">via Telusuri…</text>
+                                    <text class="ob-m ob-xs" x="376" y="193" text-anchor="end">@Lang.T("via Telusuri…", "via Browse…")</text>
                                     <rect class="ob-panel" x="388" y="180" width="66" height="18" rx="9" />
                                     <text class="ob-m" x="421" y="193" text-anchor="middle">Java</text>
                                     <circle class="ob-ok" cx="508" cy="189" r="8" />
                                     <text class="ob-on-accent ob-xs" x="508" y="193" text-anchor="middle">✓</text>
                                 </svg>
                             </figure>
-                            <h4 class="onboarding-title">5. Daftarkan project Anda</h4>
+                            <h4 class="onboarding-title">@Lang.T("5. Daftarkan project Anda", "5. Register your project")</h4>
                             <p>
                                 @Html.Raw(Lang.T("<strong>Paling mudah: otomatis.</strong> Setelah CLI diarahkan ke AIT (langkah berikutnya), cukup buka CLI di folder project lalu kirim prompt pertama — mis. <span class=\"mono\">cd D:\\Source\\toko-online</span> lalu <span class=\"mono\">claude</span>, <span class=\"mono\">codex -p aithread</span>, pilih model <span class=\"mono\">aithread</span> di opencode / Qwen Code, atau <span class=\"mono\">AIT/AIThread</span> di omp. Folder yang berisi <span class=\"mono\">.git</span> atau file build (bahasa apa pun) langsung terdaftar.", "<strong>Easiest: automatic.</strong> Once the CLI points to AIT (next step), just open the CLI in a project folder and send the first prompt — e.g. <span class=\"mono\">cd D:\\Source\\toko-online</span> then <span class=\"mono\">claude</span>, <span class=\"mono\">codex -p aithread</span>, choose the <span class=\"mono\">aithread</span> model in opencode / Qwen Code, or <span class=\"mono\">AIT/AIThread</span> in omp. A folder with <span class=\"mono\">.git</span> or a build file (any language) is registered at once."))
                             </p>
                             <p class="small text-secondary">
                                 @Html.Raw(Lang.T("Ingin mendaftarkan lebih dulu, sekaligus banyak, atau folder tanpa <span class=\"mono\">.git</span>/file build? Pakai menu <strong>Project</strong> → <strong>Telusuri…</strong> (atau <em>Daftarkan manual</em>). Sesi di luar project tetap jalan, hanya tidak diorkestrasi.", "Want to register first, many at once, or a folder without <span class=\"mono\">.git</span>/a build file? Use the <strong>Project</strong> menu → <strong>Browse…</strong> (or <em>Register manually</em>). Sessions outside a project still work, they are just not orchestrated."))
                             </p>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-project">@Lang.T("Kerjakan di Setup →", "Do it in Setup →")</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-project">@Lang.T("Kerjakan di Penyiapan →", "Do it in Setup →")</a>
                         </div>
 
                         @* 7. CLI *@
@@ -339,10 +339,10 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                             </figure>
                             <h4 class="onboarding-title">@Lang.T("6. Arahkan CLI Anda ke AIT", "6. Point your CLI to AIT")</h4>
                             <p>
-                                @Html.Raw(Lang.T("Nyalakan switch CLI yang Anda pakai — <strong>Claude Code</strong>, Codex CLI, Gemini CLI, opencode, Qwen Code, atau oh-my-pi — secara global di menu <strong>Setup</strong>, atau per project di menu <strong>CLI</strong>. AIT hanya menulis entri miliknya dan bisa dilepas kapan saja dengan mematikan switch.", "Turn on the switch of the CLI you use — <strong>Claude Code</strong>, Codex CLI, Gemini CLI, opencode, Qwen Code or oh-my-pi — globally in the <strong>Setup</strong> menu, or per project in the <strong>CLI</strong> menu. AIT writes only its own entries and can be removed any time by turning the switch off."))
+                                @Html.Raw(Lang.T("Nyalakan switch CLI yang Anda pakai — <strong>Claude Code</strong>, Codex CLI, Gemini CLI, opencode, Qwen Code, atau oh-my-pi — secara global di menu <strong>Penyiapan</strong>, atau per project di menu <strong>CLI</strong>. AIT hanya menulis entri miliknya dan bisa dilepas kapan saja dengan mematikan switch.", "Turn on the switch of the CLI you use — <strong>Claude Code</strong>, Codex CLI, Gemini CLI, opencode, Qwen Code or oh-my-pi — globally in the <strong>Setup</strong> menu, or per project in the <strong>CLI</strong> menu. AIT writes only its own entries and can be removed any time by turning the switch off."))
                             </p>
                             <div class="d-flex flex-wrap gap-2">
-                                <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-cli">@Lang.T("Kerjakan di Setup →", "Do it in Setup →")</a>
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Setup" asp-action="Index" asp-fragment="step-cli">@Lang.T("Kerjakan di Penyiapan →", "Do it in Setup →")</a>
                                 <a class="btn btn-sm btn-outline-secondary" asp-controller="Cli" asp-action="Index">@Lang.T("Buka CLI", "Open CLI")</a>
                             </div>
                         </div>
@@ -350,7 +350,7 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                         @* 8. Use *@
                         <div class="carousel-item">
                             <figure class="onboarding-figure">
-                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="@Lang.T("Sesi CLI menampilkan progres AIT: rencana, executor paralel, build dan review, ringkasan; Dashboard menampilkan timeline tugas, diff, dan tombol batalkan perubahan", "A CLI session showing AIT progress: plan, parallel executors, build and review, summary; the Dashboard shows the task timeline, diffs and a button to roll back the changes")">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="@Lang.T("Sesi CLI menampilkan progres AIT: rencana, executor paralel, build dan review, ringkasan; Dasbor menampilkan timeline tugas, diff, dan tombol batalkan perubahan", "A CLI session showing AIT progress: plan, parallel executors, build and review, summary; the Dashboard shows the task timeline, diffs and a button to roll back the changes")">
                                     <rect class="ob-term" x="14" y="12" width="344" height="206" rx="10" />
                                     <path class="ob-term-bar" d="M14 22 a10 10 0 0 1 10 -10 H348 a10 10 0 0 1 10 10 V38 H14 z" />
                                     <circle cx="32" cy="25" r="4.5" fill="#e5534b" />
@@ -360,13 +360,13 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <text class="ob-term-t ob-mono ob-sm" x="28" y="62"><tspan class="ob-term-p">&gt;</tspan> @Lang.T("tambahkan validasi email di register", "add email validation to register")</text>
                                     <text class="ob-term-a ob-mono ob-sm ob-strong" x="28" y="88">AIT · thread #128</text>
                                     <text class="ob-term-ok ob-mono ob-sm" x="28" y="110">@Lang.T("✓ Rencana: 3 tugas", "✓ Plan: 3 tasks")</text>
-                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="130">✓ Executor 3/3 (paralel)</text>
-                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="150">✓ Build &amp; review lolos</text>
+                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="130">@Lang.T("✓ Executor 3/3 (paralel)", "✓ Executor 3/3 (parallel)")</text>
+                                    <text class="ob-term-ok ob-mono ob-sm" x="28" y="150">@Html.Raw(Lang.T("✓ Build &amp; review lolos", "✓ Build &amp; review passed"))</text>
                                     <text class="ob-term-p ob-mono ob-sm" x="28" y="170">@Lang.T("● Menulis ringkasan…", "● Writing the summary…")</text>
                                     <text class="ob-term-m ob-mono ob-xs" x="28" y="200">@Lang.T("3 file diubah · 41 dtk · speedup 2.6×", "3 files changed · 41 s · speedup 2.6×")</text>
 
                                     <rect class="ob-panel" x="372" y="12" width="174" height="206" rx="10" />
-                                    <text class="ob-t ob-strong" x="386" y="38">Dashboard</text>
+                                    <text class="ob-t ob-strong" x="386" y="38">@Lang.T("Dasbor", "Dashboard")</text>
                                     <text class="ob-m" x="386" y="56">thread #128</text>
                                     <text class="ob-m ob-mono" x="386" y="80">T1</text>
                                     <rect class="ob-ok" x="408" y="71" width="70" height="10" rx="3" />
@@ -382,15 +382,15 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                             </figure>
                             <h4 class="onboarding-title">@Lang.T("7. Mulai bekerja", "7. Start working")</h4>
                             <p>
-                                @Html.Raw(Lang.T("Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel, build &amp; review) tampil langsung di CLI. Detail, diff per file, dan tombol <strong>↩ Batalkan perubahan file</strong> ada di Dashboard → thread.", "Open a <strong>new session</strong> of your CLI in the project folder and give commands as usual. The progress (plan, parallel tasks, build &amp; review) shows right in the CLI. Details, per-file diffs and the <strong>↩ Roll back file changes</strong> button are in Dashboard → thread."))
+                                @Html.Raw(Lang.T("Buka <strong>sesi baru</strong> CLI Anda di folder project dan beri perintah seperti biasa. Progres (rencana, tugas paralel, build &amp; review) tampil langsung di CLI. Detail, diff per file, dan tombol <strong>↩ Batalkan perubahan file</strong> ada di Dasbor → thread.", "Open a <strong>new session</strong> of your CLI in the project folder and give commands as usual. The progress (plan, parallel tasks, build &amp; review) shows right in the CLI. Details, per-file diffs and the <strong>↩ Roll back file changes</strong> button are in Dashboard → thread."))
                             </p>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Home" asp-action="Index">@Lang.T("Buka Dashboard →", "Open the Dashboard →")</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Home" asp-action="Index">@Lang.T("Buka Dasbor →", "Open the Dashboard →")</a>
                         </div>
 
                         @* 9. Done *@
                         <div class="carousel-item">
                             <figure class="onboarding-figure">
-                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="@Lang.T("Selesai; lanjutkan ke Docs, Telegram, atau Memory", "Done; go on to Docs, Telegram or Memory")">
+                                <svg class="ob-svg" viewBox="0 0 560 230" role="img" aria-label="@Lang.T("Selesai; lanjutkan ke Dokumentasi, Telegram, atau Memori", "Done; go on to Docs, Telegram or Memory")">
                                     <circle class="ob-ok-soft" cx="118" cy="115" r="78" />
                                     <circle class="ob-ok" cx="118" cy="115" r="50" />
                                     <path class="ob-check" d="M94 116 L111 133 L144 98" />
@@ -398,7 +398,7 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <rect class="ob-panel" x="230" y="22" width="316" height="54" rx="10" />
                                     <circle class="ob-accent" cx="258" cy="49" r="15" />
                                     <text class="ob-on-accent" x="258" y="54" text-anchor="middle">☷</text>
-                                    <text class="ob-t ob-strong" x="284" y="45">Docs</text>
+                                    <text class="ob-t ob-strong" x="284" y="45">@Lang.T("Dokumentasi", "Docs")</text>
                                     <text class="ob-m" x="284" y="63">@Html.Raw(Lang.T("Panduan lengkap &amp; troubleshooting", "Full guide &amp; troubleshooting"))</text>
 
                                     <rect class="ob-panel" x="230" y="88" width="316" height="54" rx="10" />
@@ -410,16 +410,16 @@ aithread tray        @Lang.T("# jalan di background, ikon di tray", "# runs in t
                                     <rect class="ob-panel" x="230" y="154" width="316" height="54" rx="10" />
                                     <circle class="ob-accent" cx="258" cy="181" r="15" />
                                     <text class="ob-on-accent" x="258" y="186" text-anchor="middle">◈</text>
-                                    <text class="ob-t ob-strong" x="284" y="177">Memory</text>
-                                    <text class="ob-m" x="284" y="195">AIT mengingat keputusan &amp; konteks project</text>
+                                    <text class="ob-t ob-strong" x="284" y="177">@Lang.T("Memori", "Memory")</text>
+                                    <text class="ob-m" x="284" y="195">@Html.Raw(Lang.T("AIT mengingat keputusan &amp; konteks project", "AIT remembers decisions &amp; project context"))</text>
                                 </svg>
                             </figure>
                             <h4 class="onboarding-title">@Lang.T("Siap dipakai! 🎉", "Ready to go! 🎉")</h4>
                             <p>
-                                @Html.Raw(Lang.T("Itu saja. Panduan ini bisa dibuka lagi kapan saja lewat menu <strong>Panduan memulai</strong> di grup Bantuan sidebar. Jika ada yang tidak berjalan, cek <em>Docs → Troubleshooting</em>.", "That is all. This guide can be opened again any time from <strong>Getting started</strong> in the Help group of the sidebar. If something does not work, check <em>Docs → Troubleshooting</em>."))
+                                @Html.Raw(Lang.T("Itu saja. Panduan ini bisa dibuka lagi kapan saja lewat menu <strong>Panduan memulai</strong> di grup Bantuan sidebar. Jika ada yang tidak berjalan, cek <em>Dokumentasi → Troubleshooting</em>.", "That is all. This guide can be opened again any time from <strong>Getting started</strong> in the Help group of the sidebar. If something does not work, check <em>Docs → Troubleshooting</em>."))
                             </p>
                             <div class="d-flex flex-wrap gap-2">
-                                <a class="btn btn-sm btn-outline-primary" asp-controller="Docs" asp-action="Index">@Lang.T("Buka Docs →", "Open Docs →")</a>
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Docs" asp-action="Index">@Lang.T("Buka Dokumentasi →", "Open Docs →")</a>
                                 <a class="btn btn-sm btn-outline-secondary" asp-controller="Setting" asp-action="Index" asp-fragment="telegram">@Lang.T("Atur Telegram", "Set up Telegram")</a>
                             </div>
                         </div>

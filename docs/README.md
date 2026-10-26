@@ -14,7 +14,7 @@ Anda ─► CLI ─► AIT ─► Planner ─► Executor × N (paralel) ─► 
 
 CLI = Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, oh-my-pi, atau CLI lain yang base URL-nya bisa diganti.
 
-Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localhost:5225/Docs).
+Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Dokumentasi** (http://localhost:5225/Docs).
 
 ## Mulai cepat
 
@@ -23,8 +23,8 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
    Agar tetap hidup walau browser/terminal ditutup, jalankan di background: `.\scripts\aithread.ps1 start` —
    [Menjalankan di background](01-instalasi.md#5-menjalankan-di-background). Tanpa .NET SDK: `AIThread.exe` standalone
    dengan menu dan ikon tray — [AIThread.exe standalone](01-instalasi.md#6-aithreadexe-standalone-tanpa-net).
-3. Menu **Setup** (terbuka sendiri saat AIT pertama kali dipakai) mengerjakan semua langkah awal di satu halaman —
-   [Panduan menu → Setup](05-menu.md#setup):
+3. Menu **Penyiapan** (terbuka sendiri saat AIT pertama kali dipakai) mengerjakan semua langkah awal di satu halaman —
+   [Panduan menu → Penyiapan](05-menu.md#penyiapan):
    - **9router**: isi URL & API key → *Test & simpan*.
    - **Model**: pilih model kuat dan model murah → *Buat node & uji* (Planner, Executor, Wrapper, Tools Node, Context Keeper
      dibuat sekaligus).
@@ -34,7 +34,7 @@ Dokumentasi ini juga bisa dibaca di aplikasi lewat menu **Docs** (http://localho
    Dalam tim, cukup **Import profil** dari ketua tim lalu isi API key/password sendiri —
    [Profil setup tim](02-konfigurasi.md#profil-setup-tim).
 4. Buka sesi CLI **baru** di folder project dan beri perintah seperti biasa — [Penggunaan](04-penggunaan.md).
-5. *(Opsional)* **Setting → Telegram** untuk mengirim prompt dari HP saat laptop ditinggal —
+5. *(Opsional)* **Pengaturan → Telegram** untuk mengirim prompt dari HP saat laptop ditinggal —
    [Prompt dari Telegram](11-telegram.md).
 
 AIT bisa tampil dalam **Bahasa Indonesia** atau **English**: pilih di kotak bahasa di bawah sidebar —
@@ -45,10 +45,10 @@ AIT bisa tampil dalam **Bahasa Indonesia** atau **English**: pilih di kotak baha
 | # | Dokumen | Isi |
 |---|---|---|
 | 1 | [Instalasi](01-instalasi.md) | Prasyarat, short memory (Garnet), 9router, database, menjalankan aplikasi (juga di background), `appsettings.json` |
-| 2 | [Konfigurasi](02-konfigurasi.md) | Bahasa tampilan, menu Setting (9router, proxy, orkestrasi), menu Node (memilih model per peran), profil setup tim (export/import) |
+| 2 | [Konfigurasi](02-konfigurasi.md) | Bahasa tampilan, menu Pengaturan (9router, proxy, orkestrasi), menu Node (memilih model per peran), profil setup tim (export/import) |
 | 3 | [Integrasi CLI](03-integrasi-cli.md) | Format yang didukung, mengarahkan Claude Code, Codex, Gemini CLI, opencode, Qwen Code, oh-my-pi (atau CLI lain) ke AIT lewat menu CLI, verifikasi, mengembalikan |
 | 4 | [Penggunaan sehari-hari](04-penggunaan.md) | Alur kerja, membaca progres, menulis prompt yang efektif, meninjau & membatalkan |
-| 5 | [Panduan menu](05-menu.md) | Dashboard, Setup, detail thread, Project, Memory, Node, CLI, Setting |
+| 5 | [Panduan menu](05-menu.md) | Dasbor, Penyiapan, detail thread, Project, Memory, Node, CLI, Pengaturan |
 | 6 | [Memory](06-memory.md) | Short vs long memory, project vs knowledge memory, label (modul · layer · jenis + keyword), peta kode, daftar & gabung modul, migrasi label, siklus hidup, pengelolaan |
 | 7 | [Cara kerja](07-cara-kerja.md) | Detail pipeline: klasifikasi request, planner, kontrak, validator, executor, verifikasi (build & reviewer), testing (Auto Testing: browser Playwright & API), wrapper, katalog unit test (baseline, regresi, triase Tester, pemulihan otomatis) |
 | 8 | [Troubleshooting](08-troubleshooting.md) | Pesan error umum dan solusinya |
@@ -61,7 +61,7 @@ AIT bisa tampil dalam **Bahasa Indonesia** atau **English**: pilih di kotak baha
 
 | Istilah | Arti |
 |---|---|
-| **Thread** | Satu permintaan yang diorkestrasi: rencana → tugas → ringkasan. Punya halaman detail di Dashboard. |
+| **Thread** | Satu permintaan yang diorkestrasi: rencana → tugas → ringkasan. Punya halaman detail di Dasbor. |
 | **Planner** | Node paling cerdas. Membaca kode (read-only), menyusun kontrak, dan memecah pekerjaan menjadi tugas. |
 | **Executor** | Node murah. Mengerjakan satu tugas = satu file. Banyak executor berjalan paralel. |
 | **Wrapper** | Node yang mengumpulkan semua hasil executor dan menulis balasan untuk Anda. |

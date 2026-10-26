@@ -19,12 +19,12 @@ sesi di luar project (folder kosong, folder catatan, dll.), diteruskan ke endpoi
 passthrough, sehingga CLI tetap bekerja seperti biasa di sana, tanpa memory.
 
 Nama model yang dikirim CLI diabaikan pada passthrough dan tampil apa adanya pada balasan orkestrasi; model yang
-sebenarnya dipakai ditentukan Setting *Passthrough model* dan Node.
+sebenarnya dipakai ditentukan Pengaturan *Passthrough model* dan Node.
 
 ## Lewat menu CLI
 
 Cara yang disarankan. Menu **CLI** punya kartu untuk Claude Code, oh-my-pi, Codex CLI, Gemini CLI, opencode, dan
-Qwen Code; switch *Global* yang sama juga ada di Setup → langkah *Arahkan CLI coding ke AIT*. Semua kartu bekerja
+Qwen Code; switch *Global* yang sama juga ada di Penyiapan → langkah *Arahkan CLI coding ke AIT*. Semua kartu bekerja
 sama: AIT hanya menulis/menghapus entri miliknya, backup file asli disimpan sekali sebagai `*.aithread-backup`, dan
 file yang hanya berisi entri AIT dihapus saat switch dimatikan. Bila *Proxy API key* diisi, nilainya ikut ditulis
 (kosong = `aithread-local`). URL proxy yang ditulis diatur di kolom *URL proxy AIT* di bagian atas halaman; *Yang akan
@@ -67,7 +67,7 @@ Hanya sesi Claude Code yang dibuka di project tersebut yang melewati AIT.
 4. Buka sesi Claude Code baru di project itu agar berlaku.
 
 File yang ditulis: `<folder project>/.claude/settings.local.json`, dengan folder project = folder root project
-(tertera di kotak status). `settings.local.json` adalah setting lokal Claude Code dan biasanya di-*gitignore*.
+(tertera di kotak status). `settings.local.json` adalah pengaturan lokal Claude Code dan biasanya di-*gitignore*.
 
 > Claude Code membaca `.claude/settings.local.json` dari folder tempat Anda menjalankannya. Jika Anda biasa membuka
 > Claude Code di sub-folder project atau di folder lain, gunakan [cara manual](#manual) dan letakkan file di
@@ -111,7 +111,7 @@ Tambahkan ke `.claude/settings.local.json` di folder tempat Anda menjalankan `cl
 }
 ```
 
-- Ganti `aithread-local` dengan Proxy API key bila Anda mengisinya di Setting.
+- Ganti `aithread-local` dengan Proxy API key bila Anda mengisinya di Pengaturan.
 - `ANTHROPIC_CUSTOM_HEADERS` opsional. Tanpa header ini, AIT menentukan project dari working directory sesi
   (folder itu atau folder induknya). Alternatif lain: `X-AIThread-Cwd: <folder>` untuk menetapkan working directory.
   Header lama `X-AIThread-Solution` (path `.sln`) tetap diterima; foldernya dipakai sebagai petunjuk project.
@@ -180,7 +180,7 @@ Catatan:
 - Usage yang dikembalikan untuk jawaban orkestrasi adalah estimasi ukuran konteks, dilaporkan sebagai
   `cache_read_input_tokens` (`input_tokens` = 0). Claude Code tetap menghitung sisa konteks dengan benar, sementara
   pelacak biaya yang membaca transcript (burn rate, ccusage, dll.) tidak menghitungnya sebagai input Opus penuh.
-- Environment variable sistem dengan nama yang sama bisa bertabrakan dengan setting ini. Jika hasil tidak sesuai,
+- Environment variable sistem dengan nama yang sama bisa bertabrakan dengan pengaturan ini. Jika hasil tidak sesuai,
   periksa `ANTHROPIC_BASE_URL` di environment Windows Anda.
 - Claude Code (Node.js) tidak mempercayai sertifikat development ASP.NET Core; pakai URL proxy **http**.
 
@@ -302,7 +302,7 @@ tidak mengirim salah satunya, set header `X-AIThread-Cwd` (atau `X-AIThread-Proj
    🧠 Planner `…` menganalisis project & menyusun rencana…
    ```
 
-4. Di Dashboard AIT muncul thread baru dan log `Thread baru dari CLI · MyApp`.
+4. Di Dasbor AIT muncul thread baru dan log `Thread baru dari CLI · MyApp`.
 
 Jika jawaban datang tanpa baris `**AIT**`, lihat [Troubleshooting](08-troubleshooting.md#cli-tidak-melewati-ait).
 
@@ -319,6 +319,6 @@ Buka sesi CLI baru setelahnya.
 
 ## Catatan
 
-- Mematikan *Orkestrasi aktif* di Setting tidak perlu mengubah konfigurasi CLI: CLI tetap lewat AIT, tetapi
+- Mematikan *Orkestrasi aktif* di Pengaturan tidak perlu mengubah konfigurasi CLI: CLI tetap lewat AIT, tetapi
   request-nya diteruskan langsung ke 9router sehingga CLI bekerja sebagai agen biasa.
-- Thread dari semua CLI ini tampil dengan sumber *CLI* di Dashboard dan Telegram.
+- Thread dari semua CLI ini tampil dengan sumber *CLI* di Dasbor dan Telegram.
