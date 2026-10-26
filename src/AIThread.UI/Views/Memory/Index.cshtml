@@ -22,6 +22,12 @@
     </li>
 </ul>
 
+<div class="alert alert-info d-none small" id="changelogBanner" role="status">
+    <div id="changelogText"></div>
+    <div class="progress mt-2 d-none" id="changelogProgress" style="height: 6px;" role="progressbar" aria-label="Kemajuan putaran migrasi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" id="changelogBar"></div>
+    </div>
+</div>
 <div class="alert alert-info d-none d-flex flex-wrap align-items-center gap-2 small" id="relabelBanner" role="status">
     <div class="me-auto" id="relabelText"></div>
     <button type="button" class="btn btn-outline-primary btn-sm" id="btnRelabel">Jalankan sekarang</button>

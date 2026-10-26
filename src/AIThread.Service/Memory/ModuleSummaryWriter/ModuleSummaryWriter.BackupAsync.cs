@@ -12,8 +12,8 @@ public sealed partial class ModuleSummaryWriter
     // the import format of the Memory menu. No backup, no migration of facts.
     private async Task<bool> BackupAsync(CancellationToken cancellationToken)
     {
+        if (ExistingBackup() is not null) return true;
         var directory = MemoryRelabeler.BackupDirectory;
-        if (Directory.Exists(directory) && Directory.GetFiles(directory, $"{BackupPrefix}*.json").Length > 0) return true;
         try
         {
             Directory.CreateDirectory(directory);
@@ -22,11 +22,13 @@ public sealed partial class ModuleSummaryWriter
             var path = Path.Combine(directory, $"{BackupPrefix}{DateTime.Now:yyyyMMdd-HHmmss}.json");
             await File.WriteAllBytesAsync(path + ".tmp", JsonSerializer.SerializeToUtf8Bytes(file, BackupJson), cancellationToken);
             File.Move(path + ".tmp", path);
+            _backupPath = path;
             activityLog.Info("memory", $"Backup memory sebelum migrasi ke catatan perubahan: {file.Items.Count} memory → {path}");
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            _lastMessage = $"Backup memory gagal, migrasi memory lama ditunda: {ex.Message}";
             activityLog.Warn("memory", $"Backup memory gagal, migrasi memory lama ke ringkasan modul ditunda: {ex.Message}");
             logger.LogWarning(ex, "Memory backup before the change log migration failed.");
             return false;

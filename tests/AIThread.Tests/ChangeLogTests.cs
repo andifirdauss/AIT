@@ -79,7 +79,15 @@ public class ChangeLogTests
         });
         harness.Router.On(ScriptedAgent.ModuleSummary, ScriptedRouter.Text("""{"features": ["Kelola order"], "keywords": ["order"]}"""));
 
+        var before = await writer.GetStatusAsync(default);
+        Assert.Equal((false, 1, 1, 0, true), (before.Running, before.PendingFacts, before.PendingModules, before.Summaries, before.AiAvailable));
+
         Assert.Equal(2, await writer.RunAsync(default));
+
+        var after = await writer.GetStatusAsync(default);
+        Assert.Equal((false, 0, 0, 2, 0), (after.Running, after.PendingFacts, after.PendingModules, after.Summaries, after.Total));
+        Assert.Equal("1 memory lama dimigrasi ke ringkasan modul pada putaran terakhir.", after.LastMessage);
+        Assert.StartsWith(Path.Combine(backup.Root, ModuleSummaryWriter.BackupPrefix), after.BackupPath);
 
         var summary = await SummaryAsync(harness, "User");
         Assert.Equal(t0, summary.PromotedAt, TimeSpan.FromMilliseconds(1));

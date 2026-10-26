@@ -176,6 +176,7 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `GET` | `/api/memory/review?projectId=` | `memories[]` (perlu review), `merges[]` (saran), `duplicates[]` (`first`, `second`, `similarity`) |
 | `GET` | `/api/memory/relabel` | status migrasi label: `running`, `phase`, `pending`, `labeled`, `needsReview`, `lastRunAt`, `lastMessage`, `backupPath`, `detail` (yang sedang dikerjakan fase itu, mis. `KN2018_KCO (1/5) · 12/40 file disebut memory`) |
 | `POST` | `/api/memory/relabel` | jalankan migrasi label sekarang (di belakang) |
+| `GET` | `/api/memory/changelog` | status migrasi memory lama ke ringkasan modul: `running`, `pendingFacts`, `pendingModules`, `shortFacts` (masih di short memory), `summaries`, `done`/`total`/`module` (putaran yang berjalan), `lastRunAt`, `lastMessage`, `backupPath`, `aiAvailable` |
 | `GET` | `/api/settings/memory-storage` | — (`shortMemory`, `longMemory`, `businessMemory` beserta status masing-masing; password tidak pernah dikembalikan) |
 | `PUT` | `/api/settings/memory-storage` | `{ "shortMemory": {…}, "longMemory": {…}, "businessMemory": {…}, "copyExistingData": true }` — `businessMemory` boleh dihilangkan (store tidak berubah). Hasil: `settings`, `copiedShort`, `copiedLong`, `copiedBusiness`, `warnings[]` |
 | `POST` | `/api/settings/memory-storage/test` | `{ "level": "Short"\|"Long"\|"Business", "store": {…} }` |
@@ -283,7 +284,7 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `thread.output` | aktivitas planner: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | objek tugas lengkap (status, node, durasi, diff, error, …) |
 | `task.output` | potongan output model executor: `taskId`, `taskKey`, `text` |
-| `memory.changed` | `id`, `action` (`created`, `updated`, `deleted`, `promoted`, `consolidated`, `imported`, `relabel`, `merged`, `unmerged`, `suggested`, `rejected`) |
+| `memory.changed` | `id`, `action` (`created`, `updated`, `deleted`, `promoted`, `consolidated`, `imported`, `relabel`, `summary`, `changelog`, `merged`, `unmerged`, `suggested`, `rejected`) |
 | `project.changed` | `id`, `action` |
 | `node.changed` | `id`, `action` |
 | `telegram.changed` | `action` (`status`, `created`, `allowed`, `deleted`, `project`); `id` chat untuk perubahan chat, `status` untuk perubahan status bot |
