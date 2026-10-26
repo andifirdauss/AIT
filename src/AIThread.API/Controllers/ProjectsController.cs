@@ -7,8 +7,18 @@ namespace AIThread.API.Controllers;
 
 [ApiController]
 [Route("api/projects")]
-public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog, ICodeStructureService structure) : ControllerBase
+public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog, ICodeStructureService structure,
+    IGitChangeTracker gitChanges) : ControllerBase
 {
+    // Asks git again where the change of every followed thread of the project is now; the count of threads whose state
+    // changed. The UI hears each change over SSE (thread.git).
+    [HttpPost("{id:guid}/git/refresh")]
+    public async Task<ActionResult<ApiResponse<int>>> RefreshGit(Guid id, CancellationToken cancellationToken)
+    {
+        var changed = await gitChanges.RefreshProjectAsync(id, cancellationToken);
+        return ApiResponse<int>.Ok(changed, Lang.T($"Status git disinkronkan: {changed} thread berubah.", $"Git state synced: {changed} thread(s) changed."));
+    }
+
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectDto>>>> GetAll(CancellationToken cancellationToken) =>
         ApiResponse<IReadOnlyList<ProjectDto>>.Ok(await projectService.GetAllAsync(cancellationToken));

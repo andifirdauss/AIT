@@ -20,6 +20,7 @@ public sealed partial class MemoryService
         var owner = projects.Find(record.ProjectId);
         var projectKey = record.Type == MemoryType.Knowledge ? null : record.ProjectKey ?? owner?.Key;
         var projectId = owner?.Id ?? (projectKey is null ? null : projects.FindByKey(projectKey)?.Id);
+        var git = projectKey is null ? null : await GitOriginAsync(record.SourceThreadId, cancellationToken);
 
         var entity = new LongMemory
         {
@@ -41,6 +42,9 @@ public sealed partial class MemoryService
             ReviewReason = record.ReviewReason,
             RelabelAttempts = record.RelabelAttempts,
             SourceThreadId = record.SourceThreadId,
+            GitAuthor = git?.GitAuthor,
+            GitBranch = git?.GitBranch,
+            GitCommit = git?.GitBaseCommit,
             CreatedAt = record.CreatedAt,
             PromotedAt = DateTime.UtcNow
         };
