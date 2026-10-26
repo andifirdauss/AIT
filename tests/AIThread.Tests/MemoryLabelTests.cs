@@ -336,6 +336,27 @@ public class MemoryLabelTests
     }
 
     [Fact]
+    public async Task Module_memory_lists_the_summary_then_the_newest_change_entries()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        using var shortDb = new TempWorkspace();
+        var memory = CreateMemoryService(harness, shortDb);
+        var summary = await AddLabeledLongAsync(harness, "k", "User", MemoryKind.Summary, ["User"]);
+        var older = await AddLabeledLongAsync(harness, "k", "User", MemoryKind.Change, ["Email"]);
+        var other = await AddLabeledLongAsync(harness, "k", "Invoice", MemoryKind.Change, ["Tagihan"], extraModules: ["User"]);
+        await AddLabeledLongAsync(harness, "k", "User", MemoryKind.Rule, ["Fact"]);
+        var newest = await memory.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "user", MemoryKind.Change,
+            ["Description"], "### Tambah deskripsi"));
+
+        var items = await memory.GetModuleMemoryAsync(harness.ProjectId, ["User"], 2);
+
+        Assert.Equal([summary, newest.Id, other], items.Select(i => i.Id));
+        Assert.DoesNotContain(items, i => i.Id == older);
+        Assert.Equal([newest.Id], (await memory.GetModuleMemoryAsync(harness.ProjectId, [], 1)).Select(i => i.Id));
+    }
+
+    [Fact]
     public async Task Memory_of_several_modules_is_found_through_each_of_them()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();

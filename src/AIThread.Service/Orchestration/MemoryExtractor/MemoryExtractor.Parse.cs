@@ -1,6 +1,4 @@
 using System.Text.Json.Nodes;
-using AIThread.Common.Enums;
-using AIThread.Common.Memory;
 using AIThread.Service.Memory;
 using AIThread.Service.Skills;
 
@@ -8,26 +6,10 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class MemoryExtractor
 {
-    private static List<ExtractedMemory> Parse(string content)
+    // Null for {"entry":null} or an answer without a usable entry.
+    private static ExtractedChange? Parse(string content)
     {
-        var root = SkillAi.ParseObject(content);
-        var list = new List<ExtractedMemory>();
-        foreach (var item in (root?["memories"] as JsonArray ?? []).OfType<JsonObject>())
-        {
-            var description = SkillAi.Text(item["description"]);
-            var module = SkillAi.Text(item["module"]);
-            if (description is null || module is null || !MemoryLabels.TryParseKind(SkillAi.Text(item["kind"]), out var kind)) continue;
-
-            var type = string.Equals(SkillAi.Text(item["type"]), "knowledge", StringComparison.OrdinalIgnoreCase) ? MemoryType.Knowledge : MemoryType.Project;
-            var layers = MemoryAi.Strings(item["layers"])
-                .Select(l => MemoryLabels.TryParseLayer(l, out var layer) ? layer : (MemoryLayer?)null)
-                .OfType<MemoryLayer>()
-                .Distinct()
-                .ToList();
-            var keywords = MemoryAi.Strings(item["keywords"]);
-            if (keywords.Count == 0) continue;
-            list.Add(new ExtractedMemory(type, module, MemoryAi.Strings(item["other_modules"]), layers, kind, keywords, description));
-        }
-        return list;
+        if (SkillAi.ParseObject(content)?["entry"] is not JsonObject item || ChangeLog.ParseEntry(item) is not { } entry) return null;
+        return new ExtractedChange(entry, SkillAi.Text(item["module"]), MemoryAi.Strings(item["other_modules"]), MemoryAi.Strings(item["keywords"]));
     }
 }

@@ -86,7 +86,7 @@
             </div>
             <div class="col-md-2">
                 <select class="form-select form-select-sm" id="filterKind">
-                    <option value="">Semua jenis</option><option>Pitfall</option><option>Rule</option><option>Flow</option><option>Convention</option><option>Architecture</option><option>Pattern</option>
+                    <option value="">Semua jenis</option><option value="Change">Change (catatan perubahan)</option><option value="Summary">Summary (kondisi modul)</option><option>Pitfall</option><option>Rule</option><option>Flow</option><option>Convention</option><option>Architecture</option><option>Pattern</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -302,12 +302,16 @@
                     <div class="col-md-4">
                         <label class="form-label small" for="memoryKind">Jenis</label>
                         <select class="form-select" id="memoryKind" required>
-                            <option value="Pitfall">Pitfall — jebakan/bug &amp; solusinya</option>
-                            <option value="Rule">Rule — aturan bisnis &amp; validasi</option>
-                            <option value="Flow">Flow — urutan langkah</option>
-                            <option value="Convention">Convention — cara menulis kode di sini</option>
-                            <option value="Architecture">Architecture — susunan &amp; alasan desain</option>
-                            <option value="Pattern">Pattern — solusi teknis umum</option>
+                            <option value="Change">Change — catatan perubahan (fitur, file, validasi, flow)</option>
+                            <option value="Summary">Summary — kondisi modul saat ini</option>
+                            <optgroup label="Format lama (project: dilipat ke ringkasan modul)">
+                                <option value="Pitfall">Pitfall — jebakan/bug &amp; solusinya</option>
+                                <option value="Rule">Rule — aturan bisnis &amp; validasi</option>
+                                <option value="Flow">Flow — urutan langkah</option>
+                                <option value="Convention">Convention — cara menulis kode di sini</option>
+                                <option value="Architecture">Architecture — susunan &amp; alasan desain</option>
+                                <option value="Pattern">Pattern — solusi teknis umum</option>
+                            </optgroup>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -349,7 +353,7 @@
                 <div class="small text-secondary mb-2 d-none" id="memoryLegacy"></div>
                 <div>
                     <label class="form-label small" for="memoryDescription">Deskripsi</label>
-                    <textarea class="form-control" id="memoryDescription" rows="8" required></textarea>
+                    <textarea class="form-control font-monospace small" id="memoryDescription" rows="12" required></textarea>
                 </div>
                 <div class="small text-secondary mt-2" id="memoryMeta"></div>
             </div>

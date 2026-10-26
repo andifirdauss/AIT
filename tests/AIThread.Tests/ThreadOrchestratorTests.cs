@@ -46,7 +46,9 @@ public class ThreadOrchestratorTests
             .OnExecutor(FarewellFile, ScriptedRouter.Create("namespace Demo;\n\npublic class Farewell { }", "Farewell dibuat."))
             .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai: sapaan jadi Halo dan Farewell ditambahkan."))
             .On(ScriptedAgent.MemoryExtractor, ScriptedRouter.Text("""
-                {"memories": [{"type": "project", "module": "greeter", "layers": ["logic"], "kind": "rule", "keywords": ["sapaan", "Greeter.Hello", "halo"], "description":"Greeter.Hello() mengembalikan \"Halo\"."}]}
+                {"entry": {"title": "Sapaan jadi Halo, class Farewell", "module": "greeter", "other_modules": [], "feature": "Sapaan memakai `Halo`.",
+                  "files": [{"path": "src/Greeter.cs", "change": "`Hello()` mengembalikan `Halo`"}, {"path": "src/Other.cs", "change": "tidak diubah thread ini"}],
+                  "validation": [], "flow": [], "notes": ["Belum ada test untuk `Farewell`."], "keywords": ["sapaan", "Greeter.Hello", "halo"]}}
                 """));
 
         var (result, observer) = await harness.RunAsync("Ganti sapaan jadi Halo dan tambah class Farewell");
@@ -92,9 +94,17 @@ public class ThreadOrchestratorTests
         await harness.Memory.WaitForSaveAsync(TimeSpan.FromSeconds(10));
         var (memory, sourceThread) = Assert.Single(harness.Memory.Saved);
         Assert.Equal("greeter", memory.Module);
-        Assert.Equal(MemoryKind.Rule, memory.Kind);
-        Assert.Equal([MemoryLayer.Logic], memory.Layers);
+        Assert.Equal(MemoryKind.Change, memory.Kind);
         Assert.Contains("halo", memory.Keywords);
+        // The file list is the files the thread changed, with the model's note where it gave one; a file it named that
+        // the thread did not change is dropped.
+        Assert.StartsWith("### Sapaan jadi Halo, class Farewell\n**Fitur:** Sapaan memakai `Halo`.\n", memory.Description);
+        Assert.Contains("- `src/Farewell.cs` (baru)\n", memory.Description);
+        Assert.Contains("- `src/Greeter.cs` (ubah) — `Hello()` mengembalikan `Halo`\n", memory.Description);
+        Assert.DoesNotContain("src/Other.cs", memory.Description);
+        Assert.Contains("**Catatan:**\n- Belum ada test untuk `Farewell`.", memory.Description);
+        var extractorInput = router.CallsTo(ScriptedAgent.MemoryExtractor).Single().Messages.OfType<JsonObject>().Last()["content"]!.GetValue<string>();
+        Assert.Contains("# Changed files\n- src/Farewell.cs (baru)\n- src/Greeter.cs (ubah)\n", extractorInput);
         Assert.Equal(harness.ProjectId, memory.ProjectId);
         Assert.Equal(result.ThreadId, sourceThread);
     }
