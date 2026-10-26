@@ -64,5 +64,64 @@
     toast(isEn ? `Git state synced: ${changed} thread(s) changed.` : `Status git disinkronkan: ${changed} thread berubah.`);
   }));
 
+  // --- Environments (shared by the project key) ---
+
+  function envRow(e = { name: '', ref: '', isProduction: false }) {
+    const status = e.id
+      ? (e.refFound
+        ? `<span class="text-secondary">${isEn ? `${fmt.number(e.changes)} change(s)${e.lastSeenAt ? `, latest ${fmt.relative(e.lastSeenAt)}` : ''}` : `${fmt.number(e.changes)} perubahan${e.lastSeenAt ? `, terbaru ${fmt.relative(e.lastSeenAt)}` : ''}`}</span>`
+        : `<span class="text-warning">${t('ref belum ada di clone ini', 'ref not in this clone yet')}</span>`)
+      : '';
+    return `<div class="input-group input-group-sm mb-1" data-env-row>
+        <input type="text" class="form-control" data-env-name maxlength="50" placeholder="prod" value="${escapeHtml(e.name)}" />
+        <input type="text" class="form-control mono" data-env-ref maxlength="250" placeholder="origin/main" value="${escapeHtml(e.ref)}" />
+        <span class="input-group-text"><input class="form-check-input mt-0" type="checkbox" data-env-prod title="Production" ${e.isProduction ? 'checked' : ''} />&nbsp;prod</span>
+        <button class="btn btn-outline-danger" type="button" data-env-remove title="${t('Hapus', 'Remove')}">✕</button>
+      </div>${status ? `<div class="small mb-2">${status}</div>` : ''}`;
+  }
+
+  function renderEnvironments(list) {
+    el('envRows').innerHTML = list.length ? list.map(envRow).join('') : `<div class="text-secondary">${t('Belum ada environment.', 'No environment yet.')}</div>`;
+  }
+
+  async function loadEnvironments() {
+    try {
+      renderEnvironments(await api.get(`/api/projects/${projectId}/environments`));
+    } catch (error) {
+      el('envRows').textContent = error.message;
+    }
+  }
+
+  el('btnEnvAdd').addEventListener('click', () => {
+    if (!el('envRows').querySelector('[data-env-row]')) el('envRows').innerHTML = '';
+    el('envRows').insertAdjacentHTML('beforeend', envRow());
+  });
+
+  el('envRows').addEventListener('click', event => {
+    const remove = event.target.closest('[data-env-remove]');
+    if (!remove) return;
+    const row = remove.closest('[data-env-row]');
+    if (row.nextElementSibling && !row.nextElementSibling.matches('[data-env-row]')) row.nextElementSibling.remove();
+    row.remove();
+  });
+
+  el('btnEnvSave').addEventListener('click', () => run(el('btnEnvSave'), async () => {
+    const environments = [...el('envRows').querySelectorAll('[data-env-row]')]
+      .map(row => ({
+        name: row.querySelector('[data-env-name]').value.trim(),
+        ref: row.querySelector('[data-env-ref]').value.trim(),
+        isProduction: row.querySelector('[data-env-prod]').checked
+      }))
+      .filter(e => e.name || e.ref);
+    renderEnvironments(await api.put(`/api/projects/${projectId}/environments`, { environments }));
+    toast(t('Environment disimpan.', 'Environments saved.'));
+  }));
+
+  el('btnEnvRefresh').addEventListener('click', () => run(el('btnEnvRefresh'), async () => {
+    renderEnvironments(await api.post(`/api/projects/${projectId}/environments/refresh`));
+    toast(t('Environment dicek.', 'Environments checked.'));
+  }));
+
   load();
+  loadEnvironments();
 })();

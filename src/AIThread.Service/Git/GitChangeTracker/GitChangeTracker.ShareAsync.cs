@@ -1,4 +1,3 @@
-using System.Text.Json;
 using AIThread.Common.Entities;
 using AIThread.Service.Workspace;
 using Microsoft.EntityFrameworkCore;
@@ -53,7 +52,7 @@ public sealed partial class GitChangeTracker
                 row.GitBaseCommit = thread.GitBaseCommit;
                 row.State = thread.GitState;
                 row.Commits = thread.GitCommits;
-                row.Files = JsonSerializer.Serialize(files[thread.Id].Select(f => new SharedFile(f.FilePath, f.AfterBlob, f.Removed)), FilesJson);
+                row.Files = ThreadChangeFiles.Write(files[thread.Id].Select(f => new SharedFile(f.FilePath, f.AfterBlob, f.Removed)));
                 row.UpdatedBy = Clip(by, 300);
                 row.UpdatedAt = DateTime.UtcNow;
             }

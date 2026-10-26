@@ -124,6 +124,9 @@ the others `projectFile` in the CLI list is `null`, `/projects` returns an empty
 | `GET` | `/api/projects/{id}/git` | — → `isRepository`, `hasRemote`, `fetchMinutes` (as set; `null` = the default), `effectiveFetchMinutes`, `lastFetchAt`, `lastFetchError`, `followedThreads` |
 | `PUT` | `/api/projects/{id}/git` | `{ "fetchMinutes": 15 \| 0 \| null }` — the automatic `git fetch` interval (0–1440 minutes, 0 = off, `null` = the default 15) → same shape as `GET` |
 | `POST` | `/api/projects/{id}/git/fetch` | — → `git fetch --all --prune` now, then the followed threads are checked again; same shape as `GET` (failure = `lastFetchError`) |
+| `GET` | `/api/projects/{id}/environments` | — → `id`, `name`, `ref`, `order`, `isProduction`, `refFound` + `refCommit` (the ref in this clone), `changes` (changes that reached it), `lastSeenAt` |
+| `PUT` | `/api/projects/{id}/environments` | `{ "environments": [{ "name": "dev", "ref": "origin/develop", "isProduction": false }, …] }` — the whole list (order = display order, at most 20; names of letters/digits/`_`/`.`/`-`, not `work`). Shared per project key; a changed ref or a removed environment forgets what was seen in it → same shape as `GET` |
+| `POST` | `/api/projects/{id}/environments/refresh` | — → looks for the changes that reached each environment now; same shape as `GET` |
 | `GET` | `/api/projects/{id}/codemap?search=&module=` | the code map: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (at most 500 rows) |
 | `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — a manual correction, never overwritten; a class/file name is looked up in the project files (400 when it does not exist or matches more than one) |
 | `POST` | `/api/projects/{id}/codemap/scan` | maps the source files not mapped yet (at most 3,000) → `files`, `mapped`, `modules` |
@@ -169,7 +172,7 @@ no key yet). Responses **never** hold the snapshot of a test file's content; onl
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (at most 200). Each memory holds `gitAuthor`, `gitBranch`, `gitCommit` (origin) and `gitState` (the state of its change in the author's clone, from `ThreadChanges`) |
+| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `environment` (with `projectId`: only memory whose change reached that environment), `page`, `pageSize` (at most 200). Each memory holds `gitAuthor`, `gitBranch`, `gitCommit` (origin) and `gitState` (the state of its change in the author's clone, from `ThreadChanges`) |
 | `GET` | `/api/memory/stats` | — (+ `unlabeledCount`, `reviewCount`) |
 | `GET` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "extraModules": ["Invoice"], "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → a short memory. `module`, `kind`, at least one keyword (at most 16) and `description` are required; `extraModules` is optional (at most 3); knowledge only `Pitfall`/`Pattern`/`Architecture`. The module is matched to the module list (name/alias/plural) or added; everything is normalized to PascalCase (capitalized abbreviations in module names are kept: `MKPP`, `KlaimDF`). A memory response holds `extraModules[]`; the `module` filter of `GET /api/memory` matches the other modules too |
@@ -219,6 +222,9 @@ machine; pages are stored per project key.
 | `POST` | `/api/business/digest?projectId=` | summarizes the waiting threads now → `threads`, `pagesCreated`, `pagesUpdated`, `images`, `warnings[]`. `400` when another summary is running |
 | `GET` | `/api/business/settings` | — (`enabled`, `intervalHours`, `model`, `developerName`, `effectiveDeveloperName`) |
 | `PUT` | `/api/business/settings` | `{ "enabled": true, "intervalHours": 6, "model": null, "developerName": "Andi" }` |
+| `GET` | `/api/business/projects/{projectId}/environments/{environment}` | — → `environment`, `pages[]` (`pageId`, `module`, `title`, `slug`, `summary`, `version` = the revision that holds, `workingVersion` = the working wiki's version now, `updatedAt`), `missing` (working pages not in the environment yet) |
+| `GET` | `/api/business/pages/{id}/environments/{environment}` | — → the page as above + `content`, `html`. `404` when the page is not in that environment yet |
+| `GET` | `/api/business/projects/{projectId}/compare?left=&right=` | `left`/`right` = an environment name or `work` (the working wiki) → `pages[]` (`pageId`, `module`, `title`, `status` = `same`/`changed`/`left`/`right`, `leftVersion`, `rightVersion`, `diff[]` (`kind` = `same`/`add`/`del`/`skip`, `text`; `skip` = how many unchanged lines are folded)), `changes[]` (`threadId`, `title`, `author`, `branch`, `side` = `left`/`right`, `commit`) |
 
 ### Thread & dashboard
 

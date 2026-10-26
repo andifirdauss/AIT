@@ -14,6 +14,7 @@ public sealed partial class BusinessDigestRunner(
     IDbContextFactory<AIThreadDbContext> dbFactory,
     IBusinessDigestCollector collector,
     IBusinessMemoryWriter writer,
+    IBusinessEnvService envPages,
     IEventBus eventBus,
     IActivityLogService activityLog,
     ILogger<BusinessDigestRunner> logger) : IBusinessDigestRunner

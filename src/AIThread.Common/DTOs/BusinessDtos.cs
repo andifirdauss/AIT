@@ -86,3 +86,41 @@ public record UpdateBusinessSettingsRequest(bool Enabled, int IntervalHours, str
 
 // Asked once, the first time AIThread is opened, when git has no user.name either.
 public record SetDeveloperNameRequest(string Name);
+
+// A wiki page as it holds for one environment (BusinessEnvPage): Version = the working page's revision it shows,
+// WorkingVersion = the working page's version now (null when the page was deleted). Content and Html only for one page.
+public record BusinessEnvPageDto(
+    Guid PageId,
+    string Environment,
+    string Module,
+    string Title,
+    string Slug,
+    string? Summary,
+    int Version,
+    int? WorkingVersion,
+    DateTime? UpdatedAt,
+    string? Content = null,
+    string? Html = null);
+
+// The environment's pages; Missing = working pages with no version in the environment yet.
+public record BusinessEnvOverviewDto(string Environment, IReadOnlyList<BusinessEnvPageDto> Pages, int Missing);
+
+// One line of a page diff: Kind = "same", "add" (only right), "del" (only left), or "skip" (Text = how many unchanged
+// lines are left out).
+public record BusinessDiffLineDto(string Kind, string Text);
+
+// Status = "same", "changed", "left" (only on the left side) or "right".
+public record BusinessCompareItemDto(
+    Guid PageId,
+    string Module,
+    string Title,
+    string Status,
+    int? LeftVersion,
+    int? RightVersion,
+    IReadOnlyList<BusinessDiffLineDto> Diff);
+
+// A change (thread or ingested commit) on one side only: Side = "left" or "right".
+public record BusinessCompareChangeDto(Guid ThreadId, string? Title, string? Author, string? Branch, string Side, string? Commit);
+
+// Left and Right are environment names or "work" (the working wiki).
+public record BusinessCompareDto(string Left, string Right, IReadOnlyList<BusinessCompareItemDto> Pages, IReadOnlyList<BusinessCompareChangeDto> Changes);

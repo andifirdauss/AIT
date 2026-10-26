@@ -78,7 +78,10 @@ public record MemoryQuery(
     // Export only: the unit test catalog of the projects goes along (project memory, no search text).
     bool IncludeUnitTests = true,
     // Export only: the test accounts and testing settings of the projects go along (same conditions).
-    bool IncludeTestAccounts = true);
+    bool IncludeTestAccounts = true,
+    // With ProjectId: project memory from a change that has not reached this environment (ChangePresence) is left out;
+    // memory without a source thread stays.
+    string? Environment = null);
 
 // Every memory is written with its full label. Module (the main one) and ExtraModules (other modules the same fact
 // concerns, at most 3) are resolved against the project's module list (a new name becomes a module); keywords are
