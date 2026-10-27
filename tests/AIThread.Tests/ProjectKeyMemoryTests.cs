@@ -47,6 +47,89 @@ public class ProjectKeyMemoryTests
     }
 
     [Fact]
+    public async Task Long_memory_keeps_the_git_origin_of_its_thread()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+        var thread = new ThreadRun
+        {
+            ProjectId = harness.ProjectId, Prompt = "TO approval", Status = ThreadStatus.Completed,
+            GitBranch = "feature/to-approval", GitBaseCommit = "0123456789abcdef0123456789abcdef01234567", GitAuthor = "Andi <andi@example.com>"
+        };
+        await using (var db = await harness.CreateDbAsync())
+        {
+            db.Threads.Add(thread);
+            await db.SaveChangesAsync();
+        }
+
+        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Rule, ["Approval"],
+            "TO above 10M needs approval."), thread.Id);
+        Assert.True(await memory.Service.PromoteAsync(saved.Id));
+
+        var item = Assert.Single((await memory.Service.QueryAsync(new MemoryQuery(MemoryLevel.Long, null, harness.ProjectId, null))).Items);
+        Assert.Equal(("Andi <andi@example.com>", "feature/to-approval", thread.GitBaseCommit), (item.GitAuthor, item.GitBranch, item.GitCommit));
+    }
+
+    [Fact]
+    public async Task The_planner_skips_memory_whose_change_was_thrown_away_and_the_memory_menu_shows_the_git_state()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+        var (discarded, committed) = (Guid.NewGuid(), Guid.NewGuid());
+        await using (var shared = await harness.Service<LongMemoryStore>().CreateGitAsync())
+        {
+            shared.ThreadChanges.Add(new ThreadChange { Id = discarded, ProjectKey = "github.com/org/eep", State = GitChangeState.Discarded });
+            shared.ThreadChanges.Add(new ThreadChange { Id = committed, ProjectKey = "github.com/org/eep", State = GitChangeState.Committed });
+            await shared.SaveChangesAsync();
+        }
+
+        var gone = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Rule,
+            ["Approval"], "TO above 10M needs approval."), discarded);
+        var kept = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Rule,
+            ["Approval", "Limit"], "TO above 20M needs two approvals."), committed);
+
+        var index = await memory.Service.GetIndexAsync(harness.ProjectId, "approval", 10);
+        Assert.DoesNotContain(index, e => e.Id == gone.Id);
+        Assert.Contains(index, e => e.Id == kept.Id);
+
+        var listed = (await memory.Service.QueryAsync(new MemoryQuery(null, null, harness.ProjectId, null))).Items;
+        Assert.Equal(GitChangeState.Discarded, listed.Single(i => i.Id == gone.Id).GitState);
+        Assert.Equal(GitChangeState.Committed, listed.Single(i => i.Id == kept.Id).GitState);
+    }
+
+    [Fact]
+    public async Task Memory_from_a_commit_made_outside_AIT_takes_the_commit_as_its_origin()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        using var shortDb = new TempWorkspace();
+        using var memory = await MemoryFixture.CreateAsync(harness, shortDb);
+        await SetKeyAsync(harness, harness.ProjectId, "github.com/org/eep");
+        var ingestId = Guid.NewGuid();
+        await using (var shared = await harness.Service<LongMemoryStore>().CreateGitAsync())
+        {
+            shared.ThreadChanges.Add(new ThreadChange
+            {
+                Id = ingestId, ProjectKey = "github.com/org/eep", Ingested = true, State = GitChangeState.Pushed, GitAuthor = "Budi <budi@example.com>",
+                GitBranch = "origin/develop", GitBaseCommit = "abcdef0123456789abcdef0123456789abcdef01", Commits = "abcdef0123456789abcdef0123456789abcdef01"
+            });
+            await shared.SaveChangesAsync();
+        }
+
+        var saved = await memory.Service.AddShortAsync(new SaveMemoryRequest(MemoryType.Project, harness.ProjectId, "TransferOrder", MemoryKind.Change, ["Approval"],
+            "TO above 10M needs approval."), ingestId);
+        Assert.True(await memory.Service.PromoteAsync(saved.Id));
+
+        var item = Assert.Single((await memory.Service.QueryAsync(new MemoryQuery(MemoryLevel.Long, null, harness.ProjectId, null))).Items);
+        Assert.Equal(("Budi <budi@example.com>", "origin/develop", "abcdef0123456789abcdef0123456789abcdef01"), (item.GitAuthor, item.GitBranch, item.GitCommit));
+        Assert.True(item.FromCommit);
+        Assert.Equal(GitChangeState.Pushed, item.GitState);
+    }
+
+    [Fact]
     public async Task Unreachable_long_memory_database_only_hides_long_memory()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
@@ -240,6 +323,7 @@ public class ProjectKeyMemoryTests
                 harness.Service<LongMemoryStore>(),
                 harness.Service<BusinessMemoryStore>(),
                 harness.Service<IModuleRegistry>(),
+                harness.Service<IGitChangeTracker>(),
                 harness.Service<IEventBus>(),
                 harness.Service<IActivityLogService>(),
                 Options.Create(new AIThreadOptions { ShortMemoryHours = 0 }),

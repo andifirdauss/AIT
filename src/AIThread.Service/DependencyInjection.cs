@@ -3,6 +3,7 @@ using AIThread.Common.Options;
 using AIThread.Service.Background;
 using AIThread.Service.Business;
 using AIThread.Service.CodeCalls;
+using AIThread.Service.Git;
 using AIThread.Service.Implementations;
 using AIThread.Service.Implementations.Cli;
 using AIThread.Service.Interfaces;
@@ -68,6 +69,10 @@ public static class DependencyInjection
         services.AddSingleton<ICodeStructureService, CodeStructureService>();
         services.AddSingleton<IFunctionCallStore, FunctionCallStore>();
         services.AddSingleton<IFunctionCallQueue, FunctionCallQueue>();
+        services.AddSingleton<IGitChangeTracker, GitChangeTracker>();
+        services.AddSingleton<IGitEnvironmentTracker, GitEnvironmentTracker>();
+        services.AddSingleton<IBusinessEnvService, BusinessEnvService>();
+        services.AddSingleton<ICommitIngestor, CommitIngestor>();
         services.AddSingleton<IFunctionCallScanner, FunctionCallScanner>();
         services.AddSingleton<IMemoryStorageService, MemoryStorageService>();
         services.AddSingleton<IMemoryTransferService, MemoryTransferService>();
@@ -163,6 +168,7 @@ public static class DependencyInjection
         services.AddHostedService<SkillImportWorker>();
         services.AddHostedService<BusinessMemoryWorker>();
         services.AddHostedService<FunctionCallWorker>();
+        services.AddHostedService<GitWatchWorker>();
 
         // Registered last so it stops first: cancelled threads can still log through ActivityLogWriter.
         services.AddHostedService<ThreadLifecycleWorker>();

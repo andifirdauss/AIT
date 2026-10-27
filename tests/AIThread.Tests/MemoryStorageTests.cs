@@ -167,6 +167,28 @@ public class MemoryStorageTests
         Assert.StartsWith("Garnet bawaan", store.Description);
     }
 
+    [Fact]
+    public async Task An_external_store_from_an_older_version_gets_the_tables_added_since()
+    {
+        using var workspace = new TempWorkspace();
+        var store = new LongMemoryStore(new UnusedMainDatabase());
+        store.Configure(Sqlite(workspace, "long.db"));
+        await using (var db = await store.CreateGitAsync())
+        {
+            // As a store made by the release that only had ThreadChanges.
+            var context = (DbContext)db;
+            await context.Database.ExecuteSqlRawAsync("DROP TABLE \"ChangePresences\"");
+            await context.Database.ExecuteSqlRawAsync("DROP TABLE \"ProjectEnvironments\"");
+            await MemorySchema.EnsureTablesAsync(context, CancellationToken.None, "ProjectEnvironments", "ChangePresences");
+
+            db.ProjectEnvironments.Add(new ProjectEnvironment { Id = Guid.NewGuid(), ProjectKey = "k", Name = "prod", Ref = "origin/main" });
+            db.ChangePresences.Add(new ChangePresence { Id = Guid.NewGuid(), ProjectKey = "k", ThreadId = Guid.NewGuid(), Environment = "prod" });
+            await db.SaveChangesAsync();
+            Assert.Equal(1, await db.ProjectEnvironments.CountAsync());
+            Assert.Equal(0, await db.ThreadChanges.CountAsync());
+        }
+    }
+
     // Pooling off so the temp folder can be deleted afterwards.
     private static MemoryStoreConnection Sqlite(TempWorkspace workspace, string file) =>
         new(MemoryStoreProvider.Sqlite, Database: Path.Combine(workspace.Root, file), Options: "Pooling=False");

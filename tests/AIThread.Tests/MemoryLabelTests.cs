@@ -630,6 +630,7 @@ public class MemoryLabelTests
             harness.Service<LongMemoryStore>(),
             harness.Service<BusinessMemoryStore>(),
             harness.Service<IModuleRegistry>(),
+            harness.Service<IGitChangeTracker>(),
             harness.Service<IEventBus>(),
             harness.Service<IActivityLogService>(),
             Options.Create(new AIThreadOptions()),

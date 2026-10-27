@@ -8,7 +8,9 @@ namespace AIThread.Service.Orchestration;
 public sealed partial class ThreadOrchestrator
 {
     // What the earlier threads of this chat changed, per module: the last ten that wrote files (the file journal), not
-    // the ones that only answered or read, nor the rolled-back ones. Never fails the thread.
+    // the ones that only answered or read, nor the rolled-back ones, nor those whose change is no longer in the working
+    // tree: thrown away outside AIT, or left on another branch (git is asked first, so a discard or checkout made a
+    // moment ago counts). Never fails the thread.
     private async Task<IReadOnlyList<SessionModuleChange>> SessionChangesAsync(ProjectContext project, SessionContext? session, Guid currentThreadId,
         CancellationToken cancellationToken)
     {
@@ -16,9 +18,11 @@ public sealed partial class ThreadOrchestrator
         if (ids.Count == 0) return [];
         try
         {
+            await gitChanges.RefreshThreadsAsync(ids, cancellationToken);
             await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
             var threads = await db.Threads.AsNoTracking()
-                .Where(t => ids.Contains(t.Id) && t.ProjectId == project.ProjectId && t.Status != ThreadStatus.RolledBack)
+                .Where(t => ids.Contains(t.Id) && t.ProjectId == project.ProjectId && t.Status != ThreadStatus.RolledBack
+                            && t.GitState != GitChangeState.Discarded && t.GitState != GitChangeState.OnOtherBranch)
                 .Select(t => new { t.Id, t.Prompt, t.CreatedAt, t.CompletedAt })
                 .ToListAsync(cancellationToken);
             var files = (await db.ThreadFileSnapshots.AsNoTracking()

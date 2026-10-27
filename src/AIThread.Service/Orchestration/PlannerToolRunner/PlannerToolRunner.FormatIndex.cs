@@ -6,7 +6,8 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class PlannerToolRunner
 {
-    // Labeled: "Module · Layers · Kind — keywords"; business wiki pages and unlabeled (older) memory keep their label.
+    // Labeled: "Module · Layers · Kind — keywords"; business wiki pages and unlabeled (older) memory keep their label. A
+    // memory whose change is not in the branch checked out ends with "(not in this branch: ...)".
     public static string FormatIndex(IEnumerable<MemoryIndexEntry> entries) =>
         string.Concat(entries.Select(e =>
         {
@@ -16,9 +17,9 @@ public sealed partial class PlannerToolRunner
             {
                 var keywords = e.Keywords is { Count: > 0 } list ? " — " + string.Join(", ", list) : string.Empty;
                 var title = e.Title is null ? string.Empty : $" \"{e.Title}\"";
-                return $"- {e.Id} [{level}/{type}, {e.CreatedAt:yyyy-MM-dd}] {MemoryLabels.Display(e.Area, e.Module!, e.Layers, e.Kind!.Value, e.ExtraModules)}{title}{keywords}\n";
+                return $"- {e.Id} [{level}/{type}, {e.CreatedAt:yyyy-MM-dd}] {MemoryLabels.Display(e.Area, e.Module!, e.Layers, e.Kind!.Value, e.ExtraModules)}{title}{keywords}{Note(e.GitNote)}\n";
             }
             var tag = e.Type == MemoryType.Business ? type : $"{level}/{type}/unlabeled";
-            return $"- {e.Id} [{tag}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}\n";
+            return $"- {e.Id} [{tag}, {e.CreatedAt:yyyy-MM-dd}] {e.Label}{Note(e.GitNote)}\n";
         }));
 }

@@ -212,6 +212,39 @@ tetap lokal: setelah 24 jam ia pindah ke long memory bersama.
 - Daftar modul, peta kode, dan [katalog unit test](07-cara-kerja.md#unit-test) project mengikuti aturan yang sama:
   ikut pindah saat key berubah dari lokal ke key bersama, dan ikut terhapus bersama memory-nya.
 
+### Asal-usul git memory
+
+Project memory yang lahir dari thread menyimpan **siapa** (identitas git developer, `Nama <email>`), **branch**, dan
+**commit** tempat thread itu mulai. Nilainya diambil dari thread saat memory pindah ke long memory, jadi ikut terbaca
+developer lain di store bersama dan ikut file export/import `aithread-memory`. Di menu Memori, branch tampil di bawah
+tautan *thread* (arahkan kursor untuk author dan commit). Ke mana perubahan thread itu bergerak setelahnya (di-commit,
+dibuang, di branch lain) tampil di halaman thread — lihat
+[Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread).
+
+Knowledge memory dan memory dari versi lama tidak punya asal-usul git.
+
+### Memory dan git
+
+Status git perubahan thread dibagi ke tim lewat tabel `ThreadChanges` di database long memory (lihat
+[Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread)). Dari situ:
+
+- **Menu Memori** menampilkan badge status perubahan memory di clone author-nya (*di-commit*, *di-push*, *dibuang*,
+  *di branch lain*, …) di bawah tautan *thread*. Memory yang dirangkum dari
+  [commit di luar AIT](07-cara-kerja.md#commit-di-luar-ait) menyebut *commit &lt;id&gt;* sebagai sumbernya.
+- **Planner** memeriksa clone yang sedang dipakai:
+
+  | Perubahan memory | Planner |
+  |---|---|
+  | Ada di branch yang sedang aktif (commit-nya ada di `HEAD`, atau semua blob-nya, mis. setelah squash merge) | Dibaca seperti biasa |
+  | Di branch lain yang belum di-merge ke sini | Dibaca dengan tanda `(not in this branch: committed on <branch> by <author>)`, ditaruh setelah memory lain |
+  | Belum di-commit atau di-stash di mesin author | Dibaca dengan tanda `(not in this branch: not committed yet …)`, ditaruh setelah memory lain |
+  | Dibuang atau commit-nya hilang | Tidak dibaca |
+  | Tidak diketahui (knowledge, memory lama, bukan repository git) | Dibaca seperti biasa |
+
+- **Ringkasan modul** tidak memasukkan catatan perubahan yang dibuang atau commit-nya hilang. Catatan itu tetap
+  menunggu, jadi ikut dirangkum bila perubahannya kembali (mis. `stash pop`, branch dipulihkan). Catatan yang sudah
+  terlanjur masuk ringkasan sebelum dibuang tidak dikeluarkan lagi.
+
 ## Penyimpanan memory
 
 Menu **Pengaturan → Penyimpanan memory** (`/Setting#memory`) menentukan di mana tiap level disimpan. Perubahan langsung
@@ -505,6 +538,24 @@ langsung ke editor (Ctrl+V) atau pakai *Sisipkan gambar*; gambar (PNG/JPEG/GIF/W
 ditulis sebagai `![keterangan](asset:<id>)`. *Pratinjau* menampilkan halaman persis seperti setelah disimpan. HTML mentah
 tidak dirender, dan tautan hanya boleh ke `http(s)`, `mailto`, atau dalam aplikasi — wiki bisa ditulis siapa saja yang
 berbagi store, jadi isinya tidak dipercaya mentah-mentah.
+
+### Wiki per environment
+
+Bila project punya [environment](07-cara-kerja.md#environment), wiki bisnis punya **halaman terpisah per environment**
+selain wiki kerja (versi terbaru dari semua branch). Halaman sebuah environment adalah **revisi terbaru** halaman kerja
+yang semua thread sumbernya (di revisi itu dan sebelumnya) sudah masuk environment itu:
+
+- revisi manual (tanpa thread) ikut berlaku bila revisi sebelumnya berlaku;
+- thread yang tidak dikenal git (thread lama, bukan repository) dan perubahan yang dibuang/commit-nya hilang tidak
+  menahan halaman;
+- isi halaman **disalin** dari revisi itu, tidak ditulis ulang model — jadi persis yang pernah ditulis wiki. Bila
+  thread revisi lebih lama belum masuk, halaman tertahan di revisi sebelumnya walau revisi lebih baru sudah masuk.
+
+Halaman environment diperbarui setelah environment dicek dan setelah penulis wiki menulis halaman. Di
+**Memori → Business memory**, pilih *Environment* untuk membaca wiki environment itu (hanya baca; badge kuning bila wiki
+kerja sudah lebih baru), dan **Bandingkan** dua sisi (environment atau wiki kerja): halaman yang berbeda dengan diff
+baris, halaman yang hanya ada di satu sisi, dan perubahan (thread/commit) yang hanya ada di satu sisi — mis. *ada di
+staging, belum di prod*.
 
 ## Mengelola dari menu Memori
 

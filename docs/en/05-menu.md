@@ -97,6 +97,7 @@ profile*. See [Team setup profile](02-konfigurasi.md#team-setup-profile).
 | Planner plan | The summary and the **contract** table. |
 | Executor tasks | A **parallel timeline** (overlapping bars ran at the same time) and the task table. Click a task for its instruction, dependencies, summary, error, colored diff and live model output. |
 | Verification | Shows when a build/reviewer/unit tests ran. The final result (*Passed* / *Issues remain* / *Could not be determined*), the build command, the reviewer model, then per round: the build result and its errors, reviewer findings, the unit test summary, problems that cannot be fixed automatically, and the ids of the fix tasks (`V1-1`, …) that also show in the task table. |
+| Git | Shows in a git repository. The thread's origin (branch, starting commit, author) and the state of its change now (*Not committed* / *Staged* / *Committed* / *Pushed* / *Changed again outside AIT* / *Stashed* / *On another branch* / *Discarded outside AIT* / *Commit lost*), the commits holding it, then the state per file (*edited by the developer before the commit* when its commit was recognised by the lines). The *Sync* button asks git again; otherwise it updates by itself (see [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)). |
 | Unit tests (project catalog) | Shows when catalog unit tests were run or restored. The result (*Passed* / *Failed* / *Skipped*), the mode (or *Testing only*), the baseline (how many ran, how many from earlier results, duration), the runner, then a table per test: number, title and file, the planner's decision, the result before and after the change (*(cache)* = an earlier result for the same code), the verdict, the failure message or the reason it was skipped, and the Tester's verdict. Below it the tests restored automatically and notes. The results per round are in the Verification card. |
 | Testing | Shows when Auto Testing ran. The result (*Passed* / *Failed* / *Could not be checked* / *Skipped*), level (UI/API), application URL, browser, tester model, the username used to log in, the number of steps, the reason when it could not run, *🔐 Tester needs a login* when the tester stopped to ask for a login, the tester's summary, the verdict per scenario, browser errors, then one window per `http_request` with the URL, request body and response body (the 4th window and later are folded). |
 | Wrapper result | The reply the CLI received. |
@@ -140,7 +141,14 @@ The list of codebases AIT knows. One project = one root folder, i.e. a folder ho
   memory moves to that clone.
 
 **Project detail**: the stack, the **Project key** card (the effective key, its source, and the *Manual key* field), the
-solution/build files found in the project, CLI sessions (session id, number of threads, last active), this project's
+**Git** card (git repositories only: the automatic `git fetch` interval in minutes (empty = the default 15, 0 = off),
+the last fetch and its error, the number of threads followed, the *Fetch now* and *Sync* buttons; see
+[Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change); then the team's shared
+**Environments**: name, ref, *prod* mark, number of changes that reached it, *Save environments* and *Check now*; see
+[Environments](07-cara-kerja.md#environments); then *Commits made outside AIT*: on/off (costs tokens), ref, commits per
+pass, how many summarized/skipped/failed, the newest commits, *Summarize now*; see
+[Commits made outside AIT](07-cara-kerja.md#commits-made-outside-ait)), the solution/build files found in the
+project, CLI sessions (session id, number of threads, last active), this project's
 threads, and a link to its memory. The session, thread, module, code map and module merge history tables show 10 rows
 per page (*‹ Previous* / *Next ›*; the navigation only shows when there are more than 10). The open page stays when the
 data refreshes automatically; changing the search or the code map filter goes back to page 1. Below the threads:
@@ -257,7 +265,8 @@ The *Short & long memory* tab:
 - **Statistics**: the number of short & long memories, project & knowledge, unlabeled (and needing review), the status
   of the short memory store.
 - **Filters**: level, type, project, a search in label/description, module (the chosen project + knowledge), layer,
-  kind, labeled/unlabeled. Coming from a project page? The project filter is already filled in.
+  kind, labeled/unlabeled, and *In &lt;environment&gt;* (a chosen project with environments: only memory whose change
+  reached that environment). Coming from a project page? The project filter is already filled in.
 - **Table**: level (short shows the estimated hours left before it moves to the DB), type, project, the label as one
   segmented tag `Module | Other module | Layer | Kind` followed by `#keyword` (old memory: an *unlabeled* mark + its old
   label) and an excerpt of the description, the creation time & a link to the source thread, the use count (long
@@ -291,6 +300,10 @@ The *Business memory* tab — see [Business memory](06-memory.md#business-memory
   *Insert image* — the image is uploaded to the store and inserted at the cursor. When the page was changed by someone
   else since you opened it, saving is refused (the editor stays open) so nobody's change is overwritten.
 - **Update now**: summarizes this project's threads that are not in the wiki yet without waiting for the schedule.
+- **Environment**: *Working wiki* (the default) or one of the project's environments — reads the wiki as it holds in that
+  environment (read-only); see [Wiki per environment](06-memory.md#wiki-per-environment).
+- **Compare**: choose two sides (environments or the working wiki) → the pages that differ (line diff), the pages on one
+  side only, and the changes on one side only with their author, branch and commit.
 
 ## Node
 

@@ -19,7 +19,8 @@ public record ThreadSummaryDto(
     long? ExecutionSumMs,
     int TotalTokens,
     DateTime CreatedAt,
-    DateTime? CompletedAt);
+    DateTime? CompletedAt,
+    GitChangeState? GitState = null);
 
 public record ThreadTaskDto(
     Guid Id,
@@ -72,7 +73,8 @@ public record ThreadDetailDto(
     long? TestingMs = null,
     string? TestingJson = null,
     long? UnitTestMs = null,
-    string? UnitTestJson = null);
+    string? UnitTestJson = null,
+    ThreadGitDto? Git = null);
 
 public record StartThreadRequest(Guid ProjectId, string Prompt);
 

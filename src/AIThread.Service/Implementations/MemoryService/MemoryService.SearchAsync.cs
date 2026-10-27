@@ -25,8 +25,18 @@ public sealed partial class MemoryService
         // Business pages and unlabeled memory get their own share, so neither crowds the labeled memory out.
         var pages = MemoryRanker.RankPages(await BusinessIndexAsync(scope, cancellationToken), modules, tokens, Math.Min(8, Math.Max(1, take / 3)));
         var unlabeledShare = entries.Any(e => !e.Labeled) ? Math.Max(3, take / 4) : 0;
-        var labeled = MemoryRanker.RankLabeled(entries, modules, search.Layer, search.Kind, tokens, take - pages.Count - Math.Min(unlabeledShare, 3));
-        var unlabeled = MemoryRanker.RankUnlabeled(entries, tokens, Math.Min(unlabeledShare, take - pages.Count - labeled.Count));
+        // Git is asked only about the best candidates (twice what is shown): memory whose change was thrown away drops out,
+        // memory whose change is not in this branch comes after the rest (OrderBy keeps the ranking otherwise).
+        var labeledTake = take - pages.Count - Math.Min(unlabeledShare, 3);
+        var labeled = (await WithGitAsync(scope, MemoryRanker.RankLabeled(entries, modules, search.Layer, search.Kind, tokens, labeledTake * 2), cancellationToken))
+            .OrderBy(e => e.GitNote is null ? 0 : 1)
+            .Take(Math.Max(0, labeledTake))
+            .ToList();
+        var unlabeledTake = Math.Min(unlabeledShare, take - pages.Count - labeled.Count);
+        var unlabeled = (await WithGitAsync(scope, MemoryRanker.RankUnlabeled(entries, tokens, unlabeledTake * 2), cancellationToken))
+            .OrderBy(e => e.GitNote is null ? 0 : 1)
+            .Take(Math.Max(0, unlabeledTake))
+            .ToList();
         return pages.Concat(labeled).Concat(unlabeled).Take(take).ToList();
     }
 }

@@ -810,6 +810,129 @@ baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi t
 - Untuk thread dari CLI (juga yang gagal), Context Keeper memperbarui konteks sesi di belakang.
 - Bila ada file yang diubah (juga thread yang dibatalkan/gagal di tengah), Struktur kode project dipindai ulang dan
   function yang diubah dibaca panggilannya (lihat [Panggilan function](#panggilan-function)), keduanya di belakang.
+- Di repository git, perubahan thread mulai diikuti: sudah di-commit, dibuang, atau ada di branch lain — lihat
+  [Status git perubahan thread](#status-git-perubahan-thread).
+
+## Status git perubahan thread
+
+Satu project disentuh banyak developer di banyak branch. AIT mencatat dari mana perubahan sebuah thread berasal dan
+mengikuti ke mana perubahan itu bergerak di git. AIT hanya **membaca** git (tidak pernah commit, checkout, reset, atau
+push), kecuali `git fetch` berkala (lihat di bawah).
+
+**Asal-usul** dicatat saat thread mulai: branch (`HEAD` bila detached), commit tempat thread mulai, dan identitas git
+developer (`user.name <user.email>`; config repository menang atas config global). Asal-usul ini ikut ke memory yang
+lahir dari thread itu (lihat [Asal-usul git memory](06-memory.md#asal-usul-git-memory)).
+
+**Sidik jari**: setiap kali executor menulis file, AIT menyimpan *blob id* git dari isinya (`git hash-object`, dengan
+`.gitattributes`/`autocrlf` repository, sama seperti saat di-commit). Blob id tidak berubah karena squash merge, rebase,
+atau cherry-pick, jadi AIT tetap mengenali perubahan thread walau SHA commit-nya berbeda. Bila developer mengedit file
+lagi sebelum commit, blob-nya berbeda; AIT lalu mencocokkan **baris** yang ditambah/dihapus tugas thread (dari diff
+tugas): bila file di `HEAD` memuat ≥ 80% baris tambahan dan tidak lagi memuat ≥ 80% baris yang dihapus, perubahan
+dianggap sudah di-commit *dengan suntingan developer*.
+
+| Status | Arti |
+|---|---|
+| Belum di-commit | Isi file masih persis tulisan thread, belum di-stage |
+| Sudah di-stage | Sudah `git add`, belum di-commit |
+| Sudah di-commit | `HEAD` memuat isi tulisan thread (atau baris-barisnya, ditandai *diedit developer*); commit-nya dicatat, juga commit squash |
+| Sudah di-push | Sudah di-commit dan ada di branch remote (per fetch terakhir) |
+| Diubah lagi di luar AIT | Isi file berubah lagi dan belum di-commit (bukan tulisan thread, bukan isi asli) |
+| Di-stash | Diambil `git stash` (juga `stash -u`); kembali normal setelah `stash pop` |
+| Di branch lain | Perubahan ada di commit branch lain (lokal/remote) atau tag, tapi tidak di branch yang sedang aktif, mis. setelah pindah branch |
+| Dibuang di luar AIT | File kembali ke isi sebelum thread (discard, `checkout --`, reset, atau commit-nya di-revert) dan tidak ada branch/tag yang memuat perubahannya |
+| Commit hilang | Pernah di-commit, tetapi tidak ada branch/tag yang memuat commit itu lagi (`reset --hard`, rebase, force-push, branch dihapus) |
+
+Status thread diambil dari file-filenya: semua dibuang/hilang = *Commit hilang* bila ada commit yang hilang, selain itu
+*Dibuang*; ada yang diubah lagi = *Diubah lagi di luar AIT*; tidak ada yang tersisa di working tree = *Di-stash* atau
+*Di branch lain*; sisanya status yang paling belum maju (mis. 2 file di-push, 1 belum di-commit = *Belum di-commit*).
+File yang di-ignore git tidak dihitung.
+
+**Kapan dicek**:
+
+- saat thread selesai (sidik jari yang belum ada diambil saat itu);
+- saat folder `.git` berubah (`HEAD`, index, refs, reflog: commit, checkout, merge, reset, stash, fetch), 2 detik
+  setelah perubahan terakhir;
+- tiap 5 menit (edit di working tree tidak menyentuh `.git`);
+- sebelum planner menyusun bagian brief `# Changes in this session`;
+- manual: tombol **Sinkronkan** di kartu Git halaman thread atau Proyek > Detail.
+
+Thread diikuti 30 hari setelah selesai, maks 200 thread terbaru per project. Thread yang di-rollback lewat AIT tidak
+diikuti lagi.
+
+**`git fetch` otomatis**: supaya push dan merge developer lain terlihat, AIT menjalankan `git fetch --all --prune`
+untuk project yang dipakai (terlihat atau punya thread yang diikuti dalam 30 hari), default tiap **15 menit**, satu
+project per giliran. Interval diatur per project di [Proyek > Detail → Git](05-menu.md#proyek) (0 = mati),
+dan ada tombol *Fetch sekarang*. Fetch tidak pernah meminta kredensial: remote yang butuh login gagal dan disebut sekali
+di log aktivitas.
+
+**Dibagi ke tim**: status git setiap thread (beserta branch, author, commit, dan blob tiap file) ditulis ke tabel
+`ThreadChanges` di database long memory. Developer lain yang memakai store yang sama ikut tahu di mana perubahan itu,
+dan AIT mereka memeriksa clone masing-masing: perubahan dianggap ada di branch mereka bila `HEAD` memuat salah satu
+commit-nya atau semua blob-nya (squash merge).
+
+**Efek ke planner**:
+
+- Thread yang perubahannya *Dibuang*, *Di branch lain*, atau *Di-stash* tidak lagi dianggap "perubahan ini" di bagian
+  brief `# Changes in this session` (filenya tidak ada di working tree).
+- Memory dari perubahan yang *Dibuang* atau *Commit hilang* tidak dibaca planner (tetap ada di menu Memori).
+- Memory dari perubahan yang tidak ada di branch yang sedang aktif (di branch lain, atau belum di-commit di mesin
+  author) tetap dibaca, tapi ditandai `(not in this branch: …)` dan ditaruh setelah memory lain; planner diminta
+  memeriksa file sebelum mengandalkannya. Lihat [Memory dan git](06-memory.md#memory-dan-git).
+
+## Environment
+
+Branch remote bisa dijadikan **environment** (dev, staging, staging2, prod, …) di
+[Proyek > Detail → Git](05-menu.md#proyek): nama, ref (mis. `origin/develop`), dan tanda *prod*. Daftarnya **dipakai
+bersama** semua developer project key itu (disimpan di database long memory), jadi cukup diatur satu orang.
+
+Setelah setiap `git fetch` (otomatis atau *Fetch sekarang*), tiap 5 menit, atau lewat *Cek sekarang*, AIT mencari
+setiap perubahan yang dibagi tim (`ThreadChanges`, dari developer mana pun) di ref tiap environment pada clone ini.
+Perubahan dianggap **sudah masuk** environment bila:
+
+1. riwayat environment memuat salah satu commit-nya (merge, fast-forward); atau
+2. tree environment memuat blob setiap file yang ditulisnya dan tidak lagi memuat file yang dihapusnya (squash merge,
+   cherry-pick); atau
+3. riwayat environment pernah memuat blob itu (file-nya sudah berubah lagi setelahnya; maks 50 perubahan per environment
+   per putaran).
+
+Yang terlihat dicatat di tabel bersama `ChangePresences` (thread, environment, commit environment yang membawanya,
+siapa yang melihat). Sekali masuk tetap tercatat; AIT developer mana pun yang fetch ikut mengisinya. Mengganti ref atau
+menghapus environment melupakan catatannya. Nama `work` tidak boleh dipakai (dipakai AIT untuk wiki kerja).
+
+Efeknya:
+
+- **Wiki bisnis per environment** — lihat [Wiki per environment](06-memory.md#wiki-per-environment).
+- **Menu Memori**: filter *Di &lt;environment&gt;* menampilkan hanya memory yang perubahannya sudah masuk environment
+  itu (memory tanpa thread tetap tampil).
+
+## Commit di luar AIT
+
+Commit yang dibuat developer **tanpa AIT** bisa ikut dirangkum ke memory dan wiki bisnis. Fitur ini **mati secara
+bawaan** karena tiap commit memakai token node memory (node murah: Tools → Wrapper → Planner). Nyalakan di
+[Proyek > Detail → Git](05-menu.md#proyek), bagian *Commit di luar AIT*; pengaturannya dipakai bersama semua developer
+project key itu.
+
+| Pengaturan | Arti |
+|---|---|
+| Ref | Branch yang commit-nya dibaca, mis. `origin/develop`. Kosong = ref environment *prod*, atau `origin/HEAD` |
+| Mulai dari | Hanya commit setelah fitur dinyalakan (menyalakan ulang mulai dari saat itu), supaya riwayat lama tidak dirangkum sekaligus |
+| Commit per putaran | Maks commit yang dirangkum per putaran (bawaan 10, maks 50) |
+
+Setiap putaran (setelah `git fetch`, tiap 5 menit, atau *Rangkum sekarang*) AIT membaca commit ref itu, yang paling lama
+dulu, tanpa merge commit, lalu **melewati** commit milik AIT sendiri: commit atau commit squash dari thread AIT yang dibagi
+tim, dan commit yang semua filenya berisi persis tulisan thread AIT. Sisanya:
+
+1. **diklaim** di tabel bersama `IngestedCommits` — satu commit hanya diproses satu AIT, walau beberapa developer
+   menyalakannya;
+2. diff-nya (maks 14.000 karakter, secret disamarkan) dan pesan commit-nya dirangkum model menjadi satu **catatan
+   perubahan** (`Change`) dengan format yang sama seperti thread; author dan ref-nya menjadi asal-usul memory, dan di menu
+   Memori sumbernya tertulis *commit &lt;id&gt;*;
+3. dicatat sebagai `ThreadChange` (ditandai *ingested*), jadi status git, [environment](#environment), dan wiki per
+   environment memperlakukannya seperti thread;
+4. dirangkum ke **wiki bisnis** oleh penulis wiki AIT yang mengklaimnya, bersama thread berikutnya.
+
+Commit tanpa hal yang perlu diingat (format, versi, file hasil generate) dilewati model. Commit yang gagal dirangkum
+ditandai *gagal* dan tidak dicoba lagi otomatis. Daftar commit terbaru beserta statusnya tampil di kartu Git.
 
 ## Unit test
 

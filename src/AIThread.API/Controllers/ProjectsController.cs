@@ -7,8 +7,94 @@ namespace AIThread.API.Controllers;
 
 [ApiController]
 [Route("api/projects")]
-public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog, ICodeStructureService structure) : ControllerBase
+public class ProjectsController(IProjectService projectService, IMemoryCatalogService catalog, ICodeStructureService structure,
+    IGitChangeTracker gitChanges, IGitEnvironmentTracker environments, ICommitIngestor ingestor) : ControllerBase
 {
+    // Summarizing commits made outside AIT into memory and the business wiki (shared per project key, costs tokens).
+    [HttpGet("{id:guid}/git/ingest")]
+    public async Task<ActionResult<ApiResponse<CommitIngestDto>>> Ingest(Guid id, CancellationToken cancellationToken) =>
+        await ingestor.GetAsync(id, cancellationToken) is { } ingest
+            ? ApiResponse<CommitIngestDto>.Ok(ingest)
+            : NotFound(ApiResponse<CommitIngestDto>.Fail(Lang.T("Project tidak ditemukan atau belum punya key.", "Project not found or without a key.")));
+
+    [HttpPut("{id:guid}/git/ingest")]
+    public async Task<ActionResult<ApiResponse<CommitIngestDto>>> SaveIngest(Guid id, SaveCommitIngestRequest request, CancellationToken cancellationToken) =>
+        await ingestor.SaveAsync(id, request, cancellationToken) is { } ingest
+            ? ApiResponse<CommitIngestDto>.Ok(ingest, Lang.T("Pengaturan ingest commit disimpan.", "Commit ingest settings saved."))
+            : NotFound(ApiResponse<CommitIngestDto>.Fail(Lang.T("Project tidak ditemukan atau belum punya key.", "Project not found or without a key.")));
+
+    // One pass now; the result message says what happened.
+    [HttpPost("{id:guid}/git/ingest/run")]
+    public async Task<ActionResult<ApiResponse<CommitIngestResultDto>>> RunIngest(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await ingestor.RunAsync(id, cancellationToken);
+        return ApiResponse<CommitIngestResultDto>.Ok(result, result.Problem ?? Lang.T(
+            $"{result.Ingested} commit dirangkum, {result.Skipped} dilewati, {result.Failed} gagal.",
+            $"{result.Ingested} commit(s) summarized, {result.Skipped} skipped, {result.Failed} failed."));
+    }
+
+    // The project key's environments (dev, staging, prod, ...), shared by every developer, with what this clone knows.
+    [HttpGet("{id:guid}/environments")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>>> Environments(Guid id, CancellationToken cancellationToken) =>
+        await environments.ListAsync(id, cancellationToken) is { } list
+            ? ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Ok(list)
+            : NotFound(ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    [HttpPut("{id:guid}/environments")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>>> SaveEnvironments(Guid id, SaveProjectEnvironmentsRequest request,
+        CancellationToken cancellationToken) =>
+        await environments.SaveAsync(id, request.Environments ?? [], cancellationToken) is { } list
+            ? ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Ok(list, Lang.T("Environment disimpan.", "Environments saved."))
+            : NotFound(ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    // Looks for the shared changes in each environment's ref of this clone now (after a fetch of its own).
+    [HttpPost("{id:guid}/environments/refresh")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>>> RefreshEnvironments(Guid id, CancellationToken cancellationToken)
+    {
+        var found = await environments.RefreshAsync(id, cancellationToken);
+        return await environments.ListAsync(id, cancellationToken) is { } list
+            ? ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Ok(list, Lang.T($"{found} perubahan baru terlihat di environment.", $"{found} new change(s) seen in the environments."))
+            : NotFound(ApiResponse<IReadOnlyList<ProjectEnvironmentDto>>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+    }
+
+    // Asks git again where the change of every followed thread of the project is now; the count of threads whose state
+    // changed. The UI hears each change over SSE (thread.git).
+    [HttpPost("{id:guid}/git/refresh")]
+    public async Task<ActionResult<ApiResponse<int>>> RefreshGit(Guid id, CancellationToken cancellationToken)
+    {
+        var changed = await gitChanges.RefreshProjectAsync(id, cancellationToken);
+        return ApiResponse<int>.Ok(changed, Lang.T($"Status git disinkronkan: {changed} thread berubah.", $"Git state synced: {changed} thread(s) changed."));
+    }
+
+    // Git of the project: automatic fetch and its last result, threads followed.
+    [HttpGet("{id:guid}/git")]
+    public async Task<ActionResult<ApiResponse<ProjectGitDto>>> Git(Guid id, CancellationToken cancellationToken) =>
+        await gitChanges.GetProjectAsync(id, cancellationToken) is { } git
+            ? ApiResponse<ProjectGitDto>.Ok(git)
+            : NotFound(ApiResponse<ProjectGitDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    [HttpPut("{id:guid}/git")]
+    public async Task<ActionResult<ApiResponse<ProjectGitDto>>> SetGit(Guid id, SetGitFetchRequest request, CancellationToken cancellationToken) =>
+        await gitChanges.SetFetchMinutesAsync(id, request.FetchMinutes, cancellationToken) is { } git
+            ? ApiResponse<ProjectGitDto>.Ok(git, Lang.T("Pengaturan git disimpan.", "Git settings saved."))
+            : NotFound(ApiResponse<ProjectGitDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    // git fetch of every remote now, then the followed threads are looked at again.
+    [HttpPost("{id:guid}/git/fetch")]
+    public async Task<ActionResult<ApiResponse<ProjectGitDto>>> FetchGit(Guid id, CancellationToken cancellationToken)
+    {
+        var status = await gitChanges.FetchAsync(id, cancellationToken);
+        if (status is { Error: null }) await environments.RefreshAsync(id, cancellationToken);
+        if (await gitChanges.GetProjectAsync(id, cancellationToken) is not { } git)
+            return NotFound(ApiResponse<ProjectGitDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+        return status switch
+        {
+            null => ApiResponse<ProjectGitDto>.Ok(git, Lang.T("Tidak ada git remote untuk di-fetch.", "No git remote to fetch.")),
+            { Error: { } error } => ApiResponse<ProjectGitDto>.Ok(git, Lang.T($"git fetch gagal: {error}", $"git fetch failed: {error}")),
+            _ => ApiResponse<ProjectGitDto>.Ok(git, Lang.T("git fetch selesai.", "git fetch done."))
+        };
+    }
+
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectDto>>>> GetAll(CancellationToken cancellationToken) =>
         ApiResponse<IReadOnlyList<ProjectDto>>.Ok(await projectService.GetAllAsync(cancellationToken));

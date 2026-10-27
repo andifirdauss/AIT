@@ -10,6 +10,7 @@ public interface IBusinessMemoryDb : IAsyncDisposable
     DbSet<BusinessPage> BusinessPages { get; }
     DbSet<BusinessPageRevision> BusinessPageRevisions { get; }
     DbSet<BusinessAsset> BusinessAssets { get; }
+    DbSet<BusinessEnvPage> BusinessEnvPages { get; }
 
     ChangeTracker ChangeTracker { get; }
 
@@ -66,6 +67,22 @@ public static class BusinessMemoryModel
             e.HasIndex(x => new { x.ProjectKey, x.Sha256 });
             e.HasIndex(x => x.PageId);
         });
+
+        modelBuilder.Entity<BusinessEnvPage>(e =>
+        {
+            e.ToTable("BusinessEnvPages");
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ProjectKey).HasMaxLength(MemorySchema.ProjectKeyLength).IsRequired();
+            e.Property(x => x.Environment).HasMaxLength(ProjectEnvironment.MaxNameLength).IsRequired();
+            e.Property(x => x.Module).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Slug).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Summary).HasMaxLength(1000);
+            e.Property(x => x.Content).IsRequired();
+            e.Property(x => x.SourceThreadIds);
+            e.HasIndex(x => new { x.PageId, x.Environment }).IsUnique();
+            e.HasIndex(x => new { x.ProjectKey, x.Environment });
+        });
     }
 }
 
@@ -75,6 +92,7 @@ public sealed class BusinessMemoryDbContext(DbContextOptions<BusinessMemoryDbCon
     public DbSet<BusinessPage> BusinessPages => Set<BusinessPage>();
     public DbSet<BusinessPageRevision> BusinessPageRevisions => Set<BusinessPageRevision>();
     public DbSet<BusinessAsset> BusinessAssets => Set<BusinessAsset>();
+    public DbSet<BusinessEnvPage> BusinessEnvPages => Set<BusinessEnvPage>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.Properties<DateTime>().HaveConversion<MemoryUtcDateTimeConverter>();

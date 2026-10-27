@@ -32,6 +32,7 @@ public sealed partial class ThreadOrchestrator(
     IContextKeeper contextKeeper,
     ICodeStructureService codeStructure,
     IFunctionCallQueue functionCalls,
+    IGitChangeTracker gitChanges,
     IPendingQuestionStore questions,
     ITestLoginStore testLogins,
     ITestAccountStore testAccounts,

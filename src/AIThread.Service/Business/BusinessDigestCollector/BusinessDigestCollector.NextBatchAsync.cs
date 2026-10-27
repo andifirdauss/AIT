@@ -19,7 +19,7 @@ public sealed partial class BusinessDigestCollector
                 Tasks = t.Tasks.OrderBy(k => k.Order).Select(k => new { k.Title, k.FilePath, k.Action, k.Status, k.Summary }).Take(MaxTasks).ToList()
             })
             .ToListAsync(cancellationToken);
-        if (threads.Count == 0) return [];
+        if (threads.Count == 0) return await CommitDigestsAsync(projectKey, MaxThreadsPerBatch, 0, cancellationToken);
 
         var ids = threads.Select(t => t.Id).ToList();
         var attachments = await db.ThreadAttachments.AsNoTracking()
@@ -61,6 +61,8 @@ public sealed partial class BusinessDigestCollector
             images += threadImages.Count;
             digests.Add(new ThreadDigest(thread.Id, text.ToString(), threadImages));
         }
+        // Commits made outside AIT fill what is left of the batch.
+        digests.AddRange(await CommitDigestsAsync(projectKey, MaxThreadsPerBatch - digests.Count, chars, cancellationToken));
         return digests;
     }
 }

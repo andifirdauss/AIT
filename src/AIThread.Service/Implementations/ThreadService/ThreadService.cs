@@ -33,5 +33,6 @@ public sealed partial class ThreadService(
         t.ExecutionSumMs,
         t.PlannerTokens + t.ToolsNodeTokens + t.ExecutorTokens + t.ReviewerTokens + t.TesterTokens + t.WrapperTokens,
         t.CreatedAt,
-        t.CompletedAt);
+        t.CompletedAt,
+        t.GitState);
 }

@@ -47,7 +47,8 @@ public sealed partial class MemoryTransferService(
 
     private sealed record Prepared(Guid Id, MemoryLevel Level, MemoryType Type, Guid? ProjectId, string? Key, string? Name,
         string Label, string Description, Guid? SourceThreadId, DateTime CreatedAt, DateTime? PromotedAt, int HitCount,
-        DateTime? LastAccessedAt, bool Orphaned, ImportedLabel? Labels, string? LegacyLabel)
+        DateTime? LastAccessedAt, bool Orphaned, ImportedLabel? Labels, string? LegacyLabel, string? GitAuthor = null, string? GitBranch = null,
+        string? GitCommit = null)
     {
         public string Label { get; set; } = Label;
         public ImportedLabel? Labels { get; set; } = Labels;

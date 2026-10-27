@@ -82,13 +82,41 @@
     return (isEn ? `<span class="badge text-bg-info">Short</span><div class="small text-secondary">±${left.toFixed(0)} h left before long memory</div>` : `<span class="badge text-bg-info">Short</span><div class="small text-secondary">±${left.toFixed(0)} jam lagi ke long memory</div>`);
   }
 
+  const gitStates = {
+    Uncommitted: ['secondary', t('belum di-commit', 'not committed')],
+    Staged: ['info', t('di-stage', 'staged')],
+    Committed: ['success', t('di-commit', 'committed')],
+    Pushed: ['success', t('di-push', 'pushed')],
+    ModifiedOutside: ['warning', t('diubah di luar AIT', 'changed outside AIT')],
+    OnOtherBranch: ['primary', t('di branch lain', 'on another branch')],
+    Stashed: ['secondary', t('di-stash', 'stashed')],
+    Discarded: ['danger', t('dibuang', 'discarded')],
+    Lost: ['danger', t('commit hilang', 'commit lost')]
+  };
+
+  // The thread a memory came from, or the commit made outside AIT it was summarized from.
+  function sourceLink(m) {
+    if (m.fromCommit) return `<div class="mono" title="${escapeHtml(t('Dirangkum dari commit di luar AIT', 'Summarized from a commit made outside AIT'))}">commit ${escapeHtml((m.gitCommit || '').substring(0, 8))}</div>`;
+    return m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : '';
+  }
+
+  // Branch the memory's thread worked on (author and commit on hover) and where its change is in the author's clone.
+  function gitSource(m) {
+    if (!m.gitBranch && !m.gitAuthor && !m.gitState) return '';
+    const title = [m.gitAuthor, m.gitCommit ? `${t('dari commit', 'from commit')} ${m.gitCommit.substring(0, 8)}` : null].filter(Boolean).join(' · ');
+    const branch = m.gitBranch || m.gitAuthor
+      ? `<div class="mono text-secondary text-truncate" style="max-width:12rem" title="${escapeHtml(title)}">${escapeHtml(m.gitBranch || m.gitAuthor)}</div>` : '';
+    const [color, label] = gitStates[m.gitState] || [];
+    return branch + (label ? `<span class="badge text-bg-${color}">${escapeHtml(label)}</span>` : '');
+  }
+
   function row(m) {
     return (isEn ? `<tr>
       <td>${levelCell(m)}</td>
       <td><span class="badge ${m.type === 'Project' ? 'text-bg-primary' : 'text-bg-success'}">${m.type}</span></td>
       <td class="small">${escapeHtml(m.projectName || (m.type === 'Knowledge' ? 'all projects' : '–'))}</td>
       <td>${labelCell(m)}<div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
-      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}</td>
+      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${sourceLink(m)}${gitSource(m)}</td>
       <td>${m.level === 'Long' ? fmt.number(m.hitCount) : '–'}</td>
       <td class="text-end text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-edit="${m.id}">Open</button>
@@ -100,7 +128,7 @@
       <td><span class="badge ${m.type === 'Project' ? 'text-bg-primary' : 'text-bg-success'}">${m.type}</span></td>
       <td class="small">${escapeHtml(m.projectName || (m.type === 'Knowledge' ? 'semua project' : '–'))}</td>
       <td>${labelCell(m)}<div class="small text-secondary text-truncate-2">${escapeHtml(m.description)}</div></td>
-      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${m.sourceThreadId ? `<div><a href="/Thread/Detail/${m.sourceThreadId}">thread</a></div>` : ''}</td>
+      <td class="text-nowrap small" title="${fmt.dateTime(m.createdAt)}">${fmt.relative(m.createdAt)}${sourceLink(m)}${gitSource(m)}</td>
       <td>${m.level === 'Long' ? fmt.number(m.hitCount) : '–'}</td>
       <td class="text-end text-nowrap">
         <button type="button" class="btn btn-sm btn-outline-secondary" data-edit="${m.id}">Buka</button>
@@ -222,6 +250,24 @@
     if ([...project, ...knowledge].some(m => m.name === current)) el('filterModule').value = current;
   }
 
+  // The chosen project's environments (dev, staging, prod, ...), for the environment filter.
+  async function loadEnvFilter() {
+    const projectId = el('filterProject').value;
+    let environments = [];
+    if (projectId) {
+      try {
+        environments = await api.get(`/api/projects/${projectId}/environments`);
+      } catch {
+        environments = [];
+      }
+    }
+    const current = el('filterEnv').value;
+    el('filterEnv').innerHTML = t('<option value="">Semua environment</option>', '<option value="">All environments</option>')
+      + environments.map(e => `<option value="${escapeHtml(e.name)}">${escapeHtml(isEn ? `In ${e.name}` : `Di ${e.name}`)}</option>`).join('');
+    el('filterEnv').disabled = environments.length === 0;
+    el('filterEnv').value = environments.some(e => e.name === current) ? current : '';
+  }
+
   function filterParams(params = new URLSearchParams()) {
     const set = (name, id) => { if (el(id).value) params.set(name, el(id).value); };
     set('level', 'filterLevel');
@@ -231,6 +277,7 @@
     set('layer', 'filterLayer');
     set('kind', 'filterKind');
     set('labeled', 'filterLabeled');
+    if (el('filterProject').value) set('environment', 'filterEnv');
     if (el('filterSearch').value.trim()) params.set('search', el('filterSearch').value.trim());
     return params;
   }
@@ -778,8 +825,8 @@
   });
   // A hidden required field cannot show its message: back to writing so the browser can.
   el('memoryDescription').addEventListener('invalid', () => setDescriptionPreview(false));
-  ['filterLevel', 'filterType', 'filterModule', 'filterLayer', 'filterKind', 'filterLabeled'].forEach(id => el(id).addEventListener('change', resetAndLoad));
-  el('filterProject').addEventListener('change', () => { loadModuleFilter(); resetAndLoad(); });
+  ['filterLevel', 'filterType', 'filterModule', 'filterLayer', 'filterKind', 'filterLabeled', 'filterEnv'].forEach(id => el(id).addEventListener('change', resetAndLoad));
+  el('filterProject').addEventListener('change', () => { loadModuleFilter(); loadEnvFilter().then(resetAndLoad); });
   el('filterSearch').addEventListener('input', debounce(resetAndLoad, 350));
   el('btnPrev').addEventListener('click', () => { page = Math.max(1, page - 1); load(); });
   el('btnNext').addEventListener('click', () => { page += 1; load(); });
@@ -787,6 +834,6 @@
   loadStats();
   loadRelabel();
   loadChangelog();
-  loadProjects().then(() => { loadModuleFilter(); load(); });
+  loadProjects().then(() => { loadModuleFilter(); loadEnvFilter(); load(); });
   stream('types=memory', { 'memory.changed': debounce(refreshAll, 500) });
 })();

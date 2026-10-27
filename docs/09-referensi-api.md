@@ -120,6 +120,16 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 | `GET` | `/api/projects/browse?path=` | tanpa `path` = daftar drive. Hasil: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (root project di folder itu: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
 | `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Hasil: `root`, `projects[]` (bentuk sama dengan `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
 | `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — key manual (kosong/`null` = hapus); `.aithread/project.json` tetap menang. Memory di bawah key lokal lama ikut pindah (juga daftar modul & peta kodenya) |
+| `POST` | `/api/projects/{id}/git/refresh` | — → jumlah thread yang statusnya berubah. Menanyakan git lagi status perubahan semua thread project yang diikuti (30 hari terakhir); tiap perubahan dikirim lewat SSE `thread.git` |
+| `GET` | `/api/projects/{id}/git` | — → `isRepository`, `hasRemote`, `fetchMinutes` (diatur; `null` = bawaan), `effectiveFetchMinutes`, `lastFetchAt`, `lastFetchError`, `followedThreads` |
+| `PUT` | `/api/projects/{id}/git` | `{ "fetchMinutes": 15 \| 0 \| null }` — interval `git fetch` otomatis (0–1440 menit, 0 = mati, `null` = bawaan 15) → bentuk sama dengan `GET` |
+| `POST` | `/api/projects/{id}/git/fetch` | — → `git fetch --all --prune` sekarang, lalu thread yang diikuti dicek ulang; bentuk sama dengan `GET` (gagal = `lastFetchError`) |
+| `GET` | `/api/projects/{id}/environments` | — → `id`, `name`, `ref`, `order`, `isProduction`, `refFound` + `refCommit` (ref di clone ini), `changes` (perubahan yang sudah masuk), `lastSeenAt` |
+| `PUT` | `/api/projects/{id}/environments` | `{ "environments": [{ "name": "dev", "ref": "origin/develop", "isProduction": false }, …] }` — seluruh daftar (urutan = urutan tampil, maks 20; nama huruf/angka/`_`/`.`/`-`, bukan `work`). Dipakai bersama per project key; ganti ref/hapus = catatan environment itu dilupakan → bentuk sama dengan `GET` |
+| `POST` | `/api/projects/{id}/environments/refresh` | — → cari perubahan yang sudah masuk tiap environment sekarang; bentuk sama dengan `GET` |
+| `GET` | `/api/projects/{id}/git/ingest` | — → `enabled`, `ref`, `effectiveRef` (ref yang dibaca di clone ini; `null` = tidak ada), `since`, `maxPerRun`, `done`, `skipped`, `failed`, `lastIngestedAt`, `recent[]` (`id`, `commit`, `status` = `Pending`/`Done`/`Skipped`/`Failed`, `title`, `author`, `committedAt`, `claimedBy`, `memoryId`, `note`, `createdAt`). `404` bila project tidak ada atau belum punya key |
+| `PUT` | `/api/projects/{id}/git/ingest` | `{ "enabled": true, "ref": "origin/develop" \| null, "since": null, "maxPerRun": 10 }` — dipakai bersama per project key; `since` `null` = tetap (menyalakan ulang = mulai sekarang) → bentuk sama dengan `GET` |
+| `POST` | `/api/projects/{id}/git/ingest/run` | — → satu putaran sekarang: `ingested`, `skipped`, `failed`, `problem` (alasan bila tidak berjalan) |
 | `GET` | `/api/projects/{id}/codemap?search=&module=` | peta kode: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (maks 500 baris) |
 | `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — koreksi manual, tidak pernah ditimpa; nama class/file dicari ke file project (400 bila tidak ada atau lebih dari satu) |
 | `POST` | `/api/projects/{id}/codemap/scan` | memetakan file sumber yang belum terpetakan (maks 3.000) → `files`, `mapped`, `modules` |
@@ -165,7 +175,7 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (maks 200) |
+| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `environment` (dengan `projectId`: hanya memory yang perubahannya sudah masuk environment itu), `page`, `pageSize` (maks 200). Tiap memory memuat `gitAuthor`, `gitBranch`, `gitCommit` (asal-usul) dan `gitState` (status perubahannya di clone author, dari `ThreadChanges`), `fromCommit` (dirangkum dari commit di luar AIT) |
 | `GET` | `/api/memory/stats` | — (+ `unlabeledCount`, `reviewCount`) |
 | `GET` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "extraModules": ["Invoice"], "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → short memory. `module`, `kind`, minimal satu keyword (maks 16), dan `description` wajib; `extraModules` opsional (maks 3); knowledge hanya `Pitfall`/`Pattern`/`Architecture`. Modul dicocokkan ke daftar modul (nama/alias/jamak) atau ditambahkan; semua dinormalisasi PascalCase (singkatan kapital pada nama modul dipertahankan: `MKPP`, `KlaimDF`). Respons memory memuat `extraModules[]`; filter `module` di `GET /api/memory` ikut mencocokkan modul lain |
@@ -214,6 +224,9 @@ disimpan per project key.
 | `POST` | `/api/business/digest?projectId=` | rangkum thread yang menunggu sekarang → `threads`, `pagesCreated`, `pagesUpdated`, `images`, `warnings[]`. `400` bila rangkuman lain sedang berjalan |
 | `GET` | `/api/business/settings` | — (`enabled`, `intervalHours`, `model`, `developerName`, `effectiveDeveloperName`) |
 | `PUT` | `/api/business/settings` | `{ "enabled": true, "intervalHours": 6, "model": null, "developerName": "Andi" }` |
+| `GET` | `/api/business/projects/{projectId}/environments/{environment}` | — → `environment`, `pages[]` (`pageId`, `module`, `title`, `slug`, `summary`, `version` = revisi yang berlaku, `workingVersion` = versi wiki kerja sekarang, `updatedAt`), `missing` (halaman kerja yang belum ada di environment) |
+| `GET` | `/api/business/pages/{id}/environments/{environment}` | — → halaman seperti di atas + `content`, `html`. `404` bila halaman belum ada di environment itu |
+| `GET` | `/api/business/projects/{projectId}/compare?left=&right=` | `left`/`right` = nama environment atau `work` (wiki kerja) → `pages[]` (`pageId`, `module`, `title`, `status` = `same`/`changed`/`left`/`right`, `leftVersion`, `rightVersion`, `diff[]` (`kind` = `same`/`add`/`del`/`skip`, `text`; `skip` = jumlah baris sama yang dilipat)), `changes[]` (`threadId`, `title`, `author`, `branch`, `side` = `left`/`right`, `commit`) |
 
 ### Thread & dashboard
 
@@ -228,9 +241,14 @@ disimpan per project key.
 | `POST` | `/api/threads/{id}/follow-ups/{number}/run` | — → id thread. Menjalankan satu test lanjutan yang disarankan Tester (bagian `followUps` di `testingJson`) di belakang: skenario saran itu, akun uji project, nilai yang diingat (`values`). Hasilnya di `followUps[].lastRun`; saran baru dari run itu ditambahkan. 400 dengan alasan yang sama seperti `/test`, atau bila nomor saran tidak ada. |
 | `GET` | `/api/threads/{id}/rollback` | — → pratinjau `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Tidak mengubah apa pun. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. Semua atau tidak sama sekali: 400 tanpa menyentuh file bila ada `conflict`. |
+| `POST` | `/api/threads/{id}/git/refresh` | — → bagian `git` detail thread (lihat di bawah) setelah git ditanya lagi |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
+
+Detail thread (`GET /api/threads/{id}`) juga memuat `git` (`null` di luar repository git): `branch`, `baseCommit`,
+`author` (asal-usul saat thread mulai), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`, `edited`). Ringkasan
+thread (`GET /api/threads`) memuat `gitState`. Lihat [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread).
 
 ### Sistem
 
@@ -289,6 +307,7 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `router.status` | status 9router (dikirim tiap interval monitor; juga saat koneksi dibuka tanpa `threadId`) |
 | `thread.created` | `id`, `projectId`, `status` |
 | `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
+| `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`Pushed`/`ModifiedOutside`/`Stashed`/`OnOtherBranch`/`Discarded`/`Lost`), `commits[]` — status git perubahan thread berubah |
 | `thread.output` | aktivitas planner: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | objek tugas lengkap (status, node, durasi, diff, error, …) |
 | `task.output` | potongan output model executor: `taskId`, `taskKey`, `text` |
