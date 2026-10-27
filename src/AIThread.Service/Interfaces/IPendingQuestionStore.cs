@@ -10,5 +10,8 @@ public interface IPendingQuestionStore
 
     bool Remove(Guid threadId);
 
+    // The question a thread waits on, without taking it (the thread page shows a permission request with buttons).
+    PendingQuestion? Find(Guid threadId);
+
     IReadOnlyList<PendingQuestion> TakeExpired();
 }

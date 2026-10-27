@@ -112,6 +112,8 @@ public sealed partial class ThreadOrchestrator
             };
 
             var scope = new WorkspaceScope(project.RootPath, ProjectLocator.IgnoredDirectoriesFor(project.Stacks));
+            // The developer allowed these folders for this thread when its plan was accepted.
+            scope.AllowWrites(plan.OutsideFolders ?? []);
             var journal = new FileJournal(dbFactory, thread.Id, scope);
             await progress.PhaseAsync("🚀", Lang.T($"Eksekusi · {executors.Count} executor paralel", $"Execution · {executors.Count} parallel executors"), cancellationToken);
             var execution = await executionEngine.RunAsync(new ExecutionRequest(retryPlan, entities, executors, scope, settings, journal), recorder, progress, cancellationToken);
@@ -131,7 +133,8 @@ public sealed partial class ThreadOrchestrator
             var fresh = execution.Results.ToDictionary(r => r.TaskKey, StringComparer.OrdinalIgnoreCase);
             var results = tasks.Select(t => fresh.TryGetValue(t.Id, out var result) ? result : ToResult(keptByKey[t.Id])).ToList();
             var combined = new ExecutionSummary(results, execution.WallMs, execution.SumMs, execution.Tokens);
-            var fullPlan = new ThreadPlan { Summary = plan.Summary, Answer = plan.Answer, Contract = plan.Contract, Tasks = tasks, Test = plan.Test };
+            var fullPlan = new ThreadPlan { Summary = plan.Summary, Answer = plan.Answer, Contract = plan.Contract, Tasks = tasks, Test = plan.Test,
+                OutsideFolders = plan.OutsideFolders };
 
             var pipeline = new Pipeline(recorder, progress, request, project, executors, wrapper, memoryNode, scope, settings, journal, total, keepContext,
                 Tester: tester);

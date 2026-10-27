@@ -17,6 +17,7 @@ public sealed partial class SettingService
         EnsureRange(request.RequestTimeoutSeconds, 30, 3600, "Request timeout");
         EnsureRange(request.BuildTimeoutSeconds, 30, 3600, "Build timeout");
         EnsureRange(request.MaxFixRounds, 0, 5, Lang.T("Putaran perbaikan", "Fix rounds"));
+        EnsureRange(request.CommandTimeoutSeconds, 5, 600, Lang.T("Batas waktu perintah", "Command timeout"));
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var entity = await LoadTrackedAsync(db, cancellationToken);
@@ -39,6 +40,9 @@ public sealed partial class SettingService
         entity.BuildTimeoutSeconds = request.BuildTimeoutSeconds;
         entity.MaxFixRounds = request.MaxFixRounds;
         entity.PlannerCanAsk = request.PlannerCanAsk;
+        entity.CommandToolEnabled = request.CommandToolEnabled;
+        entity.CommandTimeoutSeconds = request.CommandTimeoutSeconds;
+        entity.GitPublishEnabled = request.GitPublishEnabled;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);

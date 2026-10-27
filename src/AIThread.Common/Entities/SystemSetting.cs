@@ -32,6 +32,14 @@ public class SystemSetting : BaseEntity
     public int BuildTimeoutSeconds { get; set; } = 300;
     public int MaxFixRounds { get; set; } = 2;
 
+    // The planner may run shell commands (run_command): read-only ones from the allowlist right away, any other one
+    // only after the developer approves it (ApprovalGrant).
+    public bool CommandToolEnabled { get; set; } = true;
+    public int CommandTimeoutSeconds { get; set; } = 60;
+
+    // AIT may commit and push the files a thread wrote when the developer asks for it, after approval.
+    public bool GitPublishEnabled { get; set; } = true;
+
     // Remote prompting through a Telegram bot. Long polling, so no public URL is needed.
     public bool TelegramEnabled { get; set; }
 

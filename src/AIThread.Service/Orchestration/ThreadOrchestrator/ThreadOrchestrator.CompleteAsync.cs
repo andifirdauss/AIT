@@ -102,6 +102,14 @@ public sealed partial class ThreadOrchestrator
             (memory, memoryPending) = await ExtractMemoryAsync(memoryNode, thread, plan, execution, finalText, cancellationToken);
         await FooterAsync(progress, request, pipeline.Settings, thread, status, pipeline.Total, pipeline.MemoriesUsed, memory, memoryPending, cancellationToken);
 
+        // Last, so the permission request is what the developer reads at the end.
+        var blocker = succeeded < execution.Results.Count ? Lang.T("tidak semua tugas berhasil.", "not every task succeeded.")
+            : verification?.Report.Outcome == VerificationReport.Failed ? Lang.T("verifikasi gagal.", "the verification failed.")
+            : unitReport?.Outcome == UnitTestReport.Failed ? Lang.T("unit test gagal.", "unit tests failed.")
+            : testing?.Report.Outcome == TestingReport.Failed ? Lang.T("testing gagal.", "testing failed.")
+            : null;
+        await PublishAsync(request, pipeline.Project, thread, plan, pipeline.Settings, blocker, progress, cancellationToken);
+
         if (pipeline.KeepContext) ScheduleContextKeeping(thread, request);
         return new ThreadResult(thread.Id, status, progress.Transcript, TotalTokens(thread));
     }

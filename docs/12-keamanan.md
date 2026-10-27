@@ -112,6 +112,22 @@ Saat CLI **Claude Code** diarahkan ke AIT (menu CLI), aturan `permissions.deny` 
 `Read(~/.ssh/**)`, …) ditambahkan ke `settings.json`. Dengan begitu Claude Code sendiri juga tidak membacanya.
 Aturan buatan Anda tidak disentuh, dan saat integrasi dilepas, hanya aturan dari AIT yang dihapus.
 
+## Izin di luar batas project
+
+Perubahan file di luar folder project, perintah `run_command` yang bisa mengubah sesuatu, `curl` ke host luar, serta
+commit/push selalu menunggu [izin developer](04-penggunaan.md#izin-developer) (sekali atau selalu). Batas yang tidak
+bisa diizinkan:
+
+- file kredensial di atas tetap ditolak untuk dibaca, ditulis, maupun disebut dalam perintah;
+- folder Windows, Program Files, dan ProgramData, juga drive root dan folder Home/Desktop/Documents/Downloads sebagai
+  target folder (hanya file tunggal di dalamnya yang bisa diizinkan);
+- push tidak pernah memakai `--force`, dan push ke `main`/`master`/`production`/`release/*` tidak bisa diizinkan
+  *selalu*;
+- commit hanya memuat file yang ditulis thread, bukan `git add -A`.
+
+Output perintah disamarkan seperti isi file konfigurasi (`KEY=nilai` yang rahasia diganti placeholder) sebelum sampai ke
+model. Izin *selalu* tersimpan di database lokal mesin ini saja.
+
 ## Aturan per project
 
 Tambahkan bagian `secrets` di `.aithread/project.json` (file yang sama dengan `run` untuk Auto Testing). File ini ikut
