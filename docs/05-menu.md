@@ -91,7 +91,7 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 | Bagian | Isi |
 |---|---|
 | Header | Status, project, sumber, sesi CLI, waktu, working directory. Tombol *Batalkan thread* saat berjalan (juga saat testing); setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)), serta *🧪 Ulangi testing* untuk thread yang punya rencana testing UI/API, dengan username & password opsional (lihat [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
-| Izin | Muncul saat thread menunggu [izin developer](04-penggunaan.md#izin-developer) (perintah, file di luar project, commit/push): daftar target dan tombol *Izinkan sekali* / *Izinkan selalu* / *Tolak*. |
+| Izin | Muncul saat thread menunggu [izin developer](04-penggunaan.md#izin-developer) (perintah, proses latar belakang, host luar, file di luar project, branch/PR, commit/push): daftar target dan tombol *Izinkan sekali* / *Izinkan selalu* / *Tolak*, plus *Izinkan selalu untuk pola* bila perintahnya bisa dipolakan. |
 | Permintaan | Prompt Anda (tanpa konteks yang disisipkan CLI, mis. blok `<system-reminder>` Claude Code). |
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
@@ -139,7 +139,8 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
   clone itu.
 
 **Detail project**: kartu **Izin AIT** (izin *selalu* yang diberikan di mesin ini: jenis, target, pemberi, terakhir
-dipakai, tombol *Cabut*; lihat [Izin developer](04-penggunaan.md#izin-developer)), stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), kartu **Git** (hanya
+dipakai, badge *pola*, tombol *Cabut*, dan form *Tambah izin perintah* untuk perintah persis atau pola seperti `npm install *`;
+lihat [Izin developer](04-penggunaan.md#izin-developer)), stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), kartu **Git** (hanya
 untuk repository git: interval `git fetch` otomatis dalam menit (kosong = bawaan 15, 0 = mati), fetch terakhir dan
 errornya, jumlah thread yang diikuti, tombol *Fetch sekarang* dan *Sinkronkan*; lihat
 [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread); lalu daftar **Environment** bersama tim:
@@ -307,7 +308,7 @@ prioritas, penanda *📝 instruksi* bila ada instruksi tambahan (isinya di toolt
 (namanya di tooltip), penanda *🛰 n tool* di planner yang mendelegasikan tool ke [tools node](02-konfigurasi.md#tools-node-planner)
 (di kartu tools node: *🛰 n planner* yang memakainya; detail di tooltip), penanda *🧪 auto test* di planner yang menyalakan
 [Auto Testing](02-konfigurasi.md#auto-testing-node-tester) (*🧪 tanpa tester* bila belum ada node Tester aktif), penanda *↪ nama* bila node punya [node cadangan](02-konfigurasi.md#node-cadangan), dengan tombol *Test*, *Edit*, *Hapus*.
-Di modal node Planner, bagian *Delegasi tool ke tools node* berisi satu pilihan per tool baca (*Planner langsung* atau tools node), dan switch *Auto Testing* (dengan nama tester yang akan dipakai). Di modal node, bagian *Skill* menampilkan skill terpasang
+Di modal node Planner, bagian *Delegasi tool ke tools node* berisi satu pilihan per tool baca (*Planner langsung* atau tools node; termasuk `run_command` dan `web_fetch` versi baca saja), dan switch *Auto Testing* (dengan nama tester yang akan dipakai). Di modal node, bagian *Skill* menampilkan skill terpasang
 sebagai chip. Kolom *Cari sendiri di gudang* membuka dropdown skill yang cocok dengan nama, deskripsi, tag, sumber,
 atau isi skill (potongan isi yang cocok ditampilkan); klik item untuk memasang/melepas. Kolom *Butuh kemampuan apa?* + **Cari skill** meminta Skill Orchestrator mencarikan skill yang cocok
 dari gudang (lihat [Skill pada node](07-cara-kerja.md#skill-pada-node)).
@@ -351,7 +352,8 @@ refresh dan bisa ditautkan langsung.
 
 - **Koneksi 9router** (`#router`) — URL, API key, *Test koneksi* (tidak menyimpan); baris status menunjukkan apakah key tersimpan dan diterima.
 - **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, *Planner boleh menjalankan
-  perintah* (`run_command`) beserta batas waktunya, *AIT boleh commit & push bila diminta*, model passthrough, proxy API key (beserta tautan ke
+  perintah* (`run_command`, juga `start_process`) beserta batas waktunya, *Planner boleh membaca halaman web & API*
+  (`web_fetch`), *AIT boleh commit & push bila diminta*, model passthrough, proxy API key (beserta tautan ke
   menu [CLI](#cli), tempat integrasi CLI (Claude Code, omp, Codex, Gemini CLI, opencode, Qwen Code) dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
 - **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
 - **Penyimpanan memory** (`#memory`) — provider short, long, dan business memory (bawaan, Redis untuk short saja,

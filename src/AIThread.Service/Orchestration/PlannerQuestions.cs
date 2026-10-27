@@ -12,12 +12,16 @@ namespace AIThread.Service.Orchestration;
 
 public sealed record QuestionOption(string Label, string? Description);
 
-// A run_command line waiting for the developer's permission, with the folder it runs in.
-public sealed record PendingCommand(string Command, string WorkingDirectory, string? Reason);
+// A run_command line waiting for the developer's permission, with the folder it runs in. Background: a start_process
+// instead, with what it waits for (Wait) before the planner goes on.
+public sealed record PendingCommand(string Command, string WorkingDirectory, string? Reason, bool Background = false, Workspace.Commands.BackgroundWait? Wait = null);
 
-// What the planner waits for permission to do: run a command, or carry out a plan that changes files outside the
-// project root (Plan holds it, already validated). Request is what the developer sees.
-public sealed record PlannerApproval(ApprovalRequest Request, ThreadPlan? Plan = null, PendingCommand? Command = null);
+// A web_fetch URL on an outside host waiting for the developer's permission; MaxChars as the planner asked.
+public sealed record PendingFetch(string Url, string? Reason, int? MaxChars = null);
+
+// What the planner waits for permission to do: run a command, read a page on an outside host (Fetch), or carry out a
+// plan that changes files outside the project root (Plan holds it, already validated). Request is what the developer sees.
+public sealed record PlannerApproval(ApprovalRequest Request, ThreadPlan? Plan = null, PendingCommand? Command = null, PendingFetch? Fetch = null);
 
 // A clarifying question from the planner's ask_user tool, in the developer's language; or, with Approval, a request for
 // the developer's permission (not counted as a question).

@@ -252,6 +252,10 @@ ikut terbayar lagi di langkah 4, 5, … sampai `submit_plan`. Tools node meminda
    rencana yang benar, lalu paralel: pertanyaan yang independen dikirim sekaligus dan dibagi per area agar tidak membaca
    file yang sama; pertanyaan yang bergantung pada jawaban sebelumnya tetap berurutan.
 
+Tools node juga bisa memegang `run_command` dan `web_fetch` dalam mode **baca saja**: perintah baca saja (curl GET ke
+localhost, git read, cek versi) dan host yang sudah diizinkan jalan, sisanya tidak dijalankan dan dilaporkan ke planner.
+Planner tetap memegang `run_command` untuk meminta izin; tools node tidak pernah menghentikan thread untuk izin.
+
 | Tool | Saran |
 |---|---|
 | `read_file`, `search_text`, `find_references` | Delegasikan — output terbesar, paling boros di planner. |

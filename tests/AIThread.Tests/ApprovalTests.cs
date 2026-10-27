@@ -32,7 +32,7 @@ public class ApprovalTests : IDisposable
     [InlineData("3", ApprovalDecision.Deny)]
     [InlineData("tolak", ApprovalDecision.Deny)]
     [InlineData("deny", ApprovalDecision.Deny)]
-    [InlineData("4", null)]
+    [InlineData("5", null)]
     [InlineData("sekali lagi coba cara lain", null)]
     public void Replies_are_read_in_both_languages(string reply, ApprovalDecision? expected) =>
         Assert.Equal(expected, ApprovalReply.Parse(reply));

@@ -39,10 +39,21 @@ public sealed partial class PlannerToolRunner
                 return new PlannerToolOutcome($"Error: the command was refused: {check.Reason}.", null, true);
 
             case CommandVerdict.NeedsApproval:
-                // The developer sees (and a grant keeps) the command with its secrets masked.
-                var items = (check.Items ?? []).Select(i => i.Kind == ApprovalKind.Command ? i with { Target = secrets.Redact(i.Target) } : i).ToList();
+                // The developer sees (and a grant keeps) the command with its secrets masked; a pattern that held a secret
+                // is not offered.
+                var items = (check.Items ?? []).Select(i => i.Kind == ApprovalKind.Command
+                    ? i with { Target = secrets.Redact(i.Target), Pattern = i.Pattern is { } pattern && secrets.Redact(pattern) == pattern ? pattern : null }
+                    : i).ToList();
                 if (!await AllGrantedAsync(input, items, recorder, cancellationToken))
                 {
+                    // A tools node (prefix set) leaves the command to its planner, which can ask.
+                    if (prefix.Length > 0)
+                    {
+                        recorder.Log(ActivityLevel.Info, Lang.T($"Tools node → run_command butuh izin, diserahkan ke planner: {items[0].Target}", $"Tools node → run_command needs permission, left to the planner: {items[0].Target}"));
+                        await progress.DetailAsync(Lang.T("🔒 butuh izin developer — diserahkan ke planner", "🔒 needs the developer's permission — left to the planner"), cancellationToken, hang: hang);
+                        return new PlannerToolOutcome($"Error: this command needs the developer's permission ({check.Reason}), which a sub agent cannot ask for. Do without it, or name the command in report_findings so the planner can run it.", null, true);
+                    }
+
                     if (!input.CanApprove)
                     {
                         await progress.DetailAsync(Lang.T("🔒 butuh izin developer, tidak bisa ditanyakan di sini", "🔒 needs the developer's permission, which cannot be asked here"), cancellationToken, hang: hang);

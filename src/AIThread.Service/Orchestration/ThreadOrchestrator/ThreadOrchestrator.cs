@@ -37,6 +37,7 @@ public sealed partial class ThreadOrchestrator(
     IPendingApprovalStore publishApprovals,
     IApprovalService approvals,
     IGitPublisher gitPublisher,
+    IBackgroundProcesses backgroundProcesses,
     ITestLoginStore testLogins,
     ITestAccountStore testAccounts,
     ITestScenarioService testScenarios,

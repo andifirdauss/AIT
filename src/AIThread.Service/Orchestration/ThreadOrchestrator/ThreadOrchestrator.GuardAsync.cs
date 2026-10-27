@@ -46,6 +46,8 @@ public sealed partial class ThreadOrchestrator
         finally
         {
             registry.Complete(thread.Id);
+            // A thread waiting for the developer keeps its background processes (until BackgroundProcesses.MaxAge).
+            if (thread.Status != ThreadStatus.AwaitingInput) StopBackgroundProcesses(recorder);
         }
     }
 }

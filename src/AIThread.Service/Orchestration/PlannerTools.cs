@@ -27,6 +27,10 @@ public static class PlannerTools
     public const string RunBuild = "run_build";
     public const string RunTests = "run_tests";
     public const string RunCommand = "run_command";
+    public const string StartProcess = "start_process";
+    public const string ProcessOutput = "process_output";
+    public const string StopProcess = "stop_process";
+    public const string WebFetch = "web_fetch";
     public const string Investigate = "investigate";
     public const string AskUser = "ask_user";
     public const string SetModule = "set_module";
@@ -35,9 +39,10 @@ public static class PlannerTools
     // Ends a tools node's investigation (a reply without tool calls does too).
     public const string ReportFindings = "report_findings";
 
-    // Tools a planner can hand to a tools node (PlannerToolDelegation), in the order they are offered.
+    // Tools a planner can hand to a tools node (PlannerToolDelegation), in the order they are offered. run_command is
+    // shared rather than handed over: the tools node runs only what needs no new permission, the planner keeps it.
     public static readonly ImmutableArray<string> Delegable =
-        [ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, GitStatus, GitDiff, GitLog, GitShow, GitBlame, RunBuild];
+        [ListDirectory, FindFiles, SearchText, FindSymbol, FindReferences, ReadFile, SearchMemory, ReadMemory, ReadThread, GitStatus, GitDiff, GitLog, GitShow, GitBlame, RunBuild, RunCommand, WebFetch];
 
     // Read-only git (GitTools), offered only when the project lives in a git repository.
     public static readonly ImmutableArray<string> Git = [GitStatus, GitDiff, GitLog, GitShow, GitBlame];
@@ -46,8 +51,12 @@ public static class PlannerTools
     // that reads files gets them too, to read only the lines it needs.
     public static readonly ImmutableArray<string> Skeleton = [CodeOutline, FunctionCalls];
 
+    // Background processes (BackgroundProcesses): offered with run_command, never delegated (start_process may pause).
+    public static readonly ImmutableArray<string> Processes = [StartProcess, ProcessOutput, StopProcess];
+
     // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
-    public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Append(RunTests).Append(RunCommand).Max(n => n.Length) + 2;
+    public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Append(RunTests).Append(RunCommand)
+        .Concat(Processes).Max(n => n.Length) + 2;
 
     // canBuild: build verification is enabled and the project has a build command AIThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
@@ -58,20 +67,22 @@ public static class PlannerTools
     // is false (no test project yet). The list stays the same for the whole planner run so the provider's prompt cache
     // keeps matching.
     // canCommand: run_command is on in the settings. canPublish: commit/push is on and the project is a git repository,
-    // so submit_plan offers its publish section.
+    // so submit_plan offers its publish section. canFetch: web_fetch is on in the settings.
     public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false,
-        bool unitTests = false, bool canRunTests = true, bool canCommand = false, bool canPublish = false)
+        bool unitTests = false, bool canRunTests = true, bool canCommand = false, bool canPublish = false, bool canFetch = false)
     {
         var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
         foreach (var name in Delegable)
         {
-            if (delegated.Contains(name) || !Offered(name, canBuild, canGit)) continue;
+            // run_command comes below, whether delegated or not: only the planner can ask the developer's permission.
+            if (name == RunCommand || delegated.Contains(name) || !Offered(name, canBuild, canGit, canFetch: canFetch)) continue;
             tools.Add(Definition(name));
         }
         foreach (var name in Skeleton) tools.Add(Definition(name));
         if (unitTests && canRunTests) tools.Add(RunTestsDefinition());
         if (canCommand) tools.Add(RunCommandDefinition());
+        if (canCommand) foreach (var definition in ProcessDefinitions()) tools.Add(definition);
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());
@@ -81,9 +92,15 @@ public static class PlannerTools
 
     public static JsonArray SubmitOnly(bool canTest = false, bool unitTests = false, bool canPublish = false) => [SubmitPlanDefinition(canTest, unitTests, canPublish)];
 
-    // Whether a delegable tool can run for this project, for the planner and for its tools nodes alike.
-    public static bool Offered(string name, bool canBuild, bool canGit) =>
-        name == RunBuild ? canBuild : canGit || !Git.Contains(name);
+    // Whether a delegable tool can run for this project, for the planner and for its tools nodes alike. canCommand:
+    // run_command is on in the settings. canFetch: web_fetch is on in the settings.
+    public static bool Offered(string name, bool canBuild, bool canGit, bool canCommand = false, bool canFetch = false) => name switch
+    {
+        RunBuild => canBuild,
+        RunCommand => canCommand,
+        WebFetch => canFetch,
+        _ => canGit || !Git.Contains(name)
+    };
 
     // The tools one tools node may run: those delegated to it, plus the skeleton tools when it reads files.
     public static IReadOnlyList<string> ToolsNodeTools(IEnumerable<string> delegated)
@@ -308,6 +325,8 @@ public static class PlannerTools
             }
             """)),
         RunBuild => RunBuildDefinition(),
+        RunCommand => ToolsNodeCommandDefinition(),
+        WebFetch => WebFetchDefinition(),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown planner tool.")
     };
 
@@ -323,9 +342,24 @@ public static class PlannerTools
             }
             """));
 
+    private static JsonObject WebFetchDefinition() =>
+        ChatMessages.Function(WebFetch,
+            "Read a web page or API response over HTTP GET: HTML comes back as Markdown text, JSON indented. Use it to read library or API documentation the code depends on, or to see what an endpoint really returns (the app on localhost, or an outside API the developer wants explored). localhost runs at once; another host pauses the thread until the developer allows that host, so fetch outside pages only when the request needs them. Never use it to send data.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "url": { "type": "string", "description": "Absolute http(s) URL, e.g. \"http://localhost:5000/api/users/1\" or \"https://learn.microsoft.com/en-us/ef/core/querying/\"." },
+                "reason": { "type": "string", "description": "One sentence, in the developer's language: why this page (shown when the developer is asked to allow the host)." },
+                "max_chars": { "type": "integer", "description": "Optional cap on the text returned (1000-24000). Default 24000." }
+              },
+              "required": ["url"]
+            }
+            """));
+
     private static JsonObject RunCommandDefinition() =>
         ChatMessages.Function(RunCommand,
-            "Run a shell command (bash; forward slashes in paths) and get its output and exit code. For checks that only read: curl GET/HEAD to see the shape of an API response (the app on localhost, or an outside API the developer wants explored), git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). Such commands run at once. A curl to another host, or any command that may change something (POST/PUT/DELETE, writing files, installs, migrations, git commit/checkout, ...), pauses the thread until the developer allows it; ask only when the request needs it. Credential files are refused. Never start a long-running server; never call it in parallel with itself.",
+            "Run a shell command (bash; forward slashes in paths) and get its output and exit code. For checks that only read: curl GET/HEAD to see the shape of an API response (the app on localhost, or an outside API the developer wants explored), git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). Such commands run at once. A curl to another host, or any command that may change something (POST/PUT/DELETE, writing files, installs, migrations, git commit/checkout, ...), pauses the thread until the developer allows it; ask only when the request needs it. Credential files are refused. Never start a long-running server here (that is start_process); never call it in parallel with itself.",
             Schema("""
             {
               "type": "object",
@@ -337,6 +371,65 @@ public static class PlannerTools
               "required": ["command", "reason"]
             }
             """));
+
+    // run_command of a tools node: it cannot pause for the developer, so only commands that need no new permission run.
+    private static JsonObject ToolsNodeCommandDefinition() =>
+        ChatMessages.Function(RunCommand,
+            "Run a read-only shell command (bash; forward slashes in paths) and get its output and exit code: curl GET/HEAD to the app on localhost to see the shape of an API response, git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). A command that may change something, or a call to another host, is refused unless the developer already allowed it: name it in report_findings so the planner can run it. Credential files are refused. Never call it in parallel with itself.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "command": { "type": "string", "description": "The command line, e.g. \"curl -s http://localhost:5000/api/users/1 | jq .\"." },
+                "cwd": { "type": "string", "description": "Optional working directory relative to the project root or absolute. Default: the project root." },
+                "reason": { "type": "string", "description": "One short sentence: why this command." }
+              },
+              "required": ["command"]
+            }
+            """));
+
+    private static IEnumerable<JsonObject> ProcessDefinitions() =>
+    [
+        ChatMessages.Function(StartProcess,
+            "Start a command that keeps running in the background — a dev server (npm run dev, dotnet run, php artisan serve) or a watcher — when the investigation needs it running, e.g. to curl the app with run_command afterwards. Waits until wait_for_url answers, wait_for_text shows in the output, or wait_seconds pass, then returns the process id and its output so far. Always pauses the thread for the developer's permission unless they allowed this command before. At most 3 per thread; AIT stops them when the thread ends, but stop each with stop_process as soon as you are done. Never use it for a command that finishes by itself (use run_command).",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "command": { "type": "string", "description": "The command line, e.g. \"npm run dev\" or \"dotnet run --project src/Api --urls http://localhost:5099\"." },
+                "cwd": { "type": "string", "description": "Optional working directory relative to the project root or absolute. Default: the project root." },
+                "reason": { "type": "string", "description": "One sentence, in the developer's language: why this process (shown when the developer is asked to allow it)." },
+                "wait_for_url": { "type": "string", "description": "Optional http://localhost URL to wait for: ready as soon as it answers with any status." },
+                "wait_for_text": { "type": "string", "description": "Optional text to wait for in the output (case-insensitive), e.g. \"Now listening on\"." },
+                "wait_seconds": { "type": "integer", "description": "How long to wait at most (1-120). Default: 60 with wait_for_url or wait_for_text, otherwise 5." }
+              },
+              "required": ["command", "reason"]
+            }
+            """)),
+        ChatMessages.Function(ProcessOutput,
+            "Read the latest output of a background process started with start_process, and whether it still runs.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "The process id from start_process, e.g. \"p1\"." },
+                "tail_lines": { "type": "integer", "description": "How many of the last lines to return (1-500). Default 100." }
+              },
+              "required": ["id"]
+            }
+            """)),
+        ChatMessages.Function(StopProcess,
+            "Stop a background process started with start_process (with everything it started) and get its last output.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "The process id from start_process, e.g. \"p1\"." }
+              },
+              "required": ["id"]
+            }
+            """))
+    ];
 
     private static JsonObject RunTestsDefinition() =>
         ChatMessages.Function(RunTests,
@@ -458,11 +551,21 @@ public static class PlannerTools
     private static JsonObject PublishSchema() => Schema("""
         {
           "type": "object",
-          "description": "Only when the developer asked to commit and/or push. AIT commits only the files this thread (or, with an empty task list, the earlier threads of this chat) wrote, after the change is verified, and asks the developer's permission first. Never force-pushes.",
+          "description": "Only when the developer asked to commit, push, create a branch or open a pull request. AIT commits only the files this thread (or, with an empty task list, the earlier threads of this chat) wrote, after the change is verified, and asks the developer's permission first. Never force-pushes.",
           "properties": {
             "commit": { "type": "boolean" },
             "push": { "type": "boolean", "description": "Push the branch to its upstream (origin when it has none)." },
-            "message": { "type": "string", "description": "The commit message, following the repository's convention (see git_log)." }
+            "message": { "type": "string", "description": "The commit message, following the repository's convention (see git_log)." },
+            "branch": { "type": "string", "description": "Only when the developer asked for a new branch: its name (e.g. feature/order-export, following the repository's branch names). AIT creates it from the current branch before the commit (the uncommitted changes move with it) and pushes it with its upstream set. Never an existing branch." },
+            "pullRequest": {
+              "type": "object",
+              "description": "Only when the developer asked to open a pull/merge request; needs push. AIT opens it with the gh/glab CLI when installed, otherwise answers with the link to open it.",
+              "properties": {
+                "title": { "type": "string", "description": "Default: the first line of the commit message." },
+                "body": { "type": "string", "description": "Markdown: what changed and why, in the developer's language." },
+                "base": { "type": "string", "description": "The branch to merge into; leave it out for the remote's default branch." }
+              }
+            }
           }
         }
         """);
