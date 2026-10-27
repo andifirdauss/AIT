@@ -4,7 +4,8 @@ using AIThread.Common.Enums;
 namespace AIThread.Service.Approvals;
 
 // How a target is written down and whether a saved grant covers an action: a folder grant covers everything below
-// it, the other kinds only the same target.
+// it, a command pattern ("npm install *") the plain commands it starts (ApprovalTargets.Patterns.cs), the other kinds
+// only the same target.
 public static partial class ApprovalTargets
 {
     public static string Normalize(ApprovalKind kind, string target)
@@ -13,7 +14,7 @@ public static partial class ApprovalTargets
         return kind switch
         {
             ApprovalKind.WriteOutside or ApprovalKind.Commit => Folder(text),
-            ApprovalKind.Push => text.Split('|', 2) is [var repo, var branch] ? $"{Folder(repo)}|{branch.Trim()}" : text,
+            ApprovalKind.Push or ApprovalKind.Branch or ApprovalKind.PullRequest => text.Split('|', 2) is [var repo, var branch] ? $"{Folder(repo)}|{branch.Trim()}" : text,
             ApprovalKind.Command => SpacesRegex().Replace(text, " "),
             ApprovalKind.Host => text.ToLowerInvariant(),
             _ => text
@@ -28,7 +29,7 @@ public static partial class ApprovalTargets
         {
             ApprovalKind.WriteOutside => string.Equals(granted, target, StringComparison.OrdinalIgnoreCase)
                                          || target.StartsWith(granted.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase),
-            ApprovalKind.Command => string.Equals(granted, target, StringComparison.Ordinal),
+            ApprovalKind.Command => string.Equals(granted, target, StringComparison.Ordinal) || PatternCovers(granted, target),
             _ => string.Equals(granted, target, StringComparison.OrdinalIgnoreCase)
         };
     }

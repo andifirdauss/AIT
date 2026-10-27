@@ -98,6 +98,22 @@ public sealed class PlanPublish
 
     // The commit message, following the repository's convention (git_log).
     public string? Message { get; set; }
+
+    // Only when the developer asked for a new branch: created from the current one (git switch -c) before the commit,
+    // and pushed with its upstream set.
+    public string? Branch { get; set; }
+
+    // Only when the developer asked for a pull/merge request: opened after the push.
+    public PlanPullRequest? PullRequest { get; set; }
+}
+
+public sealed class PlanPullRequest
+{
+    public string? Title { get; set; }
+    public string? Body { get; set; }
+
+    // The branch it merges into; empty = the remote's default branch.
+    public string? Base { get; set; }
 }
 
 public sealed class ContractItem

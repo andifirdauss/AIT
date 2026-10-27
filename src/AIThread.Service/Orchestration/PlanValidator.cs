@@ -1,3 +1,4 @@
+using AIThread.Service.Git;
 using AIThread.Service.Testing;
 using AIThread.Service.UnitTests;
 using AIThread.Service.Verification;
@@ -305,18 +306,38 @@ public static class PlanValidator
 
     private static bool IsCSharp(string path) => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
 
-    // Commit and push only when the developer asked for it; a commit needs its message.
+    // Commit, push, a new branch and a pull request only when the developer asked for them; a commit needs its message,
+    // a branch a valid name, a pull request a push and a title (the commit message's first line by default).
     private static void ValidatePublish(ThreadPlan plan, List<string> errors)
     {
         if (plan.Publish is not { } publish) return;
-        publish.Message = string.IsNullOrWhiteSpace(publish.Message) ? null : publish.Message.Trim();
-        if (!publish.Commit && !publish.Push)
+        publish.Message = Trimmed(publish.Message);
+        publish.Branch = Trimmed(publish.Branch);
+        if (publish.PullRequest is { } request)
+        {
+            request.Title = Trimmed(request.Title);
+            request.Body = Trimmed(request.Body);
+            request.Base = Trimmed(request.Base);
+        }
+        if (!publish.Commit && !publish.Push && publish.Branch is null && publish.PullRequest is null)
         {
             plan.Publish = null;
             return;
         }
         if (publish.Commit && publish.Message is null)
             errors.Add("publish: \"commit\" needs \"message\", the commit message (follow the style of git_log).");
+        if (publish.Branch is { } branch && !GitPublisher.IsValidBranchName(branch))
+            errors.Add($"publish: \"branch\" '{branch}' is not a valid branch name (no spaces, \"..\", \"@{{\", ~ ^ : ? * [ \\, no part starting with \".\", and it may not start with \"-\" or end with \"/\", \".\" or \".lock\").");
+        if (publish.PullRequest is not { } pullRequest) return;
+        if (!publish.Push)
+            errors.Add("publish: \"pullRequest\" needs \"push\": the branch must be on the remote before a pull request can be opened.");
+        pullRequest.Title ??= Trimmed(publish.Message?.Split('\n')[0]);
+        if (pullRequest.Title is null)
+            errors.Add("publish: \"pullRequest\" needs \"title\".");
+        if (pullRequest.Base is { } target && !GitPublisher.IsValidBranchName(target))
+            errors.Add($"publish: \"pullRequest.base\" '{target}' is not a valid branch name.");
+
+        static string? Trimmed(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
     }
 
     private static void ValidateTest(ThreadPlan plan, bool requireTest, List<string> errors, IReadOnlyCollection<string>? actors)

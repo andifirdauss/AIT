@@ -49,6 +49,10 @@ public sealed partial class PlannerToolRunner
                 : Path("file") is { } testFile ? $"`{testFile}`"
                 : string.Join(", ", MemoryAi.Strings(args["tests"])),
             PlannerTools.RunCommand => $"`{Query("command")}`" + (Path("cwd") is { } commandIn ? $" in `{commandIn}`" : string.Empty),
+            PlannerTools.StartProcess => $"`{Query("command")}`" + (Path("cwd") is { } processIn ? $" in `{processIn}`" : string.Empty)
+                                         + (Str(args, "wait_for_url") is { } readyAt ? $" → {readyAt}" : string.Empty),
+            PlannerTools.ProcessOutput or PlannerTools.StopProcess => $"`{Str(args, "id")}`",
+            PlannerTools.WebFetch => $"`{Query("url")}`",
             PlannerTools.Investigate => Quote(Str(args, "question")),
             PlannerTools.AskUser => Quote(Str(args, "question")),
             _ => string.Empty

@@ -17,5 +17,11 @@ public enum ApprovalKind
     Commit = 4,
 
     // Pushing the branch; the target is "<repository>|<remote>/<branch>".
-    Push = 5
+    Push = 5,
+
+    // Creating a new branch (git switch -c) before the commit; the target is "<repository>|<branch>".
+    Branch = 6,
+
+    // Opening a pull/merge request after the push; the target is "<repository>|<base><-<head>".
+    PullRequest = 7
 }

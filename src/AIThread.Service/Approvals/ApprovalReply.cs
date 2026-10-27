@@ -14,6 +14,7 @@ public static partial class ApprovalReply
         if (OnceRegex().IsMatch(text)) return ApprovalDecision.Once;
         if (AlwaysRegex().IsMatch(text)) return ApprovalDecision.Always;
         if (DenyRegex().IsMatch(text)) return ApprovalDecision.Deny;
+        if (PatternRegex().IsMatch(text)) return ApprovalDecision.AlwaysPattern;
         return null;
     }
 
@@ -25,4 +26,8 @@ public static partial class ApprovalReply
 
     [GeneratedRegex(@"^(?:3|tolak|jangan|tidak|no|deny|denied|cancel|batal)\s*[.!)]*\s*$", RegexOptions.IgnoreCase)]
     private static partial Regex DenyRegex();
+
+    // "4", "pola", "izinkan pola", "selalu untuk pola", "pattern", "allow pattern", "always pattern", "always allow the pattern".
+    [GeneratedRegex(@"^(?:4|(?:izinkan\s+)?(?:selalu\s+)?(?:untuk\s+)?pola|(?:always\s+)?(?:allow\s+)?(?:the\s+)?pattern)\s*[.!)]*\s*$", RegexOptions.IgnoreCase)]
+    private static partial Regex PatternRegex();
 }

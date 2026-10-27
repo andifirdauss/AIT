@@ -8,6 +8,18 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.10.0
+
+- **Izin pola untuk perintah**: kartu izin punya opsi `4` *Izinkan selalu untuk pola*, mis. `npm install *`. Pola hanya
+  berlaku untuk perintah tunggal tanpa pipe/operator; perintah yang menghapus, memublikasikan, atau mengubah repo tidak
+  pernah dipolakan. Izin perintah juga bisa ditambah manual di Project → Detail → **Izin AIT**.
+- **`web_fetch`**: planner membaca dokumentasi, halaman web, dan response API lewat GET (HTML → Markdown). localhost
+  langsung jalan, host luar diizinkan per host (sama dengan `curl`), alamat metadata cloud selalu ditolak.
+- **Proses latar belakang**: `start_process` / `process_output` / `stop_process` untuk menjalankan server dev lalu
+  men-curl-nya; selalu minta izin, maks 3 per thread, dihentikan otomatis.
+- **Branch & PR**: publish bisa membuat branch baru dan membuka PR/MR lewat `gh`/`glab`, atau memberi link compare.
+- **Tools node**: `run_command` dan `web_fetch` bisa didelegasikan ke tools node dalam mode baca saja.
+
 ## Yang baru di 1.9.0
 
 - **AIT tidak lagi terkunci di folder project, dengan izin Anda**: AIT bisa mengubah file di folder/project lain,

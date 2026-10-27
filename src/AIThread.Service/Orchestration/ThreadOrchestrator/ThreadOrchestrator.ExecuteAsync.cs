@@ -76,7 +76,7 @@ public sealed partial class ThreadOrchestrator
             if (prepared.Resume is { Question.Approval: { } approval } waiting)
             {
                 var decision = ApprovalReply.Parse(prepared.Reply);
-                await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always
+                await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern
                     ? Lang.T("🔐 Izin diberikan, rencana dilanjutkan", "🔐 Permission given, the plan goes on")
                     : Lang.T("🔐 Izin ditolak, planner mencari jalan lain", "🔐 Permission denied, the planner looks for another way"), cancellationToken, hang: 3);
                 planning = await plannerAgent.ResumeApprovalAsync(plannerInput, waiting.Conversation, approval, decision, prepared.Reply ?? string.Empty, recorder, progress, cancellationToken);
@@ -99,6 +99,8 @@ public sealed partial class ThreadOrchestrator
                 return await AwaitAnswerAsync(recorder, progress, project, request, planning, pause, planClock, total, cancellationToken);
 
             var plan = planning.Plan!;
+            // The planner's dev servers served the investigation; the change and its testing need them gone (stale code, busy ports).
+            StopBackgroundProcesses(recorder);
             // The developer allowed the plan's folders outside the project root (once or always).
             scope.AllowWrites(plan.OutsideFolders ?? []);
             // A project without a test project keeps the session only for the test project and tests the plan adds.

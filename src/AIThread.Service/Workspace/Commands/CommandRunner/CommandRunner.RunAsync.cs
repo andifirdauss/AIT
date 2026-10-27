@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
-using AIThread.Service.Verification;
 
 namespace AIThread.Service.Workspace.Commands;
 
@@ -9,40 +8,7 @@ public sealed partial class CommandRunner
 {
     public async Task<CommandResult> RunAsync(string command, string workingDirectory, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        var bash = Bash.Value;
-        var startInfo = new ProcessStartInfo(bash ?? "cmd.exe")
-        {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
-        };
-        if (bash is not null)
-        {
-            startInfo.ArgumentList.Add("-c");
-            startInfo.ArgumentList.Add(command);
-        }
-        else
-        {
-            // cmd.exe parses its own command line; the command goes in as written.
-            startInfo.Arguments = $"/d /s /c \"{command}\"";
-        }
-
-        BuildRunner.PrepareEnvironment(startInfo.Environment);
-        startInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
-        startInfo.Environment["GCM_INTERACTIVE"] = "never";
-        startInfo.Environment["GIT_OPTIONAL_LOCKS"] = "0";
-        startInfo.Environment["GIT_PAGER"] = "cat";
-        startInfo.Environment["PAGER"] = "cat";
-        startInfo.Environment["TERM"] = "dumb";
-        // Git Bash keeps the Windows PATH, so curl, node, dotnet and the rest are found as in a terminal.
-        if (bash is not null) startInfo.Environment["MSYS_NO_PATHCONV"] = "1";
-
-        var shell = bash is null ? "cmd.exe" : "bash";
+        var startInfo = StartInfo(command, workingDirectory, out var shell);
         var clock = Stopwatch.StartNew();
         using var process = new Process { StartInfo = startInfo };
         try
@@ -107,17 +73,5 @@ public sealed partial class CommandRunner
             if (builder.Length > MaxOutputChars) return (builder.ToString(), true);
         }
         return (builder.ToString(), false);
-    }
-
-    private static void Kill(Process process)
-    {
-        try
-        {
-            process.Kill(entireProcessTree: true);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
-        {
-            // Already exited.
-        }
     }
 }
