@@ -18,6 +18,7 @@ using AIThread.Service.UnitTests;
 using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
 using AIThread.Service.Workspace.Commands;
+using AIThread.Service.Workspace.Web;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +50,16 @@ public static class DependencyInjection
 
         // Node.js for the Playwright driver when none is installed (±36 MB from nodejs.org).
         services.AddHttpClient(TestBrowserLauncher.HttpClientName, client => client.Timeout = TimeSpan.FromMinutes(10));
+
+        // The planner's web_fetch: a query may carry a token, so request URIs are never logged; redirects, cookies and
+        // credentials are handled (or refused) by WebFetcher itself.
+        services.AddHttpClient(WebFetcher.HttpClientName, client =>
+            {
+                client.Timeout = WebFetcher.Timeout + TimeSpan.FromSeconds(5);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("AIT");
+            })
+            .ConfigurePrimaryHttpMessageHandler(WebFetcher.CreateHandler)
+            .RemoveAllLoggers();
 
         services.AddScoped<IHealthService, HealthService>();
 
@@ -128,6 +139,8 @@ public static class DependencyInjection
         services.AddSingleton<ISecurityService, SecurityService>();
         services.AddSingleton<IApprovalService, ApprovalService>();
         services.AddSingleton<ICommandRunner, CommandRunner>();
+        services.AddSingleton<IBackgroundProcesses, BackgroundProcesses>();
+        services.AddSingleton<IWebFetcher, WebFetcher>();
         services.AddSingleton<IGitPublisher, GitPublisher>();
         services.AddSingleton<IPendingApprovalStore>(_ => new PendingApprovalStore(TimeProvider.System));
         services.AddSingleton<ITesterAgent, TesterAgent>();

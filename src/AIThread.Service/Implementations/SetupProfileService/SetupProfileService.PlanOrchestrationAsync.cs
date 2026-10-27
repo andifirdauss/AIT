@@ -32,7 +32,7 @@ public sealed partial class SetupProfileService
             await settingService.UpdateAsync(new UpdateSystemSettingRequest(now.NineRouterBaseUrl, null, false, now.ProxyApiKey, passthrough,
                 p.OrchestrationEnabled, p.StreamProgressToClient, p.PlannerMaxSteps, p.ExecutorMaxRetries, p.MaxParallelTasks,
                 p.RequestTimeoutSeconds, p.BuildEnabled, p.BuildTimeoutSeconds, p.MaxFixRounds, p.PlannerCanAsk,
-                now.CommandToolEnabled, now.CommandTimeoutSeconds, now.GitPublishEnabled), string.Empty, cancellationToken);
+                now.CommandToolEnabled, now.CommandTimeoutSeconds, now.GitPublishEnabled, now.WebFetchEnabled), string.Empty, cancellationToken);
         }));
     }
 }

@@ -1335,6 +1335,9 @@ namespace AIThread.Data.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("WebFetchEnabled")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.ToTable("SystemSettings", (string)null);
