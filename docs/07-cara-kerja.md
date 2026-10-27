@@ -194,6 +194,26 @@ Batasan:
   dari Dasbor, tidak pernah ditanya. Prompt di project lain dalam sesi yang sama menutup pertanyaan yang tertunda.
 - Matikan lewat Pengaturan → *Planner boleh bertanya* bila Anda ingin planner selalu memutuskan sendiri.
 
+### Izin developer
+
+Tiga hal membuat planner berhenti meminta izin, dengan mekanisme yang sama seperti pertanyaan (status **Menunggu
+jawaban**, pesan berikutnya di sesi = jawaban, atau tombol di halaman thread untuk thread Dasbor):
+
+- **`run_command`** — `CommandPolicy` memecah perintah tanpa shell. Pipeline yang semua bagiannya ada di allowlist
+  baca saja langsung jalan (lewat Git Bash, atau `cmd.exe` bila tidak ada). Operator shell, ekspansi variabel,
+  perintah di luar allowlist, atau `curl` yang mengirim data/menulis file butuh izin perintah; `curl` ke host luar
+  butuh izin host. Disetujui → perintah dijalankan dan outputnya menjadi hasil tool; ditolak → planner diberi tahu.
+- **Tugas di luar root project** — validator menerima path absolut di luar root (kecuali folder sistem/program dan file
+  kredensial) dan mencatat foldernya di `outsideFolders` rencana. Folder tanpa izin tersimpan → rencana ditahan;
+  disetujui → rencana dipakai apa adanya (tanpa memanggil model lagi), `WorkspaceScope.AllowWrites` membuka folder itu
+  untuk executor, dan jurnal mencatat path absolut agar rollback tetap bisa. Ditolak → planner merencanakan ulang.
+- **Commit/push** — bagian `publish` rencana (hanya bila developer meminta). Setelah verifikasi, unit test, dan
+  testing lolos, `GitPublisher` mengelompokkan file thread per repository; tanpa izin tersimpan, jawaban diakhiri kartu
+  izin dan balasan `1`/`2`/`3` di sesi yang sama menjalankannya.
+
+Izin *selalu* disimpan di tabel `ApprovalGrants` (database lokal, tidak dibagi ke tim). Jeda izin tidak dihitung ke
+batas pertanyaan planner dan tidak bergantung pada *Planner boleh bertanya*.
+
 ### Merujuk perubahan sebelumnya
 
 Permintaan seperti *"test perubahan ini"*, *"review yang tadi"*, atau *"batalkan yang itu"* merujuk ke perubahan

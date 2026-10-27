@@ -26,6 +26,9 @@ public sealed partial class SettingService
             entity.MaxFixRounds,
             proxyBaseUrl,
             entity.PlannerCanAsk,
-            Lang.Normalize(entity.UiLanguage));
+            Lang.Normalize(entity.UiLanguage),
+            entity.CommandToolEnabled,
+            entity.CommandTimeoutSeconds,
+            entity.GitPublishEnabled);
     }
 }

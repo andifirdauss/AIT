@@ -158,13 +158,13 @@ AIT is most effective for changes that touch several files/layers at once.
 
 ## What AIT does not do
 
-- It does not run migrations, git commands that change the repository (commit, checkout, merge, push), package installs
-  (`npm install`, `composer install`, a manual restore), or other shell commands. The only commands besides read-only
-  git (status, diff, log, show, blame) are the project's **build** (when *Automatic build & verification* is on) and the
-  **unit tests** of the [project catalog](07-cara-kerja.md#unit-tests) with a recognized runner (`dotnet test`,
-  jest/vitest/mocha, pytest, PHPUnit, Maven/Gradle, `go test`, `cargo test`). You can ask "build and fix the errors" or
-  "run the unit tests of the order module", and after every change AIT rebuilds and runs the related tests itself. Other
-  steps are named in the summary.
+- It does not run migrations, checkout/merge/rebase/reset, or package installs (`npm install`, `composer install`, a
+  manual restore) on its own. Besides the project's **build** (when *Automatic build & verification* is on) and the
+  **unit tests** of the [project catalog](07-cara-kerja.md#unit-tests) (`dotnet test`, jest/vitest/mocha, pytest,
+  PHPUnit, Maven/Gradle, `go test`, `cargo test`), the planner has a `run_command` tool for **read-only** commands
+  (e.g. `curl` GET to see the shape of an API response, git reads, tool versions). Commands that may change something,
+  `curl` to an outside host, **commit/push**, and changes to files **outside the project folder** only run after you
+  allow them, see [Developer permission](#developer-permission). Other steps are named in the summary.
 - It runs your application only for testing. With [Auto Testing](02-konfigurasi.md#auto-testing-tester-node), AIT tries
   the application on localhost (browser and HTTP requests); one that is not running yet is started and then stopped
   again after testing ([Running the application](07-cara-kerja.md#running-the-application)). AIT does not fix code based
@@ -172,7 +172,7 @@ AIT is most effective for changes that touch several files/layers at once.
 - It does not use the CLI's built-in tools: while orchestration is on, the CLI works as a conversation view. For work
   that needs to run commands other than the build, turn *Orchestration on* off for a while (the CLI becomes a plain agent
   through 9router) or revert the integration.
-- It does not ask permission per edit — executors write straight to the files. Work in a git repo.
+- It does not ask permission per edit inside the project — executors write straight to the files. Work in a git repo.
 
 ## Reviewing the result
 
@@ -362,8 +362,45 @@ each node is shared between all threads.
 
 Name its full path in the prompt, e.g. *"check the structure of `D:/project/otherproject` and compare it with this
 project"*. The planner may **read** (list folders, search text, read files) outside the project root, so it can answer
-from there. Changing files is still only inside the project root: when you ask for a change outside the root, the
-planner explains it in its answer and creates no tasks. To work on another project, open a session in that project.
+from there. When you ask for a **change** in another folder, the planner may create tasks with absolute paths; the
+thread first stops and asks permission for that folder (its repository/project root), see
+[Developer permission](#developer-permission). System/program folders and credential files are never changed.
+
+## Developer permission
+
+AIT stops and asks before doing something beyond the usual limits:
+
+| Action | Permission target |
+|---|---|
+| Changing files outside the project folder | that folder's repository/project root (or the folder) |
+| A `run_command` that may change something (POST/PUT/DELETE, writing files, installs, `git commit`, shell operators `;` `&&` `>`, …) | the exact command text |
+| `curl` GET/HEAD to a host other than localhost | `host:port` |
+| Committing the thread's files | the repository root |
+| Pushing the branch | the repository + `remote/branch` |
+
+The reply is a numbered card, answered in the CLI (or Telegram) or with the buttons on the thread detail page:
+
+```
+🔐 AIT asks for permission
+- Run a command `curl -X POST http://localhost:5000/api/orders` — …
+1. Allow once — for this action only
+2. Always allow — saved on this machine for this project
+3. Deny
+```
+
+Reply `1`/`once`/`allow once`, `2`/`always`, or `3`/`deny` (Indonesian words work too). Any other reply counts as a
+denial and reaches the planner as an instruction. **Always** permissions are kept per machine + project + target and
+can be revoked in Project > Detail → **AIT permissions**. A push to `main`/`master`/`production`/`release/*` is
+always asked (no always option).
+
+**Read-only commands** run without asking: `curl` GET/HEAD to localhost (also with `| jq`), `git status/log/diff/show/…`,
+`ls`/`cat`/`head`/`grep` (without `-r`), and version checks (`dotnet --info`, `node -v`, `npm ls`). A command
+naming a credential file is always refused, and the output is masked like a file's content.
+
+**Commit & push** only when you ask for it (e.g. *"change the greeting, then commit and push"*, or *"commit and push
+this change"* after a few threads). AIT commits only the files the thread wrote after the verification passed (build,
+unit tests, testing), with a message in the repository's style, then pushes to the branch's upstream (or `origin`)
+without `--force`. When the verification failed, commit/push is not offered.
 
 ## Follow-up conversation
 

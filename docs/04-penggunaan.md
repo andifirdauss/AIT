@@ -156,13 +156,13 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 
 ## Yang tidak dilakukan AIT
 
-- Tidak menjalankan migrasi, git yang mengubah repository (commit, checkout, merge, push), instalasi paket (`npm
-  install`, `composer install`, restore manual), atau perintah shell lain. Perintah selain git read-only (status,
-  diff, log, show, blame) hanya **build** project (bila *Build & verifikasi otomatis* menyala) dan **unit test**
-  [katalog project](07-cara-kerja.md#unit-test) dengan runner yang dikenali (`dotnet test`, jest/vitest/mocha,
-  pytest, PHPUnit, Maven/Gradle, `go test`, `cargo test`). Anda bisa meminta "build lalu perbaiki errornya" atau
-  "jalankan unit test modul order", dan setelah tiap perubahan AIT membuild ulang dan menjalankan test terkait
-  sendiri. Langkah lain disebutkan di ringkasan.
+- Tidak menjalankan migrasi, checkout/merge/rebase/reset, atau instalasi paket (`npm install`, `composer install`,
+  restore manual) atas inisiatif sendiri. Selain **build** project (bila *Build & verifikasi otomatis* menyala) dan
+  **unit test** [katalog project](07-cara-kerja.md#unit-test) (`dotnet test`, jest/vitest/mocha, pytest, PHPUnit,
+  Maven/Gradle, `go test`, `cargo test`), planner punya tool `run_command` untuk perintah **baca saja** (mis.
+  `curl` GET untuk melihat bentuk response API, git read, cek versi tool). Perintah yang bisa mengubah sesuatu,
+  `curl` ke host luar, **commit/push**, dan perubahan file **di luar folder project** hanya dijalankan setelah Anda
+  memberi izin, lihat [Izin developer](#izin-developer). Langkah lain disebutkan di ringkasan.
 - Menjalankan aplikasi Anda hanya untuk testing. Dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester), AIT
   mencoba aplikasi di localhost (browser dan request HTTP); yang belum jalan dijalankan lalu dihentikan lagi setelah
   testing ([Menjalankan aplikasi](07-cara-kerja.md#menjalankan-aplikasi)). AIT tidak memperbaiki kode berdasarkan hasil
@@ -170,7 +170,7 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
 - Tidak memakai tool bawaan CLI: saat orkestrasi aktif, CLI berfungsi sebagai tampilan percakapan.
   Untuk pekerjaan yang butuh menjalankan perintah selain build, matikan *Orkestrasi aktif* sementara (CLI
   menjadi agen biasa lewat 9router) atau kembalikan integrasi.
-- Tidak meminta izin per edit — executor menulis langsung ke file. Kerjakan di repo git.
+- Tidak meminta izin per edit di dalam project — executor menulis langsung ke file. Kerjakan di repo git.
 
 ## Meninjau hasil
 
@@ -356,8 +356,45 @@ node dibagi di antara semua thread.
 
 Sebutkan path lengkapnya di prompt, mis. *"cek struktur `D:/project/otherproject` dan bandingkan dengan project ini"*.
 Planner boleh **membaca** (melihat isi folder, mencari teks, membaca file) di luar root project, jadi ia bisa menjawab
-dari sana. Mengubah file tetap hanya di dalam root project: bila Anda meminta perubahan di luar root, planner
-menjelaskannya di jawaban dan tidak membuat tugas. Untuk mengerjakan project lain, buka sesi di project itu.
+dari sana. Bila Anda meminta **perubahan** di folder lain, planner boleh membuat tugas dengan path absolut; thread
+berhenti dulu dan meminta izin untuk folder itu (root repository/project-nya), lihat [Izin developer](#izin-developer).
+Folder sistem/program dan file kredensial tidak pernah diubah.
+
+## Izin developer
+
+AIT berhenti dan bertanya sebelum melakukan sesuatu di luar batas biasa:
+
+| Aksi | Target izin |
+|---|---|
+| Mengubah file di luar folder project | root repository/project folder itu (atau foldernya) |
+| `run_command` yang bisa mengubah sesuatu (POST/PUT/DELETE, menulis file, install, `git commit`, operator shell `;` `&&` `>`, …) | teks perintahnya persis |
+| `curl` GET/HEAD ke host selain localhost | `host:port` |
+| Commit file thread | root repository |
+| Push branch | repository + `remote/branch` |
+
+Balasannya berupa kartu bernomor, dijawab di CLI (atau Telegram) maupun lewat tombol di halaman detail thread:
+
+```
+🔐 AIT minta izin
+- Jalankan perintah `curl -X POST http://localhost:5000/api/orders` — …
+1. Izinkan sekali — hanya untuk aksi ini
+2. Izinkan selalu — disimpan di mesin ini untuk project ini
+3. Tolak
+```
+
+Balas `1`/`sekali`/`allow once`, `2`/`selalu`/`always`, atau `3`/`tolak`/`deny`. Balasan lain dianggap tolak dan
+diteruskan ke planner sebagai instruksi. Izin **selalu** disimpan per mesin + project + target dan bisa dicabut di
+Project > Detail → **Izin AIT**. Push ke `main`/`master`/`production`/`release/*` selalu ditanyakan (tanpa opsi
+selalu).
+
+**Perintah baca saja** jalan tanpa bertanya: `curl` GET/HEAD ke localhost (juga dengan `| jq`), `git status/log/diff/show/…`,
+`ls`/`cat`/`head`/`grep` (tanpa `-r`), dan cek versi (`dotnet --info`, `node -v`, `npm ls`). Perintah yang
+menyebut file kredensial selalu ditolak, dan outputnya disamarkan seperti isi file.
+
+**Commit & push** hanya bila Anda memintanya (mis. *"ganti sapaannya lalu commit dan push"*, atau *"commit dan push
+perubahan ini"* setelah beberapa thread). AIT meng-commit hanya file yang ditulis thread setelah verifikasi lolos
+(build, unit test, testing), dengan pesan gaya repository, lalu push ke upstream branch (atau `origin`) tanpa
+`--force`. Bila verifikasi gagal, commit/push tidak ditawarkan.
 
 ## Percakapan lanjutan
 

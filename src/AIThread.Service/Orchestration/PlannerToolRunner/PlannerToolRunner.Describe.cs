@@ -48,6 +48,7 @@ public sealed partial class PlannerToolRunner
             PlannerTools.RunTests => Bool(args, "all") ? Lang.T("semua", "all")
                 : Path("file") is { } testFile ? $"`{testFile}`"
                 : string.Join(", ", MemoryAi.Strings(args["tests"])),
+            PlannerTools.RunCommand => $"`{Query("command")}`" + (Path("cwd") is { } commandIn ? $" in `{commandIn}`" : string.Empty),
             PlannerTools.Investigate => Quote(Str(args, "question")),
             PlannerTools.AskUser => Quote(Str(args, "question")),
             _ => string.Empty

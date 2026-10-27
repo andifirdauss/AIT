@@ -26,6 +26,8 @@ public static class PlanValidator
     {
         var errors = new List<string>();
         plan.Summary = plan.Summary?.Trim() ?? string.Empty;
+        plan.OutsideFolders = null;
+        ValidatePublish(plan, errors);
         plan.Contract = plan.Contract.Where(c => !string.IsNullOrWhiteSpace(c.Name)).ToList();
 
         if (plan.Tasks.Count == 0)
@@ -78,9 +80,9 @@ public static class PlanValidator
                 errors.Add($"{label}: action must be \"edit\", \"create\", \"delete\", \"move\" or \"extract\", not \"{task.Action}\".");
             if (string.IsNullOrWhiteSpace(task.Instruction) && !task.IsFileOperation) errors.Add($"{label}: \"instruction\" is empty.");
 
-            if (Resolve(task.File, label, scope, errors) is { } fullPath)
+            if (Resolve(task.File, label, scope, errors, plan) is { } fullPath)
             {
-                task.File = scope.ToRelative(fullPath);
+                task.File = scope.ToDisplay(fullPath);
                 var exists = File.Exists(fullPath);
                 if (task.Action == PlanTask.Edit && !exists) missingEdits.Add(task);
                 if (task.IsCreate && exists)
@@ -93,8 +95,8 @@ public static class PlanValidator
                     errors.Add($"{label}: another task already deletes or moves '{task.File}'.");
             }
 
-            if (task.IsMove) ValidateDestination(task, label, scope, arrivals, errors);
-            if (task.IsExtract) ValidateExtract(task, label, scope, arrivals, byId, errors);
+            if (task.IsMove) ValidateDestination(task, label, scope, arrivals, errors, plan);
+            if (task.IsExtract) ValidateExtract(task, label, scope, arrivals, byId, errors, plan);
 
             if (task.IsExtract)
             {
@@ -228,12 +230,26 @@ public static class PlanValidator
         if (tests.Run.Count == 0) plan.Tests = null;
     }
 
-    // Full path of a file a task may change, or null after adding the reason it may not.
-    private static string? Resolve(string path, string label, WorkspaceScope scope, List<string> errors)
+    // Full path of a file a task may change, or null after adding the reason it may not. A file outside the project root
+    // is fine when a permission can cover it: its folder joins plan.OutsideFolders, which the developer is asked about.
+    private static string? Resolve(string path, string label, WorkspaceScope scope, List<string> errors, ThreadPlan plan)
     {
         if (!scope.TryResolve(path, out var fullPath, out var pathError))
-            errors.Add($"{label}: {pathError} Tasks can only change files inside the project root; put anything about other places in \"answer\" or \"summary\".");
-        else if (scope.IsIgnoredPath(scope.ToRelative(fullPath)))
+        {
+            if (scope.TryResolveOutside(path, out var outside, out var folder, out var outsideError))
+            {
+                fullPath = outside;
+                plan.OutsideFolders ??= [];
+                if (!plan.OutsideFolders.Contains(folder, StringComparer.OrdinalIgnoreCase)) plan.OutsideFolders.Add(folder);
+            }
+            else
+            {
+                errors.Add($"{label}: {outsideError ?? pathError} Put anything about such places in \"answer\" or \"summary\".");
+                return null;
+            }
+        }
+
+        if (scope.IsIgnoredPath(scope.ToDisplay(fullPath)))
             errors.Add($"{label}: '{path}' is inside a generated or third-party folder and must not be changed.");
         else if (Directory.Exists(fullPath))
             errors.Add($"{label}: '{path}' is a directory; tasks must target a file (move or delete each file of a folder in its own task).");
@@ -242,16 +258,16 @@ public static class PlanValidator
         return null;
     }
 
-    private static void ValidateDestination(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, List<string> errors)
+    private static void ValidateDestination(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, List<string> errors, ThreadPlan plan)
     {
         if (task.To is null)
         {
             errors.Add($"{label}: action \"move\" needs \"to\", the destination path.");
             return;
         }
-        if (Resolve(task.To, label, scope, errors) is not { } fullPath) return;
+        if (Resolve(task.To, label, scope, errors, plan) is not { } fullPath) return;
 
-        task.To = scope.ToRelative(fullPath);
+        task.To = scope.ToDisplay(fullPath);
         // Paths compare without case (Windows, and the snapshot table), so a rename that only changes case is refused.
         if (string.Equals(task.To, task.File, StringComparison.OrdinalIgnoreCase))
             errors.Add($"{label}: \"to\" must be a different path than \"file\" (renames that only change letter case are not supported).");
@@ -262,7 +278,8 @@ public static class PlanValidator
     }
 
     // Several extracts may fill the same new file (the first creates it, the next ones add to it); a create task may not.
-    private static void ValidateExtract(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, Dictionary<string, PlanTask> byId, List<string> errors)
+    private static void ValidateExtract(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, Dictionary<string, PlanTask> byId, List<string> errors,
+        ThreadPlan plan)
     {
         if (task.Members is not { Count: > 0 })
             errors.Add($"{label}: action \"extract\" needs \"members\", the names of the members to move.");
@@ -273,10 +290,12 @@ public static class PlanValidator
             errors.Add($"{label}: action \"extract\" needs \"to\", the .cs file that receives the members.");
             return;
         }
-        if (Resolve(task.To, label, scope, errors) is not { } fullPath) return;
+        if (Resolve(task.To, label, scope, errors, plan) is not { } fullPath) return;
 
-        task.To = scope.ToRelative(fullPath);
-        if (!IsCSharp(task.To))
+        task.To = scope.ToDisplay(fullPath);
+        if (!scope.IsInside(fullPath) || !scope.IsInside(scope.FromStored(task.File)))
+            errors.Add($"{label}: \"extract\" only works inside the project root; use edit tasks for files outside it.");
+        else if (!IsCSharp(task.To))
             errors.Add($"{label}: \"to\" must be a .cs file.");
         else if (string.Equals(task.To, task.File, StringComparison.OrdinalIgnoreCase))
             errors.Add($"{label}: \"to\" must be a different file than \"file\".");
@@ -285,6 +304,20 @@ public static class PlanValidator
     }
 
     private static bool IsCSharp(string path) => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
+
+    // Commit and push only when the developer asked for it; a commit needs its message.
+    private static void ValidatePublish(ThreadPlan plan, List<string> errors)
+    {
+        if (plan.Publish is not { } publish) return;
+        publish.Message = string.IsNullOrWhiteSpace(publish.Message) ? null : publish.Message.Trim();
+        if (!publish.Commit && !publish.Push)
+        {
+            plan.Publish = null;
+            return;
+        }
+        if (publish.Commit && publish.Message is null)
+            errors.Add("publish: \"commit\" needs \"message\", the commit message (follow the style of git_log).");
+    }
 
     private static void ValidateTest(ThreadPlan plan, bool requireTest, List<string> errors, IReadOnlyCollection<string>? actors)
     {
