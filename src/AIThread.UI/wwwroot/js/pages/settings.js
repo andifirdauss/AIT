@@ -19,6 +19,7 @@
     el('commandToolEnabled').checked = s.commandToolEnabled;
     el('commandTimeout').value = s.commandTimeoutSeconds;
     el('gitPublishEnabled').checked = s.gitPublishEnabled;
+    el('webFetchEnabled').checked = s.webFetchEnabled;
     el('plannerMaxSteps').value = s.plannerMaxSteps;
     el('executorMaxRetries').value = s.executorMaxRetries;
     el('maxParallelTasks').value = s.maxParallelTasks;
@@ -136,7 +137,8 @@
       maxFixRounds: Number(el('maxFixRounds').value),
       commandToolEnabled: el('commandToolEnabled').checked,
       commandTimeoutSeconds: Number(el('commandTimeout').value),
-      gitPublishEnabled: el('gitPublishEnabled').checked
+      gitPublishEnabled: el('gitPublishEnabled').checked,
+      webFetchEnabled: el('webFetchEnabled').checked
     };
     try {
       fill(await api.put('/api/settings', body));

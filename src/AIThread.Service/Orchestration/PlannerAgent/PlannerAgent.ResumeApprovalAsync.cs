@@ -18,13 +18,21 @@ public sealed partial class PlannerAgent
         ClientProgress progress,
         CancellationToken cancellationToken)
     {
-        var allowed = decision is ApprovalDecision.Once or ApprovalDecision.Always;
-        if (decision == ApprovalDecision.Always && approval.Request.AllowAlways)
+        var allowed = decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern;
+        // "Always allow the pattern" keeps the pattern of a command item ("npm install *"); the other items get a plain grant.
+        if (decision is ApprovalDecision.Always or ApprovalDecision.AlwaysPattern && approval.Request.AllowAlways)
             foreach (var item in approval.Request.Items)
-                await approvals.GrantAsync(input.Project.ProjectId, item.Kind, item.Target, recorder.Thread.Id, cancellationToken);
+                await approvals.GrantAsync(input.Project.ProjectId, item.Kind,
+                    decision == ApprovalDecision.AlwaysPattern && item.Pattern is { } pattern ? pattern : item.Target, recorder.Thread.Id, cancellationToken);
 
+        var how = decision switch
+        {
+            ApprovalDecision.Always => Lang.T("selalu", "always"),
+            ApprovalDecision.AlwaysPattern => Lang.T("selalu, pola", "always, pattern"),
+            _ => Lang.T("sekali", "once")
+        };
         recorder.Log(allowed ? ActivityLevel.Info : ActivityLevel.Warning, allowed
-            ? Lang.T($"Developer mengizinkan ({(decision == ApprovalDecision.Always ? "selalu" : "sekali")}): {Targets(approval)}", $"The developer allowed ({(decision == ApprovalDecision.Always ? "always" : "once")}): {Targets(approval)}")
+            ? Lang.T($"Developer mengizinkan ({how}): {Targets(approval)}", $"The developer allowed ({how}): {Targets(approval)}")
             : Lang.T($"Developer menolak: {Targets(approval)}", $"The developer denied: {Targets(approval)}"));
 
         if (allowed && approval.Plan is { } plan)
@@ -37,6 +45,10 @@ public sealed partial class PlannerAgent
         string toolResult;
         if (allowed && approval.Command is { } command)
             toolResult = await runner.RunApprovedCommandAsync(command, input, recorder, progress, cancellationToken);
+        else if (allowed && approval.Fetch is { } fetch)
+            toolResult = await runner.RunApprovedFetchAsync(fetch, input, recorder, progress, cancellationToken);
+        else if (approval.Fetch is not null)
+            toolResult = $"Error: the developer did not allow fetching {Targets(approval)}. Do without it, or name the page in the summary for the developer to check.{instruction}";
         else if (approval.Plan is not null)
             toolResult = $"Plan rejected: the developer did not allow changing files outside the project root ({Targets(approval)}). Plan within the project root, or put the outside change in \"answer\" for the developer to make.{instruction}";
         else

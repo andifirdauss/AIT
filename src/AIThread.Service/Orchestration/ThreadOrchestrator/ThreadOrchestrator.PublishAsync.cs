@@ -3,6 +3,7 @@ using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
 using AIThread.Service.Approvals;
+using AIThread.Service.Git;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 
@@ -25,7 +26,8 @@ public sealed partial class ThreadOrchestrator
         }
 
         var files = await PublishFilesAsync(thread, project, sessionWide: plan.Tasks.Count == 0, cancellationToken);
-        var (job, error) = await gitPublisher.PrepareAsync(files, publish.Commit, publish.Push, publish.Message, cancellationToken);
+        var pullRequest = publish.PullRequest is { Title: { } title } asked ? new PublishPullRequest(title, asked.Body, asked.Base) : null;
+        var (job, error) = await gitPublisher.PrepareAsync(files, new PublishRequest(publish.Commit, publish.Push, publish.Message, publish.Branch, pullRequest), cancellationToken);
         if (job is null)
         {
             await progress.FinalAsync(Lang.T($"\n\n📤 Commit/push tidak dijalankan: {error}.", $"\n\n📤 Commit/push was not done: {error}."), cancellationToken);

@@ -22,6 +22,8 @@ public sealed partial class ToolsNodeAgent
         CancellationToken cancellationToken)
     {
         var node = group.Node;
+        // A tools node never pauses the thread for the developer's permission: run_command runs only what needs none.
+        input = input with { CanApprove = false };
         // › is in every monospace font (↳ is not, and falls back to an odd glyph in Consolas/Cascadia).
         var prefix = $"{label} › ";
         var actor = $"Tools node '{node.Name}' {label}";

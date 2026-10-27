@@ -90,6 +90,13 @@
                         @Lang.T("Perintah baca saja (curl GET/HEAD ke localhost, git baca, cek versi) langsung jalan. curl ke host luar dan perintah lain menunggu izin developer: sekali atau selalu.", "Read-only commands (curl GET/HEAD to localhost, git reads, version checks) run at once. curl to outside hosts and any other command wait for the developer's permission: once or always.")
                     </div>
                 </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="webFetchEnabled" />
+                    <label class="form-check-label" for="webFetchEnabled">@Lang.T("Planner boleh membaca halaman web & API (web_fetch)", "The planner may read web pages & APIs (web_fetch)")</label>
+                    <div class="form-text">
+                        @Lang.T("Hanya HTTP GET, untuk dokumentasi library/API atau melihat response endpoint. localhost langsung jalan; host luar menunggu izin developer per host (izin yang sama dengan curl).", "HTTP GET only, for library/API documentation or to see an endpoint's response. localhost runs at once; outside hosts wait for the developer's permission per host (the same permission as curl).")
+                    </div>
+                </div>
                 <div class="row g-2 mb-3">
                     <div class="col-sm-6">
                         <label class="form-label small" for="commandTimeout">@Lang.T("Batas waktu perintah (detik)", "Command timeout (seconds)")</label>

@@ -29,6 +29,7 @@ public sealed partial class SettingService
             Lang.Normalize(entity.UiLanguage),
             entity.CommandToolEnabled,
             entity.CommandTimeoutSeconds,
-            entity.GitPublishEnabled);
+            entity.GitPublishEnabled,
+            entity.WebFetchEnabled);
     }
 }

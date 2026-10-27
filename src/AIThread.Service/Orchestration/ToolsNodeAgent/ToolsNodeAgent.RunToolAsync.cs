@@ -26,6 +26,7 @@ public sealed partial class ToolsNodeAgent
         if (args is null) return error!;
 
         await PlannerToolRunner.AnnounceAsync(call.Name, args, actor, prefix, recorder, progress, cancellationToken, badge);
-        return await runner.RunAsync(call.Name, args, input, tools, memoriesRead, prefix, recorder, progress, cancellationToken);
+        // A tools node cannot pause the thread for the developer's permission: such a call fails with a note for the planner.
+        return await runner.RunAsync(call.Name, args, input with { CanApprove = false }, tools, memoriesRead, prefix, recorder, progress, cancellationToken);
     }
 }

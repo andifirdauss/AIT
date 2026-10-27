@@ -40,6 +40,10 @@ public class SystemSetting : BaseEntity
     // AIT may commit and push the files a thread wrote when the developer asks for it, after approval.
     public bool GitPublishEnabled { get; set; } = true;
 
+    // The planner may read web pages and APIs over HTTP GET (web_fetch): this machine right away, another host only
+    // after the developer approves it (ApprovalGrant, the same Host grant as a curl).
+    public bool WebFetchEnabled { get; set; } = true;
+
     // Remote prompting through a Telegram bot. Long polling, so no public URL is needed.
     public bool TelegramEnabled { get; set; }
 

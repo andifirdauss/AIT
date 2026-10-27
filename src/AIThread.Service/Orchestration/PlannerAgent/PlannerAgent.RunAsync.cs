@@ -23,7 +23,7 @@ public sealed partial class PlannerAgent
         // conversation. Only a planner that ignored the "submit now" message gets a submit-only extra step.
         var canPublish = CanPublish(input, run);
         var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit, input.UnitTests is not null,
-            canRunTests: input.UnitTests is { Suites.Count: > 0 }, canCommand: input.Settings.CommandToolEnabled, canPublish: canPublish);
+            canRunTests: input.UnitTests is { Suites.Count: > 0 }, canCommand: input.Settings.CommandToolEnabled, canPublish: canPublish, canFetch: input.Settings.WebFetchEnabled);
 
         while (run.Step < run.MaxSteps + 1)
         {

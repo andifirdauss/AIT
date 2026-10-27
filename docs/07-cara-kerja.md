@@ -196,13 +196,20 @@ Batasan:
 
 ### Izin developer
 
-Tiga hal membuat planner berhenti meminta izin, dengan mekanisme yang sama seperti pertanyaan (status **Menunggu
+Beberapa hal membuat planner berhenti meminta izin, dengan mekanisme yang sama seperti pertanyaan (status **Menunggu
 jawaban**, pesan berikutnya di sesi = jawaban, atau tombol di halaman thread untuk thread Dasbor):
 
 - **`run_command`** — `CommandPolicy` memecah perintah tanpa shell. Pipeline yang semua bagiannya ada di allowlist
   baca saja langsung jalan (lewat Git Bash, atau `cmd.exe` bila tidak ada). Operator shell, ekspansi variabel,
   perintah di luar allowlist, atau `curl` yang mengirim data/menulis file butuh izin perintah; `curl` ke host luar
   butuh izin host. Disetujui → perintah dijalankan dan outputnya menjadi hasil tool; ditolak → planner diberi tahu.
+- **`start_process`** — proses latar belakang (server dev, watcher) selalu butuh izin perintah. Disetujui → `BackgroundProcesses`
+  menjalankannya (shell & environment sama dengan `run_command`), menunggu `wait_for_url` localhost / `wait_for_text` /
+  `wait_seconds`, lalu mengembalikan id + output awal. Maks 3 per thread, umur maks 30 menit, dihentikan saat
+  `submit_plan` diterima atau thread berakhir (thread yang menunggu jawaban membiarkannya hidup sampai batas umur).
+- **`web_fetch`** — `WebFetcher` hanya GET, tanpa cookie/kredensial, redirect diikuti manual (maks 5, host dicek per
+  hop), body maks 2 MB, HTML → Markdown, JSON dirapikan. localhost langsung; host lain butuh izin host yang sama dengan
+  `curl`; alamat metadata cloud selalu ditolak (juga setelah DNS).
 - **Tugas di luar root project** — validator menerima path absolut di luar root (kecuali folder sistem/program dan file
   kredensial) dan mencatat foldernya di `outsideFolders` rencana. Folder tanpa izin tersimpan → rencana ditahan;
   disetujui → rencana dipakai apa adanya (tanpa memanggil model lagi), `WorkspaceScope.AllowWrites` membuka folder itu
@@ -210,6 +217,13 @@ jawaban**, pesan berikutnya di sesi = jawaban, atau tombol di halaman thread unt
 - **Commit/push** — bagian `publish` rencana (hanya bila developer meminta). Setelah verifikasi, unit test, dan
   testing lolos, `GitPublisher` mengelompokkan file thread per repository; tanpa izin tersimpan, jawaban diakhiri kartu
   izin dan balasan `1`/`2`/`3` di sesi yang sama menjalankannya.
+  Bila `publish.branch` diisi: `git switch -c` → commit → `push --set-upstream`; bila `publish.pullRequest` diisi, PR
+  dibuka setelah push lewat `gh`/`glab` (tanpa shell, body lewat stdin), atau link compare/MR bila CLI tidak tersedia.
+
+Izin *selalu* untuk perintah bisa berupa **pola** (`npm install *`, opsi 4): `ApprovalTargets` mencocokkan kata-kata awal
+perintah tunggal tanpa operator/pipe/substitusi; saran pola tidak dibuat untuk perintah berisiko. `run_command` dan
+`web_fetch` juga bisa didelegasikan ke tools node: di sana `CanApprove = false`, jadi hanya perintah baca saja / izin
+tersimpan yang jalan dan sisanya dilaporkan ke planner.
 
 Izin *selalu* disimpan di tabel `ApprovalGrants` (database lokal, tidak dibagi ke tim). Jeda izin tidak dihitung ke
 batas pertanyaan planner dan tidak bergantung pada *Planner boleh bertanya*.

@@ -107,7 +107,8 @@ public static partial class CommandPolicy
     }
 
     private static CommandCheck Ask(string command, string? reason) =>
-        new(CommandVerdict.NeedsApproval, reason, [new ApprovalItem(ApprovalKind.Command, ApprovalTargets.Normalize(ApprovalKind.Command, command))]);
+        new(CommandVerdict.NeedsApproval, reason,
+            [new ApprovalItem(ApprovalKind.Command, ApprovalTargets.Normalize(ApprovalKind.Command, command), Pattern: ApprovalTargets.SuggestPattern(command))]);
 
     // Null when the command of one pipeline part only reads; otherwise why it needs approval. Position 0 is the first
     // command; the others read the previous command's output.

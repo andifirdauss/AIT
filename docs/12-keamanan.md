@@ -124,6 +124,15 @@ bisa diizinkan:
 - push tidak pernah memakai `--force`, dan push ke `main`/`master`/`production`/`release/*` tidak bisa diizinkan
   *selalu*;
 - commit hanya memuat file yang ditulis thread, bukan `git add -A`.
+- pola izin perintah (`npm install *`) hanya menutupi perintah tunggal tanpa pipe/operator/`$()`/backtick, dan tidak
+  pernah ditawarkan untuk perintah yang menghapus/memindah file, membungkus perintah lain (`sudo`, `bash -c`, `xargs`,
+  `curl`, `ssh`, …), memublikasikan (`push`, `publish`, `deploy`), atau mengubah repository git;
+- `web_fetch` hanya GET, tanpa cookie/kredensial, setiap redirect ke host lain dicek ulang, dan alamat metadata cloud
+  (`169.254.169.254`, `metadata.google.internal`, …) selalu ditolak, juga bila nama host baru menunjuk ke sana setelah DNS;
+- proses latar belakang (`start_process`) maks 3 per thread, dihentikan beserta proses anaknya setelah rencana diserahkan,
+  saat thread berakhir, atau setelah 30 menit;
+- branch baru tidak pernah menimpa branch yang sudah ada, dan PR dibuka tanpa shell (`gh`/`glab` dengan prompt
+  dimatikan).
 
 Output perintah disamarkan seperti isi file konfigurasi (`KEY=nilai` yang rahasia diganti placeholder) sebelum sampai ke
 model. Izin *selalu* tersimpan di database lokal mesin ini saja.

@@ -43,6 +43,7 @@ public sealed partial class SettingService
         entity.CommandToolEnabled = request.CommandToolEnabled;
         entity.CommandTimeoutSeconds = request.CommandTimeoutSeconds;
         entity.GitPublishEnabled = request.GitPublishEnabled;
+        entity.WebFetchEnabled = request.WebFetchEnabled;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
