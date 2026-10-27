@@ -26,6 +26,7 @@ public static class PlannerTools
     public const string GitBlame = "git_blame";
     public const string RunBuild = "run_build";
     public const string RunTests = "run_tests";
+    public const string RunCommand = "run_command";
     public const string Investigate = "investigate";
     public const string AskUser = "ask_user";
     public const string SetModule = "set_module";
@@ -46,7 +47,7 @@ public static class PlannerTools
     public static readonly ImmutableArray<string> Skeleton = [CodeOutline, FunctionCalls];
 
     // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
-    public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Append(RunTests).Max(n => n.Length) + 2;
+    public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Append(RunTests).Append(RunCommand).Max(n => n.Length) + 2;
 
     // canBuild: build verification is enabled and the project has a build command AIThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
@@ -56,8 +57,10 @@ public static class PlannerTools
     // unitTests: the project has a unit test catalog: the tests section of submit_plan, and run_tests unless canRunTests
     // is false (no test project yet). The list stays the same for the whole planner run so the provider's prompt cache
     // keeps matching.
+    // canCommand: run_command is on in the settings. canPublish: commit/push is on and the project is a git repository,
+    // so submit_plan offers its publish section.
     public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false,
-        bool unitTests = false, bool canRunTests = true)
+        bool unitTests = false, bool canRunTests = true, bool canCommand = false, bool canPublish = false)
     {
         var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
@@ -68,14 +71,15 @@ public static class PlannerTools
         }
         foreach (var name in Skeleton) tools.Add(Definition(name));
         if (unitTests && canRunTests) tools.Add(RunTestsDefinition());
+        if (canCommand) tools.Add(RunCommandDefinition());
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());
-        tools.Add(SubmitPlanDefinition(canTest, unitTests));
+        tools.Add(SubmitPlanDefinition(canTest, unitTests, canPublish));
         return tools;
     }
 
-    public static JsonArray SubmitOnly(bool canTest = false, bool unitTests = false) => [SubmitPlanDefinition(canTest, unitTests)];
+    public static JsonArray SubmitOnly(bool canTest = false, bool unitTests = false, bool canPublish = false) => [SubmitPlanDefinition(canTest, unitTests, canPublish)];
 
     // Whether a delegable tool can run for this project, for the planner and for its tools nodes alike.
     public static bool Offered(string name, bool canBuild, bool canGit) =>
@@ -319,6 +323,21 @@ public static class PlannerTools
             }
             """));
 
+    private static JsonObject RunCommandDefinition() =>
+        ChatMessages.Function(RunCommand,
+            "Run a shell command (bash; forward slashes in paths) and get its output and exit code. For checks that only read: curl GET/HEAD to see the shape of an API response (the app on localhost, or an outside API the developer wants explored), git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). Such commands run at once. A curl to another host, or any command that may change something (POST/PUT/DELETE, writing files, installs, migrations, git commit/checkout, ...), pauses the thread until the developer allows it; ask only when the request needs it. Credential files are refused. Never start a long-running server; never call it in parallel with itself.",
+            Schema("""
+            {
+              "type": "object",
+              "properties": {
+                "command": { "type": "string", "description": "The command line, e.g. \"curl -s http://localhost:5000/api/users/1\" or \"curl -s https://api.example.com/v1/items | jq .\"." },
+                "cwd": { "type": "string", "description": "Optional working directory relative to the project root or absolute. Default: the project root." },
+                "reason": { "type": "string", "description": "One sentence, in the developer's language: why this command (shown when the developer is asked to allow it)." }
+              },
+              "required": ["command", "reason"]
+            }
+            """));
+
     private static JsonObject RunTestsDefinition() =>
         ChatMessages.Function(RunTests,
             "Run unit tests of the project's catalog and get their results: passed, failed with the message, skipped with the reason. Give test numbers from the brief (\"UT-0012\"), a test file, or all. Use it only when the request is about tests. Takes seconds to minutes; never call it in parallel with itself.",
@@ -418,9 +437,10 @@ public static class PlannerTools
             }
             """));
 
-    private static JsonObject SubmitPlanDefinition(bool canTest, bool unitTests)
+    private static JsonObject SubmitPlanDefinition(bool canTest, bool unitTests, bool canPublish = false)
     {
         var schema = SubmitPlanSchema();
+        if (canPublish) schema["properties"]!.AsObject()["publish"] = PublishSchema();
         if (canTest)
         {
             schema["properties"]!.AsObject()["test"] = TestSchema();
@@ -430,9 +450,22 @@ public static class PlannerTools
         return ChatMessages.Function(SubmitPlan,
             "Submit the final plan. Call exactly once, after investigating. For requests that need no file change, send an empty tasks list and the full answer in \"answer\"." +
             (canTest ? " When tasks change files, \"test\" tells the tester how to check the change on the running app." : string.Empty) +
-            (unitTests ? " \"tests\" holds the decisions about registered unit tests and the new ones." : string.Empty),
+            (unitTests ? " \"tests\" holds the decisions about registered unit tests and the new ones." : string.Empty) +
+            (canPublish ? " \"publish\" only when the developer asked to commit or push." : string.Empty),
             schema);
     }
+
+    private static JsonObject PublishSchema() => Schema("""
+        {
+          "type": "object",
+          "description": "Only when the developer asked to commit and/or push. AIT commits only the files this thread (or, with an empty task list, the earlier threads of this chat) wrote, after the change is verified, and asks the developer's permission first. Never force-pushes.",
+          "properties": {
+            "commit": { "type": "boolean" },
+            "push": { "type": "boolean", "description": "Push the branch to its upstream (origin when it has none)." },
+            "message": { "type": "string", "description": "The commit message, following the repository's convention (see git_log)." }
+          }
+        }
+        """);
 
     private static JsonObject UnitTestsSchema() => Schema("""
         {
@@ -529,7 +562,7 @@ public static class PlannerTools
                     "properties": {
                       "id": { "type": "string", "description": "Short id: T1, T2, ..." },
                       "title": { "type": "string" },
-                      "file": { "type": "string", "description": "Target file relative to the project root. Files can only be changed inside the project root." },
+                      "file": { "type": "string", "description": "Target file relative to the project root, or an absolute path for a file outside it (AIT asks the developer's permission before such a plan runs)." },
                       "action": { "type": "string", "enum": ["edit", "create", "delete", "move", "extract"], "description": "delete, move and extract are done by AIT without an executor; move keeps the content unchanged; extract moves C# members from file to to." },
                       "to": { "type": "string", "description": "For action move: the destination path relative to the project root; it must not exist yet. For action extract: the .cs file that receives the members (new, or already a partial part of the same class)." },
                       "members": { "type": "array", "items": { "type": "string" }, "description": "Only for action extract: names of the C# members to move (methods, properties, fields, events, nested types). All overloads of a name move together." },

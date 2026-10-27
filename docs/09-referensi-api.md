@@ -115,6 +115,8 @@ yang lain `projectFile` di daftar CLI bernilai `null`, `/projects` mengembalikan
 |---|---|---|
 | `GET` | `/api/projects` | — (tiap project: `name`, `rootPath`, `stacks[]`, `exists`, jumlah thread/sesi/memory, `key`, `keySource` = `File`/`Manual`/`GitRemote`/`Local`, `manualKey`) |
 | `GET` | `/api/projects/{id}` | — (`project`, `modules[]` = file solution/build di dalam project, `sessions[]`) |
+| `GET` | `/api/projects/{id}/approvals` | — → izin *selalu* project di mesin ini: `id`, `kind`, `target`, `createdBy`, `createdAt`, `lastUsedAt`, `useCount` |
+| `DELETE` | `/api/projects/{id}/approvals/{grantId}` | — mencabut izin; AIT bertanya lagi sebelum aksi itu |
 | `POST` | `/api/projects` | `{ "path": "D:\\Source\\MyApp" }` (folder; path di dalam project mendaftarkan project itu, path file memakai foldernya). `400` untuk drive, Home, atau folder sistem |
 | `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A", "D:\\Source\\B"] }` → `registered`, `alreadyRegistered`, `errors` |
 | `GET` | `/api/projects/browse?path=` | tanpa `path` = daftar drive. Hasil: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (root project di folder itu: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
@@ -242,6 +244,8 @@ disimpan per project key.
 | `GET` | `/api/threads/{id}/rollback` | — → pratinjau `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Tidak mengubah apa pun. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. Semua atau tidak sama sekali: 400 tanpa menyentuh file bila ada `conflict`. |
 | `POST` | `/api/threads/{id}/git/refresh` | — → bagian `git` detail thread (lihat di bawah) setelah git ditanya lagi |
+| `GET` | `/api/threads/{id}/approval` | — → izin yang ditunggu thread `{ items[]: { kind, target, detail }, reason, allowAlways, text, afterThread }` atau `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push` |
+| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" }` → id thread; planner dilanjutkan di belakang, atau commit/push dijalankan dan hasilnya ditambahkan ke respons thread. `400` bila thread tidak menunggu izin. |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
@@ -308,6 +312,8 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `thread.created` | `id`, `projectId`, `status` |
 | `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
 | `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`Pushed`/`ModifiedOutside`/`Stashed`/`OnOtherBranch`/`Discarded`/`Lost`), `commits[]` — status git perubahan thread berubah |
+| `approval.requested` | `threadId`, `projectId` — thread menunggu izin developer (`GET /api/threads/{id}/approval`) |
+| `approval.changed` | `projectId` — izin *selalu* ditambah atau dicabut |
 | `thread.output` | aktivitas planner: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | objek tugas lengkap (status, node, durasi, diff, error, …) |
 | `task.output` | potongan output model executor: `taskId`, `taskKey`, `text` |

@@ -91,6 +91,7 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 | Bagian | Isi |
 |---|---|
 | Header | Status, project, sumber, sesi CLI, waktu, working directory. Tombol *Batalkan thread* saat berjalan (juga saat testing); setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)), serta *🧪 Ulangi testing* untuk thread yang punya rencana testing UI/API, dengan username & password opsional (lihat [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
+| Izin | Muncul saat thread menunggu [izin developer](04-penggunaan.md#izin-developer) (perintah, file di luar project, commit/push): daftar target dan tombol *Izinkan sekali* / *Izinkan selalu* / *Tolak*. |
 | Permintaan | Prompt Anda (tanpa konteks yang disisipkan CLI, mis. blok `<system-reminder>` Claude Code). |
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
@@ -137,7 +138,8 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
   *hapus juga untuk SEMUA developer*. Bila clone lain dari repository yang sama masih terdaftar, memory-nya pindah ke
   clone itu.
 
-**Detail project**: stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), kartu **Git** (hanya
+**Detail project**: kartu **Izin AIT** (izin *selalu* yang diberikan di mesin ini: jenis, target, pemberi, terakhir
+dipakai, tombol *Cabut*; lihat [Izin developer](04-penggunaan.md#izin-developer)), stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), kartu **Git** (hanya
 untuk repository git: interval `git fetch` otomatis dalam menit (kosong = bawaan 15, 0 = mati), fetch terakhir dan
 errornya, jumlah thread yang diikuti, tombol *Fetch sekarang* dan *Sinkronkan*; lihat
 [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread); lalu daftar **Environment** bersama tim:
@@ -348,7 +350,8 @@ Halaman dibagi menjadi tab. Tab yang terbuka tercatat di URL (mis. `/Setting#tel
 refresh dan bisa ditautkan langsung.
 
 - **Koneksi 9router** (`#router`) — URL, API key, *Test koneksi* (tidak menyimpan); baris status menunjukkan apakah key tersimpan dan diterima.
-- **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, model passthrough, proxy API key (beserta tautan ke
+- **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, *Planner boleh menjalankan
+  perintah* (`run_command`) beserta batas waktunya, *AIT boleh commit & push bila diminta*, model passthrough, proxy API key (beserta tautan ke
   menu [CLI](#cli), tempat integrasi CLI (Claude Code, omp, Codex, Gemini CLI, opencode, Qwen Code) dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.
 - **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
 - **Penyimpanan memory** (`#memory`) — provider short, long, dan business memory (bawaan, Redis untuk short saja,

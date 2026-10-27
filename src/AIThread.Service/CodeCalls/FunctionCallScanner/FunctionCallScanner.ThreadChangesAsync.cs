@@ -19,6 +19,7 @@ public sealed partial class FunctionCallScanner
         var changes = new List<(string, int, int)>();
         foreach (var snapshot in snapshots)
         {
+            if (Path.IsPathRooted(snapshot.FilePath)) continue;
             var full = Path.Combine(root, snapshot.FilePath);
             if (OutlineLanguages.Of(full) is null || !File.Exists(full)) continue;
             var after = WorkspaceTools.SplitLines(await File.ReadAllTextAsync(full, cancellationToken));

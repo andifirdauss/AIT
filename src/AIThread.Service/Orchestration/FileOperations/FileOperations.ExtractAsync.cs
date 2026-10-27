@@ -11,7 +11,7 @@ public sealed partial class FileOperations
     {
         using var leases = await LockPairAsync(source, destination, cancellationToken);
 
-        var target = scope.ToRelative(destination);
+        var target = scope.ToDisplay(destination);
         if (!File.Exists(source)) return Failed(Lang.T($"'{task.File}' tidak ada (sudah dihapus atau dipindahkan?).", $"'{task.File}' does not exist (deleted or moved already?)."));
         if (Directory.Exists(destination)) return Failed(Lang.T($"Tujuan '{target}' adalah folder.", $"Target '{target}' is a folder."));
 

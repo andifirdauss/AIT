@@ -17,6 +17,19 @@
     </div>
 </div>
 
+<div class="card border-warning mb-3 d-none" id="approvalCard">
+    <div class="card-header">@Lang.T("🔐 AIT minta izin", "🔐 AIT asks for permission")</div>
+    <div class="card-body">
+        <div class="small mb-2" id="approvalReason"></div>
+        <ul class="small mb-3" id="approvalItems"></ul>
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-primary btn-sm" data-approval="Once">@Lang.T("Izinkan sekali", "Allow once")</button>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-approval="Always" id="btnApproveAlways" title="@Lang.T("Disimpan di mesin ini untuk project ini; cabut di Project → Detail → Izin AIT.", "Saved on this machine for this project; revoke in Project → Detail → AIT permissions.")">@Lang.T("Izinkan selalu", "Always allow")</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" data-approval="Deny">@Lang.T("Tolak", "Deny")</button>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="retestModal" tabindex="-1" aria-labelledby="retestModalTitle" aria-hidden="true">
     <div class="modal-dialog">
         <form class="modal-content" id="retestForm" autocomplete="off">

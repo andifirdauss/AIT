@@ -115,6 +115,8 @@ the others `projectFile` in the CLI list is `null`, `/projects` returns an empty
 |---|---|---|
 | `GET` | `/api/projects` | — (each project: `name`, `rootPath`, `stacks[]`, `exists`, thread/session/memory counts, `key`, `keySource` = `File`/`Manual`/`GitRemote`/`Local`, `manualKey`) |
 | `GET` | `/api/projects/{id}` | — (`project`, `modules[]` = the solution/build files inside the project, `sessions[]`) |
+| `GET` | `/api/projects/{id}/approvals` | — → the project's *always* permissions on this machine: `id`, `kind`, `target`, `createdBy`, `createdAt`, `lastUsedAt`, `useCount` |
+| `DELETE` | `/api/projects/{id}/approvals/{grantId}` | — revokes the permission; AIT asks again before that action |
 | `POST` | `/api/projects` | `{ "path": "D:\\Source\\MyApp" }` (a folder; a path inside a project registers that project, a file path uses its folder). `400` for a drive, Home, or a system folder |
 | `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A", "D:\\Source\\B"] }` → `registered`, `alreadyRegistered`, `errors` |
 | `GET` | `/api/projects/browse?path=` | without `path` = the drive list. Result: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (project roots in that folder: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
@@ -243,6 +245,8 @@ machine; pages are stored per project key.
 | `GET` | `/api/threads/{id}/rollback` | — → a preview `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Changes nothing. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. All or nothing: 400 without touching any file when there is a `conflict`. |
 | `POST` | `/api/threads/{id}/git/refresh` | — → the `git` part of the thread detail (see below) after asking git again |
+| `GET` | `/api/threads/{id}/approval` | — → the permission the thread waits for `{ items[]: { kind, target, detail }, reason, allowAlways, text, afterThread }` or `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push` |
+| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" }` → the thread id; the planner continues in the background, or the commit/push runs and its result is added to the thread's response. `400` when the thread waits for no permission. |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
@@ -311,6 +315,8 @@ sent every 15 seconds when it is quiet.
 | `thread.created` | `id`, `projectId`, `status` |
 | `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
 | `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`Pushed`/`ModifiedOutside`/`Stashed`/`OnOtherBranch`/`Discarded`/`Lost`), `commits[]` — the git state of a thread's change changed |
+| `approval.requested` | `threadId`, `projectId` — the thread waits for developer permission (`GET /api/threads/{id}/approval`) |
+| `approval.changed` | `projectId` — an *always* permission was added or revoked |
 | `thread.output` | planner activity: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | the full task object (status, node, duration, diff, error, …) |
 | `task.output` | a piece of executor model output: `taskId`, `taskKey`, `text` |

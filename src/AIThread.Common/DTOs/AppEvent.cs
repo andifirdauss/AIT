@@ -15,6 +15,8 @@ public static class AppEventTypes
     public const string ThreadUpdated = "thread.updated";
     public const string ThreadOutput = "thread.output";
     public const string ThreadGit = "thread.git";
+    public const string ApprovalRequested = "approval.requested";
+    public const string ApprovalChanged = "approval.changed";
     public const string TaskUpdated = "task.updated";
     public const string TaskOutput = "task.output";
     public const string MemoryChanged = "memory.changed";

@@ -42,7 +42,7 @@ public class PlanValidatorTests : IDisposable
     [Theory]
     [InlineData("src/Missing.cs", "edit", "does not exist")]
     [InlineData("src/Web/Views/User/Index.cshtml", "create", "already exists")]
-    [InlineData("../outside.txt", "edit", "outside the project root")]
+    [InlineData("../outside.txt", "edit", "does not exist")]
     [InlineData("src/Web/bin/Debug/app.dll", "edit", "generated or third-party")]
     [InlineData("src/Web/Views/User/Index.cshtml", "rename", "action must be")]
     [InlineData("src/Missing.cs", "delete", "cannot be deleted")]
@@ -55,13 +55,49 @@ public class PlanValidatorTests : IDisposable
     }
 
     [Fact]
-    public void Absolute_path_outside_the_root_is_refused_for_changes_even_though_it_can_be_read()
+    public void Absolute_path_outside_the_root_is_accepted_and_its_folder_needs_permission()
     {
-        var outside = Path.Combine(Path.GetTempPath(), "aithread-outside.txt");
+        // Another repository: the permission is asked for its root.
+        using var other = new TempWorkspace();
+        Directory.CreateDirectory(Path.Combine(other.Root, ".git"));
+        var outside = Path.Combine(other.Root, "notes", "todo.txt");
         var plan = new ThreadPlan { Summary = "x", Tasks = [Task("T1", outside, "create")] };
 
-        Assert.Contains(PlanValidator.Validate(plan, _scope), e => e.Contains("inside the project root"));
-        Assert.True(_scope.TryResolveForRead(outside, out _, out _));
+        Assert.Empty(PlanValidator.Validate(plan, _scope));
+        Assert.Equal(outside.Replace('\\', '/'), plan.Tasks[0].File);
+        Assert.Equal([other.Root], plan.OutsideFolders!);
+        // Not writable until the developer allows the folder.
+        Assert.False(_scope.TryResolveForWrite(outside, out _, out _));
+        _scope.AllowWrites(plan.OutsideFolders!);
+        Assert.True(_scope.TryResolveForWrite(outside, out _, out _));
+    }
+
+    [Fact]
+    public void System_folders_and_outside_extracts_are_refused()
+    {
+        var windows = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "aithread.txt");
+        var system = new ThreadPlan { Summary = "x", Tasks = [Task("T1", windows, "create")] };
+        Assert.Contains(PlanValidator.Validate(system, _scope), e => e.Contains("system or program folder"));
+
+        using var other = new TempWorkspace();
+        var source = other.Write("Lib/Service.cs", "class Service { void A() {} }");
+        var extract = new ThreadPlan
+        {
+            Summary = "x",
+            Tasks = [new PlanTask { Id = "T1", Title = "x", File = source, Action = "extract", To = Path.Combine(other.Root, "Lib", "Service.A.cs"), Members = ["A"] }]
+        };
+        Assert.Contains(PlanValidator.Validate(extract, _scope), e => e.Contains("only works inside the project root"));
+    }
+
+    [Fact]
+    public void Publish_needs_a_message_to_commit_and_is_dropped_when_empty()
+    {
+        var noMessage = new ThreadPlan { Summary = "x", Answer = "ok", Publish = new PlanPublish { Commit = true, Push = true } };
+        Assert.Contains(PlanValidator.Validate(noMessage, _scope), e => e.Contains("publish"));
+
+        var nothing = new ThreadPlan { Summary = "x", Answer = "ok", Publish = new PlanPublish { Message = "m" } };
+        Assert.Empty(PlanValidator.Validate(nothing, _scope));
+        Assert.Null(nothing.Publish);
     }
 
     [Fact]
@@ -117,7 +153,6 @@ public class PlanValidatorTests : IDisposable
     [InlineData(View, "different path")]
     [InlineData("SRC/web/views/user/index.cshtml", "different path")]
     [InlineData("src/Web/Views/User/Index.cshtml/../Index.cshtml", "different path")]
-    [InlineData("../outside.cshtml", "outside the project root")]
     [InlineData("src/Web/bin/Index.cshtml", "generated or third-party")]
     public void Rejects_bad_move_destinations(string? to, string expected)
     {

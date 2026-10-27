@@ -203,6 +203,28 @@ Limits:
   question.
 - Turn it off with Setting → *Planner may ask* when you want the planner to always decide by itself.
 
+### Developer permission
+
+Three things make the planner stop and ask permission, through the same mechanism as a question (status **Awaiting
+input**, the next message of the session is the answer, or the buttons on the thread page for a Dashboard thread):
+
+- **`run_command`** — `CommandPolicy` splits the command without a shell. A pipeline whose every part is on the read-only
+  allowlist runs at once (through Git Bash, or `cmd.exe` when there is none). Shell operators, variable expansion,
+  commands off the allowlist, or a `curl` that sends data/writes files need the command allowed; a `curl` to an outside
+  host needs the host allowed. Allowed → the command runs and its output becomes the tool result; denied → the planner
+  is told.
+- **Tasks outside the project root** — the validator accepts absolute paths outside the root (except system/program
+  folders and credential files) and records their folders in the plan's `outsideFolders`. A folder without a saved
+  permission holds the plan; allowed → the plan is used as it is (no new model call), `WorkspaceScope.AllowWrites`
+  opens the folder to the executors, and the journal records the absolute path so a rollback still works. Denied → the
+  planner plans again.
+- **Commit/push** — the plan's `publish` section (only when the developer asks). After verification, unit tests and
+  testing pass, `GitPublisher` groups the thread's files per repository; without a saved permission, the answer ends
+  with the permission card, and a `1`/`2`/`3` reply in the same session runs it.
+
+*Always* permissions are kept in the `ApprovalGrants` table (the local database, not shared with the team). A permission
+pause does not count toward the planner's question limit and does not depend on *Planner may ask*.
+
 ### Referring to earlier changes
 
 Requests like *"test this change"*, *"review the earlier one"* or *"undo that one"* refer to an earlier change without

@@ -10,7 +10,7 @@ public sealed partial class ExecutorAgent
     public async Task<ExecutorOutcome> ExecuteAsync(ExecutorJob job, CancellationToken cancellationToken)
     {
         var task = job.Task;
-        if (!job.Scope.TryResolve(task.File, out var fullPath, out var pathError))
+        if (!job.Scope.TryResolveForWrite(task.File, out var fullPath, out var pathError))
             return new ExecutorOutcome(false, null, null, pathError, 0, 0);
 
         var initial = await TextFileIo.ReadAsync(fullPath, cancellationToken);

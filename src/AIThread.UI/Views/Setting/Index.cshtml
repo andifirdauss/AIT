@@ -83,6 +83,26 @@
                         @Lang.T("Hanya untuk ambiguitas nyata, perubahan berisiko yang tidak diminta, atau fakta yang tidak ada di kode — bukan konfirmasi tiap prompt. Thread berhenti dengan pertanyaan bernomor; pesan berikutnya di sesi yang sama menjadi jawaban dan rencana dilanjutkan.", "Only for real ambiguity, risky changes nobody asked for, or facts that are not in the code — not to confirm every prompt. The thread stops with a numbered question; the next message in the same session becomes the answer and the plan goes on.")
                     </div>
                 </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" id="commandToolEnabled" />
+                    <label class="form-check-label" for="commandToolEnabled">@Lang.T("Planner boleh menjalankan perintah (run_command)", "The planner may run commands (run_command)")</label>
+                    <div class="form-text">
+                        @Lang.T("Perintah baca saja (curl GET/HEAD ke localhost, git baca, cek versi) langsung jalan. curl ke host luar dan perintah lain menunggu izin developer: sekali atau selalu.", "Read-only commands (curl GET/HEAD to localhost, git reads, version checks) run at once. curl to outside hosts and any other command wait for the developer's permission: once or always.")
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-sm-6">
+                        <label class="form-label small" for="commandTimeout">@Lang.T("Batas waktu perintah (detik)", "Command timeout (seconds)")</label>
+                        <input type="number" class="form-control" id="commandTimeout" min="5" max="600" required />
+                    </div>
+                </div>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="gitPublishEnabled" />
+                    <label class="form-check-label" for="gitPublishEnabled">@Lang.T("AIT boleh commit & push bila diminta", "AIT may commit & push when asked")</label>
+                    <div class="form-text">
+                        @Lang.T("Hanya file yang ditulis thread, setelah perubahan terverifikasi, dan dengan izin developer. Tanpa --force; push ke main/master/release selalu ditanyakan.", "Only the files the thread wrote, after the change is verified, and with the developer's permission. Never --force; a push to main/master/release is always asked.")
+                    </div>
+                </div>
 
                 <div class="mb-3">
                     <label class="form-label small" for="passthroughModel">Model passthrough</label>

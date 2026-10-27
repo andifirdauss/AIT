@@ -123,6 +123,49 @@ namespace AIThread.Data.Migrations
                     b.ToTable("Nodes", (string)null);
                 });
 
+            modelBuilder.Entity("AIThread.Common.Entities.ApprovalGrant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(800)
+                        .HasColumnType("nvarchar(800)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UseCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "Kind", "Target")
+                        .IsUnique();
+
+                    b.ToTable("ApprovalGrants", (string)null);
+                });
+
             modelBuilder.Entity("AIThread.Common.Entities.BusinessAsset", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1201,6 +1244,12 @@ namespace AIThread.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("CommandTimeoutSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("CommandToolEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1210,6 +1259,9 @@ namespace AIThread.Data.Migrations
 
                     b.Property<int>("ExecutorMaxRetries")
                         .HasColumnType("int");
+
+                    b.Property<bool>("GitPublishEnabled")
+                        .HasColumnType("bit");
 
                     b.Property<int>("MaxFixRounds")
                         .HasColumnType("int");
@@ -2249,6 +2301,17 @@ namespace AIThread.Data.Migrations
                         .WithMany()
                         .HasForeignKey("FallbackNodeId")
                         .OnDelete(DeleteBehavior.NoAction);
+                });
+
+            modelBuilder.Entity("AIThread.Common.Entities.ApprovalGrant", b =>
+                {
+                    b.HasOne("AIThread.Common.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("AIThread.Common.Entities.CodeFunctionCall", b =>

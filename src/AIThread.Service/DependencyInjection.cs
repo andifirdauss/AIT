@@ -1,5 +1,6 @@
 using AIThread.Common.Memory;
 using AIThread.Common.Options;
+using AIThread.Service.Approvals;
 using AIThread.Service.Background;
 using AIThread.Service.Business;
 using AIThread.Service.CodeCalls;
@@ -16,6 +17,7 @@ using AIThread.Service.Testing;
 using AIThread.Service.UnitTests;
 using AIThread.Service.Verification;
 using AIThread.Service.Workspace;
+using AIThread.Service.Workspace.Commands;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -124,6 +126,10 @@ public static class DependencyInjection
         services.AddSingleton<ITestScenarioService, TestScenarioService>();
         services.AddSingleton<ISecretGuard, SecretGuard>();
         services.AddSingleton<ISecurityService, SecurityService>();
+        services.AddSingleton<IApprovalService, ApprovalService>();
+        services.AddSingleton<ICommandRunner, CommandRunner>();
+        services.AddSingleton<IGitPublisher, GitPublisher>();
+        services.AddSingleton<IPendingApprovalStore>(_ => new PendingApprovalStore(TimeProvider.System));
         services.AddSingleton<ITesterAgent, TesterAgent>();
         services.AddSingleton<IAppLauncher, AppLauncher>();
         services.AddSingleton<IWrapperAgent, WrapperAgent>();

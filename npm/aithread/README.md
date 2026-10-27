@@ -8,6 +8,20 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.9.0
+
+- **AIT tidak lagi terkunci di folder project, dengan izin Anda**: AIT bisa mengubah file di folder/project lain,
+  menjalankan perintah lewat tool `run_command`, dan **commit & push** bila Anda memintanya. Sebelum itu thread berhenti
+  dengan kartu izin: `1` izinkan sekali, `2` izinkan selalu, `3` tolak, dijawab di CLI, Telegram, atau tombol di halaman
+  thread. Izin *selalu* disimpan per mesin + project + target dan bisa dicabut di Project → Detail → **Izin AIT**.
+- **`run_command` untuk eksplorasi**: perintah baca saja (`curl` GET/HEAD ke localhost untuk melihat bentuk response API,
+  `git status/log/diff`, `ls`/`cat`/`grep`, `dotnet --info`, `node -v`) langsung jalan. `curl` ke API luar diizinkan per
+  host; perintah yang bisa mengubah sesuatu diizinkan per perintah. File kredensial selalu ditolak dan output disamarkan.
+- **Commit & push yang aman**: hanya file yang ditulis thread, setelah build/unit test/testing lolos, tanpa `--force`;
+  push ke `main`/`master`/`production`/`release/*` selalu ditanyakan.
+- **Memory mengikuti git**: status commit/push perubahan tiap thread dibagi ke tim, fetch otomatis, planner sadar branch,
+  environment beserta wiki per environment dan compare, serta commit di luar AIT ikut dirangkum ke memory dan wiki.
+
 ## Yang baru di 1.8.1
 
 - **Nama class dan file tidak lagi ikut tersamarkan sebagai secret**: nilai yang hanya berisi huruf (mis.

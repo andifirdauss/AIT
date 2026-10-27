@@ -93,6 +93,7 @@ profile*. See [Team setup profile](02-konfigurasi.md#team-setup-profile).
 | Part | Content |
 |---|---|
 | Header | Status, project, source, CLI session, time, working directory. A *Cancel thread* button while it runs (also while testing); after it finishes, *🔁 Retry failed* and *↩ Undo file changes* (see [Usage](04-penggunaan.md#retrying-failed-tasks)), and *🧪 Test again* for a thread with a UI/API testing plan, with an optional username & password (see [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
+| Permission | Shown while the thread waits for [developer permission](04-penggunaan.md#developer-permission) (a command, files outside the project, commit/push): the targets and the *Allow once* / *Always allow* / *Deny* buttons. |
 | Request | Your prompt (without the context the CLI inserts, e.g. Claude Code's `<system-reminder>` blocks). |
 | Planner plan | The summary and the **contract** table. |
 | Executor tasks | A **parallel timeline** (overlapping bars ran at the same time) and the task table. Click a task for its instruction, dependencies, summary, error, colored diff and live model output. |
@@ -140,7 +141,9 @@ The list of codebases AIT knows. One project = one root folder, i.e. a folder ho
   confirmation *also delete it for ALL developers*. When another clone of the same repository is still registered, its
   memory moves to that clone.
 
-**Project detail**: the stack, the **Project key** card (the effective key, its source, and the *Manual key* field), the
+**Project detail**: the **AIT permissions** card (the *always* permissions given on this machine: kind, target, given
+by, last used, a *Revoke* button; see [Developer permission](04-penggunaan.md#developer-permission)), the stack, the
+**Project key** card (the effective key, its source, and the *Manual key* field), the
 **Git** card (git repositories only: the automatic `git fetch` interval in minutes (empty = the default 15, 0 = off),
 the last fetch and its error, the number of threads followed, the *Fetch now* and *Sync* buttons; see
 [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change); then the team's shared
@@ -361,7 +364,8 @@ a refresh and can be linked directly.
 
 - **9router connection** (`#router`) — URL, API key, *Test connection* (does not save); the status line shows whether
   the key is stored and accepted.
-- **Proxy & orchestration** (`#proxy`) — the orchestration switch, progress & *Planner may ask*, the passthrough model,
+- **Proxy & orchestration** (`#proxy`) — the orchestration switch, progress & *Planner may ask*, *The planner may run
+  commands* (`run_command`) with its timeout, *AIT may commit & push when asked*, the passthrough model,
   the proxy API key (with a link to the [CLI](#cli) menu, where the CLI integrations (Claude Code, omp, Codex, Gemini CLI,
   opencode, Qwen Code) and the Context Keeper hook are set), the planner/executor/parallel/timeout limits.
 - **Build & verification** (`#build`) — *Automatic build & verification*, the build timeout, and the number of fix

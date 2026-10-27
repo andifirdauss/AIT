@@ -25,7 +25,10 @@ public sealed record RuntimeSettings(
     bool BusinessMemoryEnabled = true,
     int BusinessMemoryIntervalHours = 6,
     string? BusinessMemoryModel = null,
-    string? DeveloperName = null)
+    string? DeveloperName = null,
+    bool CommandToolEnabled = true,
+    int CommandTimeoutSeconds = 60,
+    bool GitPublishEnabled = true)
 {
     // Recorded on business pages and revisions so the team sees who (or whose AIThread) wrote what: the name saved in
     // the Setting menu, else the global git user.name, else the Windows user.
