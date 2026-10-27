@@ -29,7 +29,9 @@
     ['git_log', t('riwayat commit', 'commit history')],
     ['git_show', t('isi satu commit — hasil bisa panjang', 'content of one commit — results can be long')],
     ['git_blame', t('commit terakhir per baris', 'last commit per line')],
-    ['run_build', t('build proyek & daftar error', 'build the project & list errors')]
+    ['run_build', t('build proyek & daftar error', 'build the project & list errors')],
+    ['run_command', t('perintah baca saja (curl GET localhost, git, versi) — planner tetap memegangnya untuk yang butuh izin', 'read-only commands (curl GET localhost, git, versions) — the planner keeps it for those that need permission')],
+    ['web_fetch', t('baca halaman web/API (GET) — host luar hanya yang sudah diizinkan', 'read a web page/API (GET) — outside hosts only when already allowed')]
   ];
   const nodes = new Map();
   let models = [];

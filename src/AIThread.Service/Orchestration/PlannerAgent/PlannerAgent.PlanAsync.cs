@@ -17,7 +17,7 @@ public sealed partial class PlannerAgent
         var (brief, relevant) = await BuildBriefAsync(input, tools, build, cancellationToken);
         await progress.StepAsync(LabelLine(input.CodeMap, relevant, input.LabelsFromSession), cancellationToken, hang: 3);
         var canGit = GitTools.IsRepository(input.Scope.Root);
-        var groups = await ToolsNodeGroupsAsync(input.Nodes[0], build is not null, canGit, cancellationToken);
+        var groups = await ToolsNodeGroupsAsync(input.Nodes[0], build is not null, canGit, input.Settings.CommandToolEnabled, input.Settings.WebFetchEnabled, cancellationToken);
 
         var run = new PlannerRun
         {
