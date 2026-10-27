@@ -21,8 +21,9 @@ public sealed partial class PlannerAgent
 
         // The same tool list on every step: changing it invalidates the provider's prompt cache for the whole
         // conversation. Only a planner that ignored the "submit now" message gets a submit-only extra step.
+        var canPublish = CanPublish(input, run);
         var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit, input.UnitTests is not null,
-            canRunTests: input.UnitTests is { Suites.Count: > 0 });
+            canRunTests: input.UnitTests is { Suites.Count: > 0 }, canCommand: input.Settings.CommandToolEnabled, canPublish: canPublish);
 
         while (run.Step < run.MaxSteps + 1)
         {
@@ -42,7 +43,7 @@ public sealed partial class PlannerAgent
                 {
                     Model = candidate.Model,
                     Messages = messages,
-                    Tools = forcedStep ? PlannerTools.SubmitOnly(input.AutoTesting, input.UnitTests is not null) : allTools,
+                    Tools = forcedStep ? PlannerTools.SubmitOnly(input.AutoTesting, input.UnitTests is not null, canPublish) : allTools,
                     Temperature = candidate.Temperature ?? 0.2,
                     MaxTokens = candidate.MaxTokens,
                     PromptCacheKey = ChatCompletionRequest.CacheKey(recorder.Thread.Id, "planner")
@@ -62,8 +63,11 @@ public sealed partial class PlannerAgent
                 // Some models ignore tool calling and print the plan as JSON.
                 if (ThreadPlan.TryParseFromText(result.Content, out var textPlan) && textPlan is not null)
                 {
+                    if (!canPublish) textPlan.Publish = null;
                     var errors = PlanValidator.Validate(textPlan, input.Scope, input.AutoTesting, input.UnitTests?.Rules, Actors(input));
-                    if (errors.Count == 0) return Finished(textPlan, run, node);
+                    if (errors.Count == 0 && textPlan.OutsideFolders is null) return Finished(textPlan, run, node);
+                    // Writes outside the project need the developer's permission, which only submit_plan asks for.
+                    if (errors.Count == 0) errors = ["The plan changes files outside the project root; send it through submit_plan so AIT can ask the developer."];
                     messages.Add(ChatMessages.User($"The plan is invalid:\n- {string.Join("\n- ", errors)}\nFix it and call submit_plan."));
                     continue;
                 }
@@ -108,7 +112,8 @@ public sealed partial class PlannerAgent
             if (accepted is not null) return Finished(accepted, run, node);
             if (ask is { } pause)
             {
-                run.QuestionsAsked++;
+                // A permission request is not a clarifying question: it does not use up ask_user.
+                if (pause.Question.Approval is null) run.QuestionsAsked++;
                 var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild, run.ToolsNodeTokens, run.CanGit);
                 return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count, run.ToolsNodeTokens,
                     run.ModelTime, run.ToolTime, run.QueueTime);
