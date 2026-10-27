@@ -93,7 +93,7 @@ profile*. See [Team setup profile](02-konfigurasi.md#team-setup-profile).
 | Part | Content |
 |---|---|
 | Header | Status, project, source, CLI session, time, working directory. A *Cancel thread* button while it runs (also while testing); after it finishes, *🔁 Retry failed* and *↩ Undo file changes* (see [Usage](04-penggunaan.md#retrying-failed-tasks)), and *🧪 Test again* for a thread with a UI/API testing plan, with an optional username & password (see [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
-| Permission | Shown while the thread waits for [developer permission](04-penggunaan.md#developer-permission) (a command, files outside the project, commit/push): the targets and the *Allow once* / *Always allow* / *Deny* buttons. |
+| Permission | Shown while the thread waits for [developer permission](04-penggunaan.md#developer-permission) (a command, a background process, an outside host, files outside the project, a branch/PR, commit/push): the targets and the *Allow once* / *Always allow* / *Deny* buttons, plus *Always allow the pattern* when the command can be patterned. |
 | Request | Your prompt (without the context the CLI inserts, e.g. Claude Code's `<system-reminder>` blocks). |
 | Planner plan | The summary and the **contract** table. |
 | Executor tasks | A **parallel timeline** (overlapping bars ran at the same time) and the task table. Click a task for its instruction, dependencies, summary, error, colored diff and live model output. |
@@ -142,7 +142,8 @@ The list of codebases AIT knows. One project = one root folder, i.e. a folder ho
   memory moves to that clone.
 
 **Project detail**: the **AIT permissions** card (the *always* permissions given on this machine: kind, target, given
-by, last used, a *Revoke* button; see [Developer permission](04-penggunaan.md#developer-permission)), the stack, the
+by, last used, a *pattern* badge, a *Revoke* button, and the *Add a command permission* form for an exact command or a
+pattern like `npm install *`; see [Developer permission](04-penggunaan.md#developer-permission)), the stack, the
 **Project key** card (the effective key, its source, and the *Manual key* field), the
 **Git** card (git repositories only: the automatic `git fetch` interval in minutes (empty = the default 15, 0 = off),
 the last fetch and its error, the number of threads followed, the *Fetch now* and *Sync* buttons; see
@@ -317,7 +318,7 @@ tooltip), a *🛰 n tools* mark on a planner that delegates tools to a [tools no
 (on a tools node card: *🛰 n planners* that use it; details in a tooltip), a *🧪 auto test* mark on a planner with
 [Auto Testing](02-konfigurasi.md#auto-testing-tester-node) on (*🧪 no tester* when there is no active Tester node yet), a
 *↪ name* mark when the node has a [fallback node](02-konfigurasi.md#fallback-node), with *Test*, *Edit* and *Delete*
-buttons. In the Planner node's modal, the *Delegate tools to a tools node* part holds one choice per read tool (*Planner
+buttons. In the Planner node's modal, the *Delegate tools to a tools node* part holds one choice per read tool (including the read-only `run_command` and `web_fetch`) (*Planner
 directly* or a tools node), and the *Auto Testing* switch (with the name of the tester that will be used). In the node
 modal, the *Skills* part shows the attached skills as chips. The *Search the store yourself* field opens a dropdown of
 skills matching their name, description, tags, source or content (the matching part of the content is shown); click an
@@ -365,7 +366,8 @@ a refresh and can be linked directly.
 - **9router connection** (`#router`) — URL, API key, *Test connection* (does not save); the status line shows whether
   the key is stored and accepted.
 - **Proxy & orchestration** (`#proxy`) — the orchestration switch, progress & *Planner may ask*, *The planner may run
-  commands* (`run_command`) with its timeout, *AIT may commit & push when asked*, the passthrough model,
+  commands* (`run_command`, also `start_process`) with its timeout, *The planner may read web pages & APIs*
+  (`web_fetch`), *AIT may commit & push when asked*, the passthrough model,
   the proxy API key (with a link to the [CLI](#cli) menu, where the CLI integrations (Claude Code, omp, Codex, Gemini CLI,
   opencode, Qwen Code) and the Context Keeper hook are set), the planner/executor/parallel/timeout limits.
 - **Build & verification** (`#build`) — *Automatic build & verification*, the build timeout, and the number of fix

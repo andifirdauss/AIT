@@ -112,6 +112,18 @@ public sealed partial class PlannerToolRunner
                 case PlannerTools.RunCommand:
                     return await RunCommandAsync(input, args, prefix, recorder, progress, cancellationToken);
 
+                case PlannerTools.StartProcess:
+                    return await StartProcessAsync(input, args, prefix, recorder, progress, cancellationToken);
+
+                case PlannerTools.ProcessOutput:
+                    return ReadProcess(input, args, recorder);
+
+                case PlannerTools.StopProcess:
+                    return await StopProcessAsync(input, args, prefix, recorder, progress, cancellationToken);
+
+                case PlannerTools.WebFetch:
+                    return await WebFetchAsync(input, args, prefix, recorder, progress, cancellationToken);
+
                 default:
                     return new PlannerToolOutcome($"Error: unknown tool '{tool}'.", null, true);
             }

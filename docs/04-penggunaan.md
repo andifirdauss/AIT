@@ -160,7 +160,8 @@ AIT paling efektif untuk perubahan yang menyentuh beberapa file/layer sekaligus.
   restore manual) atas inisiatif sendiri. Selain **build** project (bila *Build & verifikasi otomatis* menyala) dan
   **unit test** [katalog project](07-cara-kerja.md#unit-test) (`dotnet test`, jest/vitest/mocha, pytest, PHPUnit,
   Maven/Gradle, `go test`, `cargo test`), planner punya tool `run_command` untuk perintah **baca saja** (mis.
-  `curl` GET untuk melihat bentuk response API, git read, cek versi tool). Perintah yang bisa mengubah sesuatu,
+  `curl` GET untuk melihat bentuk response API, git read, cek versi tool), `web_fetch` untuk membaca halaman
+  web/dokumentasi/API lewat GET, dan `start_process` untuk server dev yang perlu hidup selama investigasi. Perintah yang bisa mengubah sesuatu,
   `curl` ke host luar, **commit/push**, dan perubahan file **di luar folder project** hanya dijalankan setelah Anda
   memberi izin, lihat [Izin developer](#izin-developer). Langkah lain disebutkan di ringkasan.
 - Menjalankan aplikasi Anda hanya untuk testing. Dengan [Auto Testing](02-konfigurasi.md#auto-testing-node-tester), AIT
@@ -367,8 +368,11 @@ AIT berhenti dan bertanya sebelum melakukan sesuatu di luar batas biasa:
 | Aksi | Target izin |
 |---|---|
 | Mengubah file di luar folder project | root repository/project folder itu (atau foldernya) |
-| `run_command` yang bisa mengubah sesuatu (POST/PUT/DELETE, menulis file, install, `git commit`, operator shell `;` `&&` `>`, …) | teks perintahnya persis |
-| `curl` GET/HEAD ke host selain localhost | `host:port` |
+| `run_command` yang bisa mengubah sesuatu (POST/PUT/DELETE, menulis file, install, `git commit`, operator shell `;` `&&` `>`, …) | teks perintahnya persis, atau pola (`npm install *`) |
+| `start_process` (proses latar belakang: server dev, watcher) | teks perintahnya persis, atau pola |
+| `curl` GET/HEAD atau `web_fetch` ke host selain localhost | `host:port` (satu izin untuk keduanya) |
+| Membuat branch baru | repository + branch |
+| Membuka pull/merge request | repository + `base<-head` |
 | Commit file thread | root repository |
 | Push branch | repository + `remote/branch` |
 
@@ -380,12 +384,20 @@ Balasannya berupa kartu bernomor, dijawab di CLI (atau Telegram) maupun lewat to
 1. Izinkan sekali — hanya untuk aksi ini
 2. Izinkan selalu — disimpan di mesin ini untuk project ini
 3. Tolak
+4. Izinkan selalu untuk pola `curl -X *` — hanya bila perintahnya aman dipolakan
 ```
 
 Balas `1`/`sekali`/`allow once`, `2`/`selalu`/`always`, atau `3`/`tolak`/`deny`. Balasan lain dianggap tolak dan
 diteruskan ke planner sebagai instruksi. Izin **selalu** disimpan per mesin + project + target dan bisa dicabut di
 Project > Detail → **Izin AIT**. Push ke `main`/`master`/`production`/`release/*` selalu ditanyakan (tanpa opsi
 selalu).
+
+**Izin pola.** Untuk perintah yang aman dipolakan, kartu menawarkan opsi **4. Izinkan selalu untuk pola**, mis.
+`npm install *` (balas `4`/`pola`/`pattern`). Pola mengizinkan perintah tunggal yang diawali kata-kata yang sama — tanpa
+pipe, operator shell, `$()`, atau backtick; perintah gabungan tetap butuh izin persis. Perintah yang menghapus/memindah
+file, membungkus perintah lain (`sudo`, `bash -c`, `xargs`, …), memublikasikan (`push`, `publish`, `deploy`), atau
+mengubah repository git tidak pernah ditawarkan pola. Pola juga bisa ditambahkan manual di kartu **Izin AIT** (*Tambah
+izin perintah*).
 
 **Perintah baca saja** jalan tanpa bertanya: `curl` GET/HEAD ke localhost (juga dengan `| jq`), `git status/log/diff/show/…`,
 `ls`/`cat`/`head`/`grep` (tanpa `-r`), dan cek versi (`dotnet --info`, `node -v`, `npm ls`). Perintah yang
@@ -395,6 +407,24 @@ menyebut file kredensial selalu ditolak, dan outputnya disamarkan seperti isi fi
 perubahan ini"* setelah beberapa thread). AIT meng-commit hanya file yang ditulis thread setelah verifikasi lolos
 (build, unit test, testing), dengan pesan gaya repository, lalu push ke upstream branch (atau `origin`) tanpa
 `--force`. Bila verifikasi gagal, commit/push tidak ditawarkan.
+
+**Branch & pull request.** Minta *"buat branch `feature/x`"* atau *"buka PR"* bersama commit/push. AIT membuat branch
+baru dari branch aktif (`git switch -c`; branch yang sudah ada tidak dipakai ulang dan perubahan yang belum di-commit ikut
+pindah), commit, push dengan `--set-upstream`, lalu membuka PR lewat `gh` (GitHub) atau `glab` (GitLab) bila terpasang.
+Bila CLI-nya tidak ada atau gagal, jawaban berisi link compare/MR (GitHub, GitLab, Bitbucket, Azure DevOps) untuk dibuka
+sendiri. Base bawaan = default branch remote. Izin *Buat branch* dan *Buka pull request* bisa *selalu*.
+
+**Membaca web (`web_fetch`).** Planner bisa membaca dokumentasi library/API, halaman web, atau response endpoint lewat
+HTTP GET. HTML diubah menjadi teks Markdown, JSON dirapikan, file biner ditolak, dan output dibatasi ±24 ribu karakter
+lalu disamarkan. localhost langsung jalan; host lain meminta izin host (`host:port`, izin yang sama dengan `curl`), dan
+redirect ke host lain dicek lagi. Matikan lewat Pengaturan → *Planner boleh membaca halaman web & API*.
+
+**Proses latar belakang (`start_process`).** Untuk investigasi yang butuh server berjalan (mis. *"jalankan `npm run dev`
+lalu cek response `/api/users`"*), planner bisa menjalankan proses di latar belakang, menunggu sampai URL localhost
+menjawab atau teks tertentu muncul, lalu membaca outputnya (`process_output`) dan menghentikannya (`stop_process`).
+Selalu minta izin perintah (atau pola), maksimal 3 proses per thread, dan semuanya dihentikan otomatis begitu rencana
+diserahkan, saat thread selesai/gagal/dibatalkan, atau setelah 30 menit. Ikut pengaturan *Planner boleh menjalankan
+perintah*.
 
 ## Percakapan lanjutan
 

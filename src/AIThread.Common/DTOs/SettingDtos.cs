@@ -22,7 +22,8 @@ public record SystemSettingDto(
     string UiLanguage = "id",
     bool CommandToolEnabled = true,
     int CommandTimeoutSeconds = 60,
-    bool GitPublishEnabled = true);
+    bool GitPublishEnabled = true,
+    bool WebFetchEnabled = true);
 
 public record UpdateLanguageRequest(string Language);
 
@@ -44,7 +45,8 @@ public record UpdateSystemSettingRequest(
     bool PlannerCanAsk = true,
     bool CommandToolEnabled = true,
     int CommandTimeoutSeconds = 60,
-    bool GitPublishEnabled = true);
+    bool GitPublishEnabled = true,
+    bool WebFetchEnabled = true);
 
 public record ClaudeSettingsStatusDto(
     ClaudeSettingsScope Scope,

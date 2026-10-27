@@ -205,7 +205,7 @@ Limits:
 
 ### Developer permission
 
-Three things make the planner stop and ask permission, through the same mechanism as a question (status **Awaiting
+Several things make the planner stop and ask permission, through the same mechanism as a question (status **Awaiting
 input**, the next message of the session is the answer, or the buttons on the thread page for a Dashboard thread):
 
 - **`run_command`** — `CommandPolicy` splits the command without a shell. A pipeline whose every part is on the read-only
@@ -213,6 +213,14 @@ input**, the next message of the session is the answer, or the buttons on the th
   commands off the allowlist, or a `curl` that sends data/writes files need the command allowed; a `curl` to an outside
   host needs the host allowed. Allowed → the command runs and its output becomes the tool result; denied → the planner
   is told.
+- **`start_process`** — a background process (dev server, watcher) always needs the command allowed. Allowed →
+  `BackgroundProcesses` starts it (same shell & environment as `run_command`), waits for a localhost `wait_for_url` /
+  `wait_for_text` / `wait_seconds`, then returns the id and the first output. At most 3 per thread, at most 30 minutes
+  old, stopped when `submit_plan` is accepted or the thread ends (a thread awaiting an answer leaves them running until
+  the age limit).
+- **`web_fetch`** — `WebFetcher` does GET only, without cookies/credentials, follows redirects by hand (at most 5, host
+  checked per hop), reads at most 2 MB, turns HTML into Markdown and pretty-prints JSON. localhost runs at once; another
+  host needs the same host permission as `curl`; cloud metadata addresses are always refused (also after DNS).
 - **Tasks outside the project root** — the validator accepts absolute paths outside the root (except system/program
   folders and credential files) and records their folders in the plan's `outsideFolders`. A folder without a saved
   permission holds the plan; allowed → the plan is used as it is (no new model call), `WorkspaceScope.AllowWrites`
@@ -221,6 +229,13 @@ input**, the next message of the session is the answer, or the buttons on the th
 - **Commit/push** — the plan's `publish` section (only when the developer asks). After verification, unit tests and
   testing pass, `GitPublisher` groups the thread's files per repository; without a saved permission, the answer ends
   with the permission card, and a `1`/`2`/`3` reply in the same session runs it.
+  With `publish.branch`: `git switch -c` → commit → `push --set-upstream`; with `publish.pullRequest`, the PR is opened
+  after the push through `gh`/`glab` (no shell, body over stdin), or a compare/MR link when no CLI is available.
+
+An *always* permission for a command can be a **pattern** (`npm install *`, option 4): `ApprovalTargets` matches the
+leading words of a single command without operators/pipes/substitution; no pattern is suggested for risky commands.
+`run_command` and `web_fetch` can also be delegated to a tools node: there `CanApprove = false`, so only read-only
+commands / saved permissions run and the rest is reported to the planner.
 
 *Always* permissions are kept in the `ApprovalGrants` table (the local database, not shared with the team). A permission
 pause does not count toward the planner's question limit and does not depend on *Planner may ask*.

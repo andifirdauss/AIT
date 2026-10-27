@@ -259,6 +259,10 @@ step 3 is paid again at steps 4, 5, … until `submit_plan`. A tools node moves 
    independent questions are sent together and split per area so the same files are not read twice; questions that
    depend on an earlier answer stay in order.
 
+A tools node can also hold `run_command` and `web_fetch` in **read-only** mode: read-only commands (curl GET to
+localhost, git reads, version checks) and hosts already allowed run; anything else is not run and is reported to the
+planner. The planner keeps `run_command` to ask for permission; a tools node never pauses the thread for permission.
+
 | Tool | Advice |
 |---|---|
 | `read_file`, `search_text`, `find_references` | Delegate — the largest output, the most wasteful in the planner. |

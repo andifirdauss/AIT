@@ -116,6 +116,7 @@ the others `projectFile` in the CLI list is `null`, `/projects` returns an empty
 | `GET` | `/api/projects` | — (each project: `name`, `rootPath`, `stacks[]`, `exists`, thread/session/memory counts, `key`, `keySource` = `File`/`Manual`/`GitRemote`/`Local`, `manualKey`) |
 | `GET` | `/api/projects/{id}` | — (`project`, `modules[]` = the solution/build files inside the project, `sessions[]`) |
 | `GET` | `/api/projects/{id}/approvals` | — → the project's *always* permissions on this machine: `id`, `kind`, `target`, `createdBy`, `createdAt`, `lastUsedAt`, `useCount` |
+| `POST` | `/api/projects/{id}/approvals` | `{ "kind": "Command", "target": "npm install *" }` → the permission list; adds an exact command or a pattern (ending in ` *`). A pattern that is too broad/risky → `400` |
 | `DELETE` | `/api/projects/{id}/approvals/{grantId}` | — revokes the permission; AIT asks again before that action |
 | `POST` | `/api/projects` | `{ "path": "D:\\Source\\MyApp" }` (a folder; a path inside a project registers that project, a file path uses its folder). `400` for a drive, Home, or a system folder |
 | `POST` | `/api/projects/batch` | `{ "paths": ["D:\\Source\\A", "D:\\Source\\B"] }` → `registered`, `alreadyRegistered`, `errors` |
@@ -245,8 +246,8 @@ machine; pages are stored per project key.
 | `GET` | `/api/threads/{id}/rollback` | — → a preview `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Changes nothing. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. All or nothing: 400 without touching any file when there is a `conflict`. |
 | `POST` | `/api/threads/{id}/git/refresh` | — → the `git` part of the thread detail (see below) after asking git again |
-| `GET` | `/api/threads/{id}/approval` | — → the permission the thread waits for `{ items[]: { kind, target, detail }, reason, allowAlways, text, afterThread }` or `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push` |
-| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" }` → the thread id; the planner continues in the background, or the commit/push runs and its result is added to the thread's response. `400` when the thread waits for no permission. |
+| `GET` | `/api/threads/{id}/approval` | — → the permission the thread waits for `{ items[]: { kind, target, detail, pattern }, reason, allowAlways, text, afterThread, allowPattern }` or `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push` |
+| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" \| "AlwaysPattern" }` → the thread id; the planner continues in the background, or the commit/push runs and its result is added to the thread's response. `400` when the thread waits for no permission. |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
