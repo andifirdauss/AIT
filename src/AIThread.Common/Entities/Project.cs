@@ -17,6 +17,10 @@ public class Project : BaseEntity
     public string? ManualKey { get; set; }
 
     public string? Summary { get; set; }
+
+    // Minutes between automatic git fetches of the project's remotes (GitChangeTracker), so pushes and merges of other
+    // developers show; null = the default (GitChangeTracker.DefaultFetchMinutes), 0 = never.
+    public int? GitFetchMinutes { get; set; }
     public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<ThreadRun> Threads { get; set; } = [];

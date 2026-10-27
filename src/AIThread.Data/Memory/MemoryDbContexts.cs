@@ -35,6 +35,7 @@ public sealed class LongMemoryDbContext(DbContextOptions<LongMemoryDbContext> op
             e.Property(x => x.Label).HasMaxLength(300).IsRequired();
             e.Property(x => x.Description).IsRequired();
             MemorySchema.ConfigureLabel(e);
+            MemorySchema.ConfigureGit(e);
             e.HasIndex(x => new { x.ProjectId, x.Type });
             e.HasIndex(x => new { x.ProjectKey, x.Type });
         });

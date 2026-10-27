@@ -100,6 +100,9 @@
                     <option value="">@Html.Raw(Lang.T("Berlabel &amp; belum", "Labeled &amp; not"))</option><option value="true">@Lang.T("Berlabel", "Labeled")</option><option value="false">@Lang.T("Belum berlabel", "Unlabeled")</option>
                 </select>
             </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="filterEnv" disabled title="@Lang.T("Hanya memory yang perubahannya sudah masuk environment ini (pilih project dulu)", "Only memory whose change reached this environment (choose a project first)")"><option value="">@Lang.T("Semua environment", "All environments")</option></select>
+            </div>
         </div>
     </div>
     <div class="table-responsive">
@@ -154,7 +157,14 @@
                     <label class="form-label small text-secondary" for="bizProject">Project</label>
                     <select class="form-select form-select-sm" id="bizProject"></select>
                 </div>
-                <div class="col-md-7 col-xl-8 d-flex flex-wrap gap-2 justify-content-md-end">
+                <div class="col-md-3 col-xl-2">
+                    <label class="form-label small text-secondary" for="bizEnv">Environment</label>
+                    <select class="form-select form-select-sm" id="bizEnv" title="@Lang.T("Wiki kerja = versi terbaru dari semua branch; environment = versi yang perubahannya sudah masuk ke branch environment itu", "Working wiki = the newest version from every branch; an environment = the version whose changes reached that environment's branch")">
+                        <option value="work">@Lang.T("Wiki kerja", "Working wiki")</option>
+                    </select>
+                </div>
+                <div class="col-md-4 col-xl-6 d-flex flex-wrap gap-2 justify-content-md-end">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBizCompare">@Lang.T("Bandingkan", "Compare")</button>
                     <button type="button" class="btn btn-outline-primary btn-sm" id="btnBizDigest" title="@Lang.T("Rangkum thread yang belum masuk wiki sekarang", "Summarize the threads not in the wiki yet, now")">@Lang.T("Perbarui sekarang", "Update now")</button>
                     <button type="button" class="btn btn-primary btn-sm" id="btnBizNew">@Lang.T("Halaman baru", "New page")</button>
                 </div>
@@ -163,7 +173,22 @@
         </div>
     </div>
 
-    <div class="row g-3">
+    <div class="row g-3 d-none" id="bizEnvPanel">
+        <div class="col-lg-4 col-xl-3">
+            <div class="card">
+                <div class="card-header small" id="bizEnvInfo"></div>
+                <div class="list-group list-group-flush small" id="bizEnvPages"></div>
+            </div>
+        </div>
+        <div class="col-lg-8 col-xl-9">
+            <div class="card">
+                <div class="card-header small text-secondary" id="bizEnvPageMeta">@Lang.T("Pilih halaman di kiri.", "Choose a page on the left.")</div>
+                <div class="card-body docs-body" id="bizEnvContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3" id="bizMain">
         <div class="col-lg-4 col-xl-3">
             <div class="card">
                 <div class="card-header d-flex align-items-center">
@@ -247,6 +272,33 @@
         </div>
     </div>
 </div>
+</div>
+
+<div class="modal fade" id="bizCompareModal" tabindex="-1" aria-labelledby="bizCompareTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="bizCompareTitle">@Lang.T("Bandingkan wiki", "Compare the wiki")</h5>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2 align-items-end mb-3">
+                    <div class="col-sm-4">
+                        <label class="form-label small text-secondary" for="bizCompareLeft">@Lang.T("Kiri", "Left")</label>
+                        <select class="form-select form-select-sm" id="bizCompareLeft"></select>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label small text-secondary" for="bizCompareRight">@Lang.T("Kanan", "Right")</label>
+                        <select class="form-select form-select-sm" id="bizCompareRight"></select>
+                    </div>
+                    <div class="col-sm-4">
+                        <button type="button" class="btn btn-primary btn-sm" id="btnBizCompareRun">@Lang.T("Bandingkan", "Compare")</button>
+                    </div>
+                </div>
+                <div id="bizCompareResult" class="small text-secondary">@Lang.T("Pilih dua sisi, mis. staging dan prod.", "Choose two sides, e.g. staging and prod.")</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="bizHistoryModal" tabindex="-1" aria-labelledby="bizHistoryTitle" aria-hidden="true">
@@ -407,4 +459,5 @@
     <script>window.initialProjectId = '@(projectId?.ToString() ?? "")';</script>
     <script src="~/js/pages/memory.js" asp-append-version="true"></script>
     <script src="~/js/pages/business.js" asp-append-version="true"></script>
+    <script src="~/js/pages/business-env.js" asp-append-version="true"></script>
 }

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AIThread.Data.Context;
 
-public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb, IMemoryCatalogDb, IUnitTestDb, ITestingDb
+public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : DbContext(options), ILongMemoryDb, IBusinessMemoryDb, IMemoryCatalogDb, IUnitTestDb, ITestingDb, IGitTrackingDb
 {
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<AiNode> Nodes => Set<AiNode>();
@@ -38,6 +38,12 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
     public DbSet<TestAccount> TestAccounts => Set<TestAccount>();
     public DbSet<TestingSettings> TestingSettings => Set<TestingSettings>();
     public DbSet<TestingScenario> TestingScenarios => Set<TestingScenario>();
+    public DbSet<ThreadChange> ThreadChanges => Set<ThreadChange>();
+    public DbSet<ProjectEnvironment> ProjectEnvironments => Set<ProjectEnvironment>();
+    public DbSet<ChangePresence> ChangePresences => Set<ChangePresence>();
+    public DbSet<CommitIngestSettings> CommitIngestSettings => Set<CommitIngestSettings>();
+    public DbSet<IngestedCommit> IngestedCommits => Set<IngestedCommit>();
+    public DbSet<BusinessEnvPage> BusinessEnvPages => Set<BusinessEnvPage>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -105,6 +111,11 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.SessionId);
             e.HasIndex(x => new { x.Status, x.BusinessDigestedAt });
+            e.Property(x => x.GitBranch).HasMaxLength(MemorySchema.GitBranchLength);
+            e.Property(x => x.GitBaseCommit).HasMaxLength(MemorySchema.GitCommitLength);
+            e.Property(x => x.GitAuthor).HasMaxLength(MemorySchema.GitAuthorLength);
+            e.Property(x => x.GitState).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.GitCommits).HasMaxLength(1000);
         });
 
         modelBuilder.Entity<ThreadAttachment>(e =>
@@ -148,6 +159,9 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
             e.Property(x => x.FilePath).HasMaxLength(800).IsRequired();
             e.Property(x => x.OriginalHash).HasMaxLength(64);
             e.Property(x => x.AfterHash).HasMaxLength(64);
+            e.Property(x => x.AfterBlob).HasMaxLength(MemorySchema.GitCommitLength);
+            e.Property(x => x.GitState).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.GitCommit).HasMaxLength(MemorySchema.GitCommitLength);
             e.HasOne(x => x.ThreadRun).WithMany().HasForeignKey(x => x.ThreadRunId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.ThreadRunId, x.FilePath }).IsUnique();
         });
@@ -161,6 +175,7 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
             e.Property(x => x.Label).HasMaxLength(300).IsRequired();
             e.Property(x => x.Description).IsRequired();
             MemorySchema.ConfigureLabel(e);
+            MemorySchema.ConfigureGit(e);
             e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.ProjectId, x.Type });
             e.HasIndex(x => new { x.ProjectKey, x.Type });
@@ -271,6 +286,9 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
 
         // Same mapping as the testing data next to an external long memory store (TestingDbContext).
         TestingModel.Configure(modelBuilder);
+
+        // Same mapping as the git tracking data next to an external long memory store (GitTrackingDbContext).
+        GitTrackingModel.Configure(modelBuilder);
     }
 
     // Columns ShortMemoryStore_* / LongMemoryStore_* / BusinessMemoryStore_* of SystemSettings.

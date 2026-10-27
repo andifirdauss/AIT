@@ -45,6 +45,12 @@ public class LongMemory : BaseEntity
     public int? RelabelAttempts { get; set; }
 
     public Guid? SourceThreadId { get; set; }
+
+    // Git of the source thread when it started (ThreadRun.GitAuthor/GitBranch/GitBaseCommit): who wrote the change, on
+    // which branch, from which commit. Null for memory without a thread or outside a repository.
+    public string? GitAuthor { get; set; }
+    public string? GitBranch { get; set; }
+    public string? GitCommit { get; set; }
     public DateTime PromotedAt { get; set; } = DateTime.UtcNow;
     public int HitCount { get; set; }
     public DateTime? LastAccessedAt { get; set; }

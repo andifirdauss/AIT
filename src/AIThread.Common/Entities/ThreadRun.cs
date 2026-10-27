@@ -84,5 +84,17 @@ public class ThreadRun : BaseEntity
     // When the business wiki writer summarized this thread into business memory; null = not yet.
     public DateTime? BusinessDigestedAt { get; set; }
 
+    // Git when the thread started (GitChangeTracker.ReadOriginAsync): branch ("HEAD" when detached), the commit it was
+    // on and the developer's git identity "Name <email>". Null outside a repository.
+    public string? GitBranch { get; set; }
+    public string? GitBaseCommit { get; set; }
+    public string? GitAuthor { get; set; }
+
+    // Where the thread's change is now (GitChangeTracker): its state, the commits holding it (comma-separated) and when
+    // git was last asked. Null when the thread changed no file or git cannot tell.
+    public GitChangeState? GitState { get; set; }
+    public string? GitCommits { get; set; }
+    public DateTime? GitCheckedAt { get; set; }
+
     public ICollection<ThreadTask> Tasks { get; set; } = [];
 }
