@@ -511,6 +511,45 @@
     }
   });
 
+  const approvalKinds = {
+    WriteOutside: () => t('Ubah file di luar project', 'Change files outside the project'),
+    Command: () => t('Jalankan perintah', 'Run a command'),
+    Host: () => t('Akses host luar', 'Call an outside host'),
+    Commit: () => 'Commit',
+    Push: () => 'Push'
+  };
+
+  // A paused planner or a commit/push of a finished thread waiting for the developer: answered here or in the chat.
+  async function loadApproval() {
+    let approval = null;
+    try {
+      approval = await api.get(`/api/threads/${threadId}/approval`);
+    } catch {
+      approval = null;
+    }
+    el('approvalCard').classList.toggle('d-none', !approval);
+    if (!approval) return;
+    el('approvalReason').innerHTML = md(approval.reason || '');
+    el('approvalItems').innerHTML = approval.items.map(i =>
+      `<li><strong>${escapeHtml((approvalKinds[i.kind] || (() => i.kind))())}</strong> <code>${escapeHtml(i.target)}</code>${i.detail ? ` — ${escapeHtml(i.detail)}` : ''}</li>`).join('');
+    el('btnApproveAlways').classList.toggle('d-none', !approval.allowAlways);
+  }
+
+  el('approvalCard').addEventListener('click', async event => {
+    const button = event.target.closest('[data-approval]');
+    if (!button) return;
+    el('approvalCard').querySelectorAll('button').forEach(b => b.disabled = true);
+    try {
+      await api.post(`/api/threads/${threadId}/approval`, { decision: button.dataset.approval });
+      toast(button.dataset.approval === 'Deny' ? t('Izin ditolak.', 'Permission denied.') : t('Izin diberikan.', 'Permission given.'), 'success');
+      el('approvalCard').classList.add('d-none');
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      el('approvalCard').querySelectorAll('button').forEach(b => b.disabled = false);
+    }
+  });
+
   function renderFinal() {
     if (detail.finalResponse) el('finalResponse').innerHTML = md(detail.finalResponse);
     el('contextPackCard').classList.toggle('d-none', !detail.contextPack);
@@ -615,6 +654,7 @@
     renderTesting();
     renderFinal();
     renderTasks();
+    loadApproval();
   }
 
   async function loadActivity() {
@@ -742,6 +782,7 @@
   stream(`threadId=${threadId}`, {
     'thread.updated': reloadDetail,
     'thread.git': reloadDetail,
+    'approval.requested': loadApproval,
     'task.updated': payload => {
       tasks.set(payload.data.id, payload.data);
       renderTasks();

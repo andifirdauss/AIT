@@ -1,6 +1,6 @@
 {
     "name":  "aithread-win-x64",
-    "version":  "1.8.1",
+    "version":  "1.9.0",
     "description":  "AIThread.exe standalone untuk Windows x64 (dipasang otomatis oleh paket aithread)",
     "license":  "Apache-2.0",
     "files":  [

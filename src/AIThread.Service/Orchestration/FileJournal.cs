@@ -22,7 +22,8 @@ public sealed class FileJournal(IDbContextFactory<AIThreadDbContext> dbFactory, 
 
     public async Task BeforeWriteAsync(string fullPath)
     {
-        var path = scope.ToRelative(fullPath);
+        // Relative inside the root; absolute for a file outside it the developer allowed.
+        var path = scope.ToDisplay(fullPath);
         if (_snapshots.ContainsKey(path)) return;
 
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -55,7 +56,7 @@ public sealed class FileJournal(IDbContextFactory<AIThreadDbContext> dbFactory, 
     // Also called after a delete or a move away: the file is then gone, and Removed tells ThreadRollback to restore it.
     public async Task AfterWriteAsync(string fullPath)
     {
-        if (!_snapshots.TryGetValue(scope.ToRelative(fullPath), out var id)) return;
+        if (!_snapshots.TryGetValue(scope.ToDisplay(fullPath), out var id)) return;
 
         var removed = !File.Exists(fullPath);
         var hash = removed ? null : Hash(await File.ReadAllBytesAsync(fullPath));
@@ -72,7 +73,7 @@ public sealed class FileJournal(IDbContextFactory<AIThreadDbContext> dbFactory, 
     // outside a repository or when git cannot run (GitChangeTracker tries again when the thread is over).
     private async Task<string?> BlobAsync(string fullPath)
     {
-        if (!_inRepository.Value) return null;
+        if (!_inRepository.Value || !scope.IsInside(fullPath)) return null;
         var result = await GitProcess.RunAsync(scope.Root, ["hash-object", "--", fullPath], CancellationToken.None, timeout: TimeSpan.FromSeconds(10));
         return result.Ok && result.Output.Trim() is { Length: > 0 and <= 64 } blob ? blob : null;
     }

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
+using AIThread.Service.Approvals;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -65,12 +66,22 @@ public sealed partial class ThreadOrchestrator
             });
             // A question needs a way back: a session to answer in, and not a dashboard run nobody is watching.
             var canAsk = settings.PlannerCanAsk && request.Source != ThreadSource.Dashboard && !string.IsNullOrEmpty(request.SessionId);
+            // Permission can always be asked of a session, and of a dashboard thread through its page.
+            var canApprove = !string.IsNullOrEmpty(request.SessionId) || request.Source == ThreadSource.Dashboard;
             var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles,
-                AutoTesting: tester is not null, PreviousTurn: previousTurn, UnitTests: unitTests, SessionChanges: sessionChanges);
+                AutoTesting: tester is not null, PreviousTurn: previousTurn, UnitTests: unitTests, SessionChanges: sessionChanges, CanApprove: canApprove);
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
-            if (prepared.Resume is { } resume)
+            if (prepared.Resume is { Question.Approval: { } approval } waiting)
+            {
+                var decision = ApprovalReply.Parse(prepared.Reply);
+                await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always
+                    ? Lang.T("🔐 Izin diberikan, rencana dilanjutkan", "🔐 Permission given, the plan goes on")
+                    : Lang.T("🔐 Izin ditolak, planner mencari jalan lain", "🔐 Permission denied, the planner looks for another way"), cancellationToken, hang: 3);
+                planning = await plannerAgent.ResumeApprovalAsync(plannerInput, waiting.Conversation, approval, decision, prepared.Reply ?? string.Empty, recorder, progress, cancellationToken);
+            }
+            else if (prepared.Resume is { } resume)
             {
                 await progress.StepAsync(Lang.T("💬 Jawaban diterima, rencana dilanjutkan", "💬 Answer received, the plan goes on"), cancellationToken, hang: 3);
                 planning = await plannerAgent.ResumeAsync(plannerInput, resume.Conversation, resume.Question.AnswerFor(prepared.Reply ?? string.Empty), recorder, progress, cancellationToken);
@@ -88,6 +99,8 @@ public sealed partial class ThreadOrchestrator
                 return await AwaitAnswerAsync(recorder, progress, project, request, planning, pause, planClock, total, cancellationToken);
 
             var plan = planning.Plan!;
+            // The developer allowed the plan's folders outside the project root (once or always).
+            scope.AllowWrites(plan.OutsideFolders ?? []);
             // A project without a test project keeps the session only for the test project and tests the plan adds.
             if (unitTests is { Suites.Count: 0 } && plan.Tests?.New is not { Count: > 0 }) unitTests = null;
             await recorder.UpdateThreadAsync(t =>
@@ -122,6 +135,8 @@ public sealed partial class ThreadOrchestrator
                 await FinishAsync(recorder, ThreadStatus.Completed, answer, total, 0, null);
                 var (memory, memoryPending) = await ExtractMemoryAsync(wrapper ?? planner, thread, plan, null, answer, cancellationToken);
                 await FooterAsync(progress, request, settings, thread, ThreadStatus.Completed, total, planning.MemoriesUsed, memory, memoryPending, cancellationToken);
+                // "commit and push this change": the plan has no tasks, only a publish section.
+                await PublishAsync(request, project, thread, plan, settings, null, progress, cancellationToken);
                 ScheduleContextKeeping(thread, request);
                 return new ThreadResult(thread.Id, ThreadStatus.Completed, progress.Transcript, TotalTokens(thread));
             }

@@ -231,6 +231,23 @@
     </div>
 </div>
 
+<div class="card win mt-3" id="approvalsWindow" data-win-id="project-approvals" data-win-persist>
+    <div class="card-header win-bar">
+        <win-controls disabled="close" />
+        <span class="win-title">@Lang.T("Izin AIT", "AIT permissions")</span>
+    </div>
+    <div class="card-body small text-secondary border-bottom py-2">
+        @Lang.T("Izin \"selalu\" yang diberikan di mesin ini untuk project ini: ubah file di luar project, perintah, host luar, commit, dan push. Izin \"sekali\" tidak disimpan. Push ke main/master/release selalu ditanyakan.",
+            "\"Always\" permissions given on this machine for this project: changing files outside the project, commands, outside hosts, commit and push. \"Once\" permissions are not kept. A push to main/master/release is always asked.")
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>@Lang.T("Jenis", "Kind")</th><th>@Lang.T("Target", "Target")</th><th>@Lang.T("Diberikan", "Given")</th><th>@Lang.T("Terakhir dipakai", "Last used")</th><th></th></tr></thead>
+            <tbody id="approvalRows"><tr><td colspan="5" class="text-secondary">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
 <div class="card win mt-3" id="structureWindow" data-win-id="project-structure" data-win-persist>
     <div class="card-header win-bar flex-wrap">
         <win-controls disabled="close" />
@@ -462,4 +479,5 @@
     <script src="~/js/pages/project-scenarios.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-git.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-approvals.js" asp-append-version="true"></script>
 }

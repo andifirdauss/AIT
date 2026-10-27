@@ -18,6 +18,8 @@ namespace AIThread.Service.Orchestration;
 // tests section of submit_plan are offered.
 // SessionChanges: what the earlier threads of this chat changed, per module — what "this change" can refer to.
 // TestAccounts: the project's test accounts, with Auto Testing: listed in the brief, and the actors a scenario may name.
+// CanApprove: the developer can be asked for permission (run_command, files outside the root): a session to answer in,
+// or the thread page of a dashboard thread.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -32,7 +34,8 @@ public sealed record PlannerInput(
     PreviousTurn? PreviousTurn = null,
     UnitTestSession? UnitTests = null,
     IReadOnlyList<SessionModuleChange>? SessionChanges = null,
-    TestAccountSet? TestAccounts = null);
+    TestAccountSet? TestAccounts = null,
+    bool CanApprove = false);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.
@@ -65,7 +68,8 @@ public sealed partial class PlannerAgent(
     INodePromptBuilder prompts,
     ICodeSkeletonTools skeleton,
     ISecretGuard secrets,
-    ITestAccountStore accountStore) : IPlannerAgent
+    ITestAccountStore accountStore,
+    IApprovalService approvals) : IPlannerAgent
 {
     private const int MaxRequestChars = 40_000;
     private const int MaxAttachedContextChars = 30_000;

@@ -1,3 +1,4 @@
+using AIThread.Common.Enums;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
 
@@ -31,4 +32,8 @@ public interface IThreadOrchestrator
     // that it creates real data (asked once per project). Throws AppValidationException with what is missing. Returns
     // that thread's id.
     Task<Guid> ScenarioInBackgroundAsync(Guid projectId, Guid scenarioId, bool acknowledge, CancellationToken cancellationToken);
+
+    // The thread page's answer to a permission request (a paused planner, or a commit/push of a finished thread).
+    // Throws AppValidationException when the thread waits for none. Returns the thread id.
+    Task<Guid> ApproveInBackgroundAsync(Guid threadId, ApprovalDecision decision, CancellationToken cancellationToken);
 }

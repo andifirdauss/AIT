@@ -1,4 +1,5 @@
 using AIThread.Common.Localization;
+using AIThread.Service.Approvals;
 using AIThread.Service.Memory;
 using AIThread.Service.Models;
 using AIThread.Service.Testing;
@@ -11,6 +12,11 @@ public sealed partial class ThreadOrchestrator
     {
         // AIT's own output to the CLI follows the language the developer writes in, whatever the UI language.
         using var language = Lang.Use(TextLanguage.LangOfPrompt(request.Prompt, request.ConversationContext));
+
+        // "1" / "2" / "3" right after a thread asked to commit/push answers that request; any other prompt drops it.
+        var publish = publishApprovals.TakeAsk(request.SessionId, request.ProjectId);
+        if (publish is not null && ApprovalReply.Parse(request.Prompt) is { } decision)
+            return await PublishFromChatAsync(publish, decision, observer, cancellationToken);
 
         // "login <user> <password>" right after a tester asked for one runs that thread's test again with it.
         if (TestLogin.Parse(request.Prompt) is { } login && testLogins.TakeAsk(request.SessionId, request.ProjectId) is { } waiting)

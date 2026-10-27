@@ -20,6 +20,7 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
     public DbSet<LongMemory> LongMemories => Set<LongMemory>();
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<TelegramChat> TelegramChats => Set<TelegramChat>();
+    public DbSet<ApprovalGrant> ApprovalGrants => Set<ApprovalGrant>();
     public DbSet<SkillSource> SkillSources => Set<SkillSource>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<NodeSkill> NodeSkills => Set<NodeSkill>();
@@ -198,6 +199,16 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
             e.Property(x => x.Username).HasMaxLength(100);
             e.HasOne(x => x.ActiveProject).WithMany().HasForeignKey(x => x.ActiveProjectId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.ChatId).IsUnique();
+        });
+
+        modelBuilder.Entity<ApprovalGrant>(e =>
+        {
+            e.ToTable("ApprovalGrants");
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Target).HasMaxLength(800).IsRequired();
+            e.Property(x => x.CreatedBy).HasMaxLength(200);
+            e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ProjectId, x.Kind, x.Target }).IsUnique();
         });
 
         modelBuilder.Entity<SkillSource>(e =>

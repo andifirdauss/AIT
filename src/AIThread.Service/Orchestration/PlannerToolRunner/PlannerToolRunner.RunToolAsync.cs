@@ -109,6 +109,9 @@ public sealed partial class PlannerToolRunner
                 case PlannerTools.RunTests:
                     return await RunTestsAsync(input, args, prefix, recorder, progress, cancellationToken);
 
+                case PlannerTools.RunCommand:
+                    return await RunCommandAsync(input, args, prefix, recorder, progress, cancellationToken);
+
                 default:
                     return new PlannerToolOutcome($"Error: unknown tool '{tool}'.", null, true);
             }

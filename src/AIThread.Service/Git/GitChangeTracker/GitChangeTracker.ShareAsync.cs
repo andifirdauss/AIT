@@ -32,6 +32,7 @@ public sealed partial class GitChangeTracker
                     .Where(s => due.Contains(s.ThreadRunId))
                     .Select(s => new { s.ThreadRunId, s.FilePath, s.AfterBlob, s.Removed })
                     .ToListAsync(cancellationToken))
+                .Where(s => !Path.IsPathRooted(s.FilePath))
                 .ToLookup(s => s.ThreadRunId);
             var rows = await shared.ThreadChanges.Where(c => due.Contains(c.Id)).ToDictionaryAsync(c => c.Id, cancellationToken);
             var by = GitIdentity.UserName;

@@ -113,6 +113,21 @@ When the **Claude Code** CLI is pointed to AIT (the CLI menu), the equivalent `p
 (`Read(//**/*.pem)`, `Read(~/.ssh/**)`, …) are added to `settings.json`. That way Claude Code itself does not read them
 either. Your own rules are not touched, and when the integration is removed, only AIT's rules are deleted.
 
+## Permission beyond the project
+
+Changing files outside the project folder, `run_command` commands that may change something, `curl` to an outside host,
+and commit/push always wait for [developer permission](04-penggunaan.md#developer-permission) (once or always). Limits
+that cannot be allowed:
+
+- the credential files above are still refused for reading, writing, and being named in a command;
+- the Windows, Program Files and ProgramData folders, and a drive root or the Home/Desktop/Documents/Downloads folders
+  as a target folder (only a single file in them can be allowed);
+- a push never uses `--force`, and a push to `main`/`master`/`production`/`release/*` cannot be allowed *always*;
+- a commit holds only the files the thread wrote, never `git add -A`.
+
+Command output is masked like a config file's content (secret `KEY=value` lines become placeholders) before it reaches a
+model. *Always* permissions are kept in this machine's local database only.
+
 ## Per-project rules
 
 Add a `secrets` part to `.aithread/project.json` (the same file as `run` for Auto Testing). This file is committed, so it
