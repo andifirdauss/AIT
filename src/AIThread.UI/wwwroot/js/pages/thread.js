@@ -516,7 +516,9 @@
     Command: () => t('Jalankan perintah', 'Run a command'),
     Host: () => t('Akses host luar', 'Call an outside host'),
     Commit: () => 'Commit',
-    Push: () => 'Push'
+    Push: () => 'Push',
+    Branch: () => t('Buat branch', 'Create a branch'),
+    PullRequest: () => t('Buka pull request', 'Open a pull request')
   };
 
   // A paused planner or a commit/push of a finished thread waiting for the developer: answered here or in the chat.
@@ -533,6 +535,10 @@
     el('approvalItems').innerHTML = approval.items.map(i =>
       `<li><strong>${escapeHtml((approvalKinds[i.kind] || (() => i.kind))())}</strong> <code>${escapeHtml(i.target)}</code>${i.detail ? ` — ${escapeHtml(i.detail)}` : ''}</li>`).join('');
     el('btnApproveAlways').classList.toggle('d-none', !approval.allowAlways);
+    // "Always allow the pattern" ("npm install *") only when a command has a pattern AIT can keep.
+    const patterns = [...new Set(approval.items.filter(i => i.pattern).map(i => i.pattern))];
+    el('btnApprovePattern').classList.toggle('d-none', !approval.allowPattern || !patterns.length);
+    el('approvalPattern').textContent = patterns.join(', ');
   }
 
   el('approvalCard').addEventListener('click', async event => {

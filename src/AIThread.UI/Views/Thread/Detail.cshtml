@@ -26,6 +26,7 @@
             <button type="button" class="btn btn-primary btn-sm" data-approval="Once">@Lang.T("Izinkan sekali", "Allow once")</button>
             <button type="button" class="btn btn-outline-primary btn-sm" data-approval="Always" id="btnApproveAlways" title="@Lang.T("Disimpan di mesin ini untuk project ini; cabut di Project → Detail → Izin AIT.", "Saved on this machine for this project; revoke in Project → Detail → AIT permissions.")">@Lang.T("Izinkan selalu", "Always allow")</button>
             <button type="button" class="btn btn-outline-danger btn-sm" data-approval="Deny">@Lang.T("Tolak", "Deny")</button>
+            <button type="button" class="btn btn-outline-primary btn-sm d-none" data-approval="AlwaysPattern" id="btnApprovePattern" title="@Lang.T("Perintah lain yang diawali kata yang sama juga diizinkan; cabut di Project → Detail → Izin AIT.", "Other commands starting with the same words are allowed too; revoke in Project → Detail → AIT permissions.")">@Lang.T("Izinkan selalu untuk pola", "Always allow the pattern") <code class="ms-1" id="approvalPattern"></code></button>
         </div>
     </div>
 </div>

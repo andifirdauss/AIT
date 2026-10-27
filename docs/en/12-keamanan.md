@@ -124,6 +124,16 @@ that cannot be allowed:
   as a target folder (only a single file in them can be allowed);
 - a push never uses `--force`, and a push to `main`/`master`/`production`/`release/*` cannot be allowed *always*;
 - a commit holds only the files the thread wrote, never `git add -A`.
+- a command pattern permission (`npm install *`) covers only single commands without a pipe/operator/`$()`/backtick, and
+  is never offered for commands that delete or move files, wrap another command (`sudo`, `bash -c`, `xargs`, `curl`,
+  `ssh`, …), publish (`push`, `publish`, `deploy`) or change the git repository;
+- `web_fetch` does GET only, without cookies/credentials, every redirect to another host is checked again, and cloud
+  metadata addresses (`169.254.169.254`, `metadata.google.internal`, …) are always refused, also when a host name
+  resolves to one after DNS;
+- background processes (`start_process`) are at most 3 per thread and are stopped with their child processes once the
+  plan is submitted, when the thread ends, or after 30 minutes;
+- a new branch never overwrites an existing one, and a PR is opened without a shell (`gh`/`glab` with prompts turned
+  off).
 
 Command output is masked like a config file's content (secret `KEY=value` lines become placeholders) before it reaches a
 model. *Always* permissions are kept in this machine's local database only.

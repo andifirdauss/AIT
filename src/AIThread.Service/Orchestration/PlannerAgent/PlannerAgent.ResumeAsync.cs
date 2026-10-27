@@ -20,7 +20,7 @@ public sealed partial class PlannerAgent
         input = await WithAccountsAsync(input, recorder, cancellationToken);
         // The planner that asked, when it is still active; otherwise the preferred one takes the conversation over.
         var node = input.Nodes.FirstOrDefault(n => n.Id == conversation.NodeId) ?? input.Nodes[0];
-        var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, conversation.CanGit, cancellationToken);
+        var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, conversation.CanGit, input.Settings.CommandToolEnabled, input.Settings.WebFetchEnabled, cancellationToken);
         var messages = conversation.Messages;
         messages[0] = await SystemMessageAsync(node, groups, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
         messages.Add(ChatMessages.Tool(conversation.AskCallId, toolResult));
