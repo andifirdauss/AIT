@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
 using AIThread.Service.Models;
@@ -36,7 +37,10 @@ public sealed partial class ThreadOrchestrator
             t.FinalResponse = text;
             t.TotalMs = (t.TotalMs ?? 0) + total.ElapsedMilliseconds;
         });
-        questions.Add(thread.Id, project.ProjectId, request.SessionId!, pause.Question, pause.Conversation);
+        // A dashboard thread has no session: its permission requests are answered on the thread page, under its own key.
+        questions.Add(thread.Id, project.ProjectId, request.SessionId ?? PendingQuestionStore.ThreadSession(thread.Id), pause.Question, pause.Conversation);
+        if (pause.Question.Approval is not null)
+            eventBus.Publish(AppEvent.Create(AppEventTypes.ApprovalRequested, new { ThreadId = thread.Id, project.ProjectId }, thread.Id));
         recorder.Log(ActivityLevel.Info, Lang.T($"Planner bertanya ke developer; thread menunggu jawaban: {Truncate(pause.Question.Question.ReplaceLineEndings(" "), 200)}", $"The planner asked the developer; the thread waits for the answer: {Truncate(pause.Question.Question.ReplaceLineEndings(" "), 200)}"));
         return new ThreadResult(thread.Id, ThreadStatus.AwaitingInput, progress.Transcript, TotalTokens(thread));
     }
