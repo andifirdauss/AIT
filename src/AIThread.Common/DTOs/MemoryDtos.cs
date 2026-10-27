@@ -26,7 +26,17 @@ public record MemoryItemDto(
     bool Labeled = false,
     string? LegacyLabel = null,
     string? ReviewReason = null,
-    IReadOnlyList<string>? ExtraModules = null);
+    IReadOnlyList<string>? ExtraModules = null,
+    string? GitAuthor = null,
+    string? GitBranch = null,
+    string? GitCommit = null,
+    // Where the source thread's change is (GitChangeTracker): its state in the author's clone, its place seen from here,
+    // and the note the planner reads when it is not in this branch.
+    GitChangeState? GitState = null,
+    MemoryGitPlace? GitPlace = null,
+    string? GitNote = null,
+    // The source is a commit made outside AIT (SourceThreadId is its ingest id, GitCommit the commit), not a thread.
+    bool FromCommit = false);
 
 // What the planner scans to pick topics without reading descriptions. Labeled entries carry the structured label;
 // unlabeled ones (older memory waiting for relabeling) only Label. Change entries also carry their title.
@@ -44,7 +54,10 @@ public record MemoryIndexEntry(
     int HitCount = 0,
     IReadOnlyList<string>? ExtraModules = null,
     // The headline of a change entry (MemoryKind.Change), so a label line tells which change it is.
-    string? Title = null)
+    string? Title = null,
+    Guid? SourceThreadId = null,
+    // Set when the entry's change is not in the branch checked out here (GitChangeTracker.PresenceAsync).
+    string? GitNote = null)
 {
     public bool Labeled => Module is not null && Kind is not null;
 
@@ -67,7 +80,10 @@ public record MemoryQuery(
     // Export only: the unit test catalog of the projects goes along (project memory, no search text).
     bool IncludeUnitTests = true,
     // Export only: the test accounts and testing settings of the projects go along (same conditions).
-    bool IncludeTestAccounts = true);
+    bool IncludeTestAccounts = true,
+    // With ProjectId: project memory from a change that has not reached this environment (ChangePresence) is left out;
+    // memory without a source thread stays.
+    string? Environment = null);
 
 // Every memory is written with its full label. Module (the main one) and ExtraModules (other modules the same fact
 // concerns, at most 3) are resolved against the project's module list (a new name becomes a module); keywords are

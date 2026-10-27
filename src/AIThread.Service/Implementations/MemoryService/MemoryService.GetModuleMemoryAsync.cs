@@ -40,7 +40,15 @@ public sealed partial class MemoryService
             LongStoreFailed(ex, "Could not read the module memory");
         }
 
-        var newest = items.Where(i => i.Kind == MemoryKind.Change).OrderByDescending(i => i.CreatedAt).ToList();
+        var entries = items.Where(i => i.Kind == MemoryKind.Change).OrderByDescending(i => i.CreatedAt).ToList();
+        // Git is asked only about the entries that can be shown (a few more per module, for those that drop out because
+        // their change was thrown away).
+        var candidates = wanted.Count == 0
+            ? entries.Take(changesPerModule * 3).ToList()
+            : wanted.SelectMany(module => entries.Where(i => MemoryLabels.HasModule(i.Module, MemoryLabels.JoinCsv(i.ExtraModules), module)).Take(changesPerModule * 3))
+                .DistinctBy(i => i.Id)
+                .ToList();
+        var newest = (await WithGitAsync(scope, candidates, cancellationToken)).OrderByDescending(i => i.CreatedAt).ToList();
         if (wanted.Count == 0) return newest.Take(changesPerModule).ToList();
 
         // Per module: its summary, then its newest change entries. An entry of several modules is listed once.

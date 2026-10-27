@@ -37,6 +37,47 @@
                 </div>
             </div>
         </div>
+        <div class="card mb-3 d-none" id="gitCard">
+            <div class="card-header">Git</div>
+            <div class="card-body small">
+                <div id="gitStatus" class="mb-2 text-secondary">@Lang.T("Memuat…", "Loading…")</div>
+                <label class="form-label text-secondary" for="gitFetchMinutes">@Lang.T("Fetch otomatis tiap (menit, 0 = mati)", "Fetch automatically every (minutes, 0 = off)")</label>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="number" class="form-control" id="gitFetchMinutes" min="0" max="1440" />
+                    <button class="btn btn-outline-primary" type="button" id="btnSaveGit">@Lang.T("Simpan", "Save")</button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnGitFetch">@Lang.T("Fetch sekarang", "Fetch now")</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnGitSync" title="@Lang.T("Tanya git lagi di mana perubahan thread project ini sekarang", "Ask git again where the changes of this project's threads are now")">@Lang.T("Sinkronkan", "Sync")</button>
+                </div>
+                <hr />
+                <div class="fw-semibold mb-1">Environment</div>
+                <p class="text-secondary mb-2">@Lang.T("Dipakai bersama semua developer project ini. Ref = branch remote environment itu, mis. origin/develop. Wiki bisnis punya halaman per environment.", "Shared by every developer of this project. Ref = that environment's remote branch, e.g. origin/develop. The business wiki keeps a page per environment.")</p>
+                <div id="envRows" class="mb-2"></div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnEnvAdd">@Lang.T("+ Environment", "+ Environment")</button>
+                    <button class="btn btn-sm btn-outline-primary" type="button" id="btnEnvSave">@Lang.T("Simpan environment", "Save environments")</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnEnvRefresh" title="@Lang.T("Cari perubahan yang sudah masuk tiap environment sekarang", "Look for the changes that reached each environment now")">@Lang.T("Cek sekarang", "Check now")</button>
+                </div>
+                <hr />
+                <div class="fw-semibold mb-1">@Lang.T("Commit di luar AIT", "Commits made outside AIT")</div>
+                <p class="text-secondary mb-2">@Lang.T("Bila aktif, commit yang dibuat tanpa AIT dirangkum node memory menjadi catatan perubahan dan ikut ke wiki bisnis. Memakai token per commit; dipakai bersama semua developer project ini.", "When on, commits made without AIT are summarized by the memory node into change entries and go into the business wiki. Costs tokens per commit; shared by every developer of this project.")</p>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="ingestEnabled" />
+                    <label class="form-check-label" for="ingestEnabled">@Lang.T("Rangkum commit di luar AIT", "Summarize commits made outside AIT")</label>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-7"><input type="text" class="form-control form-control-sm mono" id="ingestRef" maxlength="250" placeholder="@Lang.T("ref (kosong = environment prod)", "ref (empty = the prod environment)")" /></div>
+                    <div class="col-5"><input type="number" class="form-control form-control-sm" id="ingestMax" min="1" max="50" title="@Lang.T("Commit per putaran", "Commits per pass")" /></div>
+                </div>
+                <div class="text-secondary mb-2" id="ingestStatus"></div>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <button class="btn btn-sm btn-outline-primary" type="button" id="btnIngestSave">@Lang.T("Simpan", "Save")</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="btnIngestRun">@Lang.T("Rangkum sekarang", "Summarize now")</button>
+                </div>
+                <ul class="list-unstyled small mb-0" id="ingestRecent"></ul>
+            </div>
+        </div>
         <div class="card mb-3">
             <div class="card-header">@Html.Raw(Lang.T("Solution &amp; file build", "Solution &amp; build files"))</div>
             <ul class="list-group list-group-flush small mono" id="projectModules"><li class="list-group-item text-secondary">@Lang.T("Memuat…", "Loading…")</li></ul>
@@ -420,4 +461,5 @@
     <script src="~/js/pages/project-testaccounts.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-scenarios.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-git.js" asp-append-version="true"></script>
 }

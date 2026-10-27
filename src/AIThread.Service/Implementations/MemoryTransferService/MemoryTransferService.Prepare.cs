@@ -2,6 +2,7 @@ using System.Reflection;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
 using AIThread.Common.Memory;
+using AIThread.Data.Memory;
 
 namespace AIThread.Service.Implementations;
 
@@ -34,6 +35,7 @@ public sealed partial class MemoryTransferService
 
         return new Prepared(item.Id, item.Level, type, local?.Id, key, name, label, item.Description.Trim(),
             item.SourceThreadId, Utc(item.CreatedAt), item.PromotedAt is { } promoted ? Utc(promoted) : null, Math.Max(0, item.HitCount),
-            item.LastAccessedAt is { } accessed ? Utc(accessed) : null, orphaned, labels, Trim(item.LegacyLabel, 300));
+            item.LastAccessedAt is { } accessed ? Utc(accessed) : null, orphaned, labels, Trim(item.LegacyLabel, 300),
+            Trim(item.GitAuthor, MemorySchema.GitAuthorLength), Trim(item.GitBranch, MemorySchema.GitBranchLength), Trim(item.GitCommit, MemorySchema.GitCommitLength));
     }
 }

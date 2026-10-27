@@ -27,6 +27,13 @@ public static class MemorySchema
         nameof(LongMemory.ReviewReason), nameof(LongMemory.RelabelAttempts), nameof(LongMemory.ExtraModules)
     ];
 
+    // Git origin of the memory (the source thread's branch, commit and author), added to tables made before it.
+    public static readonly string[] GitColumns = [nameof(LongMemory.GitAuthor), nameof(LongMemory.GitBranch), nameof(LongMemory.GitCommit)];
+
+    public const int GitAuthorLength = 300;
+    public const int GitBranchLength = 250;
+    public const int GitCommitLength = 64;
+
     // Room for MemoryLabels.MaxExtraModules names of ModuleLength plus separators.
     public const int ExtraModulesLength = 310;
 
@@ -44,8 +51,16 @@ public static class MemorySchema
         e.HasIndex(x => new { x.ProjectKey, x.Module });
     }
 
+    // The git origin columns of long memory, the same in the main and in an external database.
+    public static void ConfigureGit(EntityTypeBuilder<LongMemory> e)
+    {
+        e.Property(x => x.GitAuthor).HasMaxLength(GitAuthorLength);
+        e.Property(x => x.GitBranch).HasMaxLength(GitBranchLength);
+        e.Property(x => x.GitCommit).HasMaxLength(GitCommitLength);
+    }
+
     // Columns added to a memory table after a release created it: a table made by an older version gets the missing
-    // ones (nullable) here, since external stores are not migrated. The SQL comes from the provider's own migrations
+    // ones (nullable, or with the type's default when the value cannot be null) here, since external stores are not migrated. The SQL comes from the provider's own migrations
     // generator, so it is valid on every supported database.
     public static async Task EnsureColumnsAsync<TEntity>(DbContext db, CancellationToken cancellationToken, params string[] properties)
         where TEntity : class
@@ -76,6 +91,8 @@ public static class MemorySchema
                 // Column missing (a connection problem fails again below, with the provider's own message).
             }
 
+            // A value that cannot be null (a bool flag) gets its default for the rows already there.
+            var required = !property.IsNullable && property.ClrType.IsValueType;
             (missing ??= []).Add(new AddColumnOperation
             {
                 Table = table,
@@ -84,12 +101,43 @@ public static class MemorySchema
                 ClrType = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType,
                 ColumnType = property.GetRelationalTypeMapping().StoreType,
                 MaxLength = property.GetMaxLength(),
-                IsNullable = true
+                IsNullable = !required,
+                DefaultValue = required ? Activator.CreateInstance(property.ClrType) : null
             });
         }
 
         if (missing is null) return;
         foreach (var command in db.GetService<IMigrationsSqlGenerator>().Generate(missing))
+            await db.Database.ExecuteSqlRawAsync(command.CommandText, cancellationToken);
+    }
+
+    // Tables added to a store after a release created it (the context's other tables exist, so CreateTables would fail):
+    // only the missing ones are created, with their indexes, from the context's model by the provider's own migrations
+    // SQL generator.
+    public static async Task EnsureTablesAsync(DbContext db, CancellationToken cancellationToken, params string[] tables)
+    {
+        var sql = db.GetService<ISqlGenerationHelper>();
+        var missing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var table in tables)
+        {
+            try
+            {
+                // Names come from the EF model (not from input) and are delimited by the provider.
+                await db.Database.ExecuteSqlRawAsync("SELECT 1 FROM " + sql.DelimitIdentifier(table) + " WHERE 1 = 0", cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                missing.Add(table);
+            }
+        }
+        if (missing.Count == 0) return;
+
+        var model = db.GetService<IDesignTimeModel>().Model;
+        var operations = db.GetService<IMigrationsModelDiffer>().GetDifferences(null, model.GetRelationalModel())
+            .Where(o => o is CreateTableOperation create && missing.Contains(create.Name)
+                        || o is CreateIndexOperation index && missing.Contains(index.Table))
+            .ToList();
+        foreach (var command in db.GetService<IMigrationsSqlGenerator>().Generate(operations, model))
             await db.Database.ExecuteSqlRawAsync(command.CommandText, cancellationToken);
     }
 

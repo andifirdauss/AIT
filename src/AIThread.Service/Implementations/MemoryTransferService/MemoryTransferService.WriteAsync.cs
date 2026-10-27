@@ -66,6 +66,9 @@ public sealed partial class MemoryTransferService
                 LabelVersion = item.Labels is null ? null : MemoryLabels.CurrentVersion,
                 LegacyLabel = item.LegacyLabel,
                 SourceThreadId = item.SourceThreadId,
+                GitAuthor = item.GitAuthor,
+                GitBranch = item.GitBranch,
+                GitCommit = item.GitCommit,
                 CreatedAt = item.CreatedAt,
                 PromotedAt = item.PromotedAt ?? DateTime.UtcNow,
                 HitCount = item.HitCount,
@@ -94,6 +97,10 @@ public sealed partial class MemoryTransferService
                 row.Keywords = MemoryLabels.JoinCsv(item.Labels?.Keywords);
                 row.LabelVersion = item.Labels is null ? null : MemoryLabels.CurrentVersion;
                 row.LegacyLabel = item.LegacyLabel;
+                // A file from an older version has no git origin; the one known here stays.
+                row.GitAuthor = item.GitAuthor ?? row.GitAuthor;
+                row.GitBranch = item.GitBranch ?? row.GitBranch;
+                row.GitCommit = item.GitCommit ?? row.GitCommit;
                 row.ReviewReason = null;
                 row.RelabelAttempts = null;
                 row.UpdatedAt = DateTime.UtcNow;
