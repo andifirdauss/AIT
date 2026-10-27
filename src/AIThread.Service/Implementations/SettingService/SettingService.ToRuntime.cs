@@ -35,6 +35,9 @@ public sealed partial class SettingService
             entity.BusinessMemoryEnabled,
             entity.BusinessMemoryIntervalHours,
             entity.BusinessMemoryModel,
-            entity.DeveloperName);
+            entity.DeveloperName,
+            entity.CommandToolEnabled,
+            entity.CommandTimeoutSeconds,
+            entity.GitPublishEnabled);
     }
 }

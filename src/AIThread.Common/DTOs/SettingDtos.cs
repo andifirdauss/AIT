@@ -19,7 +19,10 @@ public record SystemSettingDto(
     int MaxFixRounds,
     string ProxyBaseUrl,
     bool PlannerCanAsk = true,
-    string UiLanguage = "id");
+    string UiLanguage = "id",
+    bool CommandToolEnabled = true,
+    int CommandTimeoutSeconds = 60,
+    bool GitPublishEnabled = true);
 
 public record UpdateLanguageRequest(string Language);
 
@@ -38,7 +41,10 @@ public record UpdateSystemSettingRequest(
     bool BuildEnabled = true,
     int BuildTimeoutSeconds = 300,
     int MaxFixRounds = 2,
-    bool PlannerCanAsk = true);
+    bool PlannerCanAsk = true,
+    bool CommandToolEnabled = true,
+    int CommandTimeoutSeconds = 60,
+    bool GitPublishEnabled = true);
 
 public record ClaudeSettingsStatusDto(
     ClaudeSettingsScope Scope,

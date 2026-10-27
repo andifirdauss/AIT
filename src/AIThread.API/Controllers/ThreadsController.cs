@@ -12,9 +12,26 @@ namespace AIThread.API.Controllers;
 
 [ApiController]
 [Route("api/threads")]
-public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, IThreadRollback rollback, IGitChangeTracker gitChanges)
+public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, IThreadRollback rollback, IGitChangeTracker gitChanges,
+    IPendingQuestionStore questions, IPendingApprovalStore publishApprovals)
     : ControllerBase
 {
+    // What the thread waits for the developer to allow (a paused planner, or a commit/push of a finished thread); null
+    // when nothing.
+    [HttpGet("{id:guid}/approval")]
+    public ActionResult<ApiResponse<PendingApprovalDto?>> GetApproval(Guid id)
+    {
+        var request = questions.Find(id)?.Question.Approval?.Request.ToDto(afterThread: false)
+                      ?? publishApprovals.Find(id)?.Request.ToDto(afterThread: true);
+        return ApiResponse<PendingApprovalDto?>.Ok(request);
+    }
+
+    // The developer's answer from the thread page: once, always or deny. The thread goes on in the background.
+    [HttpPost("{id:guid}/approval")]
+    public async Task<ActionResult<ApiResponse<Guid>>> Approve(Guid id, ApproveRequest request, CancellationToken cancellationToken) =>
+        ApiResponse<Guid>.Ok(await orchestrator.ApproveInBackgroundAsync(id, request.Decision, cancellationToken),
+            request.Decision == ApprovalDecision.Deny ? Lang.T("Izin ditolak.", "Permission denied.") : Lang.T("Izin diberikan.", "Permission given."));
+
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ThreadSummaryDto>>>> GetRecent([FromQuery] int take = 30, [FromQuery] Guid? projectId = null, CancellationToken cancellationToken = default) =>
         ApiResponse<IReadOnlyList<ThreadSummaryDto>>.Ok(await threadService.GetRecentAsync(take, projectId, cancellationToken));

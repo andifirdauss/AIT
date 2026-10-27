@@ -16,6 +16,9 @@
     el('orchestrationEnabled').checked = s.orchestrationEnabled;
     el('streamProgress').checked = s.streamProgressToClient;
     el('plannerCanAsk').checked = s.plannerCanAsk;
+    el('commandToolEnabled').checked = s.commandToolEnabled;
+    el('commandTimeout').value = s.commandTimeoutSeconds;
+    el('gitPublishEnabled').checked = s.gitPublishEnabled;
     el('plannerMaxSteps').value = s.plannerMaxSteps;
     el('executorMaxRetries').value = s.executorMaxRetries;
     el('maxParallelTasks').value = s.maxParallelTasks;
@@ -130,7 +133,10 @@
       requestTimeoutSeconds: Number(el('requestTimeout').value),
       buildEnabled: el('buildEnabled').checked,
       buildTimeoutSeconds: Number(el('buildTimeout').value),
-      maxFixRounds: Number(el('maxFixRounds').value)
+      maxFixRounds: Number(el('maxFixRounds').value),
+      commandToolEnabled: el('commandToolEnabled').checked,
+      commandTimeoutSeconds: Number(el('commandTimeout').value),
+      gitPublishEnabled: el('gitPublishEnabled').checked
     };
     try {
       fill(await api.put('/api/settings', body));

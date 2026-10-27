@@ -19,6 +19,15 @@ public sealed class ThreadPlan
     // the tests to run.
     public PlanTests? Tests { get; set; }
 
+    // Only when the developer asked for it: commit (and push) the thread's files once the change is verified. AIT asks
+    // the developer's permission first (ApprovalKind.Commit / Push).
+    public PlanPublish? Publish { get; set; }
+
+    // Filled by the validator, never by the planner: the folders outside the project root the tasks change (see
+    // WorkspaceScope.TryResolveOutside). The developer allowed them before the plan was accepted; kept with the plan so a
+    // retry of the thread may write there too.
+    public List<string>? OutsideFolders { get; set; }
+
     public static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         AllowTrailingCommas = true,
@@ -80,6 +89,15 @@ public sealed class ThreadPlan
         plan = parsed;
         return true;
     }
+}
+
+public sealed class PlanPublish
+{
+    public bool Commit { get; set; }
+    public bool Push { get; set; }
+
+    // The commit message, following the repository's convention (git_log).
+    public string? Message { get; set; }
 }
 
 public sealed class ContractItem
