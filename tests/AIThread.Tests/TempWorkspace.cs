@@ -25,6 +25,19 @@ public sealed class TempWorkspace : IDisposable
         {
             Directory.Delete(Root, recursive: true);
         }
+        catch (UnauthorizedAccessException)
+        {
+            // git writes its objects read-only, which Directory.Delete refuses on Windows.
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(Root, "*", SearchOption.AllDirectories)) File.SetAttributes(file, FileAttributes.Normal);
+                Directory.Delete(Root, recursive: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Best effort, as below.
+            }
+        }
         catch (IOException)
         {
             // Best effort; the OS temp folder is cleaned eventually.

@@ -32,6 +32,9 @@ public sealed partial class BusinessDigestRunner
                 if (result.DigestedThreads.Count == 0) break;
             }
 
+            // New revisions may already hold in an environment (their threads reached it before the wiki caught up).
+            if (created + updated > 0) await envPages.RefreshAsync(key, cancellationToken);
+
             var summary = Lang.T($"Business memory {name}: {threads} thread dirangkum — {created} halaman baru, {updated} halaman diperbarui", $"Business memory {name}: {threads} threads summarized — {created} new pages, {updated} pages updated") +
                           (images > 0 ? $", {images} screenshot." : ".");
             if (warnings.Count > 0) activityLog.Warn("business", summary + " " + string.Join(" ", warnings.Take(3)));

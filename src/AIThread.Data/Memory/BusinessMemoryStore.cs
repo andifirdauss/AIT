@@ -59,6 +59,8 @@ public sealed class BusinessMemoryStore(IDbContextFactory<AIThreadDbContext> mai
                 {
                     // The three tables are created together, so probing one tells whether they exist.
                     await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.BusinessPages.AnyAsync(ct), cancellationToken);
+                    // Added after the first release of the wiki.
+                    await MemorySchema.EnsureTablesAsync(db, cancellationToken, "BusinessEnvPages");
                     _schemaReady = true;
                 }
                 return db;

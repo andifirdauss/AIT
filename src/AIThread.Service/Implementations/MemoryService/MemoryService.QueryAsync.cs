@@ -60,7 +60,10 @@ public sealed partial class MemoryService
             items.AddRange(longs.Select(m => ToDto(m, projects)));
         }
 
+        if (!string.IsNullOrWhiteSpace(query.Environment) && scope?.Key is { } key)
+            items = await InEnvironmentAsync(items, key, query.Environment.Trim(), cancellationToken);
         var ordered = items.OrderByDescending(i => i.CreatedAt).ToList();
-        return new PagedResult<MemoryItemDto>(ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList(), ordered.Count, page, pageSize);
+        var shown = await WithGitStatesAsync(ordered.Skip((page - 1) * pageSize).Take(pageSize).ToList(), cancellationToken);
+        return new PagedResult<MemoryItemDto>(shown, ordered.Count, page, pageSize);
     }
 }

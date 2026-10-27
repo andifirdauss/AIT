@@ -840,6 +840,130 @@ background.
 - For a CLI thread (also a failed one), the Context Keeper updates the session context in the background.
 - When files were changed (also by a thread cancelled/failed halfway), the project's Code structure is rescanned and the
   calls of the changed functions are read (see [Function calls](#function-calls)), both in the background.
+- In a git repository, the thread's change is followed from then on: committed, discarded, or on another branch — see
+  [Git state of a thread's change](#git-state-of-a-threads-change).
+
+## Git state of a thread's change
+
+One project is touched by many developers on many branches. AIT records where a thread's change comes from and follows
+where it moves in git. AIT only **reads** git (it never commits, checks out, resets or pushes), except for the periodic
+`git fetch` (see below).
+
+**Origin** is recorded when the thread starts: the branch (`HEAD` when detached), the commit the thread started from,
+and the developer's git identity (`user.name <user.email>`; the repository's config wins over the global one). The
+origin goes along to the memory made from that thread (see [Git origin of memory](06-memory.md#git-origin-of-memory)).
+
+**Fingerprint**: whenever an executor writes a file, AIT keeps git's *blob id* of its content (`git hash-object`, with
+the repository's `.gitattributes`/`autocrlf`, as a commit would store it). A blob id does not change with a squash merge,
+rebase or cherry-pick, so AIT still recognises the thread's change when its commit SHA differs. When the developer edits
+the file again before committing, the blob differs; AIT then matches the **lines** the thread's tasks added and removed
+(from the task diffs): when the file in `HEAD` holds ≥ 80% of the added lines and no longer holds ≥ 80% of the removed
+ones, the change counts as committed *with the developer's edits*.
+
+| State | Meaning |
+|---|---|
+| Not committed | The file still holds exactly what the thread wrote, not staged |
+| Staged | `git add` done, not committed |
+| Committed | `HEAD` holds what the thread wrote (or its lines, marked *edited by the developer*); its commit is recorded, a squash commit too |
+| Pushed | Committed and in a remote branch (as of the last fetch) |
+| Changed again outside AIT | The file changed again and is not committed (neither what the thread wrote nor the original) |
+| Stashed | Taken away by `git stash` (also `stash -u`); back to normal after `stash pop` |
+| On another branch | The change is in a commit of another branch (local/remote) or a tag, not of the branch checked out now, e.g. after switching branches |
+| Discarded outside AIT | The file is back to what it was before the thread (discard, `checkout --`, reset, or its commit reverted) and no branch/tag holds the change |
+| Commit lost | It was committed, but no branch/tag holds that commit any more (`reset --hard`, rebase, force-push, branch deleted) |
+
+A thread takes its state from its files: all discarded/lost = *Commit lost* when a commit was lost, else *Discarded*;
+any changed again = *Changed again outside AIT*; none left in the working tree = *Stashed* or *On another branch*;
+otherwise the least advanced state (e.g. 2 files pushed, 1 not committed = *Not committed*). Files git ignores do not
+count.
+
+**When it is checked**:
+
+- when the thread finishes (a missing fingerprint is taken then);
+- when the `.git` folder changes (`HEAD`, index, refs, reflog: commit, checkout, merge, reset, stash, fetch), 2 seconds
+  after the last change;
+- every 5 minutes (edits in the working tree do not touch `.git`);
+- before the planner builds the brief section `# Changes in this session`;
+- by hand: the **Sync** button on the Git card of the thread page or of Projects > Detail.
+
+Threads are followed for 30 days after they finish, at most the 200 newest per project. A thread rolled back through AIT
+is no longer followed.
+
+**Automatic `git fetch`**: so other developers' pushes and merges show, AIT runs `git fetch --all --prune` for the
+projects in use (seen or with a followed thread within 30 days), by default every **15 minutes**, one project at a
+time. The interval is set per project in [Projects > Detail → Git](05-menu.md#project) (0 = off), next to a
+*Fetch now* button. Fetch never asks for credentials: a remote that needs a login fails and is named once in the
+activity log.
+
+**Shared with the team**: the git state of every thread (with its branch, author, commits and the blob of each file) is
+written to the `ThreadChanges` table in the long memory database. Other developers using the same store know where that
+change is too, and their AIT checks its own clone: the change counts as in their branch when `HEAD` holds one of its
+commits or all of its blobs (a squash merge).
+
+**Effect on the planner**:
+
+- A thread whose change is *Discarded*, *On another branch* or *Stashed* no longer counts as "this change" in the brief
+  section `# Changes in this session` (its files are not in the working tree).
+- Memory from a change that is *Discarded* or *Commit lost* is not read by the planner (it stays in the Memory menu).
+- Memory from a change that is not in the branch checked out (on another branch, or not committed yet on its author's
+  machine) is still read, but marked `(not in this branch: …)` and put after the other memory; the planner is asked to
+  check the files before relying on it. See [Memory and git](06-memory.md#memory-and-git).
+
+## Environments
+
+Remote branches can be made **environments** (dev, staging, staging2, prod, …) in
+[Projects > Detail → Git](05-menu.md#project): a name, a ref (e.g. `origin/develop`) and a *prod* mark. The list is
+**shared** by every developer of the project key (kept in the long memory database), so one person sets it up.
+
+After every `git fetch` (automatic or *Fetch now*), every 5 minutes, or with *Check now*, AIT looks for every change the
+team shares (`ThreadChanges`, from any developer) in each environment's ref of this clone. A change **reached** an
+environment when:
+
+1. the environment's history holds one of its commits (merge, fast-forward); or
+2. the environment's tree holds the blob of every file it wrote and no longer holds the files it removed (squash merge,
+   cherry-pick); or
+3. the environment's history once held those blobs (the file changed again since; at most 50 changes per environment per
+   pass).
+
+What is seen goes to the shared `ChangePresences` table (thread, environment, the environment commit that brought it,
+who saw it). Once there it stays; any developer's AIT that fetches adds to it. Changing an environment's ref or removing
+it forgets what was seen in it. The name `work` cannot be used (AIT uses it for the working wiki).
+
+Its effects:
+
+- **The business wiki per environment** — see [Wiki per environment](06-memory.md#wiki-per-environment).
+- **The Memory menu**: the *In &lt;environment&gt;* filter shows only memory whose change reached that environment
+  (memory without a thread still shows).
+
+## Commits made outside AIT
+
+Commits developers make **without AIT** can be summarized into memory and the business wiki too. It is **off by
+default**, because every commit costs tokens of the memory node (the cheap node: Tools → Wrapper → Planner). Turn it on
+in [Projects > Detail → Git](05-menu.md#project), section *Commits made outside AIT*; the settings are shared by every
+developer of the project key.
+
+| Setting | Meaning |
+|---|---|
+| Ref | The branch whose commits are read, e.g. `origin/develop`. Empty = the *prod* environment's ref, or `origin/HEAD` |
+| Since | Only commits after it was turned on (turning it on again starts from then), so old history is not summarized at once |
+| Commits per pass | At most this many commits summarized per pass (default 10, at most 50) |
+
+Each pass (after a `git fetch`, every 5 minutes, or *Summarize now*) AIT reads that ref's commits, oldest first, without
+merge commits, and **leaves out** AIT's own: a commit or squash commit of a thread change the team shares, and a commit
+whose every file holds exactly what an AIT thread wrote. The rest is:
+
+1. **claimed** in the shared `IngestedCommits` table — one commit is taken by one AIT only, even when several developers
+   have it on;
+2. summarized by the model from its diff (at most 14,000 characters, secrets masked) and message into one **change
+   entry** (`Change`) in the same format as a thread's; its author and ref become the memory's origin, and the Memory menu
+   names its source *commit &lt;id&gt;*;
+3. recorded as a `ThreadChange` (marked *ingested*), so git state, [environments](#environments) and the wiki per
+   environment treat it like a thread;
+4. summarized into the **business wiki** by the wiki writer of the AIT that claimed it, with the next threads.
+
+A commit with nothing worth keeping (formatting, a version bump, generated files) is skipped by the model. A commit that
+fails to be summarized is marked *failed* and not tried again automatically. The newest commits and their state show on
+the Git card.
 
 ## Unit tests
 

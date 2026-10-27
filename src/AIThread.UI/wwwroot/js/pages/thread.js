@@ -206,6 +206,60 @@
     el('verificationBody').innerHTML = `<div class="small text-secondary">${head}</div>${(report.rounds || []).map(roundHtml).join('')}`;
   }
 
+  const gitStates = {
+    Uncommitted: ['secondary', t('Belum di-commit', 'Not committed')],
+    Staged: ['info', t('Sudah di-stage', 'Staged')],
+    Committed: ['success', t('Sudah di-commit', 'Committed')],
+    ModifiedOutside: ['warning', t('Diubah lagi di luar AIT', 'Changed again outside AIT')],
+    Discarded: ['danger', t('Dibuang di luar AIT', 'Discarded outside AIT')],
+    OnOtherBranch: ['primary', t('Di branch lain', 'On another branch')],
+    Pushed: ['success', t('Sudah di-push', 'Pushed')],
+    Stashed: ['secondary', t('Di-stash', 'Stashed')],
+    Lost: ['danger', t('Commit hilang', 'Commit lost')]
+  };
+
+  function gitBadge(state) {
+    const [color, label] = gitStates[state] || ['secondary', state];
+    return `<span class="badge text-bg-${color}">${escapeHtml(label)}</span>`;
+  }
+
+  const shortCommit = sha => `<span class="mono" title="${escapeHtml(sha)}">${escapeHtml(sha.substring(0, 8))}</span>`;
+
+  // Where the thread started (branch, commit, author) and where its change is now, as GitChangeTracker last saw it.
+  function renderGit() {
+    const git = detail.git;
+    el('gitCard').classList.toggle('d-none', !git);
+    if (!git) return;
+    el('gitOutcome').innerHTML = git.state ? gitBadge(git.state) : '';
+    const origin = [
+      git.branch ? `${t('Branch', 'Branch')}: <span class="mono">${escapeHtml(git.branch)}</span>` : null,
+      git.baseCommit ? `${t('dari commit', 'from commit')} ${shortCommit(git.baseCommit)}` : null,
+      git.author ? `${t('oleh', 'by')} ${escapeHtml(git.author)}` : null
+    ].filter(Boolean).join(' · ');
+    const commits = git.commits.length
+      ? `<div class="small mt-1">${t('Commit', 'Commits')}: ${git.commits.map(shortCommit).join(', ')}</div>` : '';
+    const checked = git.checkedAt
+      ? `<div class="small text-secondary mt-1">${t('Terakhir dicek', 'Last checked')} ${fmt.dateTime(git.checkedAt)}</div>`
+      : `<div class="small text-secondary mt-1">${t('Status git belum dicek.', 'Git state not checked yet.')}</div>`;
+    const files = git.files.length
+      ? `<table class="table table-sm mt-2 mb-0"><tbody>${git.files.map(f => `<tr><td class="mono small">${escapeHtml(f.filePath)}</td>
+          <td>${f.state ? gitBadge(f.state) : '<span class="text-secondary small">–</span>'}${f.commit ? ` ${shortCommit(f.commit)}` : ''}${f.edited ? ` <span class="small text-secondary">${t('(diedit developer sebelum commit)', '(edited by the developer before the commit)')}</span>` : ''}</td></tr>`).join('')}</tbody></table>`
+      : '';
+    el('gitBody').innerHTML = `<div class="small">${origin || t('Asal git tidak diketahui.', 'Git origin unknown.')}</div>${commits}${checked}${files}`;
+  }
+
+  el('btnGitRefresh').addEventListener('click', async () => {
+    el('btnGitRefresh').disabled = true;
+    try {
+      detail.git = await api.post(`/api/threads/${threadId}/git/refresh`);
+      renderGit();
+    } catch (error) {
+      toast(error.message, 'error');
+    } finally {
+      el('btnGitRefresh').disabled = false;
+    }
+  });
+
   const unitOutcomes = {
     passed: ['success', (isEn ? 'Passed' : 'Lolos')],
     failed: ['danger', t('Ada yang gagal', 'Something failed')],
@@ -556,6 +610,7 @@
     renderPlan();
     renderMetrics();
     renderVerification();
+    renderGit();
     renderUnitTests();
     renderTesting();
     renderFinal();
@@ -686,6 +741,7 @@
 
   stream(`threadId=${threadId}`, {
     'thread.updated': reloadDetail,
+    'thread.git': reloadDetail,
     'task.updated': payload => {
       tasks.set(payload.data.id, payload.data);
       renderTasks();

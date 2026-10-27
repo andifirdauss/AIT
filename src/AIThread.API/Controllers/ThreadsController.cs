@@ -12,7 +12,8 @@ namespace AIThread.API.Controllers;
 
 [ApiController]
 [Route("api/threads")]
-public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, IThreadRollback rollback) : ControllerBase
+public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, IThreadRollback rollback, IGitChangeTracker gitChanges)
+    : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ThreadSummaryDto>>>> GetRecent([FromQuery] int take = 30, [FromQuery] Guid? projectId = null, CancellationToken cancellationToken = default) =>
@@ -23,6 +24,16 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
         await threadService.GetDetailAsync(id, cancellationToken) is { } detail
             ? ApiResponse<ThreadDetailDto>.Ok(detail)
             : NotFound(ApiResponse<ThreadDetailDto>.Fail(Lang.T("Thread tidak ditemukan.", "Thread not found.")));
+
+    // Asks git again where the thread's change is now (committed, discarded, ...), instead of waiting for the watcher.
+    [HttpPost("{id:guid}/git/refresh")]
+    public async Task<ActionResult<ApiResponse<ThreadGitDto?>>> RefreshGit(Guid id, CancellationToken cancellationToken)
+    {
+        await gitChanges.RefreshThreadsAsync([id], cancellationToken);
+        return await threadService.GetDetailAsync(id, cancellationToken) is { } detail
+            ? ApiResponse<ThreadGitDto?>.Ok(detail.Git)
+            : NotFound(ApiResponse<ThreadGitDto?>.Fail(Lang.T("Thread tidak ditemukan.", "Thread not found.")));
+    }
 
     // Runs a prompt from the dashboard against a registered project; progress arrives over SSE.
     [HttpPost]

@@ -220,6 +220,39 @@ to the shared long memory.
 - The module list, the code map and the project's [unit test catalog](07-cara-kerja.md#unit-tests) follow the same rules:
   they move along when the key changes from local to a shared key, and are deleted together with its memory.
 
+### Git origin of memory
+
+Project memory made from a thread keeps **who** (the developer's git identity, `Name <email>`), the **branch**, and the
+**commit** the thread started from. The values are taken from the thread when the memory moves to long memory, so other
+developers read them in a shared store, and they go along in `aithread-memory` export/import files. In the Memory menu
+the branch shows under the *thread* link (hover for the author and commit). Where the thread's change moves afterwards
+(committed, discarded, on another branch) shows on the thread page — see
+[Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change).
+
+Knowledge memory and memory from older versions have no git origin.
+
+### Memory and git
+
+The git state of every thread's change is shared with the team through the `ThreadChanges` table in the long memory
+database (see [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change)). From there:
+
+- The **Memory menu** shows a badge with the state of the memory's change in its author's clone (*committed*, *pushed*,
+  *discarded*, *on another branch*, …) under the *thread* link. Memory summarized from a
+  [commit made outside AIT](07-cara-kerja.md#commits-made-outside-ait) names *commit &lt;id&gt;* as its source.
+- The **planner** checks the clone in use:
+
+  | The memory's change | Planner |
+  |---|---|
+  | In the branch checked out (`HEAD` holds its commit, or all its blobs, e.g. after a squash merge) | Read as usual |
+  | On another branch not merged here | Read with the mark `(not in this branch: committed on <branch> by <author>)`, put after the other memory |
+  | Not committed yet or stashed on its author's machine | Read with the mark `(not in this branch: not committed yet …)`, put after the other memory |
+  | Discarded or its commit lost | Not read |
+  | Unknown (knowledge, older memory, not a git repository) | Read as usual |
+
+- The **module summary** leaves out change entries whose change was discarded or whose commit was lost. Such an entry
+  keeps waiting, so it is summarized after all when the change comes back (e.g. `stash pop`, a branch restored). An
+  entry already summarized before it was discarded is not taken out again.
+
 ## Memory storage
 
 The **Setting → Memory storage** menu (`/Setting#memory`) decides where each level is stored. Changes apply right away
@@ -527,6 +560,24 @@ screenshot straight into the editor (Ctrl+V) or use *Insert image*; images (PNG/
 in the store and written as `![caption](asset:<id>)`. *Preview* shows the page exactly as it will be after saving. Raw
 HTML is not rendered, and links may only go to `http(s)`, `mailto` or inside the application — the wiki can be written by
 anyone who shares the store, so its content is not trusted as it is.
+
+### Wiki per environment
+
+When the project has [environments](07-cara-kerja.md#environments), the business wiki keeps a **separate page per
+environment** besides the working wiki (the newest version from every branch). An environment's page is the **newest
+revision** of the working page whose source threads (of that revision and the ones before) all reached that environment:
+
+- a manual revision (no thread) holds when the one before it holds;
+- a thread git knows nothing of (older threads, not a repository) and a change discarded or with its commit lost do not
+  hold a page back;
+- the content is **copied** from that revision, never rewritten by a model — exactly what the wiki once said. When an
+  older revision's thread has not arrived, the page stays at the revision before it even if a newer one has.
+
+Environment pages are updated after the environments are checked and after the wiki writer writes pages. In
+**Memory → Business memory**, choose an *Environment* to read that environment's wiki (read-only; a yellow badge when
+the working wiki is newer), and **Compare** two sides (environments or the working wiki): the pages that differ with a
+line diff, the pages on one side only, and the changes (threads/commits) on one side only — e.g. *in staging, not in
+prod yet*.
 
 ## Managing from the Memory menu
 

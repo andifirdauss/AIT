@@ -1,3 +1,5 @@
+using AIThread.Common.Enums;
+
 namespace AIThread.Common.Entities;
 
 // A file as it was before a thread first wrote to it, so the thread's changes can be undone. One row per thread and
@@ -23,4 +25,16 @@ public class ThreadFileSnapshot : BaseEntity
 
     // True when the thread last left the file absent (a delete task, or the source of a move); undoing restores it.
     public bool Removed { get; set; }
+
+    // Git's blob id of what the thread last wrote (git hash-object, with the repository's filters), taken when the
+    // thread finished: a commit, a squash or a cherry-pick holding the same content holds the same blob.
+    public string? AfterBlob { get; set; }
+
+    // Where this file's change is now (GitChangeTracker) and the commit that brought it in, when committed.
+    public GitChangeState? GitState { get; set; }
+    public string? GitCommit { get; set; }
+
+    // The commit holds the thread's change with the developer's own edits on top: found by the thread's lines, not by
+    // its blob.
+    public bool GitEdited { get; set; }
 }

@@ -10,8 +10,33 @@ namespace AIThread.API.Controllers;
 // Business memory: the business wiki of each project (Memory menu → tab Business memory) and its settings.
 [ApiController]
 [Route("api/business")]
-public class BusinessController(IBusinessMemoryService business, IBusinessDigestRunner runner) : ControllerBase
+public class BusinessController(IBusinessMemoryService business, IBusinessDigestRunner runner, IBusinessEnvService environments) : ControllerBase
 {
+    // The wiki as it holds in one environment (only the pages whose changes reached it).
+    [HttpGet("projects/{projectId:guid}/environments/{environment}")]
+    public async Task<ActionResult<ApiResponse<BusinessEnvOverviewDto>>> Environment(Guid projectId, string environment, CancellationToken cancellationToken) =>
+        await environments.GetPagesAsync(projectId, environment, cancellationToken) is { } overview
+            ? ApiResponse<BusinessEnvOverviewDto>.Ok(overview)
+            : NotFound(ApiResponse<BusinessEnvOverviewDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+
+    [HttpGet("pages/{id:guid}/environments/{environment}")]
+    public async Task<ActionResult<ApiResponse<BusinessEnvPageDto>>> EnvironmentPage(Guid id, string environment, CancellationToken cancellationToken) =>
+        await environments.GetPageAsync(id, environment, cancellationToken) is { } page
+            ? ApiResponse<BusinessEnvPageDto>.Ok(page)
+            : NotFound(ApiResponse<BusinessEnvPageDto>.Fail(Lang.T("Halaman ini belum ada di environment itu.", "This page is not in that environment yet.")));
+
+    // left/right: an environment name or "work" (the working wiki).
+    [HttpGet("projects/{projectId:guid}/compare")]
+    public async Task<ActionResult<ApiResponse<BusinessCompareDto>>> Compare(Guid projectId, [FromQuery] string left, [FromQuery] string right,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+            throw new AppValidationException(Lang.T("Pilih dua sisi yang dibandingkan.", "Pick the two sides to compare."));
+        return await environments.CompareAsync(projectId, left.Trim(), right.Trim(), cancellationToken) is { } compare
+            ? ApiResponse<BusinessCompareDto>.Ok(compare)
+            : NotFound(ApiResponse<BusinessCompareDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
+    }
+
     // Base64 of the largest accepted image, with room for a data: URL prefix.
     private const int MaxUploadChars = (BusinessImages.MaxBytes + 2) / 3 * 4 + 100;
 

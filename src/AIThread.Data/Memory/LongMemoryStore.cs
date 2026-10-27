@@ -32,6 +32,9 @@ public sealed class LongMemoryStore(IDbContextFactory<AIThreadDbContext> mainFac
     // The test accounts and testing settings of the projects, kept in the same database as long memory.
     public Task<ITestingDb> CreateTestingAsync(CancellationToken cancellationToken = default) => _current.OpenTestingAsync(mainFactory, cancellationToken);
 
+    // The git state of the threads' changes (ThreadChange), kept in the same database as long memory.
+    public Task<IGitTrackingDb> CreateGitAsync(CancellationToken cancellationToken = default) => _current.OpenGitAsync(mainFactory, cancellationToken);
+
     // Invalid settings throw before anything changes.
     public void Configure(MemoryStoreConnection connection)
     {
@@ -60,21 +63,56 @@ public sealed class LongMemoryStore(IDbContextFactory<AIThreadDbContext> mainFac
         DbContextOptions<LongMemoryDbContext>? options,
         DbContextOptions<MemoryCatalogDbContext>? catalogOptions,
         DbContextOptions<UnitTestDbContext>? unitTestOptions,
-        DbContextOptions<TestingDbContext>? testingOptions)
+        DbContextOptions<TestingDbContext>? testingOptions,
+        DbContextOptions<GitTrackingDbContext>? gitOptions)
     {
         private readonly SemaphoreSlim _schemaLock = new(1, 1);
         private volatile bool _schemaReady;
         private volatile bool _catalogReady;
         private volatile bool _unitTestsReady;
         private volatile bool _testingReady;
+        private volatile bool _gitReady;
 
         public MemoryStoreConnection Connection => connection;
         public DbContextOptions<LongMemoryDbContext>? Options => options;
 
         public static Backend Create(MemoryStoreConnection connection) => connection.Provider == MemoryStoreProvider.Default
-            ? new Backend(connection, null, null, null, null)
+            ? new Backend(connection, null, null, null, null, null)
             : new Backend(connection, connection.BuildDbContextOptions<LongMemoryDbContext>(), connection.BuildDbContextOptions<MemoryCatalogDbContext>(),
-                connection.BuildDbContextOptions<UnitTestDbContext>(), connection.BuildDbContextOptions<TestingDbContext>());
+                connection.BuildDbContextOptions<UnitTestDbContext>(), connection.BuildDbContextOptions<TestingDbContext>(),
+                connection.BuildDbContextOptions<GitTrackingDbContext>());
+
+        // A context of its own, so an external store made by a release without git tracking gets the table on first use.
+        // Rows written before a switch of store are not copied: each AIT writes its threads again when it next looks at them.
+        public async Task<IGitTrackingDb> OpenGitAsync(IDbContextFactory<AIThreadDbContext> mainFactory, CancellationToken cancellationToken)
+        {
+            if (gitOptions is null) return await mainFactory.CreateDbContextAsync(cancellationToken);
+
+            var db = new GitTrackingDbContext(gitOptions);
+            if (_gitReady) return db;
+
+            await _schemaLock.WaitAsync(cancellationToken);
+            try
+            {
+                if (!_gitReady)
+                {
+                    await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.ThreadChanges.AnyAsync(ct), cancellationToken);
+                    await MemorySchema.EnsureTablesAsync(db, cancellationToken, "ProjectEnvironments", "ChangePresences", "CommitIngestSettings", "IngestedCommits");
+                    await MemorySchema.EnsureColumnsAsync<ThreadChange>(db, cancellationToken, nameof(ThreadChange.Ingested));
+                    _gitReady = true;
+                }
+                return db;
+            }
+            catch
+            {
+                await db.DisposeAsync();
+                throw;
+            }
+            finally
+            {
+                _schemaLock.Release();
+            }
+        }
 
         // A context of its own, so an external store made by a release without testing data gets these tables on first
         // use (creating the unit test catalog's tables again would fail).
@@ -181,7 +219,7 @@ public sealed class LongMemoryStore(IDbContextFactory<AIThreadDbContext> mainFac
                 {
                     await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.LongMemories.AnyAsync(ct), cancellationToken);
                     await MemorySchema.EnsureColumnsAsync<LongMemory>(db, cancellationToken,
-                        [nameof(LongMemory.ProjectKey), nameof(LongMemory.ProjectName), .. MemorySchema.LabelColumns]);
+                        [nameof(LongMemory.ProjectKey), nameof(LongMemory.ProjectName), .. MemorySchema.LabelColumns, .. MemorySchema.GitColumns]);
                     _schemaReady = true;
                 }
                 return db;

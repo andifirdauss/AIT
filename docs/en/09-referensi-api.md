@@ -120,6 +120,16 @@ the others `projectFile` in the CLI list is `null`, `/projects` returns an empty
 | `GET` | `/api/projects/browse?path=` | without `path` = the drive list. Result: `path`, `parent`, `folders[]` (`name`, `path`, `isProject`, `stacks[]`), `projects[]` (project roots in that folder: `name`, `path`, `stacks[]`, `isRegistered`, `projectId`), `quickLocations[]` |
 | `GET` | `/api/projects/scan?path=&depth=4` | `depth` 1–8. Result: `root`, `projects[]` (the same shape as `browse`), `foldersScanned`, `truncated`, `elapsedMs` |
 | `PUT` | `/api/projects/{id}/key` | `{ "key": "eep" }` — a manual key (empty/`null` = remove); `.aithread/project.json` still wins. Memory under the old local key moves along (so do its module list & code map) |
+| `POST` | `/api/projects/{id}/git/refresh` | — → the number of threads whose state changed. Asks git again for the change state of every followed thread of the project (last 30 days); each change is sent over SSE `thread.git` |
+| `GET` | `/api/projects/{id}/git` | — → `isRepository`, `hasRemote`, `fetchMinutes` (as set; `null` = the default), `effectiveFetchMinutes`, `lastFetchAt`, `lastFetchError`, `followedThreads` |
+| `PUT` | `/api/projects/{id}/git` | `{ "fetchMinutes": 15 \| 0 \| null }` — the automatic `git fetch` interval (0–1440 minutes, 0 = off, `null` = the default 15) → same shape as `GET` |
+| `POST` | `/api/projects/{id}/git/fetch` | — → `git fetch --all --prune` now, then the followed threads are checked again; same shape as `GET` (failure = `lastFetchError`) |
+| `GET` | `/api/projects/{id}/environments` | — → `id`, `name`, `ref`, `order`, `isProduction`, `refFound` + `refCommit` (the ref in this clone), `changes` (changes that reached it), `lastSeenAt` |
+| `PUT` | `/api/projects/{id}/environments` | `{ "environments": [{ "name": "dev", "ref": "origin/develop", "isProduction": false }, …] }` — the whole list (order = display order, at most 20; names of letters/digits/`_`/`.`/`-`, not `work`). Shared per project key; a changed ref or a removed environment forgets what was seen in it → same shape as `GET` |
+| `POST` | `/api/projects/{id}/environments/refresh` | — → looks for the changes that reached each environment now; same shape as `GET` |
+| `GET` | `/api/projects/{id}/git/ingest` | — → `enabled`, `ref`, `effectiveRef` (the ref read in this clone; `null` = none), `since`, `maxPerRun`, `done`, `skipped`, `failed`, `lastIngestedAt`, `recent[]` (`id`, `commit`, `status` = `Pending`/`Done`/`Skipped`/`Failed`, `title`, `author`, `committedAt`, `claimedBy`, `memoryId`, `note`, `createdAt`). `404` when the project does not exist or has no key |
+| `PUT` | `/api/projects/{id}/git/ingest` | `{ "enabled": true, "ref": "origin/develop" \| null, "since": null, "maxPerRun": 10 }` — shared per project key; `since` `null` = unchanged (turning it on again = from now) → same shape as `GET` |
+| `POST` | `/api/projects/{id}/git/ingest/run` | — → one pass now: `ingested`, `skipped`, `failed`, `problem` (why it did not run) |
 | `GET` | `/api/projects/{id}/codemap?search=&module=` | the code map: `path`, `module`, `layer` (`UI`/`Entry`/`Logic`/`Data`/`Infra`/`Test`), `area`, `source` (`Heuristic`/`AI`/`Manual`), `updatedAt` (at most 500 rows) |
 | `PUT` | `/api/projects/{id}/codemap` | `{ "path": "src/Bl/UserBL.cs" \| "UserBL", "module": "Account", "layer": "Logic" \| null }` — a manual correction, never overwritten; a class/file name is looked up in the project files (400 when it does not exist or matches more than one) |
 | `POST` | `/api/projects/{id}/codemap/scan` | maps the source files not mapped yet (at most 3,000) → `files`, `mapped`, `modules` |
@@ -165,7 +175,7 @@ no key yet). Responses **never** hold the snapshot of a test file's content; onl
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `page`, `pageSize` (at most 200) |
+| `GET` | `/api/memory` | `level`, `type`, `projectId`, `search`, `module`, `layer`, `kind`, `labeled` (`true`/`false`), `needsReview`, `environment` (with `projectId`: only memory whose change reached that environment), `page`, `pageSize` (at most 200). Each memory holds `gitAuthor`, `gitBranch`, `gitCommit` (origin) and `gitState` (the state of its change in the author's clone, from `ThreadChanges`), `fromCommit` (summarized from a commit made outside AIT) |
 | `GET` | `/api/memory/stats` | — (+ `unlabeledCount`, `reviewCount`) |
 | `GET` | `/api/memory/{level}/{id}` | — |
 | `POST` | `/api/memory` | `{ "type": "Project", "projectId": "...", "module": "User", "extraModules": ["Invoice"], "kind": "Rule", "keywords": ["Description", "Deskripsi"], "layers": ["Logic"], "area": null, "description": "..." }` → a short memory. `module`, `kind`, at least one keyword (at most 16) and `description` are required; `extraModules` is optional (at most 3); knowledge only `Pitfall`/`Pattern`/`Architecture`. The module is matched to the module list (name/alias/plural) or added; everything is normalized to PascalCase (capitalized abbreviations in module names are kept: `MKPP`, `KlaimDF`). A memory response holds `extraModules[]`; the `module` filter of `GET /api/memory` matches the other modules too |
@@ -215,6 +225,9 @@ machine; pages are stored per project key.
 | `POST` | `/api/business/digest?projectId=` | summarizes the waiting threads now → `threads`, `pagesCreated`, `pagesUpdated`, `images`, `warnings[]`. `400` when another summary is running |
 | `GET` | `/api/business/settings` | — (`enabled`, `intervalHours`, `model`, `developerName`, `effectiveDeveloperName`) |
 | `PUT` | `/api/business/settings` | `{ "enabled": true, "intervalHours": 6, "model": null, "developerName": "Andi" }` |
+| `GET` | `/api/business/projects/{projectId}/environments/{environment}` | — → `environment`, `pages[]` (`pageId`, `module`, `title`, `slug`, `summary`, `version` = the revision that holds, `workingVersion` = the working wiki's version now, `updatedAt`), `missing` (working pages not in the environment yet) |
+| `GET` | `/api/business/pages/{id}/environments/{environment}` | — → the page as above + `content`, `html`. `404` when the page is not in that environment yet |
+| `GET` | `/api/business/projects/{projectId}/compare?left=&right=` | `left`/`right` = an environment name or `work` (the working wiki) → `pages[]` (`pageId`, `module`, `title`, `status` = `same`/`changed`/`left`/`right`, `leftVersion`, `rightVersion`, `diff[]` (`kind` = `same`/`add`/`del`/`skip`, `text`; `skip` = how many unchanged lines are folded)), `changes[]` (`threadId`, `title`, `author`, `branch`, `side` = `left`/`right`, `commit`) |
 
 ### Thread & dashboard
 
@@ -229,9 +242,14 @@ machine; pages are stored per project key.
 | `POST` | `/api/threads/{id}/follow-ups/{number}/run` | — → the thread id. Runs one follow-up test suggested by the Tester (the `followUps` part of `testingJson`) in the background: the scenarios of that suggestion, the project's test accounts, the remembered values (`values`). Its result is in `followUps[].lastRun`; new suggestions from that run are added. 400 for the same reasons as `/test`, or when the suggestion number does not exist. |
 | `GET` | `/api/threads/{id}/rollback` | — → a preview `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Changes nothing. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. All or nothing: 400 without touching any file when there is a `conflict`. |
+| `POST` | `/api/threads/{id}/git/refresh` | — → the `git` part of the thread detail (see below) after asking git again |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
+
+The thread detail (`GET /api/threads/{id}`) also holds `git` (`null` outside a git repository): `branch`, `baseCommit`,
+`author` (the origin when the thread started), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`, `edited`).
+The thread summary (`GET /api/threads`) holds `gitState`. See [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change).
 
 ### System
 
@@ -292,6 +310,7 @@ sent every 15 seconds when it is quiet.
 | `router.status` | the 9router status (sent every monitor interval; also when the connection opens without `threadId`) |
 | `thread.created` | `id`, `projectId`, `status` |
 | `thread.updated` | `id`, `status`, `planSummary`, `totalMs`, `error` |
+| `thread.git` | `threadId`, `projectId`, `state` (`Uncommitted`/`Staged`/`Committed`/`Pushed`/`ModifiedOutside`/`Stashed`/`OnOtherBranch`/`Discarded`/`Lost`), `commits[]` — the git state of a thread's change changed |
 | `thread.output` | planner activity: `{ "kind": "planner.tool", "tool": "read_file", "detail": "…" }` |
 | `task.updated` | the full task object (status, node, duration, diff, error, …) |
 | `task.output` | a piece of executor model output: `taskId`, `taskKey`, `text` |
