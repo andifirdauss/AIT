@@ -4,11 +4,19 @@ namespace AIThread.Service.Git;
 
 public sealed partial class GitPublisher
 {
-    // Groups the files by the repository holding them, with the branch and its upstream. Files outside any repository
-    // are left out; Error says why nothing can be done (no repository, detached HEAD, no remote to push to).
-    public async Task<(PublishJob? Job, string? Error)> PrepareAsync(IReadOnlyList<string> files, bool commit, bool push, string? message,
+    public Task<(PublishJob? Job, string? Error)> PrepareAsync(IReadOnlyList<string> files, bool commit, bool push, string? message,
+        CancellationToken cancellationToken = default) =>
+        PrepareAsync(files, new PublishRequest(commit, push, message), cancellationToken);
+
+    // Groups the files by the repository holding them, with the branch and its upstream (a new branch has none yet) and
+    // the base of a pull request. Files outside any repository are left out; Error says why nothing can be done (no
+    // repository, detached HEAD, no remote to push to, the new branch already exists, a pull request into itself).
+    public async Task<(PublishJob? Job, string? Error)> PrepareAsync(IReadOnlyList<string> files, PublishRequest request,
         CancellationToken cancellationToken = default)
     {
+        var (commit, push) = (request.Commit, request.Push);
+        if (request.PullRequest is not null && !push) return (null, "a pull request needs a push");
+
         var byRoot = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         var roots = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in files.Distinct(StringComparer.OrdinalIgnoreCase))
@@ -32,6 +40,8 @@ public sealed partial class GitPublisher
         {
             var branch = (await GitProcess.RunAsync(root, ["rev-parse", "--abbrev-ref", "HEAD"], cancellationToken)).Output.Trim();
             if (branch.Length == 0 || branch == "HEAD") return (null, $"{root} is not on a branch (detached HEAD)");
+            if (request.Branch is { } wanted && await BranchExistsAsync(root, wanted, cancellationToken))
+                return (null, $"the branch '{wanted}' already exists in {root}; AIT only creates new branches (switch to it yourself, or name another one)");
 
             // Only the files git sees as changed are committed; a file the thread left as it found it has nothing to commit.
             var changed = commit ? await ChangedAsync(root, paths, cancellationToken) : [];
@@ -40,8 +50,10 @@ public sealed partial class GitPublisher
             var hasUpstream = false;
             if (push)
             {
-                var upstream = await GitProcess.RunAsync(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], cancellationToken);
-                if (upstream.Ok && upstream.Output.Trim() is { Length: > 0 } tracking && tracking.IndexOf('/') is var slash and > 0)
+                var upstream = request.Branch is null
+                    ? await GitProcess.RunAsync(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], cancellationToken)
+                    : null;
+                if (upstream is { Ok: true } && upstream.Output.Trim() is { Length: > 0 } tracking && tracking.IndexOf('/') is var slash and > 0)
                 {
                     remote = tracking[..slash];
                     hasUpstream = true;
@@ -54,10 +66,18 @@ public sealed partial class GitPublisher
                     if (remote is null) return (null, $"{root} has no remote to push to");
                 }
             }
-            repos.Add(new PublishRepo(root, branch, remote, hasUpstream, changed));
+
+            string? baseBranch = null;
+            if (request.PullRequest is { } pullRequest && remote is not null)
+            {
+                baseBranch = pullRequest.Base ?? await DefaultBaseAsync(root, remote, cancellationToken);
+                if (string.Equals(baseBranch, request.Branch ?? branch, StringComparison.Ordinal))
+                    return (null, $"a pull request from {baseBranch} into itself; create a new branch for it or name another base");
+            }
+            repos.Add(new PublishRepo(root, branch, remote, hasUpstream, changed, request.Branch, baseBranch));
         }
 
-        if (commit && repos.All(r => r.Files.Count == 0) && !push) return (null, "the files have no uncommitted change");
-        return (new PublishJob(commit, push, message, repos), null);
+        if (commit && repos.All(r => r.Files.Count == 0) && !push && request.Branch is null) return (null, "the files have no uncommitted change");
+        return (new PublishJob(commit, push, request.Message, repos, request.Branch, request.PullRequest), null);
     }
 }

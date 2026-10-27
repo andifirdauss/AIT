@@ -240,6 +240,17 @@
         @Lang.T("Izin \"selalu\" yang diberikan di mesin ini untuk project ini: ubah file di luar project, perintah, host luar, commit, dan push. Izin \"sekali\" tidak disimpan. Push ke main/master/release selalu ditanyakan.",
             "\"Always\" permissions given on this machine for this project: changing files outside the project, commands, outside hosts, commit and push. \"Once\" permissions are not kept. A push to main/master/release is always asked.")
     </div>
+    <form class="card-body border-bottom py-2" id="approvalAddForm" autocomplete="off">
+        <label class="form-label small mb-1" for="approvalCommand">@Lang.T("Tambah izin perintah", "Add a command permission")</label>
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control mono" id="approvalCommand" maxlength="800" required placeholder="@Lang.T("mis. npm install * atau dotnet ef migrations list", "e.g. npm install * or dotnet ef migrations list")" />
+            <button type="submit" class="btn btn-outline-primary" id="btnApprovalAdd">@Lang.T("Tambah", "Add")</button>
+        </div>
+        <div class="form-text">
+            @Lang.T("Akhiri dengan \" *\" untuk pola: perintah tunggal yang diawali kata yang sama (tanpa pipe atau operator shell) jalan tanpa bertanya. Tanpa \" *\" hanya perintah yang persis sama. Pola untuk perintah yang menghapus, memublikasikan, atau mengubah repository (rm, git push, npm publish, …) ditolak.",
+                "End with \" *\" for a pattern: a single command starting with the same words (no pipe or shell operator) runs without asking. Without \" *\" only the exact same command. Patterns for commands that delete, publish or change the repository (rm, git push, npm publish, …) are refused.")
+        </div>
+    </form>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
             <thead><tr><th>@Lang.T("Jenis", "Kind")</th><th>@Lang.T("Target", "Target")</th><th>@Lang.T("Diberikan", "Given")</th><th>@Lang.T("Terakhir dipakai", "Last used")</th><th></th></tr></thead>

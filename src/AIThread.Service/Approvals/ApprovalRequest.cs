@@ -6,12 +6,16 @@ using AIThread.Common.Localization;
 namespace AIThread.Service.Approvals;
 
 // One action AIT wants to take: what kind, on what (see ApprovalKind) and a line saying what exactly happens.
-public sealed record ApprovalItem(ApprovalKind Kind, string Target, string? Detail = null);
+// Pattern: for a command, the pattern "always allow the pattern" saves instead (ApprovalTargets.SuggestPattern).
+public sealed record ApprovalItem(ApprovalKind Kind, string Target, string? Detail = null, string? Pattern = null);
 
 // What AIT asks the developer before acting: the actions, why, and whether "allow always" may be offered (never for
 // a push to a protected branch).
 public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string Reason, bool AllowAlways = true)
 {
+    // "Always allow the pattern" is offered: a command item has a pattern and "always" may be offered at all.
+    public bool AllowPattern => AllowAlways && Items.Any(i => i.Pattern is not null);
+
     // Shown to the developer (CLI, Telegram, the thread page) as the thread's reply.
     public string ToText()
     {
@@ -29,13 +33,19 @@ public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string R
             builder.Append(Lang.T("2. **Izinkan selalu** — disimpan di mesin ini untuk project ini (cabut di Project → Detail → Izin AIT)\n",
                 "2. **Always allow** — saved on this machine for this project (revoke in Project → Detail → AIT permissions)\n"));
         builder.Append(Lang.T("3. **Tolak**\n", "3. **Deny**\n"));
+        if (AllowPattern)
+        {
+            var patterns = string.Join(", ", Items.Where(i => i.Pattern is not null).Select(i => $"`{i.Pattern}`").Distinct());
+            builder.Append(Lang.T($"4. **Izinkan selalu untuk pola** {patterns} — perintah lain yang diawali kata yang sama juga diizinkan\n",
+                $"4. **Always allow the pattern** {patterns} — other commands starting with the same words are allowed too\n"));
+        }
         builder.Append(Lang.T("\nBalas dengan nomor pilihan.", "\nReply with the option number."));
         return builder.ToString();
     }
 
     // For the buttons on the thread page; afterThread: a commit/push of a finished thread rather than a paused planner.
     public PendingApprovalDto ToDto(bool afterThread) =>
-        new(Items.Select(i => new ApprovalItemDto(i.Kind, i.Target, i.Detail)).ToList(), Reason, AllowAlways, ToText(), afterThread);
+        new(Items.Select(i => new ApprovalItemDto(i.Kind, i.Target, i.Detail, i.Pattern)).ToList(), Reason, AllowAlways, ToText(), afterThread, AllowPattern);
 
     public static string KindLabel(ApprovalKind kind) => kind switch
     {
@@ -44,6 +54,8 @@ public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string R
         ApprovalKind.Host => Lang.T("Akses host luar", "Call an outside host"),
         ApprovalKind.Commit => Lang.T("Commit", "Commit"),
         ApprovalKind.Push => Lang.T("Push", "Push"),
+        ApprovalKind.Branch => Lang.T("Buat branch", "Create a branch"),
+        ApprovalKind.PullRequest => Lang.T("Buka pull request", "Open a pull request"),
         _ => kind.ToString()
     };
 }

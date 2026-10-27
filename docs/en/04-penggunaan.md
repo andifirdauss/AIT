@@ -162,7 +162,8 @@ AIT is most effective for changes that touch several files/layers at once.
   manual restore) on its own. Besides the project's **build** (when *Automatic build & verification* is on) and the
   **unit tests** of the [project catalog](07-cara-kerja.md#unit-tests) (`dotnet test`, jest/vitest/mocha, pytest,
   PHPUnit, Maven/Gradle, `go test`, `cargo test`), the planner has a `run_command` tool for **read-only** commands
-  (e.g. `curl` GET to see the shape of an API response, git reads, tool versions). Commands that may change something,
+  (e.g. `curl` GET to see the shape of an API response, git reads, tool versions), `web_fetch` to read web pages, docs or
+  APIs over GET, and `start_process` for a dev server that must keep running while it investigates. Commands that may change something,
   `curl` to an outside host, **commit/push**, and changes to files **outside the project folder** only run after you
   allow them, see [Developer permission](#developer-permission). Other steps are named in the summary.
 - It runs your application only for testing. With [Auto Testing](02-konfigurasi.md#auto-testing-tester-node), AIT tries
@@ -373,8 +374,11 @@ AIT stops and asks before doing something beyond the usual limits:
 | Action | Permission target |
 |---|---|
 | Changing files outside the project folder | that folder's repository/project root (or the folder) |
-| A `run_command` that may change something (POST/PUT/DELETE, writing files, installs, `git commit`, shell operators `;` `&&` `>`, …) | the exact command text |
-| `curl` GET/HEAD to a host other than localhost | `host:port` |
+| A `run_command` that may change something (POST/PUT/DELETE, writing files, installs, `git commit`, shell operators `;` `&&` `>`, …) | the exact command text, or a pattern (`npm install *`) |
+| `start_process` (a background process: dev server, watcher) | the exact command text, or a pattern |
+| `curl` GET/HEAD or `web_fetch` to a host other than localhost | `host:port` (one permission for both) |
+| Creating a new branch | the repository + branch |
+| Opening a pull/merge request | the repository + `base<-head` |
 | Committing the thread's files | the repository root |
 | Pushing the branch | the repository + `remote/branch` |
 
@@ -386,12 +390,20 @@ The reply is a numbered card, answered in the CLI (or Telegram) or with the butt
 1. Allow once — for this action only
 2. Always allow — saved on this machine for this project
 3. Deny
+4. Always allow the pattern `curl -X *` — only when the command is safe to pattern
 ```
 
 Reply `1`/`once`/`allow once`, `2`/`always`, or `3`/`deny` (Indonesian words work too). Any other reply counts as a
 denial and reaches the planner as an instruction. **Always** permissions are kept per machine + project + target and
 can be revoked in Project > Detail → **AIT permissions**. A push to `main`/`master`/`production`/`release/*` is
 always asked (no always option).
+
+**Pattern permissions.** For a command that is safe to pattern, the card offers option **4. Always allow the pattern**,
+e.g. `npm install *` (reply `4`/`pattern`/`pola`). A pattern allows single commands starting with the same words — no
+pipe, shell operator, `$()` or backtick; a combined command still needs an exact permission. Commands that delete or
+move files, wrap another command (`sudo`, `bash -c`, `xargs`, …), publish (`push`, `publish`, `deploy`) or change the
+git repository are never offered a pattern. Patterns can also be added by hand in the **AIT permissions** card (*Add a
+command permission*).
 
 **Read-only commands** run without asking: `curl` GET/HEAD to localhost (also with `| jq`), `git status/log/diff/show/…`,
 `ls`/`cat`/`head`/`grep` (without `-r`), and version checks (`dotnet --info`, `node -v`, `npm ls`). A command
@@ -401,6 +413,26 @@ naming a credential file is always refused, and the output is masked like a file
 this change"* after a few threads). AIT commits only the files the thread wrote after the verification passed (build,
 unit tests, testing), with a message in the repository's style, then pushes to the branch's upstream (or `origin`)
 without `--force`. When the verification failed, commit/push is not offered.
+
+**Branch & pull request.** Ask to *"create branch `feature/x`"* or *"open a PR"* along with the commit/push. AIT creates
+a new branch from the current one (`git switch -c`; an existing branch is never reused and uncommitted changes move
+along), commits, pushes with `--set-upstream`, then opens the PR with `gh` (GitHub) or `glab` (GitLab) when installed.
+When the CLI is missing or fails, the answer carries the compare/MR link (GitHub, GitLab, Bitbucket, Azure DevOps) to
+open yourself. The default base is the remote's default branch. The *Create a branch* and *Open a pull request*
+permissions can be *always*.
+
+**Reading the web (`web_fetch`).** The planner can read library/API docs, web pages, or an endpoint's response over HTTP
+GET. HTML becomes Markdown text, JSON is pretty-printed, binary files are refused, and the output is capped at about
+24,000 characters and masked. localhost runs at once; another host asks for the host permission (`host:port`, the same
+permission as `curl`), and a redirect to another host is checked again. Turn it off in Settings → *The planner may read
+web pages & APIs*.
+
+**Background processes (`start_process`).** For an investigation that needs a running server (e.g. *"run `npm run dev`
+and check the response of `/api/users`"*), the planner can start a process in the background, wait until a localhost
+URL answers or some text shows up, then read its output (`process_output`) and stop it (`stop_process`). It always asks
+for the command permission (or a pattern), runs at most 3 processes per thread, and all of them are stopped
+automatically once the plan is submitted, when the thread completes/fails/is cancelled, or after 30 minutes. It follows
+the *The planner may run commands* setting.
 
 ## Follow-up conversation
 
