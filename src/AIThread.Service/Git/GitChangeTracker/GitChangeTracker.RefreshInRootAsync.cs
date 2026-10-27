@@ -21,6 +21,8 @@ public sealed partial class GitChangeTracker
             .Select(s => new TrackedFile(s.Id, s.ThreadRunId, s.FilePath, s.Existed, s.Removed, s.OriginalHash, s.AfterHash, s.AfterBlob, s.GitState,
                 s.GitCommit, s.GitEdited))
             .ToListAsync(cancellationToken);
+        // Files outside the project root (absolute paths) belong to another folder, which this repository does not hold.
+        files = files.Where(f => !Path.IsPathRooted(f.FilePath)).ToList();
         if (files.Count == 0) return 0;
         var threads = await db.Threads.AsNoTracking()
             .Where(t => threadIds.Contains(t.Id))

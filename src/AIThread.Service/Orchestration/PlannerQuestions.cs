@@ -5,18 +5,30 @@ using AIThread.Common.Enums;
 using AIThread.Common.Localization;
 using AIThread.Data.Context;
 using AIThread.Data.Messaging;
+using AIThread.Service.Approvals;
 using Microsoft.EntityFrameworkCore;
 
 namespace AIThread.Service.Orchestration;
 
 public sealed record QuestionOption(string Label, string? Description);
 
-// A clarifying question from the planner's ask_user tool, in the developer's language.
-public sealed record PlannerQuestion(string Question, IReadOnlyList<QuestionOption> Options)
+// A run_command line waiting for the developer's permission, with the folder it runs in.
+public sealed record PendingCommand(string Command, string WorkingDirectory, string? Reason);
+
+// What the planner waits for permission to do: run a command, or carry out a plan that changes files outside the
+// project root (Plan holds it, already validated). Request is what the developer sees.
+public sealed record PlannerApproval(ApprovalRequest Request, ThreadPlan? Plan = null, PendingCommand? Command = null);
+
+// A clarifying question from the planner's ask_user tool, in the developer's language; or, with Approval, a request for
+// the developer's permission (not counted as a question).
+public sealed record PlannerQuestion(string Question, IReadOnlyList<QuestionOption> Options, PlannerApproval? Approval = null)
 {
+    public static PlannerQuestion ForApproval(PlannerApproval approval) => new(approval.Request.Reason, [], approval);
+
     // Shown to the developer (Claude Code, Codex, Gemini CLI, Telegram) as the thread's reply.
     public string ToText()
     {
+        if (Approval is not null) return Approval.Request.ToText();
         var builder = new StringBuilder(Lang.T("❓ **Pertanyaan dari planner**\n\n", "❓ **Question from the planner**\n\n")).Append(Question.Trim()).Append('\n');
         if (Options.Count > 0)
         {
