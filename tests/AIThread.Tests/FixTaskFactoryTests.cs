@@ -187,4 +187,25 @@ public class FixTaskFactoryTests : IDisposable
         Assert.Contains(fix.Unfixable, u => u.Contains("outside the project root"));
         Assert.Contains(fix.Unfixable, u => u.Contains("does not exist"));
     }
+
+    [Fact]
+    public void A_finding_marked_create_becomes_a_create_task_for_the_missing_file()
+    {
+        var review = ReviewerAgent.Parse("""
+            {"approved": false, "summary": "Missing handler.", "issues": [
+              {"file": "src/Handlers/StatusChangedHandler.cs", "problem": "MSG0005: no handler for StatusChangedEvent.", "fix": "Create StatusChangedHandler : INotificationHandler<StatusChangedEvent>.", "create": true},
+              {"file": "src/Typo.cs", "problem": "x", "fix": "y"}
+            ]}
+            """);
+        var build = Failed(new BuildDiagnostic("error", null, null, null, "MSG0005", "MediatorGenerator found message without any registered handler: StatusChangedEvent"));
+
+        var fix = FixTaskFactory.Create(1, build, review, ["src/UserService.cs"], [Original], _scope);
+
+        var task = Assert.Single(fix.Tasks);
+        Assert.Equal("src/Handlers/StatusChangedHandler.cs", task.File);
+        Assert.True(task.IsCreate);
+        Assert.Contains("this file is missing", task.Instruction);
+        Assert.Contains("INotificationHandler<StatusChangedEvent>", task.Instruction);
+        Assert.Contains(fix.Unfixable, u => u.StartsWith("src/Typo.cs") && u.Contains("does not exist"));
+    }
 }

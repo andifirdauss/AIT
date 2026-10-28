@@ -8,6 +8,18 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.11.0
+
+- **Tools node lebih cepat**: tools node menyebut rentang baris (`excerpts`) dan AIT menyalin kodenya langsung dari
+  file, bukan diketik ulang oleh model. Waktu perencanaan dan token planner turun jauh.
+- **Target yang tepat di repo berisi beberapa solution** (mis. template + sample): brief menunjukkan solution mana yang
+  memuat nama-nama di permintaan, path peta kode milik clone/branch lain dilewati, dan verifikasi mem-build solution
+  yang memuat file yang berubah.
+- **Verifikasi lebih tangguh**: reviewer bisa meminta file baru (mis. handler yang diminta source generator), dan
+  triase unit test pindah ke node Reviewer bila perbaikan pertama gagal.
+- **Pemulihan unit test**: test yang belum pernah di-commit di repository ini tidak lagi dipulihkan.
+- **Koneksi**: panggilan model yang tidak mengirim data selama 3 menit diulang, tidak menggantung sampai timeout.
+
 ## Yang baru di 1.10.0
 
 - **Izin pola untuk perintah**: kartu izin punya opsi `4` *Izinkan selalu untuk pola*, mis. `npm install *`. Pola hanya
