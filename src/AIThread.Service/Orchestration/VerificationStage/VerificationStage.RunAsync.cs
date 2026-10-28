@@ -62,8 +62,11 @@ public sealed partial class VerificationStage
             UnitTestCheck? unit = null;
             if (input.UnitTests is { } session && (build is null || build.Passed))
             {
+                // Tests still failing after a fix round of their own: the tester's diagnosis did not hold, so the reviewer
+                // node (usually the stronger model) triages them instead of the same cheap guess again.
+                var triager = testFixRounds > 0 && input.Tester is not null && input.Reviewer is { } stronger ? stronger : input.Tester;
                 unit = await unitTestStage.CheckAsync(session,
-                    new UnitTestCheckInput(input.Request, input.Plan, tasks, results, changedFiles, round, input.Tester, recorder.Thread.Id),
+                    new UnitTestCheckInput(input.Request, input.Plan, tasks, results, changedFiles, round, triager, recorder.Thread.Id),
                     recorder, progress, cancellationToken);
                 current.UnitTests = unit.Round;
                 testerTokens += unit.TesterTokens;

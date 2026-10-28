@@ -22,7 +22,8 @@ public sealed partial class NineRouterService(
     IHttpClientFactory httpClientFactory,
     ISettingService settingService,
     ISecretGuard secrets,
-    ILogger<NineRouterService> logger) : INineRouterService
+    ILogger<NineRouterService> logger,
+    TimeSpan? stallTimeout = null) : INineRouterService
 {
     public const string HttpClientName = "NineRouter";
     public static string KeyMissingMessage => Lang.T("9router mewajibkan API key, tetapi belum ada API key tersimpan. Isi API key di menu Pengaturan lalu klik Simpan.", "9router requires an API key, but no API key is stored yet. Fill in the API key in the Setting menu, then click Save.");
@@ -35,6 +36,10 @@ public sealed partial class NineRouterService(
     private static readonly TimeSpan QuotaCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan QuotaTimeout = TimeSpan.FromSeconds(10);
     private const int MaxConnectionPages = 10;
+    // A chat call that receives nothing for this long (no headers, no stream line) is dropped and retried: after a
+    // network drop the connection can hang silently until RequestTimeoutSeconds, longer than a CLI waits.
+    private static readonly TimeSpan DefaultStallTimeout = TimeSpan.FromSeconds(180);
+    private readonly TimeSpan _stallTimeout = stallTimeout ?? DefaultStallTimeout;
 
     private readonly SemaphoreSlim _modelLock = new(1, 1);
     private readonly ConcurrentDictionary<string, UsageCache> _usageCache = new();
