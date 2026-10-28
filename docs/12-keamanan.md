@@ -127,6 +127,9 @@ bisa diizinkan:
 - pola izin perintah (`npm install *`) hanya menutupi perintah tunggal tanpa pipe/operator/`$()`/backtick, dan tidak
   pernah ditawarkan untuk perintah yang menghapus/memindah file, membungkus perintah lain (`sudo`, `bash -c`, `xargs`,
   `curl`, `ssh`, …), memublikasikan (`push`, `publish`, `deploy`), atau mengubah repository git;
+- izin *semua perintah* (grant perintah `*`) hanya diberikan bila developer memilihnya secara eksplisit (opsi 5); setelah
+  itu planner bisa menjalankan perintah apa pun di project tersebut tanpa bertanya, kecuali yang menyebut file
+  kredensial. Host luar, file di luar project, dan commit/push hasil thread tetap punya izin sendiri;
 - `web_fetch` hanya GET, tanpa cookie/kredensial, setiap redirect ke host lain dicek ulang, dan alamat metadata cloud
   (`169.254.169.254`, `metadata.google.internal`, …) selalu ditolak, juga bila nama host baru menunjuk ke sana setelah DNS;
 - proses latar belakang (`start_process`) maks 3 per thread, dihentikan beserta proses anaknya setelah rencana diserahkan,
@@ -200,6 +203,10 @@ Setelah AIT di-restart, nilai yang belum ditandai baru muncul lagi di daftar saa
   pernah dikembalikan lewat API. Login yang Anda berikan untuk testing hanya ada di memori, dan model hanya melihat
   password sebagai `{{password}}` ([Cara kerja → Testing](07-cara-kerja.md)).
 - **Tester** hanya boleh mengakses `localhost`.
+- **Log & diagnostik**: insiden (error, stack trace, output mentah executor) disimpan di
+  `%LOCALAPPDATA%\AIThread\diagnostics` dan tidak dikirim ke mana pun. ZIP export dibuat di mesin ini; secret yang
+  dikenali pola diganti `[secret:<label>]`, tapi kode, path file, dan prompt tetap ada — bagikan hanya ke orang yang
+  boleh melihatnya ([Log & diagnostik](05-menu.md#log--diagnostik)).
 
 ## Batasan
 

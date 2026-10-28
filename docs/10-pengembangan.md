@@ -30,8 +30,8 @@ Setiap class di `AIThread.Service` yang di-register di DI (`DependencyInjection.
   - `<Nama>.<Method>.cs`: satu file per method, publik maupun private. Overload digabung dalam satu file, termasuk
     `[GeneratedRegex]`. Header cukup `public sealed partial class <Nama>` tanpa base list.
 - Method baru berarti file baru `<Nama>.<Method>.cs`. Member publik baru juga ditambahkan ke `I<Nama>`.
-- Tidak memakai pola ini: static helper (mis. `FinalReport`, `CSharpOutline`), model/record, dan hosted worker di
-  `Background/`.
+- Tidak memakai pola ini: static helper (mis. `FinalReport`, `CSharpOutline`), model/record, hosted worker di
+  `Background/`, dan adapter framework `Diagnostics/DiagnosticsLoggerProvider` (di-register sebagai `ILoggerProvider`).
 
 ```text
 Interfaces/IThreadService.cs

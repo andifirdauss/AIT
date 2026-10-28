@@ -163,6 +163,7 @@ AIThread.exe serve            # in this window, the log shows in the console (Ct
 AIThread.exe tray --open      # background with a tray icon, then open the dashboard
 AIThread.exe status           # PID, since when, log location, autostart status
 AIThread.exe logs -f          # follow the latest log
+AIThread.exe logs export      # diagnostic ZIP (incidents + stack traces, logs); --days 7, or a file name
 AIThread.exe stop             # shut down cleanly
 AIThread.exe autostart on     # or off
 AIThread.exe setup            # open the Setup page in the browser

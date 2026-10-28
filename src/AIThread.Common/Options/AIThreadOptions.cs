@@ -29,6 +29,12 @@ public class AIThreadOptions
     // restarts. Empty = %LOCALAPPDATA%\AIThread\secret-mask.key.
     public string? SecretKeyPath { get; set; }
 
+    // Incidents (errors with their stack trace and companion files) for the Log menu. Empty = %LOCALAPPDATA%\AIThread\diagnostics.
+    public string? DiagnosticsDirectory { get; set; }
+
+    // Run logs of AIThread.exe (menu/tray mode). Empty = %LOCALAPPDATA%\AIThread\logs.
+    public string? LogDirectory { get; set; }
+
     public TelegramOptions Telegram { get; set; } = new();
 
     public EmbeddedRedisOptions EmbeddedRedis { get; set; } = new();
