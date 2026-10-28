@@ -1229,6 +1229,14 @@ berhenti di lapis pertama yang berhasil:
 4. **Tulis ulang dari skenario** (pakai model, cadangan terakhir): executor menulis test baru dari skenario katalog
    dengan file test lain sebagai contoh gaya. Asalnya menjadi *Ditulis ulang* dan perlu ditinjau developer.
 
+**Test yang tidak pernah di-commit tidak dipulihkan.** Di repository git, test hanya dipulihkan bila ada commit yang
+dikenal clone ini (riwayat branch Anda, atau commit snapshot-nya di branch lain) yang pernah menambahkan method-nya ke
+file-nya. Test yang hanya pernah ada di working copy (dibuat di clone lain dan belum di-commit, atau perubahannya dibuang
+dengan `git checkout`/`git stash`) dilewati, karena kode yang diujinya kemungkinan besar juga tidak ada sehingga build
+akan rusak. Laporan menyebutnya: *UT-0012 tidak dipulihkan: tidak ada commit di repository ini yang memuatnya …*. Test
+itu tidak dijalankan di thread tersebut, dan ikut dijalankan lagi begitu perubahan menulis file-nya. Project tanpa git
+tetap memulihkan semua test.
+
 File yang sudah ada **tidak pernah ditimpa**. Pemulihan **tidak ikut rollback** thread (bukan bagian dari request):
 file hasil pulihan muncul sebagai file baru di `git status` untuk Anda commit. Test hasil pulihan yang gagal di
 baseline dilaporkan *sudah gagal sebelum perubahan* (kode Anda mungkin sudah berbeda dari saat test dibuat), bukan
