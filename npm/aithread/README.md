@@ -8,6 +8,19 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.11.0
+
+- **Menu Log & diagnostik**: setiap error tercatat sebagai *insiden* lengkap dengan stack trace (inner exception ikut)
+  dan file pendamping, termasuk output mentah model per percobaan saat tugas executor gagal. Insiden, log aktivitas,
+  dan file log bisa di-export ke satu ZIP (secret disamarkan) dari menu atau `AIThread.exe logs export [--days n]`;
+  tanpa server pun ZIP tetap dibuat dari folder log. Tombol **📋 Log** di detail thread membuka log thread itu.
+- **Executor lebih tahan format**: variasi penanda SEARCH/REPLACE dari model murah (teks setelah penanda, bold/bullet,
+  `ORIGINAL`/`UPDATED`, penanda menempel di baris kode, pagar ``` di dalam blok) dibaca sebagaimana maksudnya; model
+  diberi tahu kesalahan formatnya secara spesifik, dan edit setengah jadi tidak pernah diterapkan.
+- **Izin semua perintah**: kartu izin perintah punya opsi `5` *Izinkan semua perintah di project ini* (grant `*`,
+  file kredensial tetap ditolak). Perintah yang terlalu panjang untuk disimpan sebagai izin *selalu* tidak lagi membuat
+  thread gagal.
+
 ## Yang baru di 1.10.0
 
 - **Izin pola untuk perintah**: kartu izin punya opsi `4` *Izinkan selalu untuk pola*, mis. `npm install *`. Pola hanya

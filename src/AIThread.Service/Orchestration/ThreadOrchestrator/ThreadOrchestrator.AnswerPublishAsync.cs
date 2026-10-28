@@ -18,8 +18,8 @@ public sealed partial class ThreadOrchestrator
         }
 
         var note = string.Empty;
-        // A commit/push has no pattern: "always allow the pattern" counts as "always".
-        if (decision is ApprovalDecision.Always or ApprovalDecision.AlwaysPattern)
+        // A commit/push has no pattern nor command: "always allow the pattern" and "allow all commands" count as "always".
+        if (decision is ApprovalDecision.Always or ApprovalDecision.AlwaysPattern or ApprovalDecision.AlwaysAll)
         {
             if (pending.Request.AllowAlways)
                 foreach (var item in pending.Request.Items)

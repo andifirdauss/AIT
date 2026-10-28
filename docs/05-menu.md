@@ -2,7 +2,7 @@
 
 Semua halaman memperbarui diri secara live lewat Server-Sent Events — tidak perlu refresh. Menu sidebar dikelompokkan
 menjadi *Ruang kerja* (Dasbor, Project, Memory — dipakai sehari-hari), *Konfigurasi* (Penyiapan, Node, CLI, Pengaturan) dan
-*Bantuan* (Dokumentasi, Panduan memulai). Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
+*Bantuan* (Dokumentasi, Log & diagnostik, Panduan memulai). Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
 antara mode gelap dan terang, dan kotak bahasa beralih antara Bahasa Indonesia dan English
 ([Bahasa tampilan](02-konfigurasi.md#bahasa-tampilan)).
 
@@ -90,8 +90,8 @@ memilih file, menampilkan pratinjau perubahan per bagian, meminta secret yang di
 
 | Bagian | Isi |
 |---|---|
-| Header | Status, project, sumber, sesi CLI, waktu, working directory. Tombol *Batalkan thread* saat berjalan (juga saat testing); setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)), serta *🧪 Ulangi testing* untuk thread yang punya rencana testing UI/API, dengan username & password opsional (lihat [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
-| Izin | Muncul saat thread menunggu [izin developer](04-penggunaan.md#izin-developer) (perintah, proses latar belakang, host luar, file di luar project, branch/PR, commit/push): daftar target dan tombol *Izinkan sekali* / *Izinkan selalu* / *Tolak*, plus *Izinkan selalu untuk pola* bila perintahnya bisa dipolakan. |
+| Header | Status, project, sumber, sesi CLI, waktu, working directory. Tombol *📋 Log* membuka [Log & diagnostik](#log--diagnostik) yang disaring ke thread ini. Tombol *Batalkan thread* saat berjalan (juga saat testing); setelah selesai, *🔁 Ulangi yang gagal* dan *↩ Batalkan perubahan file* (lihat [Penggunaan](04-penggunaan.md#mengulang-tugas-yang-gagal)), serta *🧪 Ulangi testing* untuk thread yang punya rencana testing UI/API, dengan username & password opsional (lihat [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
+| Izin | Muncul saat thread menunggu [izin developer](04-penggunaan.md#izin-developer) (perintah, proses latar belakang, host luar, file di luar project, branch/PR, commit/push): daftar target dan tombol *Izinkan sekali* / *Izinkan selalu* / *Tolak*, plus *Izinkan selalu untuk pola* bila perintahnya bisa dipolakan dan *Izinkan semua perintah di project ini* untuk izin perintah. |
 | Permintaan | Prompt Anda (tanpa konteks yang disisipkan CLI, mis. blok `<system-reminder>` Claude Code). |
 | Rencana planner | Ringkasan dan tabel **kontrak**. |
 | Tugas executor | **Timeline paralel** (batang yang overlap berjalan bersamaan) dan tabel tugas. Klik tugas untuk instruksi, ketergantungan, ringkasan, error, diff berwarna, dan output model live. |
@@ -139,7 +139,7 @@ Daftar codebase yang dikenal AIT. Satu project = satu folder root, yaitu folder 
   clone itu.
 
 **Detail project**: kartu **Izin AIT** (izin *selalu* yang diberikan di mesin ini: jenis, target, pemberi, terakhir
-dipakai, badge *pola*, tombol *Cabut*, dan form *Tambah izin perintah* untuk perintah persis atau pola seperti `npm install *`;
+dipakai, badge *pola* / *semua perintah*, tombol *Cabut*, dan form *Tambah izin perintah* untuk perintah persis atau pola seperti `npm install *`;
 lihat [Izin developer](04-penggunaan.md#izin-developer)), stack, kartu **Project key** (key efektif, sumbernya, dan isian *Key manual*), kartu **Git** (hanya
 untuk repository git: interval `git fetch` otomatis dalam menit (kosong = bawaan 15, 0 = mati), fetch terakhir dan
 errornya, jumlah thread yang diikuti, tombol *Fetch sekarang* dan *Sinkronkan*; lihat
@@ -382,6 +382,41 @@ dikirim, serta batasannya. Popup ini hanya muncul sekali per instalasi (dicatat 
 dibuka lagi lewat tombol **Keamanan & privasi** di grup Bantuan sidebar.
 
 Detail di [Konfigurasi](02-konfigurasi.md) dan [Prompt dari Telegram](11-telegram.md).
+
+## Log & diagnostik
+
+Tempat melihat apa yang salah, dan membawa log klien ke pengelola AIT. Buka lewat *Log & diagnostik* di grup *Bantuan*
+sidebar, atau tombol *📋 Log* di detail thread (`/Log?threadId=…` menyaring insiden dan log aktivitas ke thread itu).
+
+| Tab | Isi |
+|---|---|
+| Insiden | Error yang dicatat AIT beserta **stack trace lengkap** (inner exception ikut) dan **file pendamping**. Error yang sama dalam 10 menit dilipat jadi satu (kolom *Kali*). Klik baris untuk detail: pesan, stack trace, file pendamping (*Lihat* / *Unduh*), *Salin judul + stack trace*, dan *Hapus insiden*. Bertambah live; ada pencarian (judul, kategori, pesan, stack trace) dan *Hapus semua*. |
+| Log aktivitas | Log Dasbor dari database: filter level, 200/500/1000 entri terakhir, pencarian; id thread di tiap baris membuka log thread itu. |
+| File log | File log `AIThread.exe` (mode menu/tray) dan `9router.log` di `%LOCALAPPDATA%\AIThread\logs`: 500/2000/5000 baris terakhir, saring baris (baris lanjutan seperti frame stack trace ikut barisnya), baris FAIL/ERROR merah dan WARN kuning. Saat AIT dijalankan dengan `dotnet run`, log tampil di konsol dan tidak ada file. |
+
+**Yang menjadi insiden.** Setiap warning/error yang dicatat dengan exception (worker latar belakang, API, thread yang
+crash seperti *Kesalahan internal: An error occurred while saving the entity changes*, dengan inner exception-nya),
+kecuali pembatalan. Tugas executor yang gagal juga menjadi insiden kategori `executor` dengan file pendamping:
+`task.md` (file, node/model, error per percobaan, instruksi), `task-message.md` (pesan tugas yang dikirim ke model),
+dan `attempt-<n>-output.txt` / `attempt-<n>-feedback.txt` (output mentah model dan balasan AIT per percobaan). Error
+tugas di detail thread menyebut id insidennya. Insiden disimpan sebagai file di `%LOCALAPPDATA%\AIThread\diagnostics`
+(maks 300, 30 hari), terpisah dari database, sehingga tetap bisa di-export walau database bermasalah.
+
+**Export ZIP.** Tombol *Export ZIP* memilih periode (1/3/7/30 hari), isi (insiden, log aktivitas, file log), dan
+opsional satu id thread, lalu mengunduh `ait-diagnostics-<mesin>-<waktu>.zip`:
+
+```
+README.md                      versi AIT, OS/.NET, periode, isi
+activity.log                   log aktivitas database, terlama dulu
+logs/aithread-*.log            file log AIThread.exe dan 9router.log
+incidents/<id>/incident.md     error + stack trace, siap dibaca
+incidents/<id>/incident.json
+incidents/<id>/files/*         file pendamping
+```
+
+Password, API key, token, dan bagian connection string diganti `[secret:<label>]`; kode, path file, dan prompt tetap
+bisa ada di dalamnya. Dari terminal: `AIThread.exe logs export [file.zip] [--days n]` — lewat instance yang berjalan
+(log aktivitas ikut), atau langsung dari folder bila AIT tidak berjalan (insiden dan file log saja).
 
 ## Dokumentasi
 
