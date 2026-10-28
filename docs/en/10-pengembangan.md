@@ -30,8 +30,8 @@ Service + partial class per method**:
   - `<Name>.<Method>.cs`: one file per method, public or private. Overloads go into one file, including
     `[GeneratedRegex]`. The header is just `public sealed partial class <Name>` without the base list.
 - A new method means a new `<Name>.<Method>.cs` file. A new public member is added to `I<Name>` too.
-- Not using this pattern: static helpers (e.g. `FinalReport`, `CSharpOutline`), models/records, and hosted workers in
-  `Background/`.
+- Not using this pattern: static helpers (e.g. `FinalReport`, `CSharpOutline`), models/records, hosted workers in
+  `Background/`, and the framework adapter `Diagnostics/DiagnosticsLoggerProvider` (registered as `ILoggerProvider`).
 
 ```text
 Interfaces/IThreadService.cs

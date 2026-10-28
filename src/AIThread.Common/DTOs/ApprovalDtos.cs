@@ -9,8 +9,9 @@ public record ApprovalGrantDto(Guid Id, ApprovalKind Kind, string Target, string
 public record ApprovalItemDto(ApprovalKind Kind, string Target, string? Detail, string? Pattern = null);
 
 // What a thread waits for the developer to allow, for the buttons on the thread page. Text is the card the CLI got.
-// AllowPattern: the "always allow the pattern" option is offered (an item has a Pattern).
-public record PendingApprovalDto(IReadOnlyList<ApprovalItemDto> Items, string Reason, bool AllowAlways, string Text, bool AfterThread, bool AllowPattern = false);
+// AllowPattern: the "always allow the pattern" option is offered (an item has a Pattern). AllowAll: "always allow every
+// command of the project" is offered (an item is a command).
+public record PendingApprovalDto(IReadOnlyList<ApprovalItemDto> Items, string Reason, bool AllowAlways, string Text, bool AfterThread, bool AllowPattern = false, bool AllowAll = false);
 
 public record ApproveRequest(ApprovalDecision Decision);
 
