@@ -1272,6 +1272,13 @@ tests`), stopping at the first layer that succeeds:
    scenario with another test file as a style example. Its origin becomes *Rewritten* and it should be reviewed by the
    developer.
 
+**A test that was never committed is not restored.** In a git repository a test is only restored when a commit this
+clone knows (your branch's history, or its snapshot's commit on another branch) once added its method to its file. A
+test that only ever lived in a working copy (written in another clone and not committed, or a change thrown away with
+`git checkout`/`git stash`) is skipped, because the code it tests is most likely missing too and the build would break.
+The report says so: *UT-0012 not restored: no commit in this repository holds them …*. Such a test is not run in that
+thread, and runs again as soon as a change writes its file. A project without git still restores every test.
+
 Existing files are **never overwritten**. Restores are **not part of a thread's rollback** (they are not part of the
 request): restored files show up as new files in `git status` for you to commit. A restored test that fails in the
 baseline is reported as *already failed before the change* (your code may have changed since the test was made), not as
