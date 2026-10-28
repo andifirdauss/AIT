@@ -3,6 +3,7 @@ using AIThread.Common.Options;
 using AIThread.Service.Approvals;
 using AIThread.Service.Background;
 using AIThread.Service.Business;
+using AIThread.Service.Diagnostics;
 using AIThread.Service.CodeCalls;
 using AIThread.Service.Git;
 using AIThread.Service.Implementations;
@@ -23,6 +24,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace AIThread.Service;
 
@@ -102,6 +104,9 @@ public static class DependencyInjection
         services.AddSingleton<ICliIntegration>(sp => new QwenCodeIntegration(sp.GetRequiredService<ISettingService>()));
         services.AddSingleton<IActivityLogQueue, ActivityLogQueue>();
         services.AddSingleton<IActivityLogService, ActivityLogService>();
+        services.AddSingleton<IDiagnosticsService, DiagnosticsService>();
+        // Warnings and errors with an exception become incidents of the Log menu.
+        services.AddSingleton<ILoggerProvider, DiagnosticsLoggerProvider>();
         services.AddSingleton<IDocsService>(sp => new DocsService(DocsService.ResolveDirectory(
             sp.GetRequiredService<IHostEnvironment>().ContentRootPath,
             configuration["AIThread:DocsPath"])));

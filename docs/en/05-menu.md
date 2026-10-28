@@ -2,7 +2,7 @@
 
 Every page updates itself live through Server-Sent Events — no refresh needed. The sidebar menu is grouped into
 *Workspace* (Dashboard, Project, Memory — used every day), *Configuration* (Setup, Node, CLI, Setting) and *Help* (Docs,
-Getting started). The pill at the bottom left of the sidebar shows the 9router status; the *Switch theme* button toggles
+Log & diagnostics, Getting started). The pill at the bottom left of the sidebar shows the 9router status; the *Switch theme* button toggles
 between dark and light mode, and the language box switches between Bahasa Indonesia and English
 ([Display language](02-konfigurasi.md#display-language)).
 
@@ -92,8 +92,8 @@ profile*. See [Team setup profile](02-konfigurasi.md#team-setup-profile).
 
 | Part | Content |
 |---|---|
-| Header | Status, project, source, CLI session, time, working directory. A *Cancel thread* button while it runs (also while testing); after it finishes, *🔁 Retry failed* and *↩ Undo file changes* (see [Usage](04-penggunaan.md#retrying-failed-tasks)), and *🧪 Test again* for a thread with a UI/API testing plan, with an optional username & password (see [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
-| Permission | Shown while the thread waits for [developer permission](04-penggunaan.md#developer-permission) (a command, a background process, an outside host, files outside the project, a branch/PR, commit/push): the targets and the *Allow once* / *Always allow* / *Deny* buttons, plus *Always allow the pattern* when the command can be patterned. |
+| Header | Status, project, source, CLI session, time, working directory. The *📋 Log* button opens [Log & diagnostics](#log--diagnostics) narrowed to this thread. A *Cancel thread* button while it runs (also while testing); after it finishes, *🔁 Retry failed* and *↩ Undo file changes* (see [Usage](04-penggunaan.md#retrying-failed-tasks)), and *🧪 Test again* for a thread with a UI/API testing plan, with an optional username & password (see [Testing](07-cara-kerja.md#6-testing-auto-testing)). |
+| Permission | Shown while the thread waits for [developer permission](04-penggunaan.md#developer-permission) (a command, a background process, an outside host, files outside the project, a branch/PR, commit/push): the targets and the *Allow once* / *Always allow* / *Deny* buttons, plus *Always allow the pattern* when the command can be patterned and *Allow all commands in this project* for a command permission. |
 | Request | Your prompt (without the context the CLI inserts, e.g. Claude Code's `<system-reminder>` blocks). |
 | Planner plan | The summary and the **contract** table. |
 | Executor tasks | A **parallel timeline** (overlapping bars ran at the same time) and the task table. Click a task for its instruction, dependencies, summary, error, colored diff and live model output. |
@@ -142,7 +142,7 @@ The list of codebases AIT knows. One project = one root folder, i.e. a folder ho
   memory moves to that clone.
 
 **Project detail**: the **AIT permissions** card (the *always* permissions given on this machine: kind, target, given
-by, last used, a *pattern* badge, a *Revoke* button, and the *Add a command permission* form for an exact command or a
+by, last used, a *pattern* / *all commands* badge, a *Revoke* button, and the *Add a command permission* form for an exact command or a
 pattern like `npm install *`; see [Developer permission](04-penggunaan.md#developer-permission)), the stack, the
 **Project key** card (the effective key, its source, and the *Manual key* field), the
 **Git** card (git repositories only: the automatic `git fetch` interval in minutes (empty = the default 15, 0 = off),
@@ -399,6 +399,42 @@ and sent, and its limits. This popup only shows once per installation (recorded 
 and can be opened again with the **Security & privacy** button in the sidebar's Help group.
 
 Details in [Configuration](02-konfigurasi.md) and [Prompts from Telegram](11-telegram.md).
+
+## Log & diagnostics
+
+Where to see what went wrong, and to bring a client's logs to whoever maintains AIT. Open it through *Log & diagnostics*
+in the sidebar's *Help* group, or the *📋 Log* button of a thread detail (`/Log?threadId=…` narrows incidents and the
+activity log to that thread).
+
+| Tab | Content |
+|---|---|
+| Incidents | Errors AIT recorded with their **full stack trace** (inner exceptions included) and **companion files**. The same error within 10 minutes is folded into one (the *Times* column). Click a row for the detail: message, stack trace, companion files (*View* / *Download*), *Copy title + stack trace*, and *Delete incident*. Updates live; has a search (title, category, message, stack trace) and *Delete all*. |
+| Activity log | The Dashboard log from the database: level filter, the last 200/500/1000 entries, search; the thread id on a row opens that thread's log. |
+| Log files | The `AIThread.exe` log files (menu/tray mode) and `9router.log` in `%LOCALAPPDATA%\AIThread\logs`: the last 500/2000/5000 lines, line filter (continuation lines such as stack trace frames stay with their line), FAIL/ERROR lines red and WARN yellow. When AIT runs with `dotnet run`, the log goes to the console and there is no file. |
+
+**What becomes an incident.** Every warning/error logged with an exception (background workers, the API, a crashed
+thread such as *Internal error: An error occurred while saving the entity changes*, with its inner exception), except
+cancellations. A failed executor task also becomes an incident of category `executor` with companion files: `task.md`
+(file, node/model, error per attempt, instruction), `task-message.md` (the task message sent to the model), and
+`attempt-<n>-output.txt` / `attempt-<n>-feedback.txt` (the model's raw output and AIT's answer per attempt). The task
+error on the thread detail names its incident id. Incidents are kept as files in `%LOCALAPPDATA%\AIThread\diagnostics`
+(at most 300, 30 days), apart from the database, so they can be exported even when the database fails.
+
+**Export ZIP.** The *Export ZIP* button picks the period (1/3/7/30 days), the content (incidents, activity log, log
+files) and optionally one thread id, then downloads `ait-diagnostics-<machine>-<time>.zip`:
+
+```
+README.md                      AIT version, OS/.NET, period, content
+activity.log                   the database activity log, oldest first
+logs/aithread-*.log            the AIThread.exe log files and 9router.log
+incidents/<id>/incident.md     error + stack trace, ready to read
+incidents/<id>/incident.json
+incidents/<id>/files/*         companion files
+```
+
+Passwords, API keys, tokens and connection-string parts become `[secret:<label>]`; code, file paths and prompts can
+still be inside. From a terminal: `AIThread.exe logs export [file.zip] [--days n]` — through the running instance (with
+the activity log), or straight from the folders when AIT does not run (incidents and log files only).
 
 ## Docs
 

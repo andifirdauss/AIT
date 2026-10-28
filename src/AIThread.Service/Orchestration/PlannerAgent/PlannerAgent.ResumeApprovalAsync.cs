@@ -1,5 +1,6 @@
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
+using AIThread.Service.Approvals;
 
 namespace AIThread.Service.Orchestration;
 
@@ -18,9 +19,17 @@ public sealed partial class PlannerAgent
         ClientProgress progress,
         CancellationToken cancellationToken)
     {
-        var allowed = decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern;
-        // "Always allow the pattern" keeps the pattern of a command item ("npm install *"); the other items get a plain grant.
-        if (decision is ApprovalDecision.Always or ApprovalDecision.AlwaysPattern && approval.Request.AllowAlways)
+        var allowed = decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern or ApprovalDecision.AlwaysAll;
+        // "Always allow the pattern" keeps the pattern of a command item ("npm install *"), "allow all commands" the grant
+        // "*" for a command item; the other items get a plain grant.
+        if (decision is ApprovalDecision.AlwaysAll && approval.Request.AllowAll)
+        {
+            foreach (var item in approval.Request.Items)
+                if (item.Kind == ApprovalKind.Command || ApprovalTargets.CanSave(item.Kind, item.Target))
+                    await approvals.GrantAsync(input.Project.ProjectId, item.Kind,
+                        item.Kind == ApprovalKind.Command ? ApprovalTargets.AllCommands : item.Target, recorder.Thread.Id, cancellationToken);
+        }
+        else if (decision is ApprovalDecision.Always or ApprovalDecision.AlwaysPattern && approval.Request.AllowAlways)
             foreach (var item in approval.Request.Items)
                 await approvals.GrantAsync(input.Project.ProjectId, item.Kind,
                     decision == ApprovalDecision.AlwaysPattern && item.Pattern is { } pattern ? pattern : item.Target, recorder.Thread.Id, cancellationToken);
@@ -29,6 +38,7 @@ public sealed partial class PlannerAgent
         {
             ApprovalDecision.Always => Lang.T("selalu", "always"),
             ApprovalDecision.AlwaysPattern => Lang.T("selalu, pola", "always, pattern"),
+            ApprovalDecision.AlwaysAll => Lang.T("selalu, semua perintah", "always, all commands"),
             _ => Lang.T("sekali", "once")
         };
         recorder.Log(allowed ? ActivityLevel.Info : ActivityLevel.Warning, allowed

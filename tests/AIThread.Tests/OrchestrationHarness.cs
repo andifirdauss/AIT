@@ -36,7 +36,9 @@ public sealed class OrchestrationHarness : IAsyncDisposable
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["AIThread:SkillsDirectory"] = Path.Combine(_dataDir, "skills"),
-                ["AIThread:SecretKeyPath"] = Path.Combine(_dataDir, "secret-mask.key")
+                ["AIThread:SecretKeyPath"] = Path.Combine(_dataDir, "secret-mask.key"),
+                ["AIThread:DiagnosticsDirectory"] = Path.Combine(_dataDir, "diagnostics"),
+                ["AIThread:LogDirectory"] = Path.Combine(_dataDir, "logs")
             })
             .Build();
 

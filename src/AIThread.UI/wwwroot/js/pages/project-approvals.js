@@ -18,13 +18,15 @@
 
   // A command grant ending in " *" ("npm install *") covers every single command starting with its words.
   const isPattern = g => g.kind === 'Command' && /\s\*$/.test(g.target);
+  // The command grant "*" covers every command of the project.
+  const isAll = g => g.kind === 'Command' && g.target === '*';
 
   function render(grants) {
     el('approvalRows').innerHTML = grants.length
       ? grants.map(g => `
         <tr>
           <td class="text-nowrap">${escapeHtml((kinds[g.kind] || (() => g.kind))())}</td>
-          <td class="mono small text-break">${escapeHtml(g.target)}${isPattern(g) ? ` <span class="badge text-bg-info" title="${escapeHtml(t('Perintah tunggal yang diawali kata yang sama juga diizinkan', 'Single commands starting with the same words are allowed too'))}">${t('pola', 'pattern')}</span>` : ''}</td>
+          <td class="mono small text-break">${escapeHtml(g.target)}${isPattern(g) ? ` <span class="badge text-bg-info" title="${escapeHtml(t('Perintah tunggal yang diawali kata yang sama juga diizinkan', 'Single commands starting with the same words are allowed too'))}">${t('pola', 'pattern')}</span>` : ''}${isAll(g) ? ` <span class="badge text-bg-warning">${t('semua perintah', 'all commands')}</span>` : ''}</td>
           <td class="small text-nowrap">${fmt.dateTime(g.createdAt)}${g.createdBy ? `<div class="text-secondary">${escapeHtml(g.createdBy)}</div>` : ''}</td>
           <td class="small text-nowrap">${g.lastUsedAt ? fmt.relative(g.lastUsedAt) : '–'}<div class="text-secondary">${fmt.number(g.useCount)}×</div></td>
           <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" data-revoke="${g.id}">${t('Cabut', 'Revoke')}</button></td>

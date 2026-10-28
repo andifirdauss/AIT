@@ -19,6 +19,8 @@ public sealed partial class ExecutorAgent
             ChatMessages.System(await prompts.BuildAsync(AgentPrompts.Executor, job.Node, cancellationToken)),
             ChatMessages.User(await BuildTaskMessageAsync(job, initial, cancellationToken))
         };
+        // Every attempt's raw output and AIT's answer to it: the companion files of the incident when the task fails.
+        var attempts = new List<ExecutorAttempt>();
 
         var tokens = 0;
         var maxAttempts = 1 + Math.Max(0, job.MaxRetries);
@@ -57,12 +59,25 @@ public sealed partial class ExecutorAgent
             var parsed = EditBlockParser.Parse(result.Content);
 
             string feedback;
-            if (parsed.Blocks.Count == 0)
+            // A format error rejects the whole output, also when some blocks parsed: half an edit is worse than none.
+            if (parsed.Blocks.Count == 0 || parsed.Errors.Count > 0)
             {
-                lastError = result.FinishReason == "length"
-                    ? "Output was cut off (max tokens) before any complete edit block."
-                    : "No valid SEARCH/REPLACE block in the output.";
-                feedback = $"{lastError} Respond again using exactly the required format: edit blocks followed by one SUMMARY line.";
+                IReadOnlyList<string> errors = result.FinishReason == "length"
+                    ? ["The output was cut off (max tokens) before the edit blocks were complete. Use fewer, smaller blocks.", .. parsed.Errors]
+                    : parsed.Errors;
+                lastError = string.Join(" ", errors);
+                feedback = $"""
+                    Your reply could not be read as an edit, nothing was written:
+                    - {string.Join("\n- ", errors)}
+
+                    Respond again with only edit blocks in exactly this form, then one SUMMARY line:
+                    <<<<<<< SEARCH
+                    exact lines copied from the current file
+                    =======
+                    the new lines
+                    >>>>>>> REPLACE
+                    SUMMARY: one sentence
+                    """;
             }
             else
             {
@@ -80,10 +95,14 @@ public sealed partial class ExecutorAgent
                     """;
             }
 
+            attempts.Add(new ExecutorAttempt(attempt, node.Model, result.FinishReason, result.Content, feedback));
             messages.Add(ChatMessages.Assistant(result.Content));
             messages.Add(ChatMessages.User(feedback));
         }
 
-        return new ExecutorOutcome(false, null, null, lastError ?? Lang.T("Executor gagal.", "Executor failed."), tokens, maxAttempts);
+        var error = lastError ?? Lang.T("Executor gagal.", "Executor failed.");
+        if (RecordFailure(job, messages, attempts, error) is { } incident)
+            error += Lang.T($" Detail: menu Log → insiden {incident}.", $" Details: Log menu → incident {incident}.");
+        return new ExecutorOutcome(false, null, null, error, tokens, maxAttempts);
     }
 }
