@@ -10,6 +10,7 @@ public sealed partial class NineRouterService
     private static async Task<ChatCompletionResult> ReadStreamAsync(
         HttpResponseMessage response,
         Func<string, Task>? onDelta,
+        Action onLine,
         CancellationToken cancellationToken)
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -22,6 +23,7 @@ public sealed partial class NineRouterService
 
         while (await reader.ReadLineAsync(cancellationToken) is { } line)
         {
+            onLine();
             if (!line.StartsWith("data:", StringComparison.Ordinal)) continue;
             var data = line[5..].Trim();
             if (data.Length == 0) continue;

@@ -1,6 +1,6 @@
 {
     "name":  "aithread",
-    "version":  "1.10.0",
+    "version":  "1.11.0",
     "description":  "AIT: proxy, planner, dan orkestrasi multi-agent untuk Claude Code, Codex CLI, Gemini CLI, opencode, dan Qwen Code (Windows x64)",
     "keywords":  [
                      "claude-code",
@@ -33,6 +33,6 @@
                          "9router":  "^0.5.104"
                      },
     "optionalDependencies":  {
-                                 "aithread-win-x64":  "1.10.0"
+                                 "aithread-win-x64":  "1.11.0"
                              }
 }

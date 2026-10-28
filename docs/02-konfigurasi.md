@@ -213,7 +213,8 @@ balasan — cara cepat memastikan model dan key benar.
 Setiap node bisa diberi satu **node cadangan** di form node (opsional). Alurnya:
 
 1. Panggilan ke node gagal dengan error yang berarti "model sedang tidak tersedia": rate limit **429**, timeout
-   **408**, atau error server **5xx**.
+   **408**, atau error server **5xx**. Panggilan yang tidak menerima data sama sekali dari 9router selama 3 menit
+   (koneksi menggantung setelah jaringan putus) juga dihitung timeout 408, tanpa menunggu *Request timeout* habis.
 2. 9router lebih dulu mencoba ulang dengan jeda (seperti sebelumnya).
 3. Bila tetap gagal, panggilan yang **sama** dikirim ke node cadangan. Untuk planner dan executor, percakapan
    dilanjutkan dari titik terakhir, tidak diulang dari awal. Bila node cadangan juga gagal dan punya cadangan sendiri,
@@ -245,8 +246,12 @@ ikut terbayar lagi di langkah 4, 5, … sampai `submit_plan`. Tools node meminda
 2. Edit node Planner → bagian **Delegasi tool ke tools node**: untuk tiap tool, pilih *Planner langsung* atau tools node.
 3. Tool yang didelegasikan **dihapus** dari daftar tool planner. Sebagai gantinya planner mendapat tool
    `investigate(question)` (plus `agent` bila ada lebih dari satu tools node). Tools node menjalankan tool-nya sendiri dalam
-   loop (maks 12 langkah), lalu mengembalikan **temuan ringkas** — `path:baris` dan kutipan pendek bila perlu, biasanya
-   di bawah 1.500 karakter (dipotong di 6.000). Output mentah tidak pernah masuk ke konteks planner. Brief tools node
+   loop (maks 12 langkah), lalu mengembalikan **temuan ringkas** — fakta dengan `path:baris`, biasanya di bawah 1.500
+   karakter (dipotong di 6.000). Tools node tidak menyalin kode: kode yang dibutuhkan planner persis (file yang akan
+   diedit, pola yang ditiru) cukup disebut rentang barisnya di `excerpts`, lalu **AIT menyalin baris itu dari file**
+   dan melampirkannya di bawah *Exact excerpts* (maks 8 rentang, 400 baris; secret tetap disamarkan seperti
+   `read_file`). Teksnya persis dan model murah tidak perlu menulis ulang file, yang merupakan giliran paling lambatnya.
+   Output mentah tool lain tidak pernah masuk ke konteks planner. Brief tools node
    memuat peta folder project (kedalaman 4, tanpa file) agar tidak menghabiskan giliran untuk `list_directory`/`find_files`,
    dan tools node diminta menjalankan semua pencarian/pembacaan yang independen dalam satu giliran. Planner mengutamakan
    rencana yang benar, lalu paralel: pertanyaan yang independen dikirim sekaligus dan dibagi per area agar tidak membaca
