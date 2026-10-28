@@ -376,7 +376,12 @@ read_memory                        → baru deskripsinya dibaca
 1. Sebelum planner jalan, file dan class yang disebut prompt dipetakan ke modul (peta kode yang tersimpan + aturan;
    yang ragu dipetakan model di belakang tanpa menahan planner).
 2. Brief planner berisi:
-   - **Peta kode** file yang disebut prompt (`path: Modul · Layer`);
+   - **Peta kode** file yang disebut prompt (`path: Modul · Layer`). Bila nama yang sama ada di beberapa solution
+     (mis. template + sample), file diurutkan per solution, yang memuat paling banyak nama dari prompt lebih dulu (lalu
+     yang paling dangkal), dan brief mendapat bagian `# The request's names are in several solutions` berisi tiap
+     solution beserta nama yang dimiliki/tidak dimilikinya, agar planner memilih target dengan sadar (atau bertanya).
+     Path di peta kode tersimpan yang tidak ada di clone ini (milik branch atau mesin lain dengan key yang sama)
+     dilewati;
    - **Memory modul** (`# Module memory`), ditulis **utuh**, bukan hanya label: untuk maks 3 modul yang dibahas
      permintaan (dari peta kode, atau modul memory teratas hasil pencarian), `Summary` modul lalu 3 entri `Change`
      terbarunya (short maupun long), maks ±14.000 karakter. Tanpa modul: 3 entri `Change` terbaru project

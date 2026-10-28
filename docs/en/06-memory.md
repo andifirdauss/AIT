@@ -391,7 +391,11 @@ read_memory                        → only then is the description read
 1. Before the planner runs, the files and classes the prompt names are mapped to modules (the stored code map + rules;
    uncertain ones are mapped by a model in the background without holding the planner).
 2. The planner's brief holds:
-   - the **code map** of the files the prompt names (`path: Module · Layer`);
+   - the **code map** of the files the prompt names (`path: Module · Layer`). When the same names exist in several
+     solutions (e.g. a template + a sample), the files are ordered per solution, the one holding most of the prompt's
+     names first (then the shallowest), and the brief gets a `# The request's names are in several solutions` section
+     listing each solution with the names it has and lacks, so the planner picks the target on purpose (or asks).
+     Stored code map paths missing from this clone (another branch's or machine's under the same key) are skipped;
    - **module memory** (`# Module memory`), written **in full**, not only the labels: for at most 3 modules the request
      is about (from the code map, or the top memory modules of the search), the module's `Summary` and then its 3 latest
      `Change` entries (short or long), at most ±14,000 characters. Without a module: the project's 3 latest `Change`

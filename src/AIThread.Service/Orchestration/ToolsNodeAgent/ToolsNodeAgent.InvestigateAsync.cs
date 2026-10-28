@@ -65,10 +65,14 @@ public sealed partial class ToolsNodeAgent
             queueTime += reply.Queued;
 
             // A plain reply is the answer too; so is anything after the forced step.
-            if (result.ToolCalls.Count == 0 || forced)
-                return Done(result.ToolCalls.Count == 0 ? result.Content : Findings(result.ToolCalls) ?? result.Content);
-
-            if (Findings(result.ToolCalls) is { } findings) return Done(findings);
+            var report = result.ToolCalls.Count == 0 ? null : Findings(result.ToolCalls);
+            if (result.ToolCalls.Count == 0 || forced || report is not null)
+            {
+                var excerpts = report is { } named
+                    ? await ExcerptsAsync(named.Excerpts, input, tools, memoriesRead, prefix, actor, recorder, progress, cancellationToken)
+                    : string.Empty;
+                return Done(report?.Text ?? result.Content, excerpts);
+            }
 
             messages.Add(ChatMessages.Assistant(string.IsNullOrWhiteSpace(result.Content) ? null : result.Content, result.ToolCalls));
             // Token counts exist per model turn, not per tool: the turn's badge goes on its first tool line.
@@ -77,12 +81,14 @@ public sealed partial class ToolsNodeAgent
             var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, group, input, tools, memoriesRead, prefix, actor, recorder, progress, ReferenceEquals(call, badgeHolder) ? badge : null, cancellationToken)));
             for (var i = 0; i < result.ToolCalls.Count; i++) messages.Add(ChatMessages.Tool(result.ToolCalls[i].Id, outcomes[i].Output));
 
-            ToolsNodeInvestigation Done(string text)
+            ToolsNodeInvestigation Done(string text, string excerpts)
             {
-                var answer = string.IsNullOrWhiteSpace(text) ? "The sub agent found nothing to report." : PlannerToolRunner.Limit(text.Trim(), MaxFindingsChars);
+                var answer = string.IsNullOrWhiteSpace(text) && excerpts.Length == 0
+                    ? "The sub agent found nothing to report."
+                    : PlannerToolRunner.Limit(text.Trim(), MaxFindingsChars);
                 recorder.Log(ActivityLevel.Debug, Lang.T($"{actor} selesai: {step} langkah, {tokens} token, {answer.Length} karakter temuan, ", $"{actor} done: {step} steps, {tokens} tokens, {answer.Length} characters of findings, ")
                                                   + Lang.T($"{FinalReport.Duration(clock.Elapsed)} (model {FinalReport.Duration(modelTime)}, laporan {FinalReport.Duration(reply.Elapsed)}, antre {FinalReport.Duration(queueTime)}).", $"{FinalReport.Duration(clock.Elapsed)} (model {FinalReport.Duration(modelTime)}, report {FinalReport.Duration(reply.Elapsed)}, queued {FinalReport.Duration(queueTime)})."));
-                return new ToolsNodeInvestigation(answer, step, tokens, cached, node, clock.Elapsed, modelTime, queueTime, reply.Elapsed);
+                return new ToolsNodeInvestigation(answer + excerpts, step, tokens, cached, node, clock.Elapsed, modelTime, queueTime, reply.Elapsed);
             }
         }
     }

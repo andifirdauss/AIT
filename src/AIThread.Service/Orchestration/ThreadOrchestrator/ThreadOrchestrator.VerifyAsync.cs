@@ -23,7 +23,9 @@ public sealed partial class ThreadOrchestrator
 
         var (recorder, progress, project, settings) = (pipeline.Recorder, pipeline.Progress, pipeline.Project, pipeline.Settings);
         var reviewer = (await nodeService.GetActiveAsync(NodeRole.Reviewer, cancellationToken)).FirstOrDefault();
-        var build = settings.BuildEnabled ? BuildCommandResolver.Resolve(project.RootPath, project.Modules, null, out _) : null;
+        // The solution that holds the changed files, which is not always the repository's main one.
+        var changed = plan.Tasks.SelectMany(t => new[] { t.File, t.To }).OfType<string>();
+        var build = settings.BuildEnabled ? BuildCommandResolver.ForChanges(project.RootPath, project.Modules, changed, out _) : null;
         if (build is null && reviewer is null && pipeline.UnitTests is null) return null;
 
         await recorder.UpdateThreadAsync(t =>
