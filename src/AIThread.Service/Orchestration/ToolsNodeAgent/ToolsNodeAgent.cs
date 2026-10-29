@@ -11,6 +11,9 @@ public sealed record ToolsNodeGroup(string Key, AiNode Node, IReadOnlyList<strin
 public sealed record ToolsNodeInvestigation(string Findings, int Steps, int Tokens, int CachedTokens, AiNode Node,
     TimeSpan Elapsed = default, TimeSpan ModelTime = default, TimeSpan QueueTime = default, TimeSpan ReportTime = default);
 
+// A line range report_findings names for AIT to copy into the findings.
+public sealed record ToolsNodeExcerpt(string Path, int StartLine, int EndLine);
+
 // A cheap model that answers one planner question with the planner's delegated tools, in its own tool-calling loop,
 // and returns only its findings: the raw tool output stays in this conversation, which ends with the call.
 public sealed partial class ToolsNodeAgent(INodeCaller caller, IPlannerToolRunner runner, INodePromptBuilder prompts) : IToolsNodeAgent
@@ -18,6 +21,9 @@ public sealed partial class ToolsNodeAgent(INodeCaller caller, IPlannerToolRunne
     private const int MaxSteps = 12;
     // The prompt asks for far less; writing a long report is the slowest turn of a cheap model.
     private const int MaxFindingsChars = 6_000;
+    // Excerpts are copied from the files by AIT, not written by the model: bounded by lines, not by the report's size.
+    private const int MaxExcerpts = 8;
+    private const int MaxExcerptLines = 400;
     private const int MapDepth = 4;
     private const int MaxMapEntries = 300;
 }

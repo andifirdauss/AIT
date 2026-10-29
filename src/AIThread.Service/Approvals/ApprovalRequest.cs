@@ -10,11 +10,16 @@ namespace AIThread.Service.Approvals;
 public sealed record ApprovalItem(ApprovalKind Kind, string Target, string? Detail = null, string? Pattern = null);
 
 // What AIT asks the developer before acting: the actions, why, and whether "allow always" may be offered (never for
-// a push to a protected branch).
+// a push to a protected branch, nor for a target too long to save).
 public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string Reason, bool AllowAlways = true)
 {
+    public bool AllowAlways { get; init; } = AllowAlways && Items.All(i => ApprovalTargets.CanSave(i.Kind, i.Target));
+
     // "Always allow the pattern" is offered: a command item has a pattern and "always" may be offered at all.
     public bool AllowPattern => AllowAlways && Items.Any(i => i.Pattern is not null);
+
+    // "Always allow every command of the project" is offered: an item is a command (a long chain fits too, "*" is saved).
+    public bool AllowAll => Items.Any(i => i.Kind == ApprovalKind.Command);
 
     // Shown to the developer (CLI, Telegram, the thread page) as the thread's reply.
     public string ToText()
@@ -39,13 +44,16 @@ public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string R
             builder.Append(Lang.T($"4. **Izinkan selalu untuk pola** {patterns} — perintah lain yang diawali kata yang sama juga diizinkan\n",
                 $"4. **Always allow the pattern** {patterns} — other commands starting with the same words are allowed too\n"));
         }
+        if (AllowAll)
+            builder.Append(Lang.T("5. **Izinkan semua perintah di project ini** — perintah apa pun tidak ditanya lagi, termasuk hapus/push/publish (file kredensial tetap ditolak)\n",
+                "5. **Allow all commands in this project** — no command is asked again, deleting/pushing/publishing included (credential files stay refused)\n"));
         builder.Append(Lang.T("\nBalas dengan nomor pilihan.", "\nReply with the option number."));
         return builder.ToString();
     }
 
     // For the buttons on the thread page; afterThread: a commit/push of a finished thread rather than a paused planner.
     public PendingApprovalDto ToDto(bool afterThread) =>
-        new(Items.Select(i => new ApprovalItemDto(i.Kind, i.Target, i.Detail, i.Pattern)).ToList(), Reason, AllowAlways, ToText(), afterThread, AllowPattern);
+        new(Items.Select(i => new ApprovalItemDto(i.Kind, i.Target, i.Detail, i.Pattern)).ToList(), Reason, AllowAlways, ToText(), afterThread, AllowPattern, AllowAll);
 
     public static string KindLabel(ApprovalKind kind) => kind switch
     {

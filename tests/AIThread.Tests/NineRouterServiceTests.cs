@@ -184,6 +184,28 @@ public class NineRouterServiceTests
     }
 
     [Fact]
+    public async Task A_stream_that_goes_silent_is_dropped_and_retried_instead_of_waiting_for_the_request_timeout()
+    {
+        var calls = 0;
+        var handler = new StubHandler(_ =>
+        {
+            if (++calls > 1) return Json(HttpStatusCode.OK, "{\"choices\":[{\"message\":{\"content\":\"ok\"},\"finish_reason\":\"stop\"}]}");
+            var silent = new StreamContent(new SilentAfterStream("data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n"));
+            silent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = silent };
+        });
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance,
+            stallTimeout: TimeSpan.FromMilliseconds(300));
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var result = await router.ChatAsync(new ChatCompletionRequest { Model = "cc/claude-opus-5-5", Messages = [ChatMessages.User("hi")] });
+
+        Assert.Equal("ok", result.Content);
+        Assert.Equal(2, calls);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(30), "the silent stream waited for the request timeout");
+    }
+
+    [Fact]
     public void Long_retry_after_is_not_waited_on_so_the_caller_can_fail_over()
     {
         var ex = new NineRouterException("limited", 429, retryAfter: TimeSpan.FromMinutes(5));
@@ -209,6 +231,34 @@ public class NineRouterServiceTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(respond(request));
+    }
+
+    // Gives its text, then blocks every read until cancelled: a connection that dropped without closing.
+    private sealed class SilentAfterStream(string text) : Stream
+    {
+        private readonly MemoryStream _head = new(Encoding.UTF8.GetBytes(text));
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var read = _head.Read(buffer.Span);
+            if (read > 0) return read;
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            return 0;
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     private sealed class StubFactory(HttpMessageHandler handler) : IHttpClientFactory

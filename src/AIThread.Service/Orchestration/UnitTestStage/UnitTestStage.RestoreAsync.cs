@@ -21,6 +21,7 @@ public sealed partial class UnitTestStage
             recorder.Log(ActivityLevel.Warning, Lang.T($"Pemulihan unit test gagal: {ex.Message}", $"Unit test restore failed: {ex.Message}"));
             return [];
         }
+        session.Absent.UnionWith(result.Uncommitted);
         if (result.Items.Count == 0 && result.Notes.Count == 0) return [];
 
         session.Report.Restored.AddRange(result.Items);

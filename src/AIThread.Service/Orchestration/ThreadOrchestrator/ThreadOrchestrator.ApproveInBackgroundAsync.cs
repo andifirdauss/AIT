@@ -22,7 +22,7 @@ public sealed partial class ThreadOrchestrator
         await using (var db = await dbFactory.CreateDbContextAsync(cancellationToken))
             source = await db.Threads.Where(t => t.Id == threadId).Select(t => t.Source).FirstOrDefaultAsync(cancellationToken);
 
-        var reply = decision switch { ApprovalDecision.Once => "1", ApprovalDecision.Always => "2", ApprovalDecision.AlwaysPattern => "4", _ => "3" };
+        var reply = decision switch { ApprovalDecision.Once => "1", ApprovalDecision.Always => "2", ApprovalDecision.AlwaysPattern => "4", ApprovalDecision.AlwaysAll => "5", _ => "3" };
         return await StartInBackgroundAsync(new ThreadRequest(source, reply, null, null, null, pending.ProjectId, pending.SessionId), cancellationToken);
     }
 }

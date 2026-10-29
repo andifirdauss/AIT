@@ -4,10 +4,18 @@ using AIThread.Common.Enums;
 namespace AIThread.Service.Approvals;
 
 // How a target is written down and whether a saved grant covers an action: a folder grant covers everything below
-// it, a command pattern ("npm install *") the plain commands it starts (ApprovalTargets.Patterns.cs), the other kinds
-// only the same target.
+// it, a command pattern ("npm install *") the plain commands it starts (ApprovalTargets.Patterns.cs), "*" every command,
+// the other kinds only the same target.
 public static partial class ApprovalTargets
 {
+    // ApprovalGrant.Target column length: a longer target (a long chain of commands) can be allowed once, not saved.
+    public const int MaxLength = 800;
+
+    // The command grant that covers every command of the project ("allow all commands").
+    public const string AllCommands = "*";
+
+    public static bool CanSave(ApprovalKind kind, string target) => Normalize(kind, target).Length <= MaxLength;
+
     public static string Normalize(ApprovalKind kind, string target)
     {
         var text = target.Trim();
@@ -29,7 +37,7 @@ public static partial class ApprovalTargets
         {
             ApprovalKind.WriteOutside => string.Equals(granted, target, StringComparison.OrdinalIgnoreCase)
                                          || target.StartsWith(granted.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase),
-            ApprovalKind.Command => string.Equals(granted, target, StringComparison.Ordinal) || PatternCovers(granted, target),
+            ApprovalKind.Command => granted == AllCommands || string.Equals(granted, target, StringComparison.Ordinal) || PatternCovers(granted, target),
             _ => string.Equals(granted, target, StringComparison.OrdinalIgnoreCase)
         };
     }

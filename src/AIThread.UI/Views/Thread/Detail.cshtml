@@ -14,6 +14,7 @@
         <button type="button" class="btn btn-outline-primary btn-sm d-none" id="btnRetry" title="@Lang.T("Jalankan lagi tugas yang gagal, dilewati, atau dibatalkan memakai rencana yang sama (planner tidak dipanggil).", "Run the failed, skipped or cancelled tasks again with the same plan (the planner is not called).")">@Lang.T("🔁 Ulangi yang gagal", "🔁 Retry the failed ones")</button>
         <button type="button" class="btn btn-outline-warning btn-sm d-none" id="btnRollback" title="@Lang.T("Kembalikan semua file yang diubah thread ini ke isi sebelum thread berjalan.", "Restore every file this thread changed to its content before the thread ran.")">@Lang.T("↩ Batalkan perubahan file", "↩ Roll back file changes")</button>
         <button type="button" class="btn btn-outline-danger btn-sm d-none" id="btnCancel">@Lang.T("Batalkan thread", "Cancel thread")</button>
+        <a class="btn btn-outline-secondary btn-sm" href="/Log?threadId=@threadId" title="@Lang.T("Insiden (error, stack trace, output mentah executor) dan log aktivitas thread ini, bisa di-export ke ZIP.", "Incidents (errors, stack traces, raw executor output) and the activity log of this thread, exportable to a ZIP.")">@Lang.T("📋 Log", "📋 Log")</a>
     </div>
 </div>
 
@@ -27,6 +28,7 @@
             <button type="button" class="btn btn-outline-primary btn-sm" data-approval="Always" id="btnApproveAlways" title="@Lang.T("Disimpan di mesin ini untuk project ini; cabut di Project → Detail → Izin AIT.", "Saved on this machine for this project; revoke in Project → Detail → AIT permissions.")">@Lang.T("Izinkan selalu", "Always allow")</button>
             <button type="button" class="btn btn-outline-danger btn-sm" data-approval="Deny">@Lang.T("Tolak", "Deny")</button>
             <button type="button" class="btn btn-outline-primary btn-sm d-none" data-approval="AlwaysPattern" id="btnApprovePattern" title="@Lang.T("Perintah lain yang diawali kata yang sama juga diizinkan; cabut di Project → Detail → Izin AIT.", "Other commands starting with the same words are allowed too; revoke in Project → Detail → AIT permissions.")">@Lang.T("Izinkan selalu untuk pola", "Always allow the pattern") <code class="ms-1" id="approvalPattern"></code></button>
+            <button type="button" class="btn btn-outline-warning btn-sm d-none" data-approval="AlwaysAll" id="btnApproveAll" title="@Lang.T("Perintah apa pun di project ini tidak ditanya lagi, termasuk hapus/push/publish; file kredensial tetap ditolak. Cabut di Project → Detail → Izin AIT.", "No command in this project is asked again, deleting/pushing/publishing included; credential files stay refused. Revoke in Project → Detail → AIT permissions.")">@Lang.T("Izinkan semua perintah di project ini", "Allow all commands in this project")</button>
         </div>
     </div>
 </div>

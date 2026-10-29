@@ -24,6 +24,7 @@ public static class Cli
           stop              Matikan instance yang berjalan dengan rapi
           status            Tampilkan status instance, port, log, dan autostart
           logs              Tampilkan log terbaru (-f untuk terus mengikuti)
+          logs export [f]   Tulis ZIP diagnostik (insiden + stack trace, log aktivitas, file log) ke f; --days n (bawaan 3)
           open              Buka Web UI di browser
           autostart on|off  Jalankan tray otomatis saat login Windows
           setup             Buka halaman Setup (semua langkah awal di satu halaman)
@@ -52,6 +53,7 @@ public static class Cli
           stop              Stop the running instance cleanly
           status            Show the status of the instance, port, log and autostart
           logs              Show the latest log (-f to keep following)
+          logs export [f]   Write the diagnostic ZIP (incidents + stack traces, activity log, log files) to f; --days n (default 3)
           open              Open the Web UI in the browser
           autostart on|off  Run the tray automatically at Windows login
           setup             Open the Setup page (every first step on one page)
@@ -102,6 +104,7 @@ public static class Cli
             case "tray": return await TrayAsync(port, options);
             case "stop": return await StopAsync(port);
             case "status": return await StatusAsync(port);
+            case "logs" when options.Rest.FirstOrDefault()?.ToLowerInvariant() == "export": return await LogsCommand.ExportAsync(port, options.Rest);
             case "logs": return await LogsAsync(options.Follow);
             case "open": OpenBrowser($"http://localhost:{port}"); return 0;
             case "autostart": return AutostartCommand(options.Rest);
