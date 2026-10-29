@@ -103,18 +103,6 @@ with their own **Save memory storage** button. Changes apply right away without 
 
 A store that cannot be reached is rejected when saving. Details per provider in [Memory](06-memory.md#memory-storage).
 
-### Business memory
-
-The card below the memory storage (`/Setting#memory`), saved with **Save business memory**. See
-[Business memory](06-memory.md#business-memory-business-wiki).
-
-| Field | Default | Details |
-|---|---|---|
-| Update the business wiki automatically | on | A worker summarizes finished threads into business wiki pages per module. The *Update now* button in the Memory menu → Business memory still works while this is off. |
-| Interval (hours) | 6 | 1–168. The pause between automatic summaries. |
-| Wiki writer model | automatic | The 9router model that writes the wiki; empty = the model of the active Planner node. Choose a careful model that can read images, so screenshots from prompts make it into the pages. |
-| Developer name | `git config user.name` | Recorded on pages and in the revision history, so the team knows who (whose AIT) changed what. Empty = `user.name` from the global git config (read straight from `~/.gitconfig`); when git has none either, AIT asks for it once in a popup when the UI is first opened. |
-
 ### Telegram
 
 The last tab of the Setting page (`/Setting#telegram`), for sending prompts from a phone — the full guide is in
@@ -129,22 +117,6 @@ The last tab of the Setting page (`/Setting#telegram`), for sending prompts from
 
 The **Save Telegram** button only saves this part (separate from *Save settings*) and applies right away without a
 restart. Progress in Telegram is always shown, regardless of the *Show progress in the CLI* switch.
-
-### Skill
-
-The `/Setting#skills` tab holds the Skill Orchestrator and the offline skill store. How it works is explained in
-[Skills on a node](07-cara-kerja.md#skills-on-a-node).
-
-| Field | Default | Details |
-|---|---|---|
-| Skill Orchestrator model | automatic | The 9router model that examines a link's content when skills are fetched, and that finds skills in the Node modal. *Automatic* = the model of the active Planner node with the lowest priority. |
-| Skill character limit per node | 40000 | 4000–200000. The total skill content pasted into one node's system prompt, split evenly between skills. |
-| Skill sources | — | Paste a link, then click **Fetch skills**. Accepted: a GitHub/GitLab repository (`/tree/<branch>/<folder>` allowed), `owner/repo`, a `.git` URL, an `.md` file or a web page. Status: *Queued* → *Downloading…* → *Analyzed by AI…* → *Ready*/*Failed*. **Sync** fetches it again; **Delete** removes the source, its skills and its folder, and detaches those skills from nodes. |
-| Skill store | — | The list of skills with a search (name, description, tags, source), the number of nodes using each, and a **View** button for the content and its supporting files. |
-
-**Save Skill** only saves the model and the character limit. Sources are processed one by one in the background, and
-their status changes live without a refresh. Store folder: `%LOCALAPPDATA%\AIThread\skills`, changeable through
-`AIThread:SkillsDirectory` in `appsettings.json`.
 
 ### Security & privacy
 
@@ -172,6 +144,20 @@ absent.
 The fastest way to fill every role at once: Setup → the *Choose a model for each role* step (just pick a strong model
 and a cheap model) — see the [pipeline preset](05-menu.md#setup). The `AIT …` nodes it creates can be changed here like
 any other node.
+
+### Business memory
+
+The **Wiki Writer** column in the *Background task models* part of the Node menu (`/Node`), changed with **Edit**.
+Formerly a card in Setting → Memory storage; where the wiki is stored is still set there (the *Business memory* card).
+See
+[Business memory](06-memory.md#business-memory-business-wiki).
+
+| Field | Default | Details |
+|---|---|---|
+| Update the business wiki automatically | on | A worker summarizes finished threads into business wiki pages per module. The *Update now* button in the Memory menu → Business memory still works while this is off. |
+| Interval (hours) | 6 | 1–168. The pause between automatic summaries. |
+| Wiki writer model | automatic | The 9router model that writes the wiki; empty = the model of the active Planner node. Can also be chosen in the Node menu (Wiki Writer column). Choose a careful model that can read images, so screenshots from prompts make it into the pages. |
+| Developer name | `git config user.name` | Recorded on pages and in the revision history, so the team knows who (whose AIT) changed what. Empty = `user.name` from the global git config (read straight from `~/.gitconfig`); when git has none either, AIT asks for it once in a popup when the UI is first opened. |
 
 ### Node fields
 
@@ -430,6 +416,23 @@ Example setup (the model ids are only illustrations — choose from the dropdown
 | Executor A | Executor | a cheap combo | 6 | 10 |
 | Executor B | Executor | a cheap model from another provider | 4 | 10 |
 | Wrapper | Wrapper | a cheap model | 4 | 1 |
+
+## Skill menu
+
+The **Skill** menu in the sidebar (`/Skill`, formerly the Setting → Skill tab; old `/Setting#skills` links land here)
+holds the Skill Orchestrator and the offline skill store. How it works is explained in
+[Skills on a node](07-cara-kerja.md#skills-on-a-node).
+
+| Field | Default | Details |
+|---|---|---|
+| Skill Orchestrator model | automatic | The 9router model that examines a link's content when skills are fetched, and that finds skills in the Node modal. Can also be chosen in the Node menu (Skill Orchestrator column). *Automatic* = the model of the active Planner node with the lowest priority. |
+| Skill character limit per node | 40000 | 4000–200000. The total skill content pasted into one node's system prompt, split evenly between skills. |
+| Skill sources | — | Paste a link, then click **Fetch skills**. Accepted: a GitHub/GitLab repository (`/tree/<branch>/<folder>` allowed), `owner/repo`, a `.git` URL, an `.md` file or a web page. Status: *Queued* → *Downloading…* → *Analyzed by AI…* → *Ready*/*Failed*. **Sync** fetches it again; **Delete** removes the source, its skills and its folder, and detaches those skills from nodes. |
+| Skill store | — | The list of skills with a search (name, description, tags, source), the number of nodes using each, and a **View** button for the content and its supporting files. |
+
+**Save Skill** only saves the model and the character limit. Sources are processed one by one in the background, and
+their status changes live without a refresh. Store folder: `%LOCALAPPDATA%\AIThread\skills`, changeable through
+`AIThread:SkillsDirectory` in `appsettings.json`.
 
 ## Team setup profile
 

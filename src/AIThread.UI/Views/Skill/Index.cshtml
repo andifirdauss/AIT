@@ -1,0 +1,102 @@
+@{
+    ViewData["Title"] = "Skill";
+}
+
+<div class="page-header">
+    <div>
+        <h1>Skill</h1>
+        <p class="page-subtitle">@Html.Raw(Lang.T("Gudang skill offline: tarik skill dari link git/web, pilih model Skill Orchestrator, lalu pasang skill ke node di menu <a href=\"/Node\">Node</a>.", "The offline skill store: pull skills from git/web links, choose the Skill Orchestrator model, then attach skills to nodes in the <a href=\"/Node\">Node</a> menu."))</p>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <form class="card h-100" id="skillForm" autocomplete="off">
+            <div class="card-header">Skill Orchestrator</div>
+            <div class="card-body">
+                <p class="small text-secondary">
+                    @Html.Raw(Lang.T("Tempel link git atau web yang berisi skill. Model di bawah memeriksa skill apa saja yang ada di link itu, lalu skill ditarik ke gudang lokal sehingga bisa dipakai offline. Di menu <a href=\"/Node\">Node</a>, model yang sama mencarikan skill yang cocok dengan kebutuhan yang Anda tulis, lalu skill tersebut benar-benar ditempel ke system prompt node.", "Paste a git or web link that holds skills. The model below checks which skills the link has, then the skills are pulled into a local store so they work offline. In the <a href=\"/Node\">Node</a> menu, the same model finds the skills that match the need you describe, and those skills are really put into the node's system prompt."))
+                </p>
+                <div class="mb-3">
+                    <label class="form-label small" for="skillModel">Model Skill Orchestrator</label>
+                    <select class="form-select" id="skillModel"></select>
+                    <div class="form-text">@Html.Raw(Lang.T("Pilih model yang pandai menilai, mis. model planner. Dipakai saat menarik link dan saat mencari skill untuk node. Juga bisa dipilih di menu <a href=\"/Node\">Node</a> (kolom Skill Orchestrator).", "Choose a model that judges well, e.g. the planner model. Used when pulling links and when finding skills for a node. Can also be chosen in the <a href=\"/Node\">Node</a> menu (Skill Orchestrator column)."))</div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small" for="skillMaxChars">@Lang.T("Batas karakter skill per node", "Skill character limit per node")</label>
+                    <input type="number" class="form-control" id="skillMaxChars" min="4000" max="200000" step="1000" required />
+                    <div class="form-text">@Lang.T("Isi semua skill pada satu node dibagi rata dalam batas ini sebelum ditempel ke system prompt. Skill yang lebih panjang dipotong, dan modelnya diberi path ke file lengkap.", "The content of all skills of one node is shared evenly within this limit before it goes into the system prompt. Longer skills are cut, and the model gets the path to the full file.")</div>
+                </div>
+                <div class="form-text">@Html.Raw(Lang.T("Gudang: <span class=\"mono\" id=\"skillStoreDir\">–</span>", "Store: <span class=\"mono\" id=\"skillStoreDir\">–</span>"))</div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary btn-sm">@Lang.T("Simpan Skill", "Save Skill")</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center gap-2">
+                @Html.Raw(Lang.T("<span>Sumber skill</span> <span class=\"ms-auto small text-secondary\" id=\"skillSourceSummary\"></span>", "<span>Skill sources</span> <span class=\"ms-auto small text-secondary\" id=\"skillSourceSummary\"></span>"))
+            </div>
+            <div class="card-body">
+                <form class="d-flex gap-2" id="skillSourceForm" autocomplete="off">
+                    <input type="text" class="form-control mono" id="skillSourceUrl" placeholder="https://github.com/anthropics/skills" required />
+                    <button type="submit" class="btn btn-primary text-nowrap">@Lang.T("Tarik skill", "Pull skills")</button>
+                </form>
+                <div class="form-text mb-3">
+                    @Html.Raw(Lang.T("Repository GitHub/GitLab (boleh link ke folder <span class=\"mono\">/tree/main/…</span>), URL <span class=\"mono\">.git</span>, file <span class=\"mono\">.md</span>, atau halaman web yang memuat skill. GitHub/GitLab diunduh sebagai ZIP; host git lain memakai <span class=\"mono\">git clone</span>.", "A GitHub/GitLab repository (a link to a <span class=\"mono\">/tree/main/…</span> folder is fine), a <span class=\"mono\">.git</span> URL, a <span class=\"mono\">.md</span> file, or a web page holding skills. GitHub/GitLab are downloaded as ZIP; other git hosts use <span class=\"mono\">git clone</span>."))
+                </div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr class="text-nowrap"><th>@Lang.T("Sumber", "Source")</th><th>Status</th><th>Skill</th><th>@Lang.T("Ditarik", "Pulled")</th><th></th></tr>
+                        </thead>
+                        <tbody id="skillSourceRows">
+                            <tr><td colspan="5" class="text-secondary small">@Lang.T("Memuat…", "Loading…")</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small mt-2 d-none" id="skillSourcePager"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                <span>@Lang.T("Gudang skill", "Skill store")</span>
+                <span class="small text-secondary" id="skillCount"></span>
+                <input type="search" class="form-control form-control-sm ms-auto w-auto" id="skillSearch" placeholder="@Lang.T("Cari nama, deskripsi, tag…", "Search name, description, tag…")" />
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr class="text-nowrap"><th>Skill</th><th>@Lang.T("Sumber", "Source")</th><th>@Lang.T("Dipakai", "Used")</th><th></th></tr>
+                        </thead>
+                        <tbody id="skillRows">
+                            <tr><td colspan="4" class="text-secondary small">@Lang.T("Memuat…", "Loading…")</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center small mt-2 d-none" id="skillPager"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="skillModal" tabindex="-1" aria-labelledby="skillModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="skillModalTitle">Skill</h5>
+            </div>
+            <div class="modal-body" id="skillModalBody"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/pages/skills.js" asp-append-version="true"></script>
+}

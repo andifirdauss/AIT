@@ -12,16 +12,17 @@ namespace AIThread.API.Controllers;
 [Route("api/business")]
 public class BusinessController(IBusinessMemoryService business, IBusinessDigestRunner runner, IBusinessEnvService environments) : ControllerBase
 {
-    // The wiki as it holds in one environment (only the pages whose changes reached it).
+    // The wiki as it holds in one environment (only the pages whose changes reached it). A remote branch name may hold
+    // '/' (feature/login): it comes as %2F, which routing leaves encoded.
     [HttpGet("projects/{projectId:guid}/environments/{environment}")]
     public async Task<ActionResult<ApiResponse<BusinessEnvOverviewDto>>> Environment(Guid projectId, string environment, CancellationToken cancellationToken) =>
-        await environments.GetPagesAsync(projectId, environment, cancellationToken) is { } overview
+        await environments.GetPagesAsync(projectId, Uri.UnescapeDataString(environment), cancellationToken) is { } overview
             ? ApiResponse<BusinessEnvOverviewDto>.Ok(overview)
             : NotFound(ApiResponse<BusinessEnvOverviewDto>.Fail(Lang.T("Project tidak ditemukan.", "Project not found.")));
 
     [HttpGet("pages/{id:guid}/environments/{environment}")]
     public async Task<ActionResult<ApiResponse<BusinessEnvPageDto>>> EnvironmentPage(Guid id, string environment, CancellationToken cancellationToken) =>
-        await environments.GetPageAsync(id, environment, cancellationToken) is { } page
+        await environments.GetPageAsync(id, Uri.UnescapeDataString(environment), cancellationToken) is { } page
             ? ApiResponse<BusinessEnvPageDto>.Ok(page)
             : NotFound(ApiResponse<BusinessEnvPageDto>.Fail(Lang.T("Halaman ini belum ada di environment itu.", "This page is not in that environment yet.")));
 

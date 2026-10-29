@@ -282,7 +282,7 @@ The repository has no `SKILL.md` and the model found no Markdown file holding in
 straight to its skill folder (`/tree/main/<folder>`) or to its `.md` file.
 
 **Skills stored without tags / *Find skills* fails: `Choose the Skill Orchestrator model…`**
-Choose the model in Setting → Skill, or add an active Planner node. Skills without tags can still be used; click *Sync*
+Choose the model in the Skill menu (or the Skill Orchestrator column of the Node menu), or add an active Planner node. Skills without tags can still be used; click *Sync*
 once a model is available so the tags are made again.
 
 **A node feels slow or expensive after getting skills**

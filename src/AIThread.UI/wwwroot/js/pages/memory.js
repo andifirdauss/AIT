@@ -13,7 +13,8 @@
   let reviewLoaded = false;
 
   const modal = bootstrap.Modal.getOrCreateInstance(el('memoryModal'));
-  const reviewTab = el('review-tab');
+  // "Perlu review" is a foldable part of the memory list, loaded the first time it is opened.
+  const reviewSection = el('reviewSection');
 
   function chips(values) {
     return (values || []).map(k => `<span class="chip">${escapeHtml(k)}</span>`).join('');
@@ -151,6 +152,9 @@
         : t('dilabeli ulang otomatis', 'relabeled automatically');
       el('reviewBadge').textContent = s.reviewCount ? fmt.number(s.reviewCount) : '';
       el('reviewBadge').classList.toggle('d-none', !s.reviewCount);
+      el('reviewSummaryCount').textContent = fmt.number(s.reviewCount || 0);
+      // Nothing to review: the part hides, unless it is open (its lists then show they are empty).
+      reviewSection.classList.toggle('d-none', !s.reviewCount && !reviewSection.open);
       el('statRedis').innerHTML = s.redisConnected
         ? (isEn ? `<span class="text-success">Connected</span> · ${escapeHtml(s.shortStore || '')}` : `<span class="text-success">Terhubung</span> · ${escapeHtml(s.shortStore || '')}`)
         : (isEn ? `<span class="text-danger">${escapeHtml(s.shortStore || 'Short memory')} not connected — new memory goes straight to long memory</span>` : `<span class="text-danger">${escapeHtml(s.shortStore || 'Short memory')} tidak terhubung — memory baru langsung ke long memory</span>`);
@@ -250,7 +254,7 @@
     if ([...project, ...knowledge].some(m => m.name === current)) el('filterModule').value = current;
   }
 
-  // The chosen project's environments (dev, staging, prod, ...), for the environment filter.
+  // The chosen project's environments (dev, staging, prod, ...) and remote branches, for the environment filter.
   async function loadEnvFilter() {
     const projectId = el('filterProject').value;
     let environments = [];
@@ -263,7 +267,13 @@
     }
     const current = el('filterEnv').value;
     el('filterEnv').innerHTML = t('<option value="">Semua environment</option>', '<option value="">All environments</option>')
-      + environments.map(e => `<option value="${escapeHtml(e.name)}">${escapeHtml(isEn ? `In ${e.name}` : `Di ${e.name}`)}</option>`).join('');
+      + [[t('Environment terdaftar', 'Registered environments'), environments.filter(e => !e.isAuto)],
+        [t('Branch remote', 'Remote branches'), environments.filter(e => e.isAuto)]]
+        .filter(([, list]) => list.length)
+        .map(([label, list]) => `<optgroup label="${escapeHtml(label)}">`
+          + list.map(e => `<option value="${escapeHtml(e.name)}" title="${escapeHtml(e.ref)}">${escapeHtml(isEn ? `In ${e.name}` : `Di ${e.name}`)}</option>`).join('')
+          + '</optgroup>')
+        .join('');
     el('filterEnv').disabled = environments.length === 0;
     el('filterEnv').value = environments.some(e => e.name === current) ? current : '';
   }
@@ -618,7 +628,7 @@
     }
   }
 
-  el('tab-review').addEventListener('click', async event => {
+  reviewSection.addEventListener('click', async event => {
     const target = event.target.closest('button');
     if (!target) return;
     if (target.dataset.edit) return openModal(items.get(target.dataset.edit));
@@ -634,14 +644,21 @@
     }
   });
 
-  reviewTab.addEventListener('shown.bs.tab', () => { if (!reviewLoaded) loadReview(); });
+  reviewSection.addEventListener('toggle', () => { if (reviewSection.open && !reviewLoaded) loadReview(); });
   el('reviewProject').addEventListener('change', loadReview);
   document.addEventListener('click', event => {
     if (!event.target.closest('[data-open-review]')) return;
     event.preventDefault();
-    bootstrap.Tab.getOrCreateInstance(reviewTab).show();
+    openReview();
   });
-  if (location.hash === '#review') bootstrap.Tab.getOrCreateInstance(reviewTab).show();
+  // Old /Memory#review links (the part used to be its own tab).
+  if (location.hash === '#review') openReview();
+
+  function openReview() {
+    reviewSection.classList.remove('d-none');
+    reviewSection.open = true;
+    reviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   // Export: the memories matching the filters, downloaded as JSON. Fetched first so an error shows as a toast.
   el('btnExport').addEventListener('click', async () => {

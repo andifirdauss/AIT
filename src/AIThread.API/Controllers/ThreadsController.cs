@@ -33,8 +33,9 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
             request.Decision == ApprovalDecision.Deny ? Lang.T("Izin ditolak.", "Permission denied.") : Lang.T("Izin diberikan.", "Permission given."));
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse<IReadOnlyList<ThreadSummaryDto>>>> GetRecent([FromQuery] int take = 30, [FromQuery] Guid? projectId = null, CancellationToken cancellationToken = default) =>
-        ApiResponse<IReadOnlyList<ThreadSummaryDto>>.Ok(await threadService.GetRecentAsync(take, projectId, cancellationToken));
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ThreadSummaryDto>>>> GetRecent([FromQuery] int take = 30, [FromQuery] Guid? projectId = null,
+        [FromQuery] string? search = null, CancellationToken cancellationToken = default) =>
+        ApiResponse<IReadOnlyList<ThreadSummaryDto>>.Ok(await threadService.GetRecentAsync(take, projectId, search, cancellationToken));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ApiResponse<ThreadDetailDto>>> Get(Guid id, CancellationToken cancellationToken) =>
