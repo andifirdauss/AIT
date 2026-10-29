@@ -256,8 +256,8 @@ public static partial class FinalReport
         foreach (var retired in report.Tests.Where(t => t.Verdict == UnitTestReportItem.Retired))
             builder.Append(Lang.T($"- 🗃️ **{retired.Number}** {OneLine(retired.Title)} — ditandai obsolete, menunggu konfirmasi hapus di Proyek > Detail\n", $"- 🗃️ **{retired.Number}** {OneLine(retired.Title)} — marked obsolete, waiting for the deletion to be confirmed in Project > Detail\n"));
         foreach (var restored in report.Restored.Take(MaxReportedUnitTests))
-            builder.Append($"- ♻️ **{restored.Number}** `{restored.File}` — {UnitTestStage.RestoreLabel(restored)}\n");
-        foreach (var note in report.Notes) builder.Append($"- ℹ️ {OneLine(note)}\n");
+            builder.Append($"- 🔄 **{restored.Number}** `{restored.File}` — {UnitTestStage.RestoreLabel(restored)}\n");
+        foreach (var note in report.Notes) builder.Append($"- 💡 {OneLine(note)}\n");
         // The footer adds its own blank line.
         return builder.ToString().TrimEnd('\n');
     }
