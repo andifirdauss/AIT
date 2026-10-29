@@ -5,9 +5,10 @@
 }
 <div class="col-lg-6 col-xxl-4">
     <div class="card h-100 memory-store" data-prefix="@prefix">
-        <div class="card-header d-flex flex-wrap align-items-center gap-2">
-            <span>@Model.Title</span>
-            <span class="ms-auto small" id="@(prefix)Status"></span>
+        @* One line: a long title or status is cut with an ellipsis (full status in the tooltip) instead of wrapping. *@
+        <div class="card-header d-flex align-items-center gap-2">
+            <span class="text-nowrap">@Model.Title</span>
+            <span class="ms-auto small text-truncate memory-store-status" id="@(prefix)Status"></span>
         </div>
         <div class="card-body">
             <p class="small text-secondary">@Model.Description</p>

@@ -81,7 +81,16 @@
   }
 
   function renderEnvironments(list) {
-    el('envRows').innerHTML = list.length ? list.map(envRow).join('') : `<div class="text-secondary">${t('Belum ada environment.', 'No environment yet.')}</div>`;
+    const registered = list.filter(e => !e.isAuto);
+    const branches = list.filter(e => e.isAuto);
+    el('envRows').innerHTML = registered.length
+      ? registered.map(envRow).join('')
+      : `<div class="text-secondary">${t('Belum ada environment terdaftar.', 'No registered environment yet.')}</div>`;
+    // Remote branches are environments by themselves: listed, not edited (register one to rename it or mark it prod).
+    el('envBranches').innerHTML = branches.length
+      ? `<div class="small text-secondary mb-1">${isEn ? `${branches.length} remote branch(es) of this clone, also environments:` : `${branches.length} branch remote clone ini, otomatis jadi environment:`}</div>`
+        + `<div class="d-flex flex-wrap gap-1">${branches.map(e => `<span class="badge text-bg-light mono" title="${escapeHtml(`${e.ref} · ${isEn ? `${fmt.number(e.changes)} change(s)` : `${fmt.number(e.changes)} perubahan`}`)}">${escapeHtml(e.name)}</span>`).join('')}</div>`
+      : `<div class="small text-secondary">${t('Tidak ada branch remote (belum ada remote atau belum di-fetch).', 'No remote branch (no remote yet, or not fetched yet).')}</div>`;
   }
 
   async function loadEnvironments() {

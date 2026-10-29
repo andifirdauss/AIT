@@ -100,18 +100,6 @@ arahkan **Long** dan **Business memory** semua developer ke database yang sama: 
 
 Store yang tidak bisa dihubungi ditolak saat disimpan. Rincian per provider di [Memory](06-memory.md#penyimpanan-memory).
 
-### Business memory
-
-Kartu di bawah penyimpanan memory (`/Setting#memory`), disimpan lewat **Simpan business memory**. Lihat
-[Business memory](06-memory.md#business-memory-wiki-bisnis).
-
-| Field | Default | Keterangan |
-|---|---|---|
-| Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memori → Business memory tetap bisa dipakai saat nonaktif. |
-| Interval (jam) | 6 | 1–168. Jeda antar rangkuman otomatis. |
-| Model penulis wiki | otomatis | Model 9router penulis wiki; kosong = model node Planner aktif. Pilih model yang teliti dan bisa membaca gambar agar screenshot dari prompt ikut masuk halaman. |
-| Nama developer | `git config user.name` | Dicatat pada halaman dan riwayat revisi, supaya tim tahu siapa (AIT siapa) yang mengubah. Kosong = `user.name` dari git config global (dibaca langsung dari `~/.gitconfig`); bila git juga tidak punya, AIT menanyakannya sekali lewat popup saat UI pertama dibuka. |
-
 ### Telegram
 
 Tab terakhir halaman Pengaturan (`/Setting#telegram`), untuk mengirim prompt dari HP — panduan lengkap di
@@ -126,22 +114,6 @@ Tab terakhir halaman Pengaturan (`/Setting#telegram`), untuk mengirim prompt dar
 
 Tombol **Simpan Telegram** hanya menyimpan bagian ini (terpisah dari *Simpan pengaturan*) dan langsung berlaku tanpa
 restart. Progres di Telegram selalu tampil, tidak dipengaruhi saklar *Tampilkan progres di CLI*.
-
-### Skill
-
-Tab `/Setting#skills` berisi Skill Orchestrator dan gudang skill offline. Cara kerjanya dijelaskan di
-[Skill pada node](07-cara-kerja.md#skill-pada-node).
-
-| Field | Default | Keterangan |
-|---|---|---|
-| Model Skill Orchestrator | otomatis | Model 9router yang memeriksa isi link saat skill ditarik dan yang mencarikan skill di modal Node. *Otomatis* = model node Planner aktif dengan prioritas terkecil. |
-| Batas karakter skill per node | 40000 | 4000–200000. Total isi skill yang ditempel ke system prompt satu node, dibagi rata antar skill. |
-| Sumber skill | — | Tempel link lalu klik **Tarik skill**. Formatnya: repository GitHub/GitLab (boleh `/tree/<branch>/<folder>`), `owner/repo`, URL `.git`, file `.md`, atau halaman web. Status: *Antre* → *Mengunduh…* → *Dianalisis AI…* → *Siap*/*Gagal*. **Sync** menarik ulang; **Hapus** membuang sumber, skill-nya, dan foldernya, serta melepas skill itu dari node. |
-| Gudang skill | — | Daftar skill dengan pencarian (nama, deskripsi, tag, sumber), jumlah node pemakai, dan tombol **Lihat** untuk isi serta file pendukungnya. |
-
-**Simpan Skill** hanya menyimpan model dan batas karakter. Sumber diproses satu per satu di latar belakang, dan status
-berubah langsung tanpa refresh. Folder gudang: `%LOCALAPPDATA%\AIThread\skills`, bisa diubah lewat
-`AIThread:SkillsDirectory` di `appsettings.json`.
 
 ### Keamanan & privasi
 
@@ -167,6 +139,19 @@ kesiapan pipeline beserta catatannya. Node **Reviewer** (lihat
 
 Cara tercepat mengisi semua peran sekaligus: Penyiapan → langkah *Pilih model untuk tiap peran* (cukup pilih model kuat dan
 model murah) — lihat [preset pipeline](05-menu.md#penyiapan). Node `AIT …` yang dibuatnya bisa diubah di sini seperti node lain.
+
+### Business memory
+
+Kolom **Wiki Writer** di bagian *Model tugas latar* menu Node (`/Node`), diubah lewat **Edit**. Dulu kartu di
+Pengaturan → Penyimpanan memory; tempat penyimpanan wiki-nya tetap diatur di sana (kartu *Business memory*). Lihat
+[Business memory](06-memory.md#business-memory-wiki-bisnis).
+
+| Field | Default | Keterangan |
+|---|---|---|
+| Perbarui wiki bisnis otomatis | aktif | Worker merangkum thread yang selesai menjadi halaman wiki bisnis per modul. Tombol *Perbarui sekarang* di menu Memori → Business memory tetap bisa dipakai saat nonaktif. |
+| Interval (jam) | 6 | 1–168. Jeda antar rangkuman otomatis. |
+| Model penulis wiki | otomatis | Model 9router penulis wiki; kosong = model node Planner aktif. Juga bisa dipilih di menu Node (kolom Wiki Writer). Pilih model yang teliti dan bisa membaca gambar agar screenshot dari prompt ikut masuk halaman. |
+| Nama developer | `git config user.name` | Dicatat pada halaman dan riwayat revisi, supaya tim tahu siapa (AIT siapa) yang mengubah. Kosong = `user.name` dari git config global (dibaca langsung dari `~/.gitconfig`); bila git juga tidak punya, AIT menanyakannya sekali lewat popup saat UI pertama dibuka. |
 
 ### Field node
 
@@ -421,6 +406,23 @@ Contoh susunan (id model hanya ilustrasi — pilih dari dropdown sesuai provider
 | Executor A | Executor | combo murah | 6 | 10 |
 | Executor B | Executor | model murah dari provider lain | 4 | 10 |
 | Wrapper | Wrapper | model murah | 4 | 1 |
+
+## Menu Skill
+
+Menu **Skill** di sidebar (`/Skill`, dulu tab Pengaturan → Skill; link lama `/Setting#skills` dialihkan ke sini) berisi
+Skill Orchestrator dan gudang skill offline. Cara kerjanya dijelaskan di
+[Skill pada node](07-cara-kerja.md#skill-pada-node).
+
+| Field | Default | Keterangan |
+|---|---|---|
+| Model Skill Orchestrator | otomatis | Model 9router yang memeriksa isi link saat skill ditarik dan yang mencarikan skill di modal Node. Juga bisa dipilih di menu Node (kolom Skill Orchestrator). *Otomatis* = model node Planner aktif dengan prioritas terkecil. |
+| Batas karakter skill per node | 40000 | 4000–200000. Total isi skill yang ditempel ke system prompt satu node, dibagi rata antar skill. |
+| Sumber skill | — | Tempel link lalu klik **Tarik skill**. Formatnya: repository GitHub/GitLab (boleh `/tree/<branch>/<folder>`), `owner/repo`, URL `.git`, file `.md`, atau halaman web. Status: *Antre* → *Mengunduh…* → *Dianalisis AI…* → *Siap*/*Gagal*. **Sync** menarik ulang; **Hapus** membuang sumber, skill-nya, dan foldernya, serta melepas skill itu dari node. |
+| Gudang skill | — | Daftar skill dengan pencarian (nama, deskripsi, tag, sumber), jumlah node pemakai, dan tombol **Lihat** untuk isi serta file pendukungnya. |
+
+**Simpan Skill** hanya menyimpan model dan batas karakter. Sumber diproses satu per satu di latar belakang, dan status
+berubah langsung tanpa refresh. Folder gudang: `%LOCALAPPDATA%\AIThread\skills`, bisa diubah lewat
+`AIThread:SkillsDirectory` di `appsettings.json`.
 
 ## Profil setup tim
 

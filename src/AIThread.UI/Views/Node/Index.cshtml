@@ -46,7 +46,7 @@
         </div>
         <div class="small text-secondary mt-3">
             <span class="mono">@Lang.T("📝 instruksi", "📝 instructions")</span> @Lang.T("= node punya instruksi tambahan yang ditempel ke prompt bawaan perannya (arahkan kursor untuk melihat isinya).", "= the node has extra instructions appended to the default prompt of its role (hover to see them).")
-            <span class="mono">🧩 n</span> @Lang.T("= node memakai n skill dari gudang (Pengaturan → Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.", "= the node uses n skills from the store (Setting → Skill; names in the tooltip); the skill content goes into the node's system prompt.")
+            <span class="mono">🧩 n</span> @Lang.T("= node memakai n skill dari gudang (menu Skill; namanya di tooltip); isi skill ikut ditempel ke system prompt node.", "= the node uses n skills from the store (Skill menu; names in the tooltip); the skill content goes into the node's system prompt.")
             <span class="mono">🛰 n tool</span> @Lang.T("= planner menyerahkan n tool ke tools node (detail di tooltip).", "= the planner hands n tools to the tools node (details in the tooltip).")
             <span class="mono">🧪 auto test</span> @Lang.T("= Auto Testing planner menyala: perubahan dites node Tester setelah verifikasi. Detail lengkap:", "= the planner's Auto Testing is on: changes are tested by the Tester node after verification. Full details:") <a asp-controller="Docs" asp-action="Index" asp-route-slug="02-konfigurasi" asp-fragment="field-node">@Lang.T("Dokumentasi → Konfigurasi", "Docs → Configuration")</a>.
         </div>
@@ -102,6 +102,27 @@
             <p class="small text-secondary">@Lang.T("Opsional. Meringkas percakapan CLI setelah tiap thread, sehingga planner mulai dari ringkasan kecil, bukan seluruh chat. Tanpa node ini, Wrapper yang meringkas.", "Optional. Summarizes the CLI conversation after each thread, so the planner starts from a small summary instead of the whole chat. Without this node, the Wrapper summarizes.")</p>
         </div>
         <div id="nodes-ContextKeeper"></div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <h2 class="h6 text-uppercase text-secondary mb-1">@Lang.T("Model tugas latar", "Background task models")</h2>
+    <p class="small text-secondary">@Lang.T("Bukan node pipeline: masing-masing memakai satu model 9router, kosong = model node Planner aktif dengan prioritas terkecil. Penulis wiki bisnis (termasuk nama developer) diatur di sini; model Skill Orchestrator juga bisa diatur di menu Skill.", "Not pipeline nodes: each uses one 9router model, empty = the model of the active Planner node with the lowest priority. The business wiki writer (developer name included) is set here; the Skill Orchestrator model can also be set in the Skill menu.")</p>
+</div>
+<div class="node-columns" id="taskColumns">
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Wiki Writer</h2>
+            <p class="small text-secondary">@Html.Raw(Lang.T("Merangkum thread yang selesai menjadi halaman wiki bisnis per modul (<a href=\"/Memory#bisnis\">Memori → Business memory</a>). Pilih model yang teliti dan bisa membaca gambar.", "Summarizes finished threads into business wiki pages per module (<a href=\"/Memory#bisnis\">Memory → Business memory</a>). Choose a careful model that can read images."))</p>
+        </div>
+        <div id="task-wiki"></div>
+    </div>
+    <div class="node-column">
+        <div>
+            <h2 class="h6 text-uppercase text-secondary">Skill Orchestrator</h2>
+            <p class="small text-secondary">@Html.Raw(Lang.T("Memeriksa isi link saat skill ditarik ke gudang dan mencarikan skill untuk node (<em>Cari skill</em> di modal node). Sumber & gudang skill: menu <a href=\"/Skill\">Skill</a>.", "Examines a link's content when skills are pulled into the store and finds skills for a node (<em>Find skills</em> in the node modal). Skill sources & store: the <a href=\"/Skill\">Skill</a> menu."))</p>
+        </div>
+        <div id="task-skill"></div>
     </div>
 </div>
 
@@ -213,6 +234,45 @@
                             <label class="form-check-label" for="nodeActive">@Lang.T("Aktif", "Active")</label>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Batal", "Cancel")</button>
+                <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="taskModal" tabindex="-1" aria-labelledby="taskModalTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="taskForm" novalidate>
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="taskModalTitle">Model</h5>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="taskKind" />
+                <div class="mb-3">
+                    <label class="form-label small" for="taskModel">Model / combo 9router</label>
+                    <select class="form-select" id="taskModel"></select>
+                    <div class="form-text" id="taskModelHint"></div>
+                </div>
+                <div id="taskWikiFields">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="taskWikiEnabled" />
+                        <label class="form-check-label" for="taskWikiEnabled">@Lang.T("Perbarui wiki bisnis otomatis", "Update the business wiki automatically")</label>
+                    </div>
+                    <label class="form-label small" for="taskWikiInterval">@Lang.T("Interval (jam)", "Interval (hours)")</label>
+                    <input type="number" class="form-control" id="taskWikiInterval" min="1" max="168" />
+                    <label class="form-label small mt-3" for="taskWikiDeveloper">@Lang.T("Nama developer", "Developer name")</label>
+                    <input type="text" class="form-control" id="taskWikiDeveloper" maxlength="200" />
+                    <div class="form-text">@Html.Raw(Lang.T("Dicatat pada halaman & riwayat revisi. Kosong = <span class=\"mono\">git config user.name</span> (atau user Windows bila git tidak punya).", "Recorded on pages & revision history. Empty = <span class=\"mono\">git config user.name</span> (or the Windows user when git has none)."))</div>
+                </div>
+                <div id="taskSkillFields">
+                    <label class="form-label small" for="taskSkillMaxChars">@Lang.T("Batas karakter skill per node", "Skill character limit per node")</label>
+                    <input type="number" class="form-control" id="taskSkillMaxChars" min="4000" max="200000" step="1000" />
+                    <div class="form-text">@Lang.T("Isi semua skill pada satu node dibagi rata dalam batas ini sebelum ditempel ke system prompt.", "The content of all skills of one node is shared evenly within this limit before it goes into the system prompt.")</div>
                 </div>
             </div>
             <div class="modal-footer">

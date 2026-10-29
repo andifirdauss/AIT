@@ -134,8 +134,9 @@ ASP.NET Core.
 | Dasbor | Status 9router / Redis / database / pipeline, statistik (speedup paralel, token), jalankan prompt uji, daftar thread, log langsung (SSE) |
 | Project | Project yang terbaca (unik per folder root: `.git` atau file build apa pun bahasanya), **project key** untuk berbagi memory antar developer, stack terdeteksi, sesi per project, penelusur & scan folder project, registrasi manual, **katalog unit test** (scan, jalankan, obsolete/karantina, pengaturan per project) |
 | Memory | Short memory (Garnet, ≤ 24 jam) dan long memory (database); tipe *project* dan *knowledge*; edit, promote, konsolidasi. Tab **Business memory**: wiki bisnis per modul (business memory) dengan editor, screenshot, dan riwayat versi |
-| Node | Planner / executor / reviewer / tester (triase unit test, Auto Testing) / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan, skill (dicarikan Skill Orchestrator dari gudang skill) |
-| Pengaturan | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, penyimpanan memory (short/long/bisnis) & penulis wiki bisnis, bot Telegram, Skill Orchestrator & gudang skill |
+| Node | Planner / executor / reviewer / tester (triase unit test, Auto Testing) / wrapper / context keeper beserta model 9router, temperature, max token, paralelisme, prioritas, instruksi tambahan, skill (dicarikan Skill Orchestrator dari gudang skill), model penulis wiki bisnis & Skill Orchestrator |
+| Skill | Model Skill Orchestrator, batas karakter skill per node, sumber skill (tarik dari link git/web), gudang skill offline dengan pencarian & pratinjau |
+| Pengaturan | Koneksi & key 9router, proxy key, model passthrough, batas orkestrasi, build & verifikasi otomatis, penyimpanan memory (short/long/bisnis) & penulis wiki bisnis, bot Telegram |
 
 ## Prompt dari Telegram
 
@@ -147,7 +148,7 @@ port forwarding. Detail: [docs/11-telegram.md](docs/11-telegram.md).
 
 ## Skill untuk node
 
-**Pengaturan → Skill**: pilih model Skill Orchestrator, tempel link repository skill (mis.
+Menu **Skill**: pilih model Skill Orchestrator, tempel link repository skill (mis.
 `https://github.com/anthropics/skills`), lalu klik *Tarik skill*. Model memeriksa skill apa saja yang ada, lalu skill
 ditarik ke gudang lokal (offline). Di modal **Node**, tulis kebutuhan ("aku butuh kamu bisa menjadi engineer yang
 handal") lalu klik *Cari skill*. Skill yang cocok dicentang dan ditempel ke node, dan isinya ikut masuk ke system

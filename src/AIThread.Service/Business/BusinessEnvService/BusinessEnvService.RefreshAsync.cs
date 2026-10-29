@@ -51,15 +51,7 @@ public sealed partial class BusinessEnvService
 
                 foreach (var page in pages)
                 {
-                    BusinessPageRevision? best = null;
-                    var threads = new List<Guid>();
-                    foreach (var revision in revisions[page.Id].OrderBy(r => r.Version))
-                    {
-                        var sources = ThreadIds(revision.SourceThreadIds);
-                        if (!sources.All(Holds)) break;
-                        best = revision;
-                        threads.AddRange(sources);
-                    }
+                    var (best, threads) = BestRevision(revisions[page.Id], Holds);
 
                     var row = existing.FirstOrDefault(e => e.PageId == page.Id && string.Equals(e.Environment, environment, StringComparison.OrdinalIgnoreCase));
                     if (best is null)

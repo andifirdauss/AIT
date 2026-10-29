@@ -304,6 +304,50 @@ public class GitChangeTrackerTests
     }
 
     [Fact]
+    public async Task Every_remote_branch_is_an_environment_by_itself_and_its_wiki_is_worked_out()
+    {
+        await using var harness = await CreateAsync();
+        using var remote = new TempWorkspace();
+        GitIn(remote.Root, "init", "--bare", "--quiet", "--initial-branch=main");
+        Git(harness, "remote", "add", "origin", remote.Root);
+        Git(harness, "push", "--quiet", "origin", "main");
+        Git(harness, "checkout", "--quiet", "-b", "feature/halo");
+        var threadId = await ThreadWritesAsync(harness, File1, Changed);
+        Git(harness, "commit", "--quiet", "-am", "Halo");
+        Git(harness, "push", "--quiet", "origin", "feature/halo");
+        Git(harness, "fetch", "--quiet", "origin");
+        await harness.Service<IGitChangeTracker>().RefreshThreadsAsync([threadId]);
+
+        var pages = harness.Service<AIThread.Service.Interfaces.IBusinessPageStore>();
+        var page = await pages.SaveAsync(new AIThread.Service.Business.BusinessPageDraft(null, ProjectKey, "Demo", "Greeter", "Sapaan", null, "Greeter",
+            "Sapaan: Hi.", true, null, BusinessEditKind.Manual, "AIT Test", null, []), CancellationToken.None);
+        await pages.SaveAsync(new AIThread.Service.Business.BusinessPageDraft(page.Id, ProjectKey, "Demo", "Greeter", "Sapaan", null, "Greeter",
+            "Sapaan: Halo.", true, 1, BusinessEditKind.Ai, "AIT Test", null, [threadId]), CancellationToken.None);
+
+        // Nothing registered: the remote branches are the environments, named after the branch.
+        var environments = harness.Service<IGitEnvironmentTracker>();
+        Assert.Equal(1, await environments.RefreshAsync(harness.ProjectId));
+        var list = await environments.ListAsync(harness.ProjectId);
+        Assert.Equal(["feature/halo", "main"], list!.Select(e => e.Name).Order());
+        Assert.All(list!, e => Assert.True(e.IsAuto && e.RefFound && e.Id == Guid.Empty));
+        Assert.Contains(threadId, await environments.ThreadsInAsync(ProjectKey, "feature/halo"));
+        Assert.DoesNotContain(threadId, await environments.ThreadsInAsync(ProjectKey, "main"));
+
+        // Their wiki pages are worked out on request.
+        var business = harness.Service<IBusinessEnvService>();
+        Assert.Equal(2, (await business.GetPageAsync(page.Id, "feature/halo"))!.Version);
+        Assert.Equal(1, (await business.GetPageAsync(page.Id, "main"))!.Version);
+        Assert.Equal(1, Assert.Single((await business.GetPagesAsync(harness.ProjectId, "main"))!.Pages).Version);
+        Assert.Equal("changed", Assert.Single((await business.CompareAsync(harness.ProjectId, "feature/halo", "main"))!.Pages).Status);
+
+        // A registered environment on the same ref stands for that branch.
+        list = await environments.SaveAsync(harness.ProjectId, [new SaveProjectEnvironment("prod", "origin/main", IsProduction: true)]);
+        Assert.Equal(["prod", "feature/halo"], list!.Select(e => e.Name));
+        Assert.Equal([false, true], list!.Select(e => e.IsAuto));
+        Assert.Equal(1, (await business.GetPageAsync(page.Id, "prod"))!.Version);
+    }
+
+    [Fact]
     public async Task An_environment_name_or_ref_that_is_not_valid_is_refused()
     {
         await using var harness = await CreateAsync();

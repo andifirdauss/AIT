@@ -577,7 +577,9 @@ revision** of the working page whose source threads (of that revision and the on
 - the content is **copied** from that revision, never rewritten by a model — exactly what the wiki once said. When an
   older revision's thread has not arrived, the page stays at the revision before it even if a newer one has.
 
-Environment pages are updated after the environments are checked and after the wiki writer writes pages. In
+The pages of a registered environment are copied and updated after the environments are checked and after the wiki
+writer writes pages; the pages of an automatic remote branch are worked out by the same rule when opened (not copied
+per branch). In
 **Memory → Business memory**, choose an *Environment* to read that environment's wiki (read-only; a yellow badge when
 the working wiki is newer), and **Compare** two sides (environments or the working wiki): the pages that differ with a
 line diff, the pages on one side only, and the changes (threads/commits) on one side only — e.g. *in staging, not in
@@ -670,7 +672,7 @@ Tips for writing memory by hand:
 
 The last two keys are only used when short memory uses the *Built-in* provider.
 
-Business memory is set in the Setting menu (on, interval, model, developer name) — see
+Business memory is set in the Node menu → Wiki Writer column (on, interval, model, developer name) — see
 [Configuration](02-konfigurasi.md#business-memory).
 
 The "±N hours until long memory" estimate in the Memory table is always counted from 24 hours.

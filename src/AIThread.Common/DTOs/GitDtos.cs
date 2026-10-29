@@ -32,6 +32,7 @@ public record SetGitFetchRequest(int? FetchMinutes);
 
 // An environment of the project (shared by the project key): RefFound/RefCommit = whether this clone knows the ref (and
 // where it points) after its last fetch; Changes = AIT changes seen in it; LastSeenAt = when the newest one was seen.
+// IsAuto: not registered, a remote branch of this clone taken as an environment by itself (Id empty, not saved).
 public record ProjectEnvironmentDto(
     Guid Id,
     string Name,
@@ -41,7 +42,8 @@ public record ProjectEnvironmentDto(
     bool RefFound,
     string? RefCommit,
     int Changes,
-    DateTime? LastSeenAt);
+    DateTime? LastSeenAt,
+    bool IsAuto = false);
 
 public record SaveProjectEnvironment(string Name, string Ref, bool IsProduction = false);
 

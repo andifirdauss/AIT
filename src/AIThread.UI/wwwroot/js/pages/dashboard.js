@@ -79,15 +79,20 @@
   const threadPager = pager('threadPager', rows => {
     el('threadRows').innerHTML = rows.length
       ? rows.map(threadRow).join('')
-      : t('<tr><td colspan="8" class="empty-state">Belum ada thread. Arahkan CLI Anda ke AIT lewat menu CLI, lalu beri perintah dari folder project.</td></tr>', '<tr><td colspan="8" class="empty-state">No thread yet. Point your CLI to AIT from the CLI menu, then give it a command from a project folder.</td></tr>');
+      : t('<tr><td colspan="9" class="empty-state">Belum ada thread. Arahkan CLI Anda ke AIT lewat menu CLI, lalu beri perintah dari folder project.</td></tr>', '<tr><td colspan="9" class="empty-state">No thread yet. Point your CLI to AIT from the CLI menu, then give it a command from a project folder.</td></tr>');
   });
 
+  // A new search starts at page 1; a live refresh keeps the page.
+  let lastSearch = '';
   async function loadThreads() {
     try {
-      threadPager.set(await api.get('/api/threads?take=25'));
+      const search = el('threadSearch').value.trim();
+      // A search looks through more threads than the latest 25.
+      threadPager.set(await api.get(search ? `/api/threads?take=100&search=${encodeURIComponent(search)}` : '/api/threads?take=25'), search !== lastSearch);
+      lastSearch = search;
     } catch (error) {
       threadPager.set([]);
-      el('threadRows').innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
+      el('threadRows').innerHTML = `<tr><td colspan="9" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
   }
 
@@ -154,6 +159,7 @@
   const refreshSummary = debounce(loadSummary, 800);
 
   bindRowLinks(el('threadRows'));
+  el('threadSearch').addEventListener('input', debounce(loadThreads, 300));
   el('btnRun').addEventListener('click', runThread);
   el('logLevel').addEventListener('change', loadLogs);
   // Red window button: empty the view; new entries keep arriving.

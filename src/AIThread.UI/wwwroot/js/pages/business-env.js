@@ -21,11 +21,19 @@
       environments = [];
     }
     const selected = environment();
-    el('bizEnv').innerHTML = `<option value="${working}">${escapeHtml(sideName(working))}</option>`
-      + environments.map(e => `<option value="${escapeHtml(e.name)}">${escapeHtml(e.name)}${e.isProduction ? ' ★' : ''}</option>`).join('');
+    el('bizEnv').innerHTML = `<option value="${working}">${escapeHtml(sideName(working))}</option>` + environmentOptions();
     el('bizEnv').value = environments.some(e => e.name === selected) ? selected : working;
     el('btnBizCompare').disabled = environments.length === 0;
     show();
+  }
+
+  // Registered environments first, then this clone's remote branches (environments by themselves), newest first.
+  function environmentOptions() {
+    const option = e => `<option value="${escapeHtml(e.name)}" title="${escapeHtml(e.ref)}">${escapeHtml(e.name)}${e.isProduction ? ' ★' : ''}</option>`;
+    const registered = environments.filter(e => !e.isAuto);
+    const branches = environments.filter(e => e.isAuto);
+    return (registered.length ? `<optgroup label="${escapeHtml(t('Environment terdaftar', 'Registered environments'))}">${registered.map(option).join('')}</optgroup>` : '')
+      + (branches.length ? `<optgroup label="${escapeHtml(t('Branch remote', 'Remote branches'))}">${branches.map(option).join('')}</optgroup>` : '');
   }
 
   function show() {
@@ -97,14 +105,15 @@
   // --- Compare ---
 
   el('btnBizCompare').addEventListener('click', () => {
-    const options = [working, ...environments.map(e => e.name)]
-      .map(side => `<option value="${escapeHtml(side)}">${escapeHtml(sideName(side))}</option>`).join('');
+    const options = `<option value="${working}">${escapeHtml(sideName(working))}</option>` + environmentOptions();
     el('bizCompareLeft').innerHTML = options;
     el('bizCompareRight').innerHTML = options;
-    // By default the last two environments in order, e.g. staging → prod.
-    const names = environments.map(e => e.name);
+    // By default the last two registered environments in order (e.g. staging → prod); without them the working wiki
+    // against the most recently changed remote branch.
+    const names = environments.filter(e => !e.isAuto).map(e => e.name);
+    const branch = environments.find(e => e.isAuto)?.name;
     el('bizCompareLeft').value = names.length > 1 ? names[names.length - 2] : working;
-    el('bizCompareRight').value = names.length > 0 ? names[names.length - 1] : working;
+    el('bizCompareRight').value = names.length > 0 ? names[names.length - 1] : (branch ?? working);
     el('bizCompareResult').innerHTML = t('Pilih dua sisi, mis. staging dan prod.', 'Choose two sides, e.g. staging and prod.');
     compareModal.show();
   });

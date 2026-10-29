@@ -413,7 +413,9 @@
 
   function threadRow(t) {
     const tasks = t.taskCount ? `${t.tasksSucceeded}/${t.taskCount}${t.tasksFailed ? ` <span class="text-danger">(${t.tasksFailed}✕)</span>` : ''}` : '–';
+    // The short id is the one the CLI shows after each answer (thread `1a2b3c4d`); the full id is in the tooltip.
     return `<tr data-href="/Thread/Detail/${t.id}">
+      <td class="mono small text-nowrap" title="${escapeHtml(t.id)}">${escapeHtml(t.id.replace(/-/g, '').substring(0, 8))}</td>
       <td class="text-nowrap"><div>${fmt.dateTime(t.createdAt)}</div><div class="small text-secondary">${sourceLabel(t.source)}</div></td>
       <td class="text-nowrap">${escapeHtml(t.projectName || '–')}</td>
       <td><div class="text-truncate-2" title="${escapeHtml(t.prompt)}">${escapeHtml(t.prompt)}</div></td>
@@ -782,8 +784,54 @@
     modal.show();
   }
 
+  // Menus whose page has sections (Memori, Pengaturan, Log & diagnostik): the parent only folds/unfolds its submenu,
+  // and each submenu link opens one section (the page's hidden tab). Folding or unfolding the other menus by hand is
+  // remembered per menu on this browser.
+  function initNavGroups() {
+    const groups = Array.from(document.querySelectorAll('.app-nav-group'));
+    const storeKey = group => `aithread.nav.${group.dataset.navGroup}`;
+    const setOpen = (group, open) => {
+      group.classList.toggle('open', open);
+      group.querySelector('[data-nav-toggle]').setAttribute('aria-expanded', String(open));
+    };
+    groups.forEach(group => {
+      let stored = null;
+      try { stored = localStorage.getItem(storeKey(group)); } catch { /* not remembered */ }
+      // The open page has no tabs of its own, so its submenu is always shown on load.
+      setOpen(group, !!group.querySelector('.app-nav-link.active') || stored === 'open');
+      group.querySelector('[data-nav-toggle]').addEventListener('click', () => {
+        const open = !group.classList.contains('open');
+        setOpen(group, open);
+        try { localStorage.setItem(storeKey(group), open ? 'open' : 'closed'); } catch { /* not remembered */ }
+      });
+    });
+
+    // On the menu's own page a submenu link only changes the hash: the hash picks the tab, and the open tab marks its link.
+    const current = groups.find(group => group.querySelector('.app-nav-link.active'));
+    if (!current) return;
+    const tabs = () => Array.from(document.querySelectorAll('.nav-tabs [data-bs-toggle="tab"][data-tab]'));
+    const mark = name => current.querySelectorAll('.app-nav-sublink')
+      .forEach(link => link.classList.toggle('active', link.dataset.subTab === name));
+    const showHashTab = () => {
+      const name = decodeURIComponent(location.hash.slice(1));
+      const tab = tabs().find(button => button.dataset.tab === name);
+      if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+    };
+    document.addEventListener('shown.bs.tab', event => {
+      const name = event.target.dataset?.tab;
+      if (name === undefined) return;
+      mark(name);
+      // The hash follows the open tab, so a later click on that tab's submenu link still changes the hash.
+      history.replaceState(null, '', name ? `#${name}` : location.pathname + location.search);
+    });
+    window.addEventListener('hashchange', showHashTab);
+    showHashTab();
+    mark(tabs().find(button => button.classList.contains('active'))?.dataset.tab);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initWindows();
+    initNavGroups();
     initThemeToggle();
     initLanguageSelect();
     initUpdateBar();
