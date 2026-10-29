@@ -52,8 +52,9 @@
                 </div>
                 <hr />
                 <div class="fw-semibold mb-1">Environment</div>
-                <p class="text-secondary mb-2">@Lang.T("Dipakai bersama semua developer project ini. Ref = branch remote environment itu, mis. origin/develop. Wiki bisnis punya halaman per environment.", "Shared by every developer of this project. Ref = that environment's remote branch, e.g. origin/develop. The business wiki keeps a page per environment.")</p>
+                <p class="text-secondary mb-2">@Lang.T("Dipakai bersama semua developer project ini. Ref = branch remote environment itu, mis. origin/develop. Wiki bisnis punya halaman per environment. Setiap branch remote clone ini juga otomatis jadi environment (nama = nama branch); daftarkan di sini hanya untuk memberi nama lain (dev, prod) atau menandai prod.", "Shared by every developer of this project. Ref = that environment's remote branch, e.g. origin/develop. The business wiki keeps a page per environment. Every remote branch of this clone is also an environment by itself (name = the branch name); register one here only to give it another name (dev, prod) or mark it prod.")</p>
                 <div id="envRows" class="mb-2"></div>
+                <div id="envBranches" class="mb-2"></div>
                 <div class="d-flex flex-wrap gap-2">
                     <button class="btn btn-sm btn-outline-secondary" type="button" id="btnEnvAdd">@Lang.T("+ Environment", "+ Environment")</button>
                     <button class="btn btn-sm btn-outline-primary" type="button" id="btnEnvSave">@Lang.T("Simpan environment", "Save environments")</button>
@@ -95,11 +96,14 @@
     </div>
     <div class="col-xl-8">
         <div class="card mb-3">
-            <div class="card-header">@Lang.T("Thread project ini", "Threads of this project")</div>
+            <div class="card-header d-flex flex-wrap align-items-center gap-2">
+                <span>@Lang.T("Thread project ini", "Threads of this project")</span>
+                <input type="search" class="form-control form-control-sm ms-auto w-auto" id="threadSearch" maxlength="200" placeholder="@Lang.T("Cari thread ID atau prompt…", "Search thread ID or prompt…")" />
+            </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 table-clickable">
-                    <thead><tr><th>@Lang.T("Waktu", "Time")</th><th>Project</th><th>Prompt</th><th>Status</th><th>@Lang.T("Tugas", "Tasks")</th><th>@Lang.T("Durasi", "Duration")</th><th>Speedup</th><th>Token</th></tr></thead>
-                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
+                    <thead><tr><th>Thread ID</th><th>@Lang.T("Waktu", "Time")</th><th>Project</th><th>Prompt</th><th>Status</th><th>@Lang.T("Tugas", "Tasks")</th><th>@Lang.T("Durasi", "Duration")</th><th>Speedup</th><th>Token</th></tr></thead>
+                    <tbody id="threadRows"><tr><td colspan="9" class="empty-state">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
                 </table>
             </div>
             <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="threadPager"></div>

@@ -145,8 +145,9 @@ certificate.
 | Dashboard | 9router / Redis / database / pipeline status, statistics (parallel speedup, tokens), run a test prompt, the thread list, live log (SSE) |
 | Project | The projects found (unique per root folder: `.git` or any build file, whatever the language), the **project key** for sharing memory between developers, detected stacks, sessions per project, the project folder browser & scan, manual registration, the **unit test catalog** (scan, run, obsolete/quarantine, per-project settings) |
 | Memory | Short memory (Garnet, ≤ 24 hours) and long memory (database); *project* and *knowledge* types; edit, promote, consolidate. The **Business memory** tab: a business wiki per module (business memory) with an editor, screenshots and a version history |
-| Node | Planner / executor / reviewer / tester (unit test triage, Auto Testing) / wrapper / context keeper with their 9router model, temperature, max tokens, parallelism, priority, extra instructions, skills (found by the Skill Orchestrator in the skill store) |
-| Setting | 9router connection & key, proxy key, passthrough model, orchestration limits, automatic build & verification, memory storage (short/long/business) & the business wiki writer, the Telegram bot, the Skill Orchestrator & skill store |
+| Node | Planner / executor / reviewer / tester (unit test triage, Auto Testing) / wrapper / context keeper with their 9router model, temperature, max tokens, parallelism, priority, extra instructions, skills (found by the Skill Orchestrator in the skill store), the business wiki writer & Skill Orchestrator models |
+| Skill | The Skill Orchestrator model, the skill character limit per node, skill sources (pulled from git/web links), the offline skill store with search & preview |
+| Setting | 9router connection & key, proxy key, passthrough model, orchestration limits, automatic build & verification, memory storage (short/long/business) & the business wiki writer, the Telegram bot |
 
 ## Prompts from Telegram
 
@@ -158,7 +159,7 @@ needed. Details: [docs/en/11-telegram.md](docs/en/11-telegram.md).
 
 ## Skills for nodes
 
-**Setting → Skill**: choose the Skill Orchestrator model, paste a skill repository link (e.g.
+The **Skill** menu: choose the Skill Orchestrator model, paste a skill repository link (e.g.
 `https://github.com/anthropics/skills`), then click *Fetch skills*. The model examines which skills are there, then the
 skills are fetched into a local (offline) store. In the **Node** modal, describe the need ("I need you to be a reliable
 engineer") and click *Find skills*. Matching skills are ticked and attached to the node, and their content goes into the

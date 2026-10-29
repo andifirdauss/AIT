@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AIThread.API.Controllers;
 
-// Skill tab of the Setting page (orchestrator model, sources, store) and the skill suggestions of the Node form.
+// The Skill menu (orchestrator model, sources, store) and the skill suggestions of the Node form.
 [ApiController]
 [Route("api/skills")]
 public class SkillsController(ISkillService skillService, ISkillOrchestrator orchestrator) : ControllerBase

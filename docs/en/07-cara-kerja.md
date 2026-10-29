@@ -950,9 +950,16 @@ commits or all of its blobs (a squash merge).
 
 ## Environments
 
-Remote branches can be made **environments** (dev, staging, staging2, prod, …) in
+**Every remote branch of this clone is an environment by itself**, named after the branch (`develop`, `main`,
+`feature/login`; ref `origin/<branch>`, a branch on several remotes is taken from `origin`). The list is read straight
+from `git for-each-ref refs/remotes` (at most the 100 most recently changed branches, without `origin/HEAD`) and is not
+saved; a branch deleted on the remote goes away after `git fetch --prune`.
+
+A branch can also be **registered** as a named environment (dev, staging, staging2, prod, …) in
 [Projects > Detail → Git](05-menu.md#project): a name, a ref (e.g. `origin/develop`) and a *prod* mark. The list is
-**shared** by every developer of the project key (kept in the long memory database), so one person sets it up.
+**shared** by every developer of the project key (kept in the long memory database), so one person sets it up. A
+registered environment stands for the automatic branch with the same name or ref, shows first, and its wiki pages are
+copied (see below).
 
 After every `git fetch` (automatic or *Fetch now*), every 5 minutes, or with *Check now*, AIT looks for every change the
 team shares (`ThreadChanges`, from any developer) in each environment's ref of this clone. A change **reached** an
@@ -961,12 +968,16 @@ environment when:
 1. the environment's history holds one of its commits (merge, fast-forward); or
 2. the environment's tree holds the blob of every file it wrote and no longer holds the files it removed (squash merge,
    cherry-pick); or
-3. the environment's history once held those blobs (the file changed again since; at most 50 changes per environment per
-   pass).
+3. the environment's history once held those blobs (the file changed again since; at most 50 changes per registered
+   environment and 10 per automatic branch per pass).
+
+An environment whose head and list of changes are the same as at the previous pass is skipped, so dozens of branches
+are not looked through again on every fetch (remembered while AIT runs).
 
 What is seen goes to the shared `ChangePresences` table (thread, environment, the environment commit that brought it,
 who saw it). Once there it stays; any developer's AIT that fetches adds to it. Changing an environment's ref or removing
-it forgets what was seen in it. The name `work` cannot be used (AIT uses it for the working wiki).
+a registered environment forgets what was seen in it. The name `work` cannot be used (AIT uses it for the working
+wiki); a branch named `work`, or with a name over 50 characters, is not taken as an automatic environment.
 
 Its effects:
 
@@ -1399,13 +1410,13 @@ For plain Claude Code sessions (including ones that do not go through the proxy)
 A skill is a ready-made instruction (a folder with a `SKILL.md`, in the Claude Code / Agent Skills style) that makes a
 model better at one kind of work. AIT keeps them in an offline **skill store** and attaches them to nodes.
 
-1. **Fetching a link** (Setting → Skill). The link is recognized, then downloaded to a staging folder:
+1. **Fetching a link** (the Skill menu). The link is recognized, then downloaded to a staging folder:
    - GitHub/GitLab as a ZIP archive, without git. A `/tree/<ref>/<folder>` link only takes that folder.
    - A `.git` URL or another git host through `git clone --depth 1`, which is also the fallback when the ZIP download
      fails.
    - An `.md` file is taken as it is.
    - A web page: its text and links are read by a model.
-2. **The Skill Orchestrator examines the content**, using the model chosen in the Skill tab (default: the active Planner
+2. **The Skill Orchestrator examines the content**, using the model chosen in the Skill menu (default: the active Planner
    node).
    - A repository with `SKILL.md`: each skill gets keyword tags, and entries that are not skills are dropped.
    - A repository without `SKILL.md`: the model points out which Markdown files are skills (e.g. `agents/*.md`, Cursor

@@ -42,6 +42,7 @@
                 <symbol id="nav-memory" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="2.5" /><path d="M4 5.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6" /><path d="M4 11.5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6" /></symbol>
                 <symbol id="nav-setup" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="m8.5 12 2.5 2.5 4.5-5" /></symbol>
                 <symbol id="nav-node" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5" /><circle cx="5" cy="19" r="2.5" /><circle cx="19" cy="19" r="2.5" /><path d="M12 7.5v4m0 0L6.8 17m5.2-5.5 5.2 5.5" /></symbol>
+                <symbol id="nav-skill" viewBox="0 0 24 24"><path d="M10 4a2 2 0 1 1 4 0v2h4a1 1 0 0 1 1 1v4h-2a2 2 0 1 0 0 4h2v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-4h2a2 2 0 1 0 0-4H5V7a1 1 0 0 1 1-1h4z" /></symbol>
                 <symbol id="nav-cli" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="m7 9 3 3-3 3m6 0h4" /></symbol>
                 <symbol id="nav-setting" viewBox="0 0 24 24"><path d="M4 6h10m4 0h2M4 12h4m4 0h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></symbol>
                 <symbol id="nav-docs" viewBox="0 0 24 24"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5h-5A1.5 1.5 0 0 1 3 16z" /><path d="M21 5.5A1.5 1.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5h5a1.5 1.5 0 0 0 1.5-1.5z" /></symbol>
@@ -53,17 +54,41 @@
                 <div class="app-nav-section">@Lang.T("Ruang kerja", "Workspace")</div>
                 <a class="app-nav-link @Active("Home") @Active("Thread")" asp-controller="Home" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-dashboard" /></svg>@Lang.T("Dasbor", "Dashboard")</a>
                 <a class="app-nav-link @Active("Project")" asp-controller="Project" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-project" /></svg>@Lang.T("Proyek", "Project")</a>
-                <a class="app-nav-link @Active("Memory")" asp-controller="Memory" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-memory" /></svg>@Lang.T("Memori", "Memory")</a>
+                <div class="app-nav-group" data-nav-group="memory">
+                    <button type="button" class="app-nav-link @Active("Memory")" data-nav-toggle aria-expanded="false" aria-controls="nav-sub-memory"><svg class="app-nav-icon"><use href="#nav-memory" /></svg>@Lang.T("Memori", "Memory")<svg class="app-nav-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg></button>
+                    <div class="app-nav-sub" id="nav-sub-memory">
+                        <a class="app-nav-sublink" href="/Memory#" data-sub-tab="" title="@Lang.T("Termasuk bagian Perlu review", "Includes the Needs review part")">Short &amp; long memory<span class="badge text-bg-warning d-none" id="reviewBadge"></span></a>
+                        <a class="app-nav-sublink" href="/Memory#bisnis" data-sub-tab="bisnis">Business memory</a>
+                    </div>
+                </div>
 
                 <div class="app-nav-section">@Lang.T("Konfigurasi", "Configuration")</div>
                 <a class="app-nav-link @Active("Setup")" asp-controller="Setup" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-setup" /></svg>@Lang.T("Penyiapan", "Setup")<span class="app-nav-badge d-none" id="setupBadge"></span></a>
                 <a class="app-nav-link @Active("Node")" asp-controller="Node" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-node" /></svg>Node</a>
+                <a class="app-nav-link @Active("Skill")" asp-controller="Skill" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-skill" /></svg>Skill</a>
                 <a class="app-nav-link @Active("Cli")" asp-controller="Cli" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-cli" /></svg>CLI</a>
-                <a class="app-nav-link @Active("Setting")" asp-controller="Setting" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-setting" /></svg>@Lang.T("Pengaturan", "Setting")</a>
+                <div class="app-nav-group" data-nav-group="setting">
+                    <button type="button" class="app-nav-link @Active("Setting")" data-nav-toggle aria-expanded="false" aria-controls="nav-sub-setting"><svg class="app-nav-icon"><use href="#nav-setting" /></svg>@Lang.T("Pengaturan", "Setting")<svg class="app-nav-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg></button>
+                    <div class="app-nav-sub" id="nav-sub-setting">
+                        <a class="app-nav-sublink" href="/Setting#router" data-sub-tab="router">@Lang.T("Koneksi 9router", "9router connection")</a>
+                        <a class="app-nav-sublink" href="/Setting#proxy" data-sub-tab="proxy">@Lang.T("Proxy & orkestrasi", "Proxy & orchestration")</a>
+                        <a class="app-nav-sublink" href="/Setting#build" data-sub-tab="build">@Lang.T("Build & verifikasi", "Build & verification")</a>
+                        <a class="app-nav-sublink" href="/Setting#memory" data-sub-tab="memory">@Lang.T("Penyimpanan memory", "Memory storage")</a>
+                        <a class="app-nav-sublink" href="/Setting#telegram" data-sub-tab="telegram">Telegram</a>
+                        <a class="app-nav-sublink" href="/Setting#keamanan" data-sub-tab="keamanan">@Lang.T("Keamanan & privasi", "Security & privacy")</a>
+                    </div>
+                </div>
 
                 <div class="app-nav-section">@Lang.T("Bantuan", "Help")</div>
                 <a class="app-nav-link @Active("Docs")" asp-controller="Docs" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-docs" /></svg>@Lang.T("Dokumentasi", "Docs")</a>
-                <a class="app-nav-link @Active("Log")" asp-controller="Log" asp-action="Index"><svg class="app-nav-icon"><use href="#nav-log" /></svg>@Lang.T("Log & diagnostik", "Log & diagnostics")</a>
+                <div class="app-nav-group" data-nav-group="log">
+                    <button type="button" class="app-nav-link @Active("Log")" data-nav-toggle aria-expanded="false" aria-controls="nav-sub-log"><svg class="app-nav-icon"><use href="#nav-log" /></svg>@Lang.T("Log & diagnostik", "Log & diagnostics")<svg class="app-nav-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg></button>
+                    <div class="app-nav-sub" id="nav-sub-log">
+                        <a class="app-nav-sublink" href="/Log#incidents" data-sub-tab="incidents">@Lang.T("Insiden", "Incidents")<span class="badge text-bg-danger d-none" id="incidentBadge"></span></a>
+                        <a class="app-nav-sublink" href="/Log#activity" data-sub-tab="activity">@Lang.T("Log aktivitas", "Activity log")</a>
+                        <a class="app-nav-sublink" href="/Log#files" data-sub-tab="files">@Lang.T("File log", "Log files")</a>
+                    </div>
+                </div>
                 <button type="button" class="app-nav-link" id="onboardingOpen"><svg class="app-nav-icon"><use href="#nav-guide" /></svg>@Lang.T("Panduan memulai", "Getting started")</button>
                 <button type="button" class="app-nav-link" id="securityNoticeOpen"><svg class="app-nav-icon"><use href="#nav-shield" /></svg>@Lang.T("Keamanan & privasi", "Security & privacy")</button>
             </nav>

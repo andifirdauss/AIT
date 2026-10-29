@@ -12,7 +12,7 @@
   const threadPager = pager('threadPager', rows => {
     el('threadRows').innerHTML = rows.length
       ? rows.map(threadRow).join('')
-      : t('<tr><td colspan="8" class="empty-state">Belum ada thread.</td></tr>', '<tr><td colspan="8" class="empty-state">No thread yet.</td></tr>');
+      : t('<tr><td colspan="9" class="empty-state">Belum ada thread.</td></tr>', '<tr><td colspan="9" class="empty-state">No thread yet.</td></tr>');
   });
 
   async function loadDetail() {
@@ -64,11 +64,15 @@
     }
   });
 
+  // A new search starts at page 1; a live refresh keeps the page.
+  let lastSearch = '';
   async function loadThreads() {
     try {
-      threadPager.set(await api.get(`/api/threads?take=50&projectId=${projectId}`));
+      const search = el('threadSearch').value.trim();
+      threadPager.set(await api.get(`/api/threads?take=${search ? 100 : 50}&projectId=${projectId}${search ? `&search=${encodeURIComponent(search)}` : ''}`), search !== lastSearch);
+      lastSearch = search;
     } catch (error) {
-      el('threadRows').innerHTML = `<tr><td colspan="8" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
+      el('threadRows').innerHTML = `<tr><td colspan="9" class="empty-state text-danger">${escapeHtml(error.message)}</td></tr>`;
     }
   }
 
@@ -305,6 +309,7 @@
   }
 
   bindRowLinks(el('threadRows'));
+  el('threadSearch').addEventListener('input', debounce(loadThreads, 300));
   loadDetail();
   loadThreads();
   refreshCatalog();

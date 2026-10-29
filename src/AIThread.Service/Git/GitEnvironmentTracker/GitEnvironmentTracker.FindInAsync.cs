@@ -7,9 +7,9 @@ public sealed partial class GitEnvironmentTracker
     // The changes an environment's commit (head) holds, with the commit of the environment that brought each:
     // 1. one of the change's commits is in the environment's history (merged, fast-forwarded);
     // 2. the environment's tree holds every blob the change wrote, and lacks the files it removed (squash, cherry-pick);
-    // 3. the environment's history once held every such blob (changed again later), for a bounded number of changes.
+    // 3. the environment's history once held every such blob (changed again later), for at most maxLookups changes.
     private static async Task<IReadOnlyList<(Guid Change, string? Commit)>> FindInAsync(string root, string head, IReadOnlyList<Candidate> candidates,
-        CancellationToken cancellationToken)
+        int maxLookups, CancellationToken cancellationToken)
     {
         var found = new List<(Guid, string?)>();
         var oldest = candidates.Min(c => c.CreatedAt).AddDays(-2).ToString("yyyy-MM-ddTHH:mm:ssZ");
@@ -30,7 +30,7 @@ public sealed partial class GitEnvironmentTracker
         foreach (var candidate in rest)
         {
             var inTree = candidate.Files.All(f => f.Removed ? !tree.ContainsKey(f.Path) : tree.GetValueOrDefault(f.Path) == f.Blob);
-            if (!inTree && lookups++ >= MaxHistoryLookups) continue;
+            if (!inTree && lookups++ >= maxLookups) continue;
 
             // In the tree: found, the commit is only looked up (first file). Not in the tree: every file's blob must be in
             // the history.

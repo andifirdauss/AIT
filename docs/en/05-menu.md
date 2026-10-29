@@ -1,8 +1,12 @@
 # 5. Menu guide
 
 Every page updates itself live through Server-Sent Events — no refresh needed. The sidebar menu is grouped into
-*Workspace* (Dashboard, Project, Memory — used every day), *Configuration* (Setup, Node, CLI, Setting) and *Help* (Docs,
-Log & diagnostics, Getting started). The pill at the bottom left of the sidebar shows the 9router status; the *Switch theme* button toggles
+*Workspace* (Dashboard, Project, Memory — used every day), *Configuration* (Setup, Node, Skill, CLI, Setting) and *Help* (Docs,
+Log & diagnostics, Getting started). Memory, Setting, and Log & diagnostics are split into
+sections picked from a submenu in the sidebar (the pages have no tabs): clicking the parent menu only folds/unfolds
+the submenu, clicking a submenu item opens that page with that one section. The submenu of the open page is always
+unfolded; the fold state of the other menus is remembered by the browser. The *Needs review* and *Incidents* badges
+show in the submenu. Links such as `/Setting#telegram` or `/Memory#bisnis` still open their section. The pill at the bottom left of the sidebar shows the 9router status; the *Switch theme* button toggles
 between dark and light mode, and the language box switches between Bahasa Indonesia and English
 ([Display language](02-konfigurasi.md#display-language)).
 
@@ -42,8 +46,11 @@ menu in the sidebar's *Help* group (continues from the last step seen) or *Illus
 **Statistics**: threads today (and in total), running threads, the success rate of the last 100 threads, the average
 parallel speedup, tokens today (planner + executor + wrapper), the number of projects and memories.
 
-**Latest threads**: the last 25 threads — time & source (*CLI*, *Dashboard*, *Telegram*), project, prompt, status,
-succeeded/total tasks, duration, speedup, tokens. Click a row for the detail.
+**Latest threads**: the last 25 threads — thread ID (the first 8 characters, the same as `thread …` in the CLI answer;
+the full ID in the tooltip), time & source (*CLI*, *Dashboard*, *Telegram*), project, prompt, status, succeeded/total
+tasks, duration, speedup, tokens. The search box at the top right looks for a thread ID (whole or its start), prompt or
+project name across all threads (at most 100 results). Click a row for the detail. The thread table in Project → Detail
+has the same column and search box.
 
 **Live log**: newest entries at the top. A level filter (*Info+* default, *All (debug)*, *Warning+*, *Error*) and a
 *Pause* button. The debug log holds planner tool calls and passthrough requests.
@@ -259,8 +266,8 @@ the planner reads a file, and files the prompt names are outlined in the planner
 
 ## Memory
 
-See [Memory](06-memory.md) for the concepts. The page has three tabs: **Short & long memory**, **Needs review**
-(`/Memory#review`), and **Business memory** (`/Memory#bisnis`). As long as old memories wait for labels, the *Memory
+See [Memory](06-memory.md) for the concepts. The page has two submenu items: **Short & long memory** (with the foldable
+*Needs review* part below the stat cards; `/Memory#review` opens it right away) and **Business memory** (`/Memory#bisnis`). As long as old memories wait for labels, the *Memory
 label migration* banner shows the progress (waiting, labeled, needs review, the phase with the project and the number of
 files being mapped, the backup location) with a *Run now* button.
 
@@ -283,7 +290,7 @@ The *Short & long memory* tab:
   kind Pitfall/Pattern/Architecture. New entries come in as short memory.
 - **Consolidate now**: moves every short memory past its retention time.
 
-The *Needs review* tab:
+The *Needs review* part (shown when something needs review; its count badge also shows on the *Short & long memory* submenu item):
 
 - **Memories without a label**: memories that could not be labeled automatically (unclear module, or failed 3 times) —
   *Label it* opens the form.
@@ -292,7 +299,7 @@ The *Needs review* tab:
 - **Possible duplicate memories**: pairs of memories with the same module & kind and very similar keywords, side by side
   with *Open* and *Delete* buttons. Nothing is deleted automatically.
 
-The *Business memory* tab — see [Business memory](06-memory.md#business-memory-business-wiki):
+The *Business memory* submenu item — see [Business memory](06-memory.md#business-memory-business-wiki):
 
 - **Project**: choose a project; the info line shows the project key, the number of threads waiting to be summarized,
   the time of the last summary, and the store in use.
@@ -304,7 +311,8 @@ The *Business memory* tab — see [Business memory](06-memory.md#business-memory
   *Insert image* — the image is uploaded to the store and inserted at the cursor. When the page was changed by someone
   else since you opened it, saving is refused (the editor stays open) so nobody's change is overwritten.
 - **Update now**: summarizes this project's threads that are not in the wiki yet without waiting for the schedule.
-- **Environment**: *Working wiki* (the default) or one of the project's environments — reads the wiki as it holds in that
+- **Environment**: *Working wiki* (the default), a registered environment, or a remote branch (automatic, the *Remote
+  branches* group) — reads the wiki as it holds in that
   environment (read-only); see [Wiki per environment](06-memory.md#wiki-per-environment).
 - **Compare**: choose two sides (environments or the working wiki) → the pages that differ (line diff), the pages on one
   side only, and the changes on one side only with their author, branch and commit.
@@ -329,6 +337,22 @@ active Tester node* (failing unit tests are then fixed in the code without triag
 explains what the numbers mean; the panel can be folded and its state is remembered by the browser. *Reload 9router
 models* refreshes the model list (60-second cache). The field details are in
 [Configuration](02-konfigurasi.md#node-menu).
+
+Below them, the *Background task models* part holds two columns that are not pipeline nodes: **Wiki Writer** (the
+business wiki writer: model, update automatically, interval, developer name — set only here) and **Skill Orchestrator** (model, skill character limit
+per node). Their cards show the chosen model or *automatic → the active Planner node model*; **Edit** saves through the
+same API as [Setting](#setting) / [Skill](#skill) (`/api/business/settings`, `/api/skills/settings`), so both menus
+always show the same
+choice. The *Store* button (Skill Orchestrator) opens the [Skill](#skill) menu.
+
+## Skill
+
+Its own sidebar menu (`/Skill`; formerly the Setting → Skill tab, old `/Setting#skills` links land here). The
+**Skill Orchestrator** card holds the model and the skill character limit per node (saved with **Save Skill**; the same
+model can also be chosen in the [Node](#node) menu). The **Skill sources** card: paste a link → **Pull skills**, live
+status, *Sync* / *Delete*. The **Skill store** card: the skill list with a search, the number of nodes using each, and a
+content preview (**View**). The field details are in [Configuration](02-konfigurasi.md#skill-menu); how it works is in
+[Skills on a node](07-cara-kerja.md#skills-on-a-node).
 
 ## CLI
 
@@ -374,14 +398,10 @@ a refresh and can be linked directly.
   rounds.
 - **Memory storage** (`#memory`) — the provider of short, long and business memory (built-in, Redis for short only, SQL
   Server, PostgreSQL, MySQL, Oracle, SQLite) with host/port/database/username/password, *Test connection* per card, a
-  live status, and the option to copy the old memory. Saved separately with **Save memory storage**. Below it, the
-  **Business memory** card: update automatically, interval (hours), the wiki writer model, and the developer name —
-  saved with **Save business memory**.
+  live status, and the option to copy the old memory. Saved with **Save memory storage**. The business wiki writer
+  (automatic, interval, model, developer name) is set in the [Node](#node) menu → Wiki Writer column.
 - **Telegram** (`#telegram`) — the bot token, on/off, a live connection status, and the chat table (*Allow* / *Delete* /
   *Revoke*).
-- **Skill** (`#skills`) — the Skill Orchestrator model, the skill character limit per node, skill sources (paste a link
-  → **Fetch skills**, live status, *Sync* / *Delete*), and the skill store with a search and a content preview. Saved
-  separately with **Save Skill**.
 - **Security & privacy** (`#keamanan`) — the secret masking switch and passthrough request masking, counts since AIT
   started (masked, can be restored, restored, credential file access refused), an example of `.aithread/project.json`
   rules, and a button that opens the full explanation. Saved with **Save security settings**

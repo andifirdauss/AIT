@@ -1,8 +1,12 @@
 # 5. Panduan menu
 
 Semua halaman memperbarui diri secara live lewat Server-Sent Events — tidak perlu refresh. Menu sidebar dikelompokkan
-menjadi *Ruang kerja* (Dasbor, Project, Memory — dipakai sehari-hari), *Konfigurasi* (Penyiapan, Node, CLI, Pengaturan) dan
-*Bantuan* (Dokumentasi, Log & diagnostik, Panduan memulai). Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
+menjadi *Ruang kerja* (Dasbor, Project, Memory — dipakai sehari-hari), *Konfigurasi* (Penyiapan, Node, Skill, CLI, Pengaturan) dan
+*Bantuan* (Dokumentasi, Log & diagnostik, Panduan memulai). Memori, Pengaturan, dan Log & diagnostik
+terbagi menjadi beberapa bagian yang dipilih lewat sub menu di sidebar (halamannya tidak punya tab): klik menu induk
+hanya membuka/menutup sub menu, klik sub menu membuka halaman itu dengan satu bagian saja. Sub menu halaman yang sedang
+dibuka selalu terbuka; buka/tutup menu lain diingat browser. Badge *Perlu review* dan *Insiden* tampil di sub menu.
+Link `/Setting#telegram`, `/Memory#bisnis`, dsb. tetap membuka bagiannya. Pill di kiri bawah sidebar menunjukkan status 9router; tombol *Ganti tema* beralih
 antara mode gelap dan terang, dan kotak bahasa beralih antara Bahasa Indonesia dan English
 ([Bahasa tampilan](02-konfigurasi.md#bahasa-tampilan)).
 
@@ -42,8 +46,11 @@ grup *Bantuan* sidebar (melanjutkan dari langkah terakhir yang dilihat) atau *Pa
 **Statistik**: thread hari ini (dan total), thread yang sedang berjalan, success rate 100 thread terakhir,
 rata-rata speedup paralel, token hari ini (planner + executor + wrapper), jumlah project dan memory.
 
-**Thread terbaru**: 25 thread terakhir — waktu & sumber (*CLI*, *Dasbor*, *Telegram*), project, prompt,
-status, tugas berhasil/total, durasi, speedup, token. Klik baris untuk detail.
+**Thread terbaru**: 25 thread terakhir — thread ID (8 karakter pertama, sama dengan `thread …` di jawaban CLI; ID
+lengkap di tooltip), waktu & sumber (*CLI*, *Dasbor*, *Telegram*), project, prompt, status, tugas berhasil/total,
+durasi, speedup, token. Kotak cari di kanan atas mencari thread ID (lengkap atau awalannya), prompt, atau nama project
+di semua thread (maks 100 hasil). Klik baris untuk detail. Tabel thread di Project → Detail punya kolom dan kotak cari
+yang sama.
 
 **Log langsung**: log terbaru di atas. Filter level (*Info+* default, *Semua (debug)*, *Warning+*, *Error*) dan
 tombol *Jeda*. Log debug berisi panggilan tool planner dan request passthrough.
@@ -250,8 +257,8 @@ yang disebut prompt langsung di-outline di brief planner (lihat [Cara kerja](07-
 
 ## Memori
 
-Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi tiga tab: **Short & long memory**, **Perlu review**
-(`/Memory#review`), dan **Business memory** (`/Memory#bisnis`). Selama masih ada memory lama yang menunggu label, banner
+Lihat [Memory](06-memory.md) untuk konsepnya. Halaman dibagi dua sub menu: **Short & long memory** (dengan bagian lipat
+*Perlu review* di bawah kartu statistik; `/Memory#review` langsung membukanya) dan **Business memory** (`/Memory#bisnis`). Selama masih ada memory lama yang menunggu label, banner
 *Migrasi label memory* menampilkan progres (menunggu, sudah berlabel, perlu review, fase beserta project dan jumlah
 file yang sedang dipetakan, lokasi backup) dengan tombol
 *Jalankan sekarang*.
@@ -275,7 +282,7 @@ Tab *Short & long memory*:
   Pitfall/Pattern/Architecture. Entri baru masuk sebagai short memory.
 - **Konsolidasi sekarang**: memindahkan semua short memory yang sudah melewati masa simpan.
 
-Tab *Perlu review*:
+Bagian *Perlu review* (muncul bila ada yang perlu direview; badge jumlahnya juga tampil di sub menu *Short & long memory*):
 
 - **Memory tanpa label**: memory yang tidak bisa dilabeli otomatis (modul tidak jelas, atau gagal 3 kali) —
   *Beri label* membuka form.
@@ -284,7 +291,7 @@ Tab *Perlu review*:
 - **Kandidat memory duplikat**: pasangan memory dengan modul & jenis sama dan keyword sangat mirip, berdampingan
   dengan tombol *Buka* dan *Hapus*. Tidak ada yang dihapus otomatis.
 
-Tab *Business memory* — lihat [Business memory](06-memory.md#business-memory-wiki-bisnis):
+Sub menu *Business memory* — lihat [Business memory](06-memory.md#business-memory-wiki-bisnis):
 
 - **Project**: pilih project; baris info menampilkan project key, jumlah thread yang menunggu dirangkum, waktu
   rangkuman terakhir, dan store yang dipakai.
@@ -296,7 +303,8 @@ Tab *Business memory* — lihat [Business memory](06-memory.md#business-memory-w
   (Ctrl+V) atau *Sisipkan gambar* — gambar diunggah ke store dan disisipkan di posisi kursor. Bila halaman sudah diubah
   orang lain sejak dibuka, penyimpanan ditolak (editor tetap terbuka) supaya perubahan siapa pun tidak tertimpa.
 - **Perbarui sekarang**: merangkum thread project ini yang belum masuk wiki tanpa menunggu jadwal.
-- **Environment**: *Wiki kerja* (bawaan) atau salah satu environment project — membaca wiki seperti yang berlaku di
+- **Environment**: *Wiki kerja* (bawaan), environment terdaftar, atau branch remote (otomatis, kelompok *Branch remote*)
+  — membaca wiki seperti yang berlaku di
   environment itu (hanya baca); lihat [Wiki per environment](06-memory.md#wiki-per-environment).
 - **Bandingkan**: pilih dua sisi (environment atau wiki kerja) → halaman yang berbeda (diff baris), halaman yang hanya
   ada di satu sisi, dan perubahan yang hanya ada di satu sisi beserta author, branch, dan commit-nya.
@@ -316,6 +324,22 @@ Bila ada project dengan katalog unit test tetapi belum ada node Tester aktif, st
 *Ada katalog unit test, tetapi belum ada node Tester aktif* (unit test yang gagal lalu diperbaiki di kode tanpa triase).
 Panel *Panduan* di atas kolom menjelaskan arti angka-angka tersebut; panel bisa dilipat dan keadaannya diingat browser. *Muat ulang model 9router* menyegarkan daftar
 model (cache 60 detik). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-node).
+
+Di bawahnya, bagian *Model tugas latar* berisi dua kolom yang bukan node pipeline: **Wiki Writer** (penulis wiki
+bisnis: model, perbarui otomatis, interval, nama developer — hanya diatur di sini) dan **Skill Orchestrator** (model, batas karakter skill per node). Kartunya
+menampilkan model terpilih atau *otomatis → model node Planner aktif*; **Edit** menyimpan lewat API yang sama dengan
+[Pengaturan](#pengaturan) / [Skill](#skill) (`/api/business/settings`, `/api/skills/settings`), jadi pilihan di kedua
+menu selalu sama.
+Tombol *Gudang* (Skill Orchestrator) membuka menu [Skill](#skill).
+
+## Skill
+
+Menu sidebar sendiri (`/Skill`; dulu tab Pengaturan → Skill, link lama `/Setting#skills` dialihkan ke sini). Kartu
+**Skill Orchestrator** berisi model dan batas karakter skill per node (disimpan lewat **Simpan Skill**; model yang sama
+juga bisa dipilih di menu [Node](#node)). Kartu **Sumber skill**: tempel link → **Tarik skill**, status live,
+*Sync* / *Hapus*. Kartu **Gudang skill**: daftar skill dengan pencarian, jumlah node pemakai, dan pratinjau isi
+(**Lihat**). Detail field ada di [Konfigurasi](02-konfigurasi.md#menu-skill); cara kerjanya di
+[Skill pada node](07-cara-kerja.md#skill-pada-node).
 
 ## CLI
 
@@ -358,13 +382,9 @@ refresh dan bisa ditautkan langsung.
 - **Build & verifikasi** (`#build`) — *Build & verifikasi otomatis*, timeout build, dan jumlah putaran perbaikan.
 - **Penyimpanan memory** (`#memory`) — provider short, long, dan business memory (bawaan, Redis untuk short saja,
   SQL Server, PostgreSQL, MySQL, Oracle, SQLite) beserta host/port/database/username/password, *Test koneksi* per kartu,
-  status live, dan opsi menyalin memory lama. Disimpan terpisah lewat **Simpan penyimpanan memory**. Di bawahnya,
-  kartu **Business memory**: perbarui otomatis, interval (jam), model penulis wiki, dan nama developer — disimpan lewat
-  **Simpan business memory**.
+  status live, dan opsi menyalin memory lama. Disimpan lewat **Simpan penyimpanan memory**. Penulis wiki bisnis
+  (otomatis, interval, model, nama developer) diatur di menu [Node](#node) → kolom Wiki Writer.
 - **Telegram** (`#telegram`) — token bot, aktif/nonaktif, status koneksi live, dan tabel chat (*Izinkan* / *Hapus* / *Cabut*).
-- **Skill** (`#skills`) — model Skill Orchestrator, batas karakter skill per node, sumber skill (tempel link →
-  **Tarik skill**, status live, *Sync* / *Hapus*), dan gudang skill dengan pencarian serta pratinjau isi. Disimpan
-  terpisah lewat **Simpan Skill**.
 - **Keamanan & privasi** (`#keamanan`) — saklar penyamaran secret dan penyamaran request passthrough, hitungan sejak AIT
   berjalan (disamarkan, bisa dipasang kembali, dipasang kembali, akses file kredensial ditolak), contoh aturan
   `.aithread/project.json`, dan tombol untuk membuka penjelasan lengkap. Disimpan lewat **Simpan pengaturan keamanan**

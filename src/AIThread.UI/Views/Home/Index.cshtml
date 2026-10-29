@@ -87,13 +87,14 @@
         </div>
 
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                 @Html.Raw(Lang.T("<span>Thread terbaru</span> <span class=\"small text-secondary fw-normal\">klik baris untuk detail</span>", "<span>Latest threads</span> <span class=\"small text-secondary fw-normal\">click a row for details</span>"))
+                <input type="search" class="form-control form-control-sm ms-auto w-auto" id="threadSearch" maxlength="200" placeholder="@Lang.T("Cari thread ID, prompt, atau project…", "Search thread ID, prompt or project…")" />
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0 table-clickable">
-                    <thead><tr><th>@Lang.T("Waktu", "Time")</th><th>Project</th><th>Prompt</th><th>Status</th><th>@Lang.T("Tugas", "Tasks")</th><th>@Lang.T("Durasi", "Duration")</th><th>Speedup</th><th>Token</th></tr></thead>
-                    <tbody id="threadRows"><tr><td colspan="8" class="empty-state">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
+                    <thead><tr><th>Thread ID</th><th>@Lang.T("Waktu", "Time")</th><th>Project</th><th>Prompt</th><th>Status</th><th>@Lang.T("Tugas", "Tasks")</th><th>@Lang.T("Durasi", "Duration")</th><th>Speedup</th><th>Token</th></tr></thead>
+                    <tbody id="threadRows"><tr><td colspan="9" class="empty-state">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
                 </table>
             </div>
             <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="threadPager"></div>

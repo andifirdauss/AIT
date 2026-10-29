@@ -168,6 +168,8 @@
       toast(error.message, 'error');
     }
     loadPipeline();
+    // "Automatic" task models follow the active planner.
+    renderTasks();
   }
 
   async function loadPipeline() {
@@ -523,7 +525,7 @@
     } else if (!searchResults.length) {
       target.innerHTML = searchTerms.length
         ? t('<div class="dropdown-item-text small text-secondary">Tidak ada skill yang cocok.</div>', '<div class="dropdown-item-text small text-secondary">No matching skill.</div>')
-        : t('<div class="dropdown-item-text small text-secondary">Gudang skill kosong. Tambahkan sumber di <a href="/Setting#skills">Pengaturan → Skill</a>.</div>', '<div class="dropdown-item-text small text-secondary">The skill store is empty. Add a source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
+        : t('<div class="dropdown-item-text small text-secondary">Gudang skill kosong. Tambahkan sumber di menu <a href="/Skill">Skill</a>.</div>', '<div class="dropdown-item-text small text-secondary">The skill store is empty. Add a source in the <a href="/Skill">Skill</a> menu.</div>');
     } else {
       const shown = searchResults.slice(0, maxSearchResults);
       target.innerHTML = shown.map((s, i) => {
@@ -594,7 +596,7 @@
   function renderSuggestions() {
     const target = el('nodeSkillSuggestions');
     if (!suggestions.length) {
-      target.innerHTML = t('<div class="small text-secondary">Tidak ada skill di gudang yang cocok. Coba tulis kebutuhan dengan kata lain, atau tambahkan sumber skill di <a href="/Setting#skills">Pengaturan → Skill</a>.</div>', '<div class="small text-secondary">No skill in the store matches. Try describing the need in other words, or add a skill source in <a href="/Setting#skills">Setting → Skill</a>.</div>');
+      target.innerHTML = t('<div class="small text-secondary">Tidak ada skill di gudang yang cocok. Coba tulis kebutuhan dengan kata lain, atau tambahkan sumber skill di menu <a href="/Skill">Skill</a>.</div>', '<div class="small text-secondary">No skill in the store matches. Try describing the need in other words, or add a skill source in the <a href="/Skill">Skill</a> menu.</div>');
       return;
     }
     const items = suggestions.map((s, i) => {
@@ -657,11 +659,150 @@
     }
   });
 
+  // --- Background task models: the wiki writer and the Skill Orchestrator. Saved through the same settings API as the
+  // Setting menu, so both places show one choice. ---
+  const taskModal = bootstrap.Modal.getOrCreateInstance(el('taskModal'));
+  const tasks = { wiki: null, skill: null };
+
+  // The planner an empty task model falls back to (BusinessMemoryWriter/SkillAi.ResolveModelAsync).
+  const activePlanner = () => [...nodes.values()].filter(n => n.role === 'Planner' && n.isActive)
+    .sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name))[0];
+
+  function taskModelLine(model) {
+    if (model) return `<div class="mono small text-truncate" title="${escapeHtml(model)}">${escapeHtml(model)}</div>`;
+    const planner = activePlanner();
+    const text = planner
+      ? (isEn ? `automatic → ${planner.model}` : `otomatis → ${planner.model}`)
+      : t('otomatis — belum ada node Planner aktif', 'automatic — no active Planner node yet');
+    return `<div class="mono small text-truncate ${planner ? 'text-secondary' : 'text-warning'}" title="${escapeHtml(text)}">${escapeHtml(text)}</div>`;
+  }
+
+  function taskCard(kind, role, name, model, detail, isActive, link) {
+    return `<div class="card node-card role-${role} mb-2 ${isActive ? '' : 'inactive'}">
+      <div class="card-body py-2">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="node-card-title">
+            <div class="fw-semibold text-truncate" title="${escapeHtml(name)}">${escapeHtml(name)}
+              ${isActive ? '' : `<span class="badge text-bg-secondary">${t('nonaktif', 'off')}</span>`}</div>
+            ${taskModelLine(model)}
+          </div>
+          <div class="btn-group btn-group-sm flex-shrink-0">
+            ${link ? `<a class="btn btn-outline-secondary" href="${link.href}">${link.label}</a>` : ''}
+            <button type="button" class="btn btn-outline-secondary" data-task-edit="${kind}">Edit</button>
+          </div>
+        </div>
+        <div class="small text-secondary mt-1 text-truncate" title="${escapeHtml(detail)}">${escapeHtml(detail)}</div>
+      </div>
+    </div>`;
+  }
+
+  function renderTasks() {
+    const loading = t('<div class="small text-secondary">Memuat…</div>', '<div class="small text-secondary">Loading…</div>');
+    const wiki = tasks.wiki;
+    el('task-wiki').innerHTML = wiki
+      ? taskCard('wiki', 'WikiWriter', t('Penulis wiki bisnis', 'Business wiki writer'), wiki.model,
+        (wiki.enabled
+          ? (isEn ? `automatic every ${wiki.intervalHours} h` : `otomatis tiap ${wiki.intervalHours} jam`)
+          : t('otomatis mati — Perbarui sekarang di menu Memori tetap bisa', 'automatic off — Update now in the Memory menu still works'))
+          + (wiki.effectiveDeveloperName ? ` · ${wiki.effectiveDeveloperName}` : ''),
+        wiki.enabled, null)
+      : loading;
+    const skill = tasks.skill;
+    const skilled = [...nodes.values()].filter(n => n.skills?.length).length;
+    el('task-skill').innerHTML = skill
+      ? taskCard('skill', 'SkillOrchestrator', 'Skill Orchestrator', skill.model,
+        isEn
+          ? `${fmt.number(skill.maxPromptChars)} skill characters per node · ${skilled} nodes use skills`
+          : `batas ${fmt.number(skill.maxPromptChars)} karakter skill per node · ${skilled} node memakai skill`,
+        true, { href: '/Skill', label: t('Gudang', 'Store') })
+      : loading;
+  }
+
+  async function loadTasks() {
+    try {
+      [tasks.wiki, tasks.skill] = await Promise.all([api.get('/api/business/settings'), api.get('/api/skills/settings')]);
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+    renderTasks();
+  }
+
+  async function openTaskModal(kind) {
+    const s = tasks[kind];
+    if (!s) return;
+    if (!modelsLoaded) await loadModels();
+    const isWiki = kind === 'wiki';
+    el('taskKind').value = kind;
+    el('taskModalTitle').textContent = isWiki ? 'Wiki Writer' : 'Skill Orchestrator';
+
+    const planner = activePlanner();
+    const option = id => `<option value="${escapeHtml(id)}">${escapeHtml(id)}</option>`;
+    let html = `<option value="">${escapeHtml(planner
+      ? (isEn ? `Automatic — the Planner node model (${planner.model})` : `Otomatis — model node Planner (${planner.model})`)
+      : t('Otomatis — model node Planner', 'Automatic — the Planner node model'))}</option>`;
+    if (s.model && !models.some(m => m.id === s.model)) html += option(s.model);
+    html += models.map(m => `<option value="${escapeHtml(m.id)}">${m.isCombo ? '[combo] ' : ''}${escapeHtml(m.id)}</option>`).join('');
+    el('taskModel').innerHTML = html;
+    el('taskModel').value = s.model || '';
+    el('taskModelHint').textContent = !modelsLoaded
+      ? t('9router tidak dapat dihubungi — hanya model tersimpan yang bisa dipilih.', '9router cannot be reached — only the saved model can be chosen.')
+      : isWiki
+        ? t('Model yang teliti dan bisa membaca gambar (untuk screenshot), mis. model planner.', 'A careful model that can read images (for screenshots), e.g. the planner model.')
+        : t('Pilih model yang pandai menilai, mis. model planner. Dipakai saat menarik link dan saat mencari skill untuk node.', 'Choose a model that judges well, e.g. the planner model. Used when pulling links and when finding skills for a node.');
+
+    el('taskWikiFields').classList.toggle('d-none', !isWiki);
+    el('taskSkillFields').classList.toggle('d-none', isWiki);
+    if (isWiki) {
+      el('taskWikiEnabled').checked = s.enabled;
+      el('taskWikiInterval').value = s.intervalHours;
+      el('taskWikiDeveloper').value = s.developerName || '';
+      el('taskWikiDeveloper').placeholder = s.gitUserName || s.effectiveDeveloperName || '';
+    } else {
+      el('taskSkillMaxChars').value = s.maxPromptChars;
+    }
+    taskModal.show();
+  }
+
+  // Saved from the first-run popup while this page is open.
+  document.addEventListener('aithread:developer-name', event => {
+    tasks.wiki = event.detail;
+    renderTasks();
+  });
+
+  el('taskColumns').addEventListener('click', event => {
+    const button = event.target.closest('[data-task-edit]');
+    if (button) openTaskModal(button.dataset.taskEdit);
+  });
+
+  el('taskForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    const model = el('taskModel').value || null;
+    try {
+      if (el('taskKind').value === 'wiki') {
+        tasks.wiki = await api.put('/api/business/settings', {
+          enabled: el('taskWikiEnabled').checked,
+          intervalHours: Number(el('taskWikiInterval').value),
+          model,
+          developerName: el('taskWikiDeveloper').value.trim() || null
+        });
+        toast(t('Pengaturan business memory tersimpan.', 'Business memory settings saved.'));
+      } else {
+        tasks.skill = await api.put('/api/skills/settings', { model, maxPromptChars: Number(el('taskSkillMaxChars').value) });
+        toast(t('Pengaturan Skill tersimpan.', 'Skill settings saved.'));
+      }
+      taskModal.hide();
+      renderTasks();
+    } catch (error) {
+      toast(error.message, 'error');
+    }
+  });
+
   el('btnAddNode').addEventListener('click', () => openModal(null));
   el('btnRefreshModels').addEventListener('click', () => loadModels(true));
 
   loadNodes();
   loadModels();
+  loadTasks();
   // A pulled or deleted skill source can add or remove skills from nodes.
   stream('types=node', { 'node.changed': debounce(loadNodes, 300) });
 })();

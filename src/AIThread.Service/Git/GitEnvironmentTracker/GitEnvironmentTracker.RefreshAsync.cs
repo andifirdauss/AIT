@@ -8,8 +8,9 @@ namespace AIThread.Service.Git;
 
 public sealed partial class GitEnvironmentTracker
 {
-    // Looks for the project key's shared changes in each environment's ref of this clone and records the new ones; the
-    // environment pages of the wiki follow. Returns how many changes reached an environment. Never throws.
+    // Looks for the project key's shared changes in each environment's ref of this clone (the registered ones and the
+    // remote branches) and records the new ones; the environment pages of the wiki follow. An environment whose head and
+    // changes are the same as at its last pass is skipped. Returns how many changes reached an environment. Never throws.
     public async Task<int> RefreshAsync(Guid projectId, CancellationToken cancellationToken = default)
     {
         if (await ProjectAsync(projectId, cancellationToken) is not var (key, root)) return 0;
@@ -17,7 +18,8 @@ public sealed partial class GitEnvironmentTracker
         try
         {
             await using var db = await longStore.CreateGitAsync(cancellationToken);
-            var environments = await db.ProjectEnvironments.AsNoTracking().Where(e => e.ProjectKey == key).ToListAsync(cancellationToken);
+            var environments = await EnvironmentsAsync(db, key, root, cancellationToken);
+            var scanned = new List<(string Key, string Value)>();
             if (environments.Count > 0 && Directory.Exists(root) && GitTools.IsRepository(root))
             {
                 var since = DateTime.UtcNow - LookBack;
@@ -37,14 +39,19 @@ public sealed partial class GitEnvironmentTracker
                     .ToHashSet();
 
                 var by = GitIdentity.UserName;
+                var signature = Signature(changes);
                 foreach (var environment in environments)
                 {
-                    var head = await ResolveRefAsync(root, environment.Ref, cancellationToken);
-                    if (head is null) continue;
+                    if (environment.Head is not { } head) continue;
+                    var scanKey = $"{key}\n{environment.Name}\n{environment.Ref}";
+                    var scanValue = $"{head}\n{signature}";
+                    if (_scanned.TryGetValue(scanKey, out var last) && last == scanValue) continue;
+                    scanned.Add((scanKey, scanValue));
                     var missing = changes.Where(c => !seen.Contains((c.Id, environment.Name.ToLowerInvariant()))).ToList();
                     if (missing.Count == 0) continue;
 
-                    foreach (var (change, commit) in await FindInAsync(root, head, missing, cancellationToken))
+                    var lookups = environment.Auto ? MaxBranchHistoryLookups : MaxHistoryLookups;
+                    foreach (var (change, commit) in await FindInAsync(root, head, missing, lookups, cancellationToken))
                     {
                         db.ChangePresences.Add(new ChangePresence
                         {
@@ -56,6 +63,8 @@ public sealed partial class GitEnvironmentTracker
                 // Another AIT may record the same change at the same moment: the unique index keeps one, this pass retries
                 // next time without the duplicates.
                 if (found > 0) await db.SaveChangesAsync(cancellationToken);
+                // Only once recorded: a pass that failed is done again.
+                foreach (var (scanKey, scanValue) in scanned) _scanned[scanKey] = scanValue;
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

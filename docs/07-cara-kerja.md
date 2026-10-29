@@ -917,9 +917,16 @@ commit-nya atau semua blob-nya (squash merge).
 
 ## Environment
 
-Branch remote bisa dijadikan **environment** (dev, staging, staging2, prod, …) di
+**Setiap branch remote clone ini otomatis jadi environment**, dinamai sesuai branch-nya (`develop`, `main`,
+`feature/login`; ref `origin/<branch>`, branch yang ada di beberapa remote diambil dari `origin`). Daftar ini dibaca
+langsung dari `git for-each-ref refs/remotes` (maks 100 branch yang paling baru berubah, tanpa `origin/HEAD`) dan tidak
+disimpan; branch yang dihapus di remote hilang setelah `git fetch --prune`.
+
+Branch juga bisa **didaftarkan** sebagai environment bernama (dev, staging, staging2, prod, …) di
 [Proyek > Detail → Git](05-menu.md#proyek): nama, ref (mis. `origin/develop`), dan tanda *prod*. Daftarnya **dipakai
-bersama** semua developer project key itu (disimpan di database long memory), jadi cukup diatur satu orang.
+bersama** semua developer project key itu (disimpan di database long memory), jadi cukup diatur satu orang. Environment
+terdaftar menggantikan branch otomatis dengan nama atau ref yang sama, tampil lebih dulu, dan halaman wikinya disalin
+(lihat di bawah).
 
 Setelah setiap `git fetch` (otomatis atau *Fetch sekarang*), tiap 5 menit, atau lewat *Cek sekarang*, AIT mencari
 setiap perubahan yang dibagi tim (`ThreadChanges`, dari developer mana pun) di ref tiap environment pada clone ini.
@@ -929,11 +936,15 @@ Perubahan dianggap **sudah masuk** environment bila:
 2. tree environment memuat blob setiap file yang ditulisnya dan tidak lagi memuat file yang dihapusnya (squash merge,
    cherry-pick); atau
 3. riwayat environment pernah memuat blob itu (file-nya sudah berubah lagi setelahnya; maks 50 perubahan per environment
-   per putaran).
+   terdaftar dan 10 per branch otomatis per putaran).
+
+Environment yang head dan daftar perubahannya sama dengan putaran sebelumnya dilewati, supaya puluhan branch tidak
+dicek ulang setiap fetch (diingat selama AIT berjalan).
 
 Yang terlihat dicatat di tabel bersama `ChangePresences` (thread, environment, commit environment yang membawanya,
 siapa yang melihat). Sekali masuk tetap tercatat; AIT developer mana pun yang fetch ikut mengisinya. Mengganti ref atau
-menghapus environment melupakan catatannya. Nama `work` tidak boleh dipakai (dipakai AIT untuk wiki kerja).
+menghapus environment terdaftar melupakan catatannya. Nama `work` tidak boleh dipakai (dipakai AIT untuk wiki kerja);
+branch bernama `work` atau yang namanya lebih dari 50 karakter tidak dijadikan environment otomatis.
 
 Efeknya:
 
@@ -1354,12 +1365,12 @@ lewat hook resmi Claude Code — lihat [Context Keeper untuk /clear](03-integras
 Skill adalah instruksi siap pakai (folder dengan `SKILL.md`, gaya Claude Code / Agent Skills) yang membuat model
 lebih mahir di satu jenis pekerjaan. AIT menyimpannya di **gudang skill** offline dan menempelkannya ke node.
 
-1. **Menarik link** (Pengaturan → Skill). Link dikenali lalu diunduh ke folder staging:
+1. **Menarik link** (menu Skill). Link dikenali lalu diunduh ke folder staging:
    - GitHub/GitLab sebagai arsip ZIP, tanpa perlu git. Link `/tree/<ref>/<folder>` hanya mengambil folder itu.
    - URL `.git` atau host git lain lewat `git clone --depth 1`, yang juga menjadi cadangan bila unduhan ZIP gagal.
    - File `.md` diambil apa adanya.
    - Halaman web: teks dan tautannya dibaca model.
-2. **Skill Orchestrator memeriksa isinya**, memakai model yang dipilih di tab Skill (default: node Planner aktif).
+2. **Skill Orchestrator memeriksa isinya**, memakai model yang dipilih di menu Skill (default: node Planner aktif).
    - Repository dengan `SKILL.md`: tiap skill diberi tag kata kunci, dan entri yang bukan skill dibuang.
    - Repository tanpa `SKILL.md`: model menunjuk file Markdown mana yang merupakan skill (mis. `agents/*.md`, aturan Cursor).
    - Halaman web: skill yang tertulis di halaman disimpan sebagai `SKILL.md`, dan hingga 5 repository yang ditautkan

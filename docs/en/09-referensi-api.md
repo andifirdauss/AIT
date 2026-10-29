@@ -236,7 +236,7 @@ machine; pages are stored per project key.
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/threads` | `take` (default 30, at most 200), `projectId` |
+| `GET` | `/api/threads` | `take` (default 30, at most 200), `projectId`, `search` (a whole or starting thread ID, prompt text, or project name) |
 | `GET` | `/api/threads/{id}` | — (the summary, `planJson`, the final response, metrics including `reviewerModel`/`reviewerTokens`/`verificationMs`, tasks, `verificationJson`: `outcome` `passed`/`failed`/`unverified`, `command`, `reviewerModel`, `rounds[]` holding `build` (`status`, `headline`, `errors[]`, …), `review` (`approved`, `summary`, `issues[]`, `error`), `unitTests` (the unit test summary of the round, the same shape as `unitTestJson.rounds[]`), `fixTasks[]`, `unfixable[]`; `unitTestMs` and `unitTestJson`: `outcome` `passed`/`failed`/`skipped`, `mode`, `testOnly`, `suites[]`, `problems[]`, `restored[]` (`number`, `file`, `how` = `moved`/`snapshot`/`method`/`task`/`regenerate`/`missing`, `note`), `notes[]`, `baselineRan`, `baselineCached`, `baselineMs`, `rounds[]` (`round`, `ran`, `passed`, `failed`, `skipped`, `durationMs`, `commands[]`, `regressions[]`, `preexisting[]`, `triage`, `testerModel`, `fixTargets[]`), `tests[]` (`id`, `number`, `title`, `file`, `decision`, `baseline`, `baselineCached`, `after`, `verdict` = `ok`/`fixed`/`regression`/`preexisting`/`new-failing`/`failing`/`flaky`/`skipped`/`notfound`/`missing`/`obsolete`, `message`, `skipReason`, `triage`, `triageReason`, `durationMs`), `testerModel`, `summary`; `testerModel`/`testerTokens` (including unit test triage)/`testingMs`, and `testingJson`: `outcome` `passed`/`failed`/`blocked`/`skipped`, `level`, `baseUrl`, `browser`, `testerModel`, `summary`, `error`, `steps`, `scenarios[]` (`title`, `status`, `details`), `requests[]` (`method`, `url`, `requestBody`, `status`, `reason`, `contentType`, `location`, `responseBody`, `durationMs`, `error`; the login password masked as `{{password}}`), `browserErrors[]`, `loginUser`, `loginNeeded`/`loginUrl` (the tester stopped to ask for a login), `askedLogin` (the question was sent to the chat)) |
 | `POST` | `/api/threads` | `{ "projectId": "...", "prompt": "..." }` → the thread id, runs in the background |
 | `POST` | `/api/threads/{id}/cancel` | — |
@@ -294,7 +294,7 @@ The Telegram card on the Setting page — see [Prompts from Telegram](11-telegra
 
 ### Skill
 
-The Skill tab on the Setting page and the skill suggestions in the Node modal — see
+The Skill menu and the skill suggestions in the Node modal — see
 [Skills on a node](07-cara-kerja.md#skills-on-a-node).
 
 | Method | Path | Body / query |

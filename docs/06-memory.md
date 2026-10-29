@@ -556,7 +556,8 @@ yang semua thread sumbernya (di revisi itu dan sebelumnya) sudah masuk environme
 - isi halaman **disalin** dari revisi itu, tidak ditulis ulang model — jadi persis yang pernah ditulis wiki. Bila
   thread revisi lebih lama belum masuk, halaman tertahan di revisi sebelumnya walau revisi lebih baru sudah masuk.
 
-Halaman environment diperbarui setelah environment dicek dan setelah penulis wiki menulis halaman. Di
+Halaman environment terdaftar disalin dan diperbarui setelah environment dicek dan setelah penulis wiki menulis halaman;
+halaman branch remote otomatis dihitung dengan aturan yang sama saat dibuka (tidak disalin per branch). Di
 **Memori → Business memory**, pilih *Environment* untuk membaca wiki environment itu (hanya baca; badge kuning bila wiki
 kerja sudah lebih baru), dan **Bandingkan** dua sisi (environment atau wiki kerja): halaman yang berbeda dengan diff
 baris, halaman yang hanya ada di satu sisi, dan perubahan (thread/commit) yang hanya ada di satu sisi — mis. *ada di
@@ -644,7 +645,7 @@ Tips menulis memory manual:
 
 Dua kunci terakhir hanya dipakai saat short memory memakai provider *Bawaan*.
 
-Business memory diatur di menu Pengaturan (aktif, interval, model, nama developer) — lihat
+Business memory diatur di menu Node → kolom Wiki Writer (aktif, interval, model, nama developer) — lihat
 [Konfigurasi](02-konfigurasi.md#business-memory).
 
 Perkiraan "±N jam lagi ke long memory" di tabel Memory selalu dihitung dari 24 jam.

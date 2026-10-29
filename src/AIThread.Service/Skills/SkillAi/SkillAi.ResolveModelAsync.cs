@@ -11,6 +11,6 @@ public sealed partial class SkillAi
         var settings = await settingService.GetRuntimeAsync(cancellationToken);
         if (!string.IsNullOrWhiteSpace(settings.SkillOrchestratorModel)) return settings.SkillOrchestratorModel;
         return (await nodeService.GetActiveAsync(NodeRole.Planner, cancellationToken)).FirstOrDefault()?.Model
-               ?? throw new AppValidationException(Lang.T("Pilih model Skill Orchestrator di Pengaturan → Skill (atau tambahkan node Planner aktif).", "Choose the Skill Orchestrator model in Setting → Skill (or add an active Planner node)."));
+               ?? throw new AppValidationException(Lang.T("Pilih model Skill Orchestrator di menu Skill (atau tambahkan node Planner aktif).", "Choose the Skill Orchestrator model in the Skill menu (or add an active Planner node)."));
     }
 }

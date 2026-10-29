@@ -275,7 +275,7 @@ Repository tidak punya `SKILL.md` dan model juga tidak menemukan file Markdown y
 link ke folder skill-nya langsung (`/tree/main/<folder>`) atau ke file `.md`-nya.
 
 **Skill tersimpan tanpa tag / *Cari skill* gagal: `Pilih model Skill Orchestrator…`**
-Pilih model di Pengaturan → Skill, atau tambahkan node Planner aktif. Skill tanpa tag tetap bisa dipakai; klik *Sync*
+Pilih model di menu Skill (atau kolom Skill Orchestrator di menu Node), atau tambahkan node Planner aktif. Skill tanpa tag tetap bisa dipakai; klik *Sync*
 setelah model tersedia agar tag dibuat ulang.
 
 **Node terasa lambat atau mahal setelah diberi skill**
