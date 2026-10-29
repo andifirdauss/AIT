@@ -32,10 +32,38 @@ public class ApprovalTests : IDisposable
     [InlineData("3", ApprovalDecision.Deny)]
     [InlineData("tolak", ApprovalDecision.Deny)]
     [InlineData("deny", ApprovalDecision.Deny)]
-    [InlineData("5", null)]
+    [InlineData("5", ApprovalDecision.AlwaysAll)]
+    [InlineData("izinkan semua perintah", ApprovalDecision.AlwaysAll)]
+    [InlineData("allow all", ApprovalDecision.AlwaysAll)]
+    [InlineData("6", null)]
     [InlineData("sekali lagi coba cara lain", null)]
     public void Replies_are_read_in_both_languages(string reply, ApprovalDecision? expected) =>
         Assert.Equal(expected, ApprovalReply.Parse(reply));
+
+    [Fact]
+    public void A_target_too_long_to_save_is_not_offered_always()
+    {
+        using var _ = Lang.Use("en");
+        var command = "grep -rn x " + string.Join(' ', Enumerable.Range(0, 100).Select(i => $"src/File{i}.cs"));
+        Assert.True(command.Length > ApprovalTargets.MaxLength);
+
+        var request = new ApprovalRequest([new ApprovalItem(ApprovalKind.Command, command)], "Search.");
+        Assert.False(request.AllowAlways);
+        Assert.DoesNotContain("2. **Always allow**", request.ToText());
+        Assert.True(new ApprovalRequest([new ApprovalItem(ApprovalKind.Command, "git status")], "x").AllowAlways);
+        // "Allow all commands" still fits: it saves "*", not the command.
+        Assert.True(request.AllowAll);
+        Assert.Contains("5. **Allow all commands in this project**", request.ToText());
+    }
+
+    [Fact]
+    public void The_all_commands_grant_covers_every_command_and_nothing_else()
+    {
+        Assert.True(ApprovalTargets.Covers(ApprovalKind.Command, ApprovalTargets.AllCommands, "rm -rf build && git push"));
+        Assert.True(ApprovalTargets.Covers(ApprovalKind.Command, ApprovalTargets.AllCommands, "grep -rn x src; echo === 2>/dev/null"));
+        Assert.False(ApprovalTargets.Covers(ApprovalKind.Host, ApprovalTargets.AllCommands, "example.com:443"));
+        Assert.False(new ApprovalRequest([new ApprovalItem(ApprovalKind.Push, "C:/repo|origin/feature")], "x").AllowAll);
+    }
 
     [Fact]
     public void A_folder_grant_covers_what_lies_below_it_and_other_kinds_match_exactly()

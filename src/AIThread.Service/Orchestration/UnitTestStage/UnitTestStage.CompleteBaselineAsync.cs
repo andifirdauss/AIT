@@ -14,7 +14,7 @@ public sealed partial class UnitTestStage
 
         // The plan names the files: the tests related to them, the tests it updates, never the ones it retires.
         var files = plan.Tasks.SelectMany(t => t.To is null ? [t.File] : new[] { t.File, t.To }).ToList();
-        var related = UnitTestSelection.Relevant(session.Tests, session.Settings.Mode, files, modules).ToList();
+        var related = UnitTestSelection.Relevant(session.Present, session.Settings.Mode, files, modules).ToList();
         var decisions = plan.Tests?.Decisions ?? [];
         foreach (var decision in decisions.Where(d => d.Decision == PlanTests.Update))
             if (session.ByNumber(decision.Test) is { } updated && !related.Contains(updated)) related.Add(updated);

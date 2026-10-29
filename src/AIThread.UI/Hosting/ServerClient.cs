@@ -47,6 +47,14 @@ public sealed class ServerClient(int port) : IDisposable
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { return false; }
     }
 
+    // The diagnostic ZIP exactly as the Log menu downloads it (activity log from the database included).
+    public async Task<Stream> ExportDiagnosticsAsync(int days)
+    {
+        var response = await _setup.GetAsync($"{BaseUrl}/api/diagnostics/export?days={days}", HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStreamAsync();
+    }
+
     // The team profile exactly as the Setup page downloads it.
     public Task<string> ExportProfileAsync() => _setup.GetStringAsync($"{BaseUrl}/api/setup/profile");
 

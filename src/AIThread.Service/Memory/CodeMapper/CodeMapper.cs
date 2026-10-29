@@ -20,6 +20,12 @@ public sealed partial class CodeMapper(LongMemoryStore store, IModuleRegistry re
     private const int LookupReferences = 10;
     private const int FilesPerReference = 3;
 
+    // ResolveReferencesAsync: stored paths per name and files found on disk are gathered past what is kept, so the
+    // order (ReferenceAreas) decides what makes the cut.
+    private const int MaxStoredMatches = 10;
+    private const int MaxScanMatches = 200;
+    private const int MaxReferences = 30;
+
     private readonly ConcurrentDictionary<string, Task> _inflight = new(StringComparer.OrdinalIgnoreCase);
 
     private sealed record FileGroup(string Id, string Stem, List<string> Paths);

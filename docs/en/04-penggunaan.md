@@ -391,6 +391,7 @@ The reply is a numbered card, answered in the CLI (or Telegram) or with the butt
 2. Always allow — saved on this machine for this project
 3. Deny
 4. Always allow the pattern `curl -X *` — only when the command is safe to pattern
+5. Allow all commands in this project — command permissions only
 ```
 
 Reply `1`/`once`/`allow once`, `2`/`always`, or `3`/`deny` (Indonesian words work too). Any other reply counts as a
@@ -404,6 +405,14 @@ pipe, shell operator, `$()` or backtick; a combined command still needs an exact
 move files, wrap another command (`sudo`, `bash -c`, `xargs`, …), publish (`push`, `publish`, `deploy`) or change the
 git repository are never offered a pattern. Patterns can also be added by hand in the **AIT permissions** card (*Add a
 command permission*).
+
+**All-commands permission.** For a command permission (`run_command`, `start_process`), the card also offers option
+**5. Allow all commands in this project** (reply `5`/`all`/`semua`). AIT saves the command grant `*`: no command in that
+project is asked again, combined commands, deleting/moving files, `git push` and `npm publish` included. Still in force:
+a command naming a credential file is refused, and outside hosts (a single `curl`/`web_fetch`), files outside the project, and
+the commit/push of a finished thread keep their own permissions. The option is offered too for a command too long to
+save as an *always* permission (over 800 characters). Revoke it in Project > Detail → **AIT permissions** (badge
+*all commands*), or add it by hand with the target `*`.
 
 **Read-only commands** run without asking: `curl` GET/HEAD to localhost (also with `| jq`), `git status/log/diff/show/…`,
 `ls`/`cat`/`head`/`grep` (without `-r`), and version checks (`dotnet --info`, `node -v`, `npm ls`). A command

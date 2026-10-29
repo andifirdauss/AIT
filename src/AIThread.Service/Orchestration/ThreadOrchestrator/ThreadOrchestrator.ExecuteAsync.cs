@@ -76,7 +76,7 @@ public sealed partial class ThreadOrchestrator
             if (prepared.Resume is { Question.Approval: { } approval } waiting)
             {
                 var decision = ApprovalReply.Parse(prepared.Reply);
-                await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern
+                await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern or ApprovalDecision.AlwaysAll
                     ? Lang.T("🔐 Izin diberikan, rencana dilanjutkan", "🔐 Permission given, the plan goes on")
                     : Lang.T("🔐 Izin ditolak, planner mencari jalan lain", "🔐 Permission denied, the planner looks for another way"), cancellationToken, hang: 3);
                 planning = await plannerAgent.ResumeApprovalAsync(plannerInput, waiting.Conversation, approval, decision, prepared.Reply ?? string.Empty, recorder, progress, cancellationToken);

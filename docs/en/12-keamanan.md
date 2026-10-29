@@ -127,6 +127,9 @@ that cannot be allowed:
 - a command pattern permission (`npm install *`) covers only single commands without a pipe/operator/`$()`/backtick, and
   is never offered for commands that delete or move files, wrap another command (`sudo`, `bash -c`, `xargs`, `curl`,
   `ssh`, …), publish (`push`, `publish`, `deploy`) or change the git repository;
+- the *all commands* permission (command grant `*`) is only given when the developer picks it explicitly (option 5); after
+  that the planner can run any command in that project without asking, except one naming a credential file. Outside
+  hosts, files outside the project and the commit/push of a thread keep their own permissions;
 - `web_fetch` does GET only, without cookies/credentials, every redirect to another host is checked again, and cloud
   metadata addresses (`169.254.169.254`, `metadata.google.internal`, …) are always refused, also when a host name
   resolves to one after DNS;
@@ -204,6 +207,10 @@ After AIT restarts, values that were not marked only show up in the list again o
   never returned through the API. A login you give for testing only exists in memory, and the model only sees the
   password as `{{password}}` ([How it works → Testing](07-cara-kerja.md#login)).
 - **The Tester** may only access `localhost`.
+- **Log & diagnostics**: incidents (errors, stack traces, raw executor output) are kept in
+  `%LOCALAPPDATA%\AIThread\diagnostics` and sent nowhere. The export ZIP is made on this machine; secrets the patterns
+  recognize become `[secret:<label>]`, but code, file paths and prompts stay — share it only with people who may see
+  them ([Log & diagnostics](05-menu.md#log--diagnostics)).
 
 ## Limits
 

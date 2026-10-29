@@ -2,7 +2,8 @@ using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.Orchestration;
 
-public sealed record ReviewIssue(string File, string? Anchor, string Problem, string Fix);
+// Create: the fix is a file that does not exist yet (a handler the build asks for, for example).
+public sealed record ReviewIssue(string File, string? Anchor, string Problem, string Fix, bool Create = false);
 
 // Approved = nothing to fix. Error is set when the reviewer could not be asked or answered unreadably; the review
 // then counts as not done, never as a reason to change code.
