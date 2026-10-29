@@ -37,6 +37,11 @@ public sealed class UnitTestSession
     // The tests the change concerns: run before and after it.
     public HashSet<Guid> Relevant { get; } = [];
 
+    // Catalog tests this repository lacks and that were not restored (no commit here holds them). They stay in Tests so
+    // a new test of the same name is not added twice, but are never run.
+    public HashSet<Guid> Absent { get; } = [];
+    public IEnumerable<UnitTestCase> Present => Tests.Where(t => !Absent.Contains(t.Id));
+
     // Results after the change by test id (new tests included), the latest round winning.
     public Dictionary<Guid, TestVerdict> After { get; } = [];
 
