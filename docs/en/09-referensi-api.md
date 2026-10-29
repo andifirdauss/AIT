@@ -246,8 +246,8 @@ machine; pages are stored per project key.
 | `GET` | `/api/threads/{id}/rollback` | — → a preview `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Changes nothing. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. All or nothing: 400 without touching any file when there is a `conflict`. |
 | `POST` | `/api/threads/{id}/git/refresh` | — → the `git` part of the thread detail (see below) after asking git again |
-| `GET` | `/api/threads/{id}/approval` | — → the permission the thread waits for `{ items[]: { kind, target, detail, pattern }, reason, allowAlways, text, afterThread, allowPattern }` or `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push` |
-| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" \| "AlwaysPattern" }` → the thread id; the planner continues in the background, or the commit/push runs and its result is added to the thread's response. `400` when the thread waits for no permission. |
+| `GET` | `/api/threads/{id}/approval` | — → the permission the thread waits for `{ items[]: { kind, target, detail, pattern }, reason, allowAlways, text, afterThread, allowPattern, allowAll }` or `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push` |
+| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" \| "AlwaysPattern" \| "AlwaysAll" }` → the thread id (`AlwaysAll` = every command of the project, grant `*`); the planner continues in the background, or the commit/push runs and its result is added to the thread's response. `400` when the thread waits for no permission. |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
@@ -255,6 +255,19 @@ machine; pages are stored per project key.
 The thread detail (`GET /api/threads/{id}`) also holds `git` (`null` outside a git repository): `branch`, `baseCommit`,
 `author` (the origin when the thread started), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`, `edited`).
 The thread summary (`GET /api/threads`) holds `gitState`. See [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change).
+
+### Log & diagnostics
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/diagnostics/incidents` | `threadId`, `q` (search title/category/message/stack trace), `take` (default 200) → `[{ id, createdAt, lastAt, count, level, category, title, threadId, projectId, exceptionType, fileCount }]`, newest first |
+| `GET` | `/api/diagnostics/incidents/{id}` | — → `{ …, categories[], message, stackTrace, files[]: { name, size } }` |
+| `GET` | `/api/diagnostics/incidents/{id}/files/{name}` | `download` (bool) → the companion file's text |
+| `DELETE` | `/api/diagnostics/incidents/{id}` | — → number deleted |
+| `DELETE` | `/api/diagnostics/incidents` | — → deletes every incident |
+| `GET` | `/api/diagnostics/logs` | — → `[{ name, size, modifiedAt, current }]` log files in `%LOCALAPPDATA%\AIThread\logs` |
+| `GET` | `/api/diagnostics/logs/{name}` | `tail` (50–5000, default 500), `q` (line filter) → `{ name, lines[], truncated }` (masked) |
+| `GET` | `/api/diagnostics/export` | `days` (1–90, default 3), `incidents`, `activity`, `runLogs` (bool, default `true`), `threadId` → ZIP file (secrets masked) |
 
 ### System
 
@@ -326,6 +339,7 @@ sent every 15 seconds when it is quiet.
 | `node.changed` | `id`, `action` |
 | `telegram.changed` | `action` (`status`, `created`, `allowed`, `deleted`, `project`); the chat `id` for chat changes, `status` for bot status changes |
 | `skill.changed` | `sourceId`, `status` (the source status), `action` (`added`, `deleted`) when present, `error` when it failed |
+| `incident.recorded` | `id` — a new incident in the Log menu (the event's `threadId` is set when it belongs to a thread) |
 | `business.changed` | `action` (`created`, `updated`, `deleted`, `running`, `finished`, `settings`), the page `id` and/or `projectKey` |
 | `ping` | — |
 

@@ -149,6 +149,66 @@ public class UnitTestOrchestrationTests
     }
 
     [Fact]
+    public async Task A_test_still_failing_after_the_testers_fix_is_triaged_by_the_reviewer_node_next()
+    {
+        const string newTest = "Save_WithSpaces_IsRejected";
+        var runner = new FakeTestRunner()
+            .Then(_ => UnitTestResult.Passed)
+            .Then(t => t.MethodName == newTest ? UnitTestResult.Failed : UnitTestResult.Passed)
+            .Then(_ => UnitTestResult.Failed)
+            .Then(t => t.MethodName == newTest ? UnitTestResult.Failed : UnitTestResult.Passed)
+            .Then(_ => UnitTestResult.Failed)
+            .Then(_ => UnitTestResult.Passed);
+        await using var harness = await OrchestrationHarness.CreateAsync(configureServices: s => s.AddSingleton<ITestRunner>(runner));
+        await harness.AddStandardNodesAsync();
+        await harness.AddNodeAsync(NodeRole.Tester, "tester-model");
+        await harness.AddNodeAsync(NodeRole.Reviewer, "reviewer-model");
+        await PrepareAsync(harness);
+        const string lastTest = "    [Fact]\n    public void Save_WithName_IsAccepted()\n    {\n        Assert.True(User.IsValid(\"Andi\"));\n    }";
+        var withNew = lastTest + $"\n\n    [Fact]\n    public void {newTest}()\n    {{\n        Assert.False(User.IsValid(\"  \"));\n    }}";
+        string Verdict(string fix) => $$"""{"summary":"Test salah.","verdicts":[{"test":"NEW-1","verdict":"test_wrong","file":"{{TestFile}}","fix":"{{fix}}","reason":"salah"}]}""";
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan
+            {
+                Summary = "Nama berisi spasi ditolak.",
+                Tasks = [Step("T1", UserFile, "Reject blank names."), Step("T2", TestFile, "Add the test.")],
+                Tests = new PlanTests
+                {
+                    New = [new PlanNewTest { Title = "Nama berisi spasi ditolak", Scenario = "given \"  \", when validated, then false", File = TestFile, Name = newTest, Targets = [UserFile] }]
+                }
+            }))
+            .OnExecutor(UserFile, ScriptedRouter.Edit(UserLine, UserLine.Replace("name.Length > 0", "name.Trim().Length > 0"), "Spasi ditolak."))
+            .OnExecutor(TestFile, ScriptedRouter.Edit(lastTest, withNew, "Test ditambah."))
+            .On(ScriptedAgent.TesterTriage, call =>
+            {
+                Assert.Equal("tester-model", call.Model);
+                return ScriptedRouter.Text(Verdict("Guess one."));
+            })
+            .OnExecutor(TestFile, ScriptedRouter.Edit("User.IsValid(\"  \")", "User.IsValid(\"   \")", "Tebakan pertama."))
+            .On(ScriptedAgent.TesterTriage, call =>
+            {
+                Assert.Equal("reviewer-model", call.Model);
+                return ScriptedRouter.Text(Verdict("The real cause."));
+            })
+            .OnExecutor(TestFile, call =>
+            {
+                Assert.Contains("The real cause.", call.LastUser);
+                return ScriptedRouter.Edit("User.IsValid(\"   \")", "User.IsValid(\"    \")", "Diperbaiki.");
+            })
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+        for (var i = 0; i < 3; i++) router.On(ScriptedAgent.Reviewer, ScriptedRouter.Text("""{"approved": true, "summary": "ok", "issues": []}"""));
+
+        var (result, _) = await harness.RunAsync("Tolak nama yang hanya spasi, buatkan unit test-nya");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Equal(2, router.CallsTo(ScriptedAgent.TesterTriage).Count);
+        var report = UnitTestReport.FromJson((await harness.LoadThreadAsync(result.ThreadId)).UnitTestJson)!;
+        Assert.Equal(UnitTestReport.Passed, report.Outcome);
+        Assert.Equal(["tester-model", "reviewer-model"], report.Rounds.Where(r => r.Triage is not null).Select(r => r.TesterModel));
+    }
+
+    [Fact]
     public async Task A_thread_that_only_runs_tests_restores_missing_ones_first_and_changes_no_code()
     {
         var runner = new FakeTestRunner().Then(t => t.MethodName == Rejected ? UnitTestResult.Failed : UnitTestResult.Passed).Then(_ => UnitTestResult.Failed);

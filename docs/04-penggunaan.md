@@ -385,6 +385,7 @@ Balasannya berupa kartu bernomor, dijawab di CLI (atau Telegram) maupun lewat to
 2. Izinkan selalu — disimpan di mesin ini untuk project ini
 3. Tolak
 4. Izinkan selalu untuk pola `curl -X *` — hanya bila perintahnya aman dipolakan
+5. Izinkan semua perintah di project ini — hanya untuk izin perintah
 ```
 
 Balas `1`/`sekali`/`allow once`, `2`/`selalu`/`always`, atau `3`/`tolak`/`deny`. Balasan lain dianggap tolak dan
@@ -398,6 +399,14 @@ pipe, operator shell, `$()`, atau backtick; perintah gabungan tetap butuh izin p
 file, membungkus perintah lain (`sudo`, `bash -c`, `xargs`, …), memublikasikan (`push`, `publish`, `deploy`), atau
 mengubah repository git tidak pernah ditawarkan pola. Pola juga bisa ditambahkan manual di kartu **Izin AIT** (*Tambah
 izin perintah*).
+
+**Izin semua perintah.** Untuk izin perintah (`run_command`, `start_process`), kartu juga menawarkan opsi **5. Izinkan
+semua perintah di project ini** (balas `5`/`semua`/`allow all`). AIT menyimpan grant perintah `*`: perintah apa pun di
+project itu tidak ditanya lagi, termasuk perintah gabungan, hapus/pindah file, `git push`, dan `npm publish`. Yang
+tetap berlaku: perintah yang menyebut file kredensial ditolak, izin host luar (`curl` tunggal/`web_fetch`), file di luar project,
+serta commit/push hasil thread tetap ditanyakan terpisah. Opsi ini juga tersedia untuk perintah yang terlalu panjang
+untuk disimpan sebagai izin *selalu* (lebih dari 800 karakter). Cabut di Project > Detail → **Izin AIT** (badge
+*semua perintah*), atau tambahkan manual dengan target `*`.
 
 **Perintah baca saja** jalan tanpa bertanya: `curl` GET/HEAD ke localhost (juga dengan `| jq`), `git status/log/diff/show/…`,
 `ls`/`cat`/`head`/`grep` (tanpa `-r`), dan cek versi (`dotnet --info`, `node -v`, `npm ls`). Perintah yang

@@ -60,7 +60,9 @@ public sealed partial class ExecutionEngine
                         e.Model = change.To.Model;
                     });
                 },
-                ChatCompletionRequest.CacheKey(recorder.Thread.Id, "executor")), cancellationToken);
+                ChatCompletionRequest.CacheKey(recorder.Thread.Id, "executor"),
+                recorder.Thread.Id,
+                recorder.Thread.ProjectId), cancellationToken);
 
             stopwatch.Stop();
             recorder.TaskOutput(entity, string.Empty, flush: true);

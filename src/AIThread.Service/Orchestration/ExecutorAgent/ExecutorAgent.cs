@@ -19,9 +19,15 @@ public sealed record ExecutorJob(
     // The executor's fallback node took over; later attempts stay on it.
     Func<NodeSwitch, Task>? OnSwitch = null,
     // prompt_cache_key shared by the executors of one thread, whose task messages start with the same plan section.
-    string? CacheKey = null);
+    string? CacheKey = null,
+    // Ties the incident of a failed task to its thread (Log menu).
+    Guid? ThreadId = null,
+    Guid? ProjectId = null);
 
 public sealed record ExecutorOutcome(bool Success, string? Summary, string? Diff, string? Error, int Tokens, int Attempts);
+
+// One try of the executor: its raw output and AIT's answer (the retry feedback).
+public sealed record ExecutorAttempt(int Number, string Model, string? FinishReason, string Output, string Feedback);
 
 // Cheap model, tiny scope: one file, the instruction, the contract and a few excerpts. Its SEARCH/REPLACE
 // output is applied under a per-file lock against the file's current content; failures are fed back for a retry.
@@ -32,6 +38,7 @@ public sealed partial class ExecutorAgent(
     IFileLockProvider fileLocks,
     INodePromptBuilder prompts,
     ISecretGuard secrets,
+    IDiagnosticsService diagnostics,
     IOptions<AIThreadOptions> options) : IExecutorAgent
 {
     private const int ExcerptMargin = 40;

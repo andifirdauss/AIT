@@ -81,6 +81,62 @@ public static partial class BuildCommandResolver
         return null;
     }
 
+    // The build that checks the changed files (relative to the root). A repository can hold several .NET solutions (a
+    // template and its sample, an old and a new app): the default build is kept when it holds every project the
+    // changes belong to, else the shallowest solution (or project) that does. Without such a manifest, or for changes
+    // outside .NET projects, the default build.
+    public static BuildCommand? ForChanges(string root, IReadOnlyList<string> modules, IEnumerable<string> changedFiles, out string? error) =>
+        ForChanges(root, modules, changedFiles, MsBuildLocator.Find, out error);
+
+    public static BuildCommand? ForChanges(string root, IReadOnlyList<string> modules, IEnumerable<string> changedFiles, Func<string?> msBuild, out string? error)
+    {
+        var fallback = Resolve(root, modules, null, msBuild, out error);
+        root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
+        var owners = changedFiles.Select(f => OwningProject(root, f)).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (owners.Count == 0) return fallback;
+
+        foreach (var candidate in modules.Where(m => Rank(m) is 0 or 1).OrderBy(Rank).ThenBy(Depth).ThenBy(m => m, StringComparer.OrdinalIgnoreCase))
+        {
+            var manifest = Path.GetFullPath(Path.Combine(root, candidate));
+            var projects = Has(ProjectExtensions, Path.GetExtension(manifest))
+                ? new HashSet<string>([Path.TrimEndingDirectorySeparator(manifest)], StringComparer.OrdinalIgnoreCase)
+                : SolutionEntries(manifest).Select(e => e.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (!owners.All(projects.Contains)) continue;
+            if (ForManifest(root, manifest, msBuild, out var reason) is { } command)
+            {
+                error = null;
+                return command;
+            }
+            if (reason is not null)
+            {
+                error = reason;
+                return null;
+            }
+        }
+        return fallback;
+    }
+
+    // The .NET project file a file belongs to: the nearest folder above it, inside the root, that holds one.
+    private static string? OwningProject(string root, string relativeFile)
+    {
+        try
+        {
+            var full = Path.GetFullPath(Path.Combine(root, relativeFile.Replace('\\', '/')));
+            if (Has(ProjectExtensions, Path.GetExtension(full))) return full;
+            for (var directory = Path.GetDirectoryName(full); directory is not null && directory.Length >= root.Length; directory = Path.GetDirectoryName(directory))
+            {
+                if (!directory.StartsWith(root, StringComparison.OrdinalIgnoreCase) || !Directory.Exists(directory)) continue;
+                var project = Directory.EnumerateFiles(directory).FirstOrDefault(f => Has(ProjectExtensions, Path.GetExtension(f)));
+                if (project is not null) return Path.TrimEndingDirectorySeparator(project);
+            }
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or IOException or UnauthorizedAccessException)
+        {
+            // Not a path on this machine.
+        }
+        return null;
+    }
+
     private static BuildCommand? ForTarget(string root, string target, Func<string?> msBuild, out string? error)
     {
         string full;

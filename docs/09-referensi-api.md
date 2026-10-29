@@ -245,8 +245,8 @@ disimpan per project key.
 | `GET` | `/api/threads/{id}/rollback` | — → pratinjau `{ canRollback, reason, files[]: { filePath, action, problem } }`; `action` = `restore` / `delete` / `unchanged` / `conflict`. Tidak mengubah apa pun. |
 | `POST` | `/api/threads/{id}/rollback` | — → `{ restored, deleted, files[] }`. Semua atau tidak sama sekali: 400 tanpa menyentuh file bila ada `conflict`. |
 | `POST` | `/api/threads/{id}/git/refresh` | — → bagian `git` detail thread (lihat di bawah) setelah git ditanya lagi |
-| `GET` | `/api/threads/{id}/approval` | — → izin yang ditunggu thread `{ items[]: { kind, target, detail, pattern }, reason, allowAlways, text, afterThread, allowPattern }` atau `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push`/`Branch`/`PullRequest` |
-| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" \| "AlwaysPattern" }` → id thread; planner dilanjutkan di belakang, atau commit/push dijalankan dan hasilnya ditambahkan ke respons thread. `400` bila thread tidak menunggu izin. |
+| `GET` | `/api/threads/{id}/approval` | — → izin yang ditunggu thread `{ items[]: { kind, target, detail, pattern }, reason, allowAlways, text, afterThread, allowPattern, allowAll }` atau `null`; `kind` = `WriteOutside`/`Command`/`Host`/`Commit`/`Push`/`Branch`/`PullRequest` |
+| `POST` | `/api/threads/{id}/approval` | `{ "decision": "Once" \| "Always" \| "Deny" \| "AlwaysPattern" \| "AlwaysAll" }` → id thread (`AlwaysAll` = semua perintah project, grant `*`); planner dilanjutkan di belakang, atau commit/push dijalankan dan hasilnya ditambahkan ke respons thread. `400` bila thread tidak menunggu izin. |
 | `GET` | `/api/dashboard/summary` | — |
 | `GET` | `/api/dashboard/logs` | `take` (default 200), `minLevel` (`Debug`/`Info`/`Success`/`Warning`/`Error`), `threadId` |
 | `GET` | `/api/health` | — |
@@ -254,6 +254,19 @@ disimpan per project key.
 Detail thread (`GET /api/threads/{id}`) juga memuat `git` (`null` di luar repository git): `branch`, `baseCommit`,
 `author` (asal-usul saat thread mulai), `state`, `commits[]`, `checkedAt`, `files[]` (`filePath`, `state`, `commit`, `edited`). Ringkasan
 thread (`GET /api/threads`) memuat `gitState`. Lihat [Status git perubahan thread](07-cara-kerja.md#status-git-perubahan-thread).
+
+### Log & diagnostik
+
+| Method | Path | Body / query |
+|---|---|---|
+| `GET` | `/api/diagnostics/incidents` | `threadId`, `q` (cari judul/kategori/pesan/stack trace), `take` (default 200) → `[{ id, createdAt, lastAt, count, level, category, title, threadId, projectId, exceptionType, fileCount }]`, terbaru dulu |
+| `GET` | `/api/diagnostics/incidents/{id}` | — → `{ …, categories[], message, stackTrace, files[]: { name, size } }` |
+| `GET` | `/api/diagnostics/incidents/{id}/files/{name}` | `download` (bool) → teks file pendamping |
+| `DELETE` | `/api/diagnostics/incidents/{id}` | — → jumlah dihapus |
+| `DELETE` | `/api/diagnostics/incidents` | — → hapus semua insiden |
+| `GET` | `/api/diagnostics/logs` | — → `[{ name, size, modifiedAt, current }]` file log di `%LOCALAPPDATA%\AIThread\logs` |
+| `GET` | `/api/diagnostics/logs/{name}` | `tail` (50–5000, default 500), `q` (saring baris) → `{ name, lines[], truncated }` (disamarkan) |
+| `GET` | `/api/diagnostics/export` | `days` (1–90, default 3), `incidents`, `activity`, `runLogs` (bool, default `true`), `threadId` → file ZIP (secret disamarkan) |
 
 ### Sistem
 
@@ -323,6 +336,7 @@ Event `ping` dikirim tiap 15 detik saat sepi.
 | `node.changed` | `id`, `action` |
 | `telegram.changed` | `action` (`status`, `created`, `allowed`, `deleted`, `project`); `id` chat untuk perubahan chat, `status` untuk perubahan status bot |
 | `skill.changed` | `sourceId`, `status` (status sumber), `action` (`added`, `deleted`) bila ada, `error` bila gagal |
+| `incident.recorded` | `id` — insiden baru di menu Log (`threadId` event diisi bila terkait thread) |
 | `business.changed` | `action` (`created`, `updated`, `deleted`, `running`, `finished`, `settings`), `id` halaman dan/atau `projectKey` |
 | `ping` | — |
 

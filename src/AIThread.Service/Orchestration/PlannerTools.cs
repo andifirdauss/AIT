@@ -359,7 +359,7 @@ public static class PlannerTools
 
     private static JsonObject RunCommandDefinition() =>
         ChatMessages.Function(RunCommand,
-            "Run a shell command (bash; forward slashes in paths) and get its output and exit code. For checks that only read: curl GET/HEAD to see the shape of an API response (the app on localhost, or an outside API the developer wants explored), git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). Such commands run at once. A curl to another host, or any command that may change something (POST/PUT/DELETE, writing files, installs, migrations, git commit/checkout, ...), pauses the thread until the developer allows it; ask only when the request needs it. Credential files are refused. Never start a long-running server here (that is start_process); never call it in parallel with itself.",
+            "Run a shell command (bash; forward slashes in paths) and get its output and exit code. For checks that only read: curl GET/HEAD to see the shape of an API response (the app on localhost, or an outside API the developer wants explored), git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). Such commands run at once. A curl to another host, or any command that may change something (POST/PUT/DELETE, writing files, installs, migrations, git commit/checkout, ...), pauses the thread until the developer allows it; ask only when the request needs it. One command per call (a plain pipe is fine): ';', '&&', '||' or a redirect always pauses for permission, so make separate calls instead. To look for files or text use list_directory, find_files or search_text, not this. Credential files are refused. Never start a long-running server here (that is start_process); never call it in parallel with itself.",
             Schema("""
             {
               "type": "object",
@@ -375,7 +375,7 @@ public static class PlannerTools
     // run_command of a tools node: it cannot pause for the developer, so only commands that need no new permission run.
     private static JsonObject ToolsNodeCommandDefinition() =>
         ChatMessages.Function(RunCommand,
-            "Run a read-only shell command (bash; forward slashes in paths) and get its output and exit code: curl GET/HEAD to the app on localhost to see the shape of an API response, git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). A command that may change something, or a call to another host, is refused unless the developer already allowed it: name it in report_findings so the planner can run it. Credential files are refused. Never call it in parallel with itself.",
+            "Run a read-only shell command (bash; forward slashes in paths) and get its output and exit code: curl GET/HEAD to the app on localhost to see the shape of an API response, git reads, listing or printing files, tool versions (dotnet --info, node -v, npm ls). A command that may change something, or a call to another host, is refused unless the developer already allowed it: name it in report_findings so the planner can run it. One command per call (a plain pipe is fine): ';', '&&', '||' or a redirect is refused, so make separate calls. To look for files or text use list_directory, find_files or search_text. Credential files are refused. Never call it in parallel with itself.",
             Schema("""
             {
               "type": "object",
@@ -472,7 +472,7 @@ public static class PlannerTools
         }
 
         return ChatMessages.Function(Investigate,
-            "Delegate a read-only investigation to a cheaper sub agent. It runs the tools itself, as many steps as needed, and returns only its findings (path:line ranges and short exact excerpts), so raw tool output never fills your context. " +
+            "Delegate a read-only investigation to a cheaper sub agent. It runs the tools itself, as many steps as needed, and returns only its findings (path:line ranges and facts), plus the line ranges you need as exact text copied by AIT from the files (\"Exact excerpts\"), so raw tool output never fills your context. Ask for code by range, never for the sub agent to write it out. " +
             $"You do not have these tools yourself; use investigate for them. {holders} Several investigate calls in one turn run in parallel; give each its own area and files so they do not read the same code.",
             new JsonObject { ["type"] = "object", ["properties"] = properties, ["required"] = required });
     }
@@ -499,7 +499,20 @@ public static class PlannerTools
             {
               "type": "object",
               "properties": {
-                "findings": { "type": "string", "description": "The answer, short (usually under 1,500 characters, never over 4,000): one fact per line with path:startLine-endLine, exact excerpts only where the question needs them, and what could not be found." }
+                "findings": { "type": "string", "description": "The answer, short (usually under 1,500 characters, never over 4,000): one fact per line with path:startLine-endLine, and what could not be found. Never type code out here: put the lines the planner needs as exact text in excerpts." },
+                "excerpts": {
+                  "type": "array",
+                  "description": "Code the planner needs as exact text (a file it will edit, a pattern to mirror, a signature, markup), by location only. AIT copies these lines from the files and attaches them to your findings, exact and with line numbers, so you never write them out. A whole file the planner asked for is one range. At most 8 ranges, 400 lines in all.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "path": { "type": "string", "description": "File path as the tools show it." },
+                      "startLine": { "type": "integer" },
+                      "endLine": { "type": "integer" }
+                    },
+                    "required": ["path", "startLine", "endLine"]
+                  }
+                }
               },
               "required": ["findings"]
             }

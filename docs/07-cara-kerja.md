@@ -414,7 +414,7 @@ root lewat `run_build`):
 
 | Stack | Perintah | Target default |
 |---|---|---|
-| .NET | `dotnet build <file> --no-incremental -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | `.sln`/`.slnx` paling dangkal, kalau tidak ada `.csproj`/`.fsproj`/`.vbproj` paling dangkal |
+| .NET | `dotnet build <file> --no-incremental -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | `.sln`/`.slnx` paling dangkal, kalau tidak ada `.csproj`/`.fsproj`/`.vbproj` paling dangkal. Verifikasi setelah eksekusi mem-build solution yang **memuat semua project file yang diubah**: repository dengan beberapa solution (mis. template + sample) mem-build solution sample bila perubahannya ada di sana |
 | .NET Framework (csproj format lama/non-SDK, mis. ASP.NET MVC 5) | `MSBuild.exe <file> -restore -t:Rebuild -m -nr:false -p:RestorePackagesConfig=true …` dari Visual Studio / Build Tools (dicari lewat `vswhere`, lalu folder standar `Program Files\Microsoft Visual Studio`) | sama dengan .NET; solution dianggap format lama bila salah satu project-nya format lama atau berisi web site project |
 | Node.js | `tsc --noEmit` (TypeScript lokal di `node_modules`), kalau tidak ada `npm run build` | `package.json` paling dangkal yang punya salah satunya |
 | Go | `go build ./...` | `go.mod` |
@@ -476,7 +476,9 @@ Batas dan aturan:
 - Error build hanya diperbaiki otomatis di **file yang diubah thread ini** (atau, untuk nama yang tidak ditemukan, di
   file yang menurut rencana harus mendeklarasikannya). Error di file lain (mungkin sudah ada
   sebelum thread), di folder hasil generate, di luar root, atau tanpa file (mis. paket NuGet tidak ditemukan)
-  dilaporkan apa adanya. Reviewer tetap boleh menunjuk file lain bila jelas rusak akibat perubahan.
+  dilaporkan apa adanya. Reviewer tetap boleh menunjuk file lain bila jelas rusak akibat perubahan, dan boleh
+  meminta **file baru** (`"create": true`, mis. handler yang diminta source generator: `MSG0005` Mediator tanpa
+  handler) yang menjadi tugas `create`. Temuan pada file yang tidak ada tanpa tanda itu tetap dilaporkan saja.
 - Error `MSB3021`/`MSB3026`/`MSB3027` (file output terkunci oleh aplikasi yang sedang berjalan) dianggap **lolos**:
   kodenya berhasil dikompilasi.
 - Build yang timeout atau tidak bisa dijalankan (toolchain tidak terpasang) tidak diulang di putaran berikutnya.
@@ -1156,7 +1158,9 @@ sekali**; bila lalu lolos, ia ditandai *tidak stabil* dan tidak dihitung gagal.
 
 **Triase Tester.** Bila ada regresi atau test baru yang gagal dan ada node **Tester** aktif, Tester (model kuat)
 menerima request, ringkasan rencana, keputusan planner per test, diff setiap file yang berubah (maks 150 baris per
-file), serta kode, tujuan, dan pesan gagal tiap test, lalu memutuskan per test:
+file), serta kode, tujuan, dan pesan gagal tiap test, lalu memutuskan per test. Bila test masih gagal setelah satu
+putaran perbaikan test, triase berikutnya dikerjakan node **Reviewer** (bila aktif, biasanya model yang lebih kuat),
+tidak menebak ulang dengan model yang sama:
 
 | Verdict | Akibat |
 |---|---|
@@ -1228,6 +1232,14 @@ berhenti di lapis pertama yang berhasil:
    snapshot.
 4. **Tulis ulang dari skenario** (pakai model, cadangan terakhir): executor menulis test baru dari skenario katalog
    dengan file test lain sebagai contoh gaya. Asalnya menjadi *Ditulis ulang* dan perlu ditinjau developer.
+
+**Test yang tidak pernah di-commit tidak dipulihkan.** Di repository git, test hanya dipulihkan bila ada commit yang
+dikenal clone ini (riwayat branch Anda, atau commit snapshot-nya di branch lain) yang pernah menambahkan method-nya ke
+file-nya. Test yang hanya pernah ada di working copy (dibuat di clone lain dan belum di-commit, atau perubahannya dibuang
+dengan `git checkout`/`git stash`) dilewati, karena kode yang diujinya kemungkinan besar juga tidak ada sehingga build
+akan rusak. Laporan menyebutnya: *UT-0012 tidak dipulihkan: tidak ada commit di repository ini yang memuatnya …*. Test
+itu tidak dijalankan di thread tersebut, dan ikut dijalankan lagi begitu perubahan menulis file-nya. Project tanpa git
+tetap memulihkan semua test.
 
 File yang sudah ada **tidak pernah ditimpa**. Pemulihan **tidak ikut rollback** thread (bukan bagian dari request):
 file hasil pulihan muncul sebagai file baru di `git status` untuk Anda commit. Test hasil pulihan yang gagal di
