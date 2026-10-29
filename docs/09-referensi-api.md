@@ -235,7 +235,7 @@ disimpan per project key.
 
 | Method | Path | Body / query |
 |---|---|---|
-| `GET` | `/api/threads` | `take` (default 30, maks 200), `projectId` |
+| `GET` | `/api/threads` | `take` (default 30, maks 200), `projectId`, `search` (thread ID lengkap/awalan, teks prompt, atau nama project) |
 | `GET` | `/api/threads/{id}` | — (ringkasan, `planJson`, respons akhir, metrik termasuk `reviewerModel`/`reviewerTokens`/`verificationMs`, tugas, `verificationJson`: `outcome` `passed`/`failed`/`unverified`, `command`, `reviewerModel`, `rounds[]` berisi `build` (`status`, `headline`, `errors[]`, …), `review` (`approved`, `summary`, `issues[]`, `error`), `unitTests` (ringkasan putaran unit test, bentuk sama dengan `unitTestJson.rounds[]`), `fixTasks[]`, `unfixable[]`; `unitTestMs` dan `unitTestJson`: `outcome` `passed`/`failed`/`skipped`, `mode`, `testOnly`, `suites[]`, `problems[]`, `restored[]` (`number`, `file`, `how` = `moved`/`snapshot`/`method`/`task`/`regenerate`/`missing`, `note`), `notes[]`, `baselineRan`, `baselineCached`, `baselineMs`, `rounds[]` (`round`, `ran`, `passed`, `failed`, `skipped`, `durationMs`, `commands[]`, `regressions[]`, `preexisting[]`, `triage`, `testerModel`, `fixTargets[]`), `tests[]` (`id`, `number`, `title`, `file`, `decision`, `baseline`, `baselineCached`, `after`, `verdict` = `ok`/`fixed`/`regression`/`preexisting`/`new-failing`/`failing`/`flaky`/`skipped`/`notfound`/`missing`/`obsolete`, `message`, `skipReason`, `triage`, `triageReason`, `durationMs`), `testerModel`, `summary`; `testerModel`/`testerTokens` (termasuk triase unit test)/`testingMs`, dan `testingJson`: `outcome` `passed`/`failed`/`blocked`/`skipped`, `level`, `baseUrl`, `browser`, `testerModel`, `summary`, `error`, `steps`, `scenarios[]` (`title`, `status`, `details`), `requests[]` (`method`, `url`, `requestBody`, `status`, `reason`, `contentType`, `location`, `responseBody`, `durationMs`, `error`; password login tersamar sebagai `{{password}}`), `browserErrors[]`, `loginUser`, `loginNeeded`/`loginUrl` (tester berhenti meminta login), `askedLogin` (pertanyaan dikirim ke chat)) |
 | `POST` | `/api/threads` | `{ "projectId": "...", "prompt": "..." }` → id thread, berjalan di belakang |
 | `POST` | `/api/threads/{id}/cancel` | — |
@@ -293,7 +293,7 @@ Kartu Telegram di halaman Pengaturan — lihat [Prompt dari Telegram](11-telegra
 
 ### Skill
 
-Tab Skill di halaman Pengaturan dan saran skill di modal Node — lihat [Skill pada node](07-cara-kerja.md#skill-pada-node).
+Menu Skill dan saran skill di modal Node — lihat [Skill pada node](07-cara-kerja.md#skill-pada-node).
 
 | Method | Path | Body / query |
 |---|---|---|

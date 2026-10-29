@@ -8,7 +8,7 @@ public sealed partial class TelegramBot
         var normalized = prefix.Trim();
         if (normalized.Length < 4) return null;
 
-        var recent = await threadService.GetRecentAsync(200, null, cancellationToken);
+        var recent = await threadService.GetRecentAsync(200, null, cancellationToken: cancellationToken);
         return recent.FirstOrDefault(t => (!activeOnly || TelegramMessages.IsActive(t.Status)) &&
                                           t.Id.ToString().StartsWith(normalized, StringComparison.OrdinalIgnoreCase))?.Id;
     }

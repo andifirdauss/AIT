@@ -58,6 +58,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Open submenus can outgrow the screen: the menu scrolls, the sidebar footer stays. */
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(174, 182, 196, 0.25) transparent;
 }
 
 /* Group heading above a block of sidebar links (Ruang kerja / Konfigurasi / Bantuan). */
@@ -113,6 +118,64 @@ body {
 
 .app-nav-link.active .app-nav-icon {
   color: var(--app-accent);
+  opacity: 1;
+}
+
+/* A menu whose page has sections: the parent only folds/unfolds, each submenu link opens one section
+   (site.js initNavGroups). */
+.app-nav-chevron {
+  width: 0.9rem;
+  margin-left: auto;
+  flex: none;
+  height: 0.9rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.15s ease;
+}
+
+.app-nav-group.open .app-nav-chevron {
+  transform: rotate(90deg);
+}
+
+.app-nav-sub {
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 4px 1.3rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid rgba(174, 182, 196, 0.18);
+}
+
+.app-nav-group.open .app-nav-sub {
+  display: flex;
+}
+
+.app-nav-sublink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 8px;
+  color: var(--app-sidebar-fg);
+  font-size: 0.85rem;
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.app-nav-sublink:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  opacity: 1;
+}
+
+/* Same look as an active parent link (.app-nav-link.active). */
+.app-nav-sublink.active {
+  background: rgba(111, 140, 255, 0.18);
+  color: #fff;
   opacity: 1;
 }
 
@@ -488,6 +551,30 @@ body {
   border-bottom: 0;
 }
 
+/* Pengaturan → Penyimpanan memory: the status may shrink (ellipsis) so it stays beside the card title. */
+.memory-store-status {
+  min-width: 0;
+}
+
+/* Memori → Short & long memory: the foldable "Perlu review" part. */
+.review-section > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.review-section > summary::before {
+  content: "▸";
+  transition: transform 0.15s ease;
+}
+
+.review-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.review-section:not([open]) > summary {
+  border-bottom: 0;
+}
+
 .cli-section > summary {
   cursor: pointer;
   list-style-position: inside;
@@ -594,6 +681,8 @@ body {
 .role-ContextKeeper { border-left-color: #4fb8d8; }
 .role-ToolsNode { border-left-color: #8fa3b8; }
 .role-Tester { border-left-color: #e8a33d; }
+.role-WikiWriter { border-left-color: #5fbf9a; }
+.role-SkillOrchestrator { border-left-color: #d68ad0; }
 
 .model-combo {
   position: relative;
@@ -737,6 +826,9 @@ body {
   .app-nav { flex-direction: row; flex-wrap: wrap; }
   .app-nav-section { display: none; }
   .app-nav-link { width: auto; }
+  /* The sidebar is one row here: an open submenu takes a full row below its parent. */
+  .app-nav-group { display: contents; }
+  .app-nav-group .app-nav-sub { width: 100%; flex-direction: row; flex-wrap: wrap; margin-left: 0; }
   .app-main { padding: 1rem; }
 }
 

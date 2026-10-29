@@ -10,12 +10,10 @@
     </div>
 </div>
 
-<ul class="nav nav-tabs mb-3" id="memoryTabs" role="tablist">
+@* Hidden: the sidebar submenu picks the tab (site.js initNavGroups); the buttons stay for the page scripts. *@
+<ul class="nav nav-tabs d-none" id="memoryTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active" id="memory-list-tab" data-bs-toggle="tab" data-bs-target="#tab-memory-list" data-tab="" type="button" role="tab" aria-controls="tab-memory-list" aria-selected="true">Short &amp; long memory</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" id="review-tab" data-bs-toggle="tab" data-bs-target="#tab-review" data-tab="review" type="button" role="tab" aria-controls="tab-review" aria-selected="false">@Html.Raw(Lang.T("Perlu review <span class=\"badge text-bg-warning d-none\" id=\"reviewBadge\"></span>", "Needs review <span class=\"badge text-bg-warning d-none\" id=\"reviewBadge\"></span>"))</button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" id="business-tab" data-bs-toggle="tab" data-bs-target="#tab-business" data-tab="bisnis" type="button" role="tab" aria-controls="tab-business" aria-selected="false">Business memory</button>
@@ -60,6 +58,36 @@
         <div class="stat-label">@Lang.T("Belum berlabel", "Unlabeled")</div><div class="stat-value" id="statUnlabeled">–</div><div class="stat-hint" id="statReview">&nbsp;</div>
     </div></div></div>
 </div>
+
+<details class="card mb-3 review-section d-none" id="reviewSection">
+    <summary class="card-header d-flex align-items-center gap-2">
+        <span class="fw-semibold">@Lang.T("Perlu review", "Needs review")</span>
+        <span class="badge text-bg-warning" id="reviewSummaryCount"></span>
+    </summary>
+    <div class="card-body">
+        <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-5 col-xl-4">
+                <label class="form-label small text-secondary" for="reviewProject">Project</label>
+                <select class="form-select form-select-sm" id="reviewProject"><option value="">@Lang.T("Semua project (memory saja)", "All projects (memory only)")</option></select>
+            </div>
+            <div class="col small text-secondary">
+                @Lang.T("Memory yang tidak bisa dilabeli otomatis, saran gabung modul yang keyakinannya rendah, dan pasangan memory yang kemungkinan sama. Merge dengan keyakinan tinggi sudah diterapkan otomatis dan bisa dibatalkan di detail project.", "Memory that could not be labeled automatically, module merge suggestions with low confidence, and memory pairs that are likely the same. Merges with high confidence were applied automatically and can be undone in the project detail.")
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header">@Html.Raw(Lang.T("Memory tanpa label <span class=\"text-secondary small\" id=\"reviewMemoryCount\"></span>", "Memory without a label <span class=\"text-secondary small\" id=\"reviewMemoryCount\"></span>"))</div>
+            <div class="list-group list-group-flush" id="reviewMemories"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header">@Html.Raw(Lang.T("Saran gabung modul <span class=\"text-secondary small\" id=\"reviewMergeCount\"></span>", "Module merge suggestions <span class=\"text-secondary small\" id=\"reviewMergeCount\"></span>"))</div>
+            <div class="list-group list-group-flush" id="reviewMerges"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
+        </div>
+        <div class="card">
+            <div class="card-header">@Html.Raw(Lang.T("Kandidat memory duplikat <span class=\"text-secondary small\" id=\"reviewDuplicateCount\"></span>", "Duplicate memory candidates <span class=\"text-secondary small\" id=\"reviewDuplicateCount\"></span>"))</div>
+            <div class="list-group list-group-flush" id="reviewDuplicates"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
+        </div>
+    </div>
+</details>
 
 <div class="card">
     <div class="card-body border-bottom">
@@ -119,34 +147,6 @@
         </div>
     </div>
 </div>
-</div>
-
-<div class="tab-pane" id="tab-review" role="tabpanel" aria-labelledby="review-tab" tabindex="0">
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-5 col-xl-4">
-                    <label class="form-label small text-secondary" for="reviewProject">Project</label>
-                    <select class="form-select form-select-sm" id="reviewProject"><option value="">@Lang.T("Semua project (memory saja)", "All projects (memory only)")</option></select>
-                </div>
-                <div class="col small text-secondary">
-                    @Lang.T("Memory yang tidak bisa dilabeli otomatis, saran gabung modul yang keyakinannya rendah, dan pasangan memory yang kemungkinan sama. Merge dengan keyakinan tinggi sudah diterapkan otomatis dan bisa dibatalkan di detail project.", "Memory that could not be labeled automatically, module merge suggestions with low confidence, and memory pairs that are likely the same. Merges with high confidence were applied automatically and can be undone in the project detail.")
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="card mb-3">
-        <div class="card-header">@Html.Raw(Lang.T("Memory tanpa label <span class=\"text-secondary small\" id=\"reviewMemoryCount\"></span>", "Memory without a label <span class=\"text-secondary small\" id=\"reviewMemoryCount\"></span>"))</div>
-        <div class="list-group list-group-flush" id="reviewMemories"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
-    </div>
-    <div class="card mb-3">
-        <div class="card-header">@Html.Raw(Lang.T("Saran gabung modul <span class=\"text-secondary small\" id=\"reviewMergeCount\"></span>", "Module merge suggestions <span class=\"text-secondary small\" id=\"reviewMergeCount\"></span>"))</div>
-        <div class="list-group list-group-flush" id="reviewMerges"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
-    </div>
-    <div class="card">
-        <div class="card-header">@Html.Raw(Lang.T("Kandidat memory duplikat <span class=\"text-secondary small\" id=\"reviewDuplicateCount\"></span>", "Duplicate memory candidates <span class=\"text-secondary small\" id=\"reviewDuplicateCount\"></span>"))</div>
-        <div class="list-group list-group-flush" id="reviewDuplicates"><div class="list-group-item text-secondary small">@Lang.T("Memuat…", "Loading…")</div></div>
-    </div>
 </div>
 
 <div class="tab-pane" id="tab-business" role="tabpanel" aria-labelledby="business-tab" tabindex="0">

@@ -68,6 +68,8 @@ public sealed partial class GitEnvironmentTracker
             await db.SaveChangesAsync(cancellationToken);
         }
 
+        // What was seen in a removed or re-pointed environment is gone: look through every environment again.
+        foreach (var scanKey in _scanned.Keys.Where(k => k.StartsWith(key + "\n", StringComparison.Ordinal))) _scanned.TryRemove(scanKey, out _);
         await RefreshAsync(projectId, cancellationToken);
         return await ListAsync(projectId, cancellationToken);
     }

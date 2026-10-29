@@ -10,22 +10,19 @@ public sealed partial class GitEnvironmentTracker
     {
         if (await ProjectAsync(projectId, cancellationToken) is not var (key, root)) return null;
         await using var db = await longStore.CreateGitAsync(cancellationToken);
-        var environments = await db.ProjectEnvironments.AsNoTracking().Where(e => e.ProjectKey == key).OrderBy(e => e.Order).ThenBy(e => e.Name)
-            .ToListAsync(cancellationToken);
+        var environments = await EnvironmentsAsync(db, key, root, cancellationToken);
         var seen = (await db.ChangePresences.AsNoTracking().Where(p => p.ProjectKey == key)
                 .GroupBy(p => p.Environment)
                 .Select(g => new { Environment = g.Key, Count = g.Count(), Last = g.Max(p => p.CreatedAt) })
                 .ToListAsync(cancellationToken))
             .ToDictionary(g => g.Environment, StringComparer.OrdinalIgnoreCase);
 
-        var result = new List<ProjectEnvironmentDto>();
-        foreach (var environment in environments)
-        {
-            var commit = await ResolveRefAsync(root, environment.Ref, cancellationToken);
-            var stats = seen.GetValueOrDefault(environment.Name);
-            result.Add(new ProjectEnvironmentDto(environment.Id, environment.Name, environment.Ref, environment.Order, environment.IsProduction,
-                commit is not null, commit, stats?.Count ?? 0, stats?.Last));
-        }
-        return result;
+        return environments.Select(e =>
+            {
+                var stats = seen.GetValueOrDefault(e.Name);
+                return new ProjectEnvironmentDto(e.Id, e.Name, e.Ref, e.Order, e.IsProduction, e.Head is not null, e.Head, stats?.Count ?? 0, stats?.Last,
+                    e.Auto);
+            })
+            .ToList();
     }
 }

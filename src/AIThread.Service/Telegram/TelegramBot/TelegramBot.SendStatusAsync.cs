@@ -9,7 +9,7 @@ public sealed partial class TelegramBot
         var running = _running.TryGetValue(chat.ChatId, out var runningId)
             ? (await threadService.GetDetailAsync(runningId, cancellationToken))?.Summary
             : null;
-        var recent = await threadService.GetRecentAsync(5, null, cancellationToken);
+        var recent = await threadService.GetRecentAsync(5, null, cancellationToken: cancellationToken);
         await api.SendAsync(chat.ChatId,
             TelegramMessages.Status(await ActiveProjectNameAsync(chat, cancellationToken), running, recent, DateTime.UtcNow),
             cancellationToken: cancellationToken);
