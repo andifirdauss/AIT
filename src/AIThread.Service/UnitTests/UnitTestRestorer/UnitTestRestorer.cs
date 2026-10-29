@@ -17,14 +17,17 @@ public sealed record UnitTestRestoreItem(string Number, string File, string How,
     public const string Missing = "missing";
 }
 
-public sealed record UnitTestRestoreResult(IReadOnlyList<UnitTestRestoreItem> Items, IReadOnlyList<PlanTask> Tasks, IReadOnlyList<string> Notes)
+// Uncommitted: the missing tests left out because no commit known here ever held them.
+public sealed record UnitTestRestoreResult(IReadOnlyList<UnitTestRestoreItem> Items, IReadOnlyList<PlanTask> Tasks, IReadOnlyList<string> Notes,
+    IReadOnlyList<Guid> Uncommitted)
 {
-    public static readonly UnitTestRestoreResult None = new([], [], []);
+    public static readonly UnitTestRestoreResult None = new([], [], [], []);
 }
 
 // Before a thread plans, the tests of the catalog that this repository lacks are put back automatically: they are part
-// of the project's standard code. Layer 1 tells where the original is in git, layer 2 restores from the snapshot
-// without a model, layer 3 has an executor write the test again from its scenario.
+// of the project's standard code. A test no commit here ever held is left out (it lived only in some working tree, with
+// the code it tests). Layer 1 tells where the original is in git, layer 2 restores from the snapshot without a model,
+// layer 3 has an executor write the test again from its scenario.
 public sealed partial class UnitTestRestorer(IUnitTestCatalog catalog, IUnitTestScanner scanner, ILogger<UnitTestRestorer> logger) : IUnitTestRestorer
 {
     private static readonly TimeSpan SolutionTimeout = TimeSpan.FromSeconds(60);

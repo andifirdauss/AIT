@@ -217,6 +217,71 @@ public class UnitTestCatalogTests
     }
 
     [Fact]
+    public async Task A_test_no_commit_ever_held_is_not_restored_but_a_committed_one_deleted_later_is()
+    {
+        using var _ = AIThread.Common.Localization.Lang.Use("en");
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        var project = await PrepareAsync(harness);
+        var root = harness.Project.Root;
+        Git(root, "init", "--initial-branch=main", "--quiet");
+        Git(root, "add", "--all");
+        Git(root, "commit", "--quiet", "-m", "Shop with user tests");
+
+        // A test written in this working tree and never committed (another clone's work, or thrown away later).
+        const string orderFile = "tests/Shop.Tests/OrderTests.cs";
+        harness.Project.Write(orderFile, """
+            namespace Shop.Tests;
+
+            public class OrderTests
+            {
+                [Fact]
+                public void Total_IsSumOfLines()
+                {
+                    Assert.Equal(3, 1 + 2);
+                }
+            }
+            """);
+        var scan = await harness.Service<IUnitTestScanner>().ScanAsync(project, label: false, "dev", CancellationToken.None);
+        Assert.Equal(3, scan.Found);
+        var tests = await harness.Service<IUnitTestCatalog>().ListAsync(project.Key, CancellationToken.None);
+        var order = Assert.Single(tests, t => t.TestFile == orderFile);
+
+        File.Delete(Path.Combine(root, orderFile));
+        Git(root, "rm", "--quiet", TestFile);
+        Git(root, "commit", "--quiet", "-m", "Remove user tests");
+
+        var restored = await harness.Service<IUnitTestRestorer>().RestoreAsync(project, tests, TestCommandResolver.Suites(project.RootPath, project.Modules), CancellationToken.None);
+
+        Assert.Equal([order.Id], restored.Uncommitted);
+        Assert.False(File.Exists(Path.Combine(root, orderFile)));
+        Assert.Contains(restored.Notes, n => n.Contains(order.DisplayNumber) && n.Contains("not restored"));
+        Assert.Equal([UnitTestRestoreItem.Snapshot, UnitTestRestoreItem.Snapshot], restored.Items.Select(i => i.How));
+        Assert.All(restored.Items, i => Assert.Equal(TestFile, i.File));
+        Assert.Equal(Tests.ReplaceLineEndings("\n"), harness.ReadFile(TestFile));
+    }
+
+    // Fixed identity and no signing or line ending conversion, whatever the machine's git config says.
+    private static void Git(string directory, params string[] arguments)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo("git")
+        {
+            WorkingDirectory = directory,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        string[] config = ["-c", "user.name=AIT Test", "-c", "user.email=ait@test.local", "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"];
+        foreach (var argument in config.Concat(arguments)) startInfo.ArgumentList.Add(argument);
+
+        using var process = System.Diagnostics.Process.Start(startInfo)!;
+        var error = process.StandardError.ReadToEndAsync();
+        process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        Assert.True(process.ExitCode == 0, $"git {string.Join(' ', arguments)} failed: {error.Result}");
+    }
+
+    [Fact]
     public async Task A_test_without_any_snapshot_is_written_again_from_its_scenario()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();

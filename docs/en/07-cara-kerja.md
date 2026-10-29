@@ -425,7 +425,7 @@ inside the root through `run_build`):
 
 | Stack | Command | Default target |
 |---|---|---|
-| .NET | `dotnet build <file> --no-incremental -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | the shallowest `.sln`/`.slnx`, otherwise the shallowest `.csproj`/`.fsproj`/`.vbproj` |
+| .NET | `dotnet build <file> --no-incremental -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | the shallowest `.sln`/`.slnx`, otherwise the shallowest `.csproj`/`.fsproj`/`.vbproj`. The verification after execution builds the solution that **holds every project of the changed files**: a repository with several solutions (e.g. a template + a sample) builds the sample's solution when the change is there |
 | .NET Framework (old-format/non-SDK csproj, e.g. ASP.NET MVC 5) | `MSBuild.exe <file> -restore -t:Rebuild -m -nr:false -p:RestorePackagesConfig=true …` from Visual Studio / Build Tools (found through `vswhere`, then the standard `Program Files\Microsoft Visual Studio` folders) | the same as .NET; a solution counts as old-format when one of its projects is old-format or it holds a web site project |
 | Node.js | `tsc --noEmit` (a local TypeScript in `node_modules`), otherwise `npm run build` | the shallowest `package.json` that has one of them |
 | Go | `go build ./...` | `go.mod` |
@@ -488,7 +488,9 @@ Limits and rules:
 - Build errors are only fixed automatically in **files this thread changed** (or, for a name that is not found, in the
   file that the plan says should declare it). Errors in other files (that may have existed before the thread), in
   generated folders, outside the root, or without a file (e.g. a NuGet package not found) are reported as they are. The
-  reviewer may still point at another file when it is clearly broken by the change.
+  reviewer may still point at another file when it is clearly broken by the change, and may ask for a **new file**
+  (`"create": true`, e.g. a handler a source generator asks for: Mediator's `MSG0005` without a handler), which becomes
+  a `create` task. A finding on a file that does not exist without that mark is still only reported.
 - `MSB3021`/`MSB3026`/`MSB3027` errors (an output file locked by a running application) count as **passed**: the code
   compiled.
 - A build that timed out or cannot run (the toolchain is not installed) is not repeated in the next round.
@@ -1197,7 +1199,9 @@ in their file after the executors finish; ones not found are reported as *new te
 
 **Tester triage.** When there is a regression or a failing new test and an active **Tester** node, the Tester (a strong
 model) gets the request, the plan summary, the planner's decision per test, the diff of every changed file (at most 150
-lines per file), and the code, purpose and failure message of each test, then decides per test:
+lines per file), and the code, purpose and failure message of each test, then decides per test. When tests still fail
+after a test fix round, the next triage is done by the **Reviewer** node (when active, usually the stronger model)
+instead of the same model guessing again:
 
 | Verdict | Consequence |
 |---|---|
@@ -1271,6 +1275,13 @@ tests`), stopping at the first layer that succeeds:
 4. **Rewrite from the scenario** (uses a model, the last fallback): an executor writes a new test from the catalog
    scenario with another test file as a style example. Its origin becomes *Rewritten* and it should be reviewed by the
    developer.
+
+**A test that was never committed is not restored.** In a git repository a test is only restored when a commit this
+clone knows (your branch's history, or its snapshot's commit on another branch) once added its method to its file. A
+test that only ever lived in a working copy (written in another clone and not committed, or a change thrown away with
+`git checkout`/`git stash`) is skipped, because the code it tests is most likely missing too and the build would break.
+The report says so: *UT-0012 not restored: no commit in this repository holds them …*. Such a test is not run in that
+thread, and runs again as soon as a change writes its file. A project without git still restores every test.
 
 Existing files are **never overwritten**. Restores are **not part of a thread's rollback** (they are not part of the
 request): restored files show up as new files in `git status` for you to commit. A restored test that fails in the

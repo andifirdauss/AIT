@@ -9,7 +9,7 @@ public sealed partial class UnitTestStage
         CancellationToken cancellationToken)
     {
         if (!session.CanRun) return;
-        var relevant = UnitTestSelection.Relevant(session.Tests, session.Settings.Mode, files, modules);
+        var relevant = UnitTestSelection.Relevant(session.Present,session.Settings.Mode, files, modules);
         foreach (var test in relevant) session.Relevant.Add(test.Id);
         if (relevant.Count == 0) return;
         session.BaselineRun = Task.Run(() => BaselineAsync(session, relevant, recorder, cancellationToken), CancellationToken.None);

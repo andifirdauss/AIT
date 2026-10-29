@@ -16,8 +16,11 @@ public sealed partial class UnitTestStage
 
         RefreshSuites(session, plan);
         FindNewTests(session, plan, input.ThreadId);
+        // A test left out at restore runs again once the change writes its file.
+        session.Absent.RemoveWhere(id => session.Tests.FirstOrDefault(t => t.Id == id) is { } test
+                                         && input.ChangedFiles.Any(f => string.Equals(f.Replace('\\', '/'), test.TestFile.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase)));
         // Fix tasks may touch files the plan did not: the tests of those files join.
-        foreach (var test in UnitTestSelection.Relevant(session.Tests, UnitTestMode.Relevant, input.ChangedFiles, []))
+        foreach (var test in UnitTestSelection.Relevant(session.Present, UnitTestMode.Relevant, input.ChangedFiles, []))
             if (!retired.Contains(test.DisplayNumber)) session.Relevant.Add(test.Id);
         var tests = session.Tests.Where(t => session.Relevant.Contains(t.Id) && t.State == UnitTestState.Active).Concat(session.NewTests).ToList();
         if (session.Suites.Count == 0)

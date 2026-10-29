@@ -60,6 +60,20 @@ public sealed partial class GitTools(WorkspaceScope scope)
         return result.Error is null;
     }
 
+    // Whether a commit in the history of revision (default HEAD) added or removed text in the file at path (relative to
+    // the root), or touched that file at all when text is empty. A file that only lived in a working tree has no such
+    // commit; false too without commits or for a revision git does not know.
+    public async Task<bool> CommittedAsync(string path, string? text, string? revision = null, CancellationToken cancellationToken = default)
+    {
+        revision ??= "HEAD";
+        if (string.IsNullOrWhiteSpace(path) || !IsRevision(revision)) return false;
+        List<string> arguments = ["log", "--max-count=1", "--format=%H"];
+        if (!string.IsNullOrEmpty(text)) arguments.Add($"-S{text}");
+        arguments.AddRange([revision, "--", $":(literal){path.Replace('\\', '/')}"]);
+        var result = await RunGitAsync(scope.Root, arguments, cancellationToken);
+        return result.Error is null && result.Text.Trim().Length > 0;
+    }
+
     public async Task<string> StatusAsync(string? path, CancellationToken cancellationToken = default)
     {
         if (!TryLocate(path, out var target, out var error)) return $"Error: {error}";

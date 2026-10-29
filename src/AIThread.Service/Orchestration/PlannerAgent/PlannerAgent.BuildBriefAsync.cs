@@ -29,7 +29,7 @@ public sealed partial class PlannerAgent
         }
         builder.Append(build is null
             ? "Build: AIT cannot build this project; mention build or test steps in the summary.\n"
-            : $"Build: `{build.Display}` (run_build). AIT builds it again after the executors finish{(input.Settings.MaxFixRounds > 0 ? " and has the errors fixed" : string.Empty)}.\n");
+            : $"Build: `{build.Display}` (run_build). After the executors finish AIT builds the solution that holds the changed files (this one unless they are in another solution){(input.Settings.MaxFixRounds > 0 ? " and has the errors fixed" : string.Empty)}.\n");
         builder.Append("Tool paths are relative to the root. The read tools also accept absolute paths outside the root, for read-only checks; file changes are only possible inside the root.\n\n");
 
         builder.Append("## Structure (depth 2)\n");
@@ -76,6 +76,10 @@ public sealed partial class PlannerAgent
                 builder.Append($"- {hit.Path}: {(hit.Area is null ? string.Empty : hit.Area + " · ")}{hit.Module} · {hit.Layer}\n");
             builder.Append('\n');
         }
+
+        if (input.LabelsFromSession is null
+            && Memory.ReferenceAreas.Brief(project.RootPath, input.Files ?? [], Memory.CodeMapHeuristics.References(request.Prompt).Identifiers, input.CanAsk) is { } areas)
+            builder.Append(areas).Append('\n');
 
         var outlined = (input.Files ?? []).Concat(input.CodeMap?.Select(h => h.Path) ?? []).Distinct(StringComparer.OrdinalIgnoreCase);
         if (await skeleton.BriefAsync(project, input.Scope, outlined, MaxOutlinedFiles, MaxOutlineChars, cancellationToken) is { } outlines)

@@ -51,7 +51,24 @@ public sealed partial class UnitTestRestorer
         }
         missingMethods.RemoveAll(Moved);
 
+        // A test no commit here ever held stays out: the code it tests is most likely not here either.
+        var uncommitted = await UncommittedAsync(project, missingFiles.Values.SelectMany(t => t).Concat(missingMethods).ToList(), cancellationToken);
+        var leftOut = uncommitted.ToHashSet();
+        foreach (var file in missingFiles.Keys.ToList())
+        {
+            missingFiles[file].RemoveAll(leftOut.Contains);
+            if (missingFiles[file].Count == 0) missingFiles.Remove(file);
+        }
+        missingMethods.RemoveAll(leftOut.Contains);
+
         var notes = await GitNotesAsync(project, missingFiles.Values.SelectMany(t => t).Concat(missingMethods).ToList(), cancellationToken);
+        if (uncommitted.Count > 0)
+        {
+            var numbers = string.Join(", ", uncommitted.Select(t => t.DisplayNumber));
+            notes.Add(Lang.T(
+                $"{numbers} tidak dipulihkan: tidak ada commit di repository ini yang memuatnya (hanya ada di working copy tempat test dibuat, perubahannya sudah dibuang, atau commit-nya belum di-fetch). Commit dari asalnya lalu pull, atau tandai obsolete kalau memang dibuang.",
+                $"{numbers} not restored: no commit in this repository holds them (they only exist in the working copy they were written in, the change was thrown away, or the commit is not fetched yet). Commit them where they came from and pull, or mark them obsolete if they were dropped."));
+        }
         var inserts = new List<UnitTestCase>(missingMethods);
         var regenerate = new List<UnitTestCase>();
 
@@ -115,6 +132,6 @@ public sealed partial class UnitTestRestorer
         }
 
         await catalog.UpdateAsync(changed.Distinct().ToList(), cancellationToken);
-        return new UnitTestRestoreResult(items, tasks, notes);
+        return new UnitTestRestoreResult(items, tasks, notes, uncommitted.Select(t => t.Id).ToList());
     }
 }
