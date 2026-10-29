@@ -10,8 +10,9 @@ public sealed record FixPlan(IReadOnlyList<PlanTask> Tasks, IReadOnlyList<string
 
 // Turns build errors and review issues into executor tasks: one task per file, ids "V<round>-<n>". Build errors are
 // only fixed in files this thread changed (an error elsewhere may be older than the thread; the reviewer can still
-// name such a file when the change clearly caused it). Generated folders, files outside the root and files that do
-// not exist are never targeted.
+// name such a file when the change clearly caused it). Generated folders and files outside the root are never targeted;
+// a file that does not exist only when the reviewer marks the finding "create" (a handler the build asks for), which
+// becomes a create task.
 //
 // Duplicate C# members (CS0111, CS0102) between a file this thread filled with members (create or extract target) and a
 // file that held them before mean a move that was not finished. They become extract tasks from the old file, done
@@ -82,7 +83,7 @@ public static partial class FixTaskFactory
             var label = $"{issue.File}: {issue.Problem}";
             if (!scope.TryResolve(issue.File, out var fullPath, out _)) unfixable.Add($"{label} — outside the project root");
             else if (scope.IsIgnoredPath(scope.ToRelative(fullPath))) unfixable.Add($"{label} — generated or third-party file");
-            else if (!File.Exists(fullPath)) unfixable.Add($"{label} — file does not exist");
+            else if (!File.Exists(fullPath) && !issue.Create) unfixable.Add($"{label} — file does not exist");
             else if (!moving.Contains(scope.ToRelative(fullPath))) Work(work, scope.ToRelative(fullPath), fullPath).Issues.Add(issue);
         }
 
@@ -120,17 +121,19 @@ public static partial class FixTaskFactory
             var after = extracts.Where(t => string.Equals(t.File, relative, StringComparison.OrdinalIgnoreCase) || string.Equals(t.To, relative, StringComparison.OrdinalIgnoreCase))
                 .Select(t => t.Id).ToList();
             var hasErrors = fileWork.Errors.Count > 0 || fileWork.Missing.Count > 0;
+            var creates = !File.Exists(fileWork.FullPath);
             var examples = Examples(fileWork);
             tasks.Add(new PlanTask
             {
                 Id = $"V{round}-{tasks.Count + 1}",
                 DependsOn = after.Count > 0 ? after : null,
-                Title = hasErrors && fileWork.Issues.Count > 0 ? "Fix build errors and review findings"
+                Title = creates ? "Create the file the review asks for"
+                    : hasErrors && fileWork.Issues.Count > 0 ? "Fix build errors and review findings"
                     : hasErrors ? "Fix build errors"
                     : fileWork.Issues.Count > 0 ? "Fix review findings"
                     : "Fix failing unit tests",
                 File = relative,
-                Action = "edit",
+                Action = creates ? PlanTask.Create : PlanTask.Edit,
                 Instruction = Instruction(fileWork, original, examples),
                 Focus = Focus(fileWork, examples),
                 Context = original.SelectMany(t => t.Context ?? [])
@@ -152,7 +155,9 @@ public static partial class FixTaskFactory
     private static string Instruction(FileWork work, IReadOnlyList<PlanTask> original, IReadOnlyList<(int Line, string Text)> examples)
     {
         var builder = new StringBuilder();
-        builder.Append("Verification after the previous changes found problems in this file. Fix exactly these problems and change nothing else; keep every name from the contract.\n");
+        builder.Append(File.Exists(work.FullPath)
+            ? "Verification after the previous changes found problems in this file. Fix exactly these problems and change nothing else; keep every name from the contract.\n"
+            : "Verification after the previous changes found that this file is missing. Create it with only what the findings below ask for; keep every name from the contract.\n");
 
         if (work.Errors.Count > 0)
         {
