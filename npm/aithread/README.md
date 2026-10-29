@@ -8,6 +8,17 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.12.2
+
+- **Navigasi lebih jelas**: sidebar punya sub menu yang bisa dilipat untuk Memori, Pengaturan, dan Log & diagnostik
+  (menggantikan tab di halaman); **Skill** jadi menu sendiri; *Perlu review* pindah ke dalam Short & long memory.
+- **Menu Node**: model penulis wiki bisnis (termasuk nama developer) dan Skill Orchestrator diatur di bagian
+  *Model tugas latar*.
+- **Environment dari branch asli**: setiap branch remote otomatis jadi environment di Business memory dan filter
+  Memori, tanpa perlu didaftarkan; halaman wikinya dihitung saat dibuka.
+- **Tabel thread**: kolom Thread ID (sama dengan `thread …` di jawaban CLI) dan pencarian thread ID, prompt, atau
+  project di semua thread.
+
 ## Yang baru di 1.12.1
 
 - **Perbaikan tampilan di CLI**: icon pemulihan unit test dan icon catatannya tidak lagi menutupi teks di sebelahnya;
