@@ -29,7 +29,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets/aithread.ico</ApplicationIcon>
     <Product>AIThread</Product>
-    <Version>1.11.0</Version>
+    <Version>1.12.0</Version>
   </PropertyGroup>
 
 </Project>
