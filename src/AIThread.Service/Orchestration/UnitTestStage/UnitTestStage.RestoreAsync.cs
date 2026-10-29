@@ -30,7 +30,7 @@ public sealed partial class UnitTestStage
         foreach (var item in result.Items.Take(MaxRestoreLines))
             await progress.StepAsync($"{RestoreIcon(item.How)} {item.Number} {item.File} — {RestoreLabel(item)}", cancellationToken, hang: 3);
         if (result.Items.Count > MaxRestoreLines) await progress.StepAsync(Lang.T($"… {result.Items.Count - MaxRestoreLines} lainnya", $"… {result.Items.Count - MaxRestoreLines} more"), cancellationToken, hang: 3);
-        foreach (var note in result.Notes) await progress.StepAsync($"ℹ️ {note}", cancellationToken, hang: 3);
+        foreach (var note in result.Notes) await progress.StepAsync($"💡 {note}", cancellationToken, hang: 3);
         if (result.Tasks.Count == 0) await progress.StepAsync(Lang.T("selesai", "done"), cancellationToken, last: true);
 
         recorder.Log(ActivityLevel.Info, Lang.T("Unit test dipulihkan otomatis: ", "Unit tests restored automatically: ") + string.Join("; ", result.Items.Select(i => $"{i.Number} {RestoreLabel(i)}")));

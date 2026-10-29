@@ -207,7 +207,7 @@ public sealed partial class ClientProgress(IThreadObserver observer, bool showPr
     {
         0xFE0F or 0xFE0E or 0x200D => 0,
         >= 0x1F000 => 2,
-        0x2705 or 0x274C or 0x23E9 or 0x23F3 or 0x231B => 2,
+        0x2705 or 0x274C or 0x2757 or 0x23E9 or 0x23F3 or 0x231B => 2,
         _ => 1
     };
 
