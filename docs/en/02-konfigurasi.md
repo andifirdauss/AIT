@@ -218,7 +218,8 @@ quick way to make sure the model and key are right.
 Each node can be given one **fallback node** in the node form (optional). The flow:
 
 1. A call to the node fails with an error that means "the model is not available right now": rate limit **429**,
-   timeout **408**, or a server error **5xx**.
+   timeout **408**, or a server error **5xx**. A call that receives no data at all from 9router for 3 minutes (a
+   connection left hanging after a network drop) counts as a 408 timeout too, without waiting for the *Request timeout*.
 2. 9router first retries with a pause (as before).
 3. When it still fails, the **same** call is sent to the fallback node. For the planner and executors, the conversation
    continues from the last point instead of starting over. When the fallback node fails too and has its own fallback,
@@ -252,8 +253,12 @@ step 3 is paid again at steps 4, 5, … until `submit_plan`. A tools node moves 
    tools node.
 3. A delegated tool is **removed** from the planner's tool list. Instead the planner gets the `investigate(question)`
    tool (plus `agent` when there is more than one tools node). The tools node runs its tools itself in a loop (at most
-   12 steps), then returns **short findings** — `path:line` and a short quote when needed, usually under 1,500
-   characters (cut at 6,000). Raw output never enters the planner's context. The tools node's brief holds the project's
+   12 steps), then returns **short findings** — facts with `path:line`, usually under 1,500 characters (cut at 6,000).
+   The tools node does not copy code: code the planner needs as exact text (a file it will edit, a pattern to mirror) is
+   named by its line ranges in `excerpts`, and **AIT copies those lines from the file** and attaches them under *Exact
+   excerpts* (at most 8 ranges, 400 lines; secrets stay masked as with `read_file`). The text is exact and the cheap
+   model never retypes a file, which was its slowest turn. Raw output of the other tools never enters the planner's
+   context. The tools node's brief holds the project's
    folder map (depth 4, no files) so it does not spend turns on `list_directory`/`find_files`, and the tools node is
    asked to run every independent search/read in one turn. The planner puts a correct plan first, then parallelism:
    independent questions are sent together and split per area so the same files are not read twice; questions that
