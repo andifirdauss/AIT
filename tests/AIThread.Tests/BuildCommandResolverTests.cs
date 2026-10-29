@@ -26,6 +26,26 @@ public class BuildCommandResolverTests : IDisposable
     }
 
     [Fact]
+    public void Changes_in_a_nested_solution_build_that_solution_instead_of_the_root_one()
+    {
+        // A template at the root and its sample with a solution of its own, as in a repository holding both.
+        _workspace.Write("App.slnx", """<Solution><Project Path="src/Api/Api.csproj" /></Solution>""");
+        _workspace.Write("src/Api/Api.csproj", "<Project />");
+        _workspace.Write("src/Api/Orders/Order.cs", "class Order {}");
+        _workspace.Write("sample/Sample.slnx", """<Solution><Project Path="src/Shop/Shop.csproj" /></Solution>""");
+        _workspace.Write("sample/src/Shop/Shop.csproj", "<Project />");
+        _workspace.Write("sample/src/Shop/Cart.cs", "class Cart {}");
+        string[] modules = ["App.slnx", "src/Api/Api.csproj", "sample/Sample.slnx", "sample/src/Shop/Shop.csproj"];
+
+        Assert.Equal("dotnet build --no-incremental App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["src/Api/Orders/Order.cs"], out _)?.Display);
+        Assert.Equal("dotnet build --no-incremental sample/Sample.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["sample/src/Shop/Cart.cs", "sample/src/Shop/New.cs"], out _)?.Display);
+        // Changes on both sides: no solution holds both, so the default build stays.
+        Assert.Equal("dotnet build --no-incremental App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["src/Api/Orders/Order.cs", "sample/src/Shop/Cart.cs"], out _)?.Display);
+        // Files outside any project (docs) do not move the build.
+        Assert.Equal("dotnet build --no-incremental App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["README.md"], out _)?.Display);
+    }
+
+    [Fact]
     public void Dotnet_without_solution_builds_the_shallowest_project()
     {
         _workspace.Write("src/Web/Web.csproj", "<Project />");

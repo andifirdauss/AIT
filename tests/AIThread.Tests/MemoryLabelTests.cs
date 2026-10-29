@@ -492,6 +492,23 @@ public class MemoryLabelTests
     }
 
     [Fact]
+    public async Task A_stored_path_missing_from_this_clone_does_not_count_as_a_reference()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await SetKeyAsync(harness, "k");
+        var project = (await harness.Service<IProjectService>().GetContextAsync(harness.ProjectId))!;
+        var mapper = harness.Service<ICodeMapper>();
+
+        // Another clone of the key (another branch) mapped a file this one does not have.
+        harness.Project.Write("sample/Core/OrderStatus.cs", "class OrderStatus {}");
+        await mapper.SetManualAsync(project, "sample/Core/OrderStatus.cs", "Order", null, default);
+        File.Delete(Path.Combine(project.RootPath, "sample/Core/OrderStatus.cs"));
+        harness.Project.Write("src/Core/OrderStatus.cs", "class OrderStatus {}");
+
+        Assert.Equal(["src/Core/OrderStatus.cs"], await mapper.ResolveReferencesAsync(project, "ubah OrderStatus", default));
+    }
+
+    [Fact]
     public async Task Code_map_scan_reports_progress_and_resumes_where_it_stopped()
     {
         await using var harness = await OrchestrationHarness.CreateAsync();

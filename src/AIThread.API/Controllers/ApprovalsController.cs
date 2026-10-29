@@ -13,8 +13,7 @@ namespace AIThread.API.Controllers;
 [Route("api/projects/{projectId:guid}/approvals")]
 public class ApprovalsController(IApprovalService approvals) : ControllerBase
 {
-    // ApprovalGrant.Target column length.
-    private const int MaxTargetChars = 800;
+    private const int MaxTargetChars = ApprovalTargets.MaxLength;
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ApprovalGrantDto>>>> List(Guid projectId, CancellationToken cancellationToken) =>

@@ -539,6 +539,7 @@
     const patterns = [...new Set(approval.items.filter(i => i.pattern).map(i => i.pattern))];
     el('btnApprovePattern').classList.toggle('d-none', !approval.allowPattern || !patterns.length);
     el('approvalPattern').textContent = patterns.join(', ');
+    el('btnApproveAll').classList.toggle('d-none', !approval.allowAll);
   }
 
   el('approvalCard').addEventListener('click', async event => {

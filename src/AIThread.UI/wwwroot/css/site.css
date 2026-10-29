@@ -375,6 +375,12 @@ body {
   white-space: pre;
 }
 
+/* Log menu: a run log or a stack trace, taller than a code block. */
+.log-view {
+  max-height: 65vh;
+  font-size: 0.75rem;
+}
+
 .diff-add { color: var(--app-ok); }
 .diff-del { color: var(--app-err); }
 .diff-hunk { color: var(--app-accent); }

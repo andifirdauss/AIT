@@ -43,13 +43,15 @@ public sealed partial class NineRouterService
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(settings.RequestTimeoutSeconds));
+        using var stall = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        stall.CancelAfter(_stallTimeout);
 
         try
         {
-            using var response = await Client().SendAsync(message, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            using var response = await Client().SendAsync(message, HttpCompletionOption.ResponseHeadersRead, stall.Token);
             if (!response.IsSuccessStatusCode)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(timeout.Token);
+                var errorBody = await response.Content.ReadAsStringAsync(stall.Token);
                 var routerRejected = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
                 var error = ExtractError(errorBody);
                 if (sendsCacheKey && error.Contains("prompt_cache_key", StringComparison.OrdinalIgnoreCase))
@@ -77,12 +79,16 @@ public sealed partial class NineRouterService
 
             var mediaType = response.Content.Headers.ContentType?.MediaType;
             if (string.Equals(mediaType, "text/event-stream", StringComparison.OrdinalIgnoreCase))
-                return EnsureReply(request.Model, await ReadStreamAsync(response, onDelta, timeout.Token));
+                return EnsureReply(request.Model, await ReadStreamAsync(response, onDelta, () => stall.CancelAfter(_stallTimeout), stall.Token));
 
-            var json = await response.Content.ReadAsStringAsync(timeout.Token);
+            var json = await response.Content.ReadAsStringAsync(stall.Token);
             var result = EnsureReply(request.Model, ParseCompletion(json));
             if (onDelta is not null && result.Content.Length > 0) await onDelta(result.Content);
             return result;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && !timeout.IsCancellationRequested)
+        {
+            throw new NineRouterException(Lang.T($"Model '{request.Model}' tidak mengirim data selama {_stallTimeout.TotalSeconds:0} detik; koneksi dianggap putus.", $"Model '{request.Model}' sent no data for {_stallTimeout.TotalSeconds:0} seconds; the connection is treated as dropped."), 408);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

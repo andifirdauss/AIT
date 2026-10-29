@@ -29,7 +29,8 @@ public sealed partial class ReviewerAgent
 
             var fix = Text(item?["fix"])?.Trim();
             var anchor = Text(item?["anchor"])?.Trim();
-            issues.Add(new ReviewIssue(file, string.IsNullOrWhiteSpace(anchor) ? null : anchor, problem, string.IsNullOrWhiteSpace(fix) ? problem : fix));
+            var create = item?["create"] is JsonValue flag && flag.TryGetValue<bool>(out var value) && value;
+            issues.Add(new ReviewIssue(file, string.IsNullOrWhiteSpace(anchor) ? null : anchor, problem, string.IsNullOrWhiteSpace(fix) ? problem : fix, create));
             if (issues.Count >= MaxIssues) break;
         }
 

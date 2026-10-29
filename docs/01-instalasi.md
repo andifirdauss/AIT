@@ -162,6 +162,7 @@ AIThread.exe serve            # di jendela ini, log tampil di konsol (Ctrl+C unt
 AIThread.exe tray --open      # background dengan ikon tray, lalu buka dashboard
 AIThread.exe status           # PID, sejak kapan, lokasi log, status autostart
 AIThread.exe logs -f          # ikuti log terbaru
+AIThread.exe logs export      # ZIP diagnostik (insiden + stack trace, log); --days 7, atau nama file
 AIThread.exe stop             # matikan dengan rapi
 AIThread.exe autostart on     # atau off
 AIThread.exe setup            # buka halaman Setup di browser

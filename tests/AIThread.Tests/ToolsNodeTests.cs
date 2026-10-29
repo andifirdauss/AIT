@@ -60,6 +60,39 @@ public class ToolsNodeTests
     }
 
     [Fact]
+    public async Task Excerpts_a_sub_node_names_reach_the_planner_copied_from_the_file()
+    {
+        await using var harness = await CreateAsync(addNodes: false);
+        var planner = await harness.AddNodeAsync(NodeRole.Planner, "planner-model");
+        await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
+        await harness.AddNodeAsync(NodeRole.Wrapper, "wrapper-model");
+        var scout = await harness.AddNodeAsync(NodeRole.ToolsNode, "scout-model");
+        await DelegateAsync(harness, planner.Id, scout.Id, PlannerTools.ReadFile);
+        // One range for the class, then more ranges than an investigation may attach (the duplicate counts once).
+        var excerpts = new[] { new { path = GreeterFile, startLine = 3, endLine = 6 }, new { path = GreeterFile, startLine = 3, endLine = 6 } }
+            .Concat(Enumerable.Range(1, 8).Select(i => new { path = GreeterFile, startLine = 1, endLine = i }))
+            .ToArray();
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.Investigate, new { question = "Show class Greeter as exact text." }, tokens: 100))
+            .On(ScriptedAgent.ToolsNode, router.Tool(PlannerTools.ReportFindings, new { findings = "src/Greeter.cs:3-6 class Greeter.", excerpts }, tokens: 3))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Jawab.", Answer = "Greeter punya Hello." }));
+
+        var (result, observer) = await harness.RunAsync("Tampilkan class Greeter.");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        var answer = LastToolResult(router.CallsTo(ScriptedAgent.Planner)[1].Messages);
+        Assert.StartsWith("src/Greeter.cs:3-6 class Greeter.", answer);
+        Assert.Contains("Exact excerpts, copied by AIT from the files:", answer);
+        Assert.Contains("3| public class Greeter", answer);
+        Assert.Contains("5|     public string Hello() => \"Hi\";", answer);
+        Assert.Contains("1 more excerpt(s) left out", answer);
+        // The tools node wrote no code: one turn, the lines came from the file.
+        Assert.Single(router.CallsTo(ScriptedAgent.ToolsNode));
+        Assert.Contains(observer.Lines, l => l.Contains("#1 › read_file") && l.Contains("3-6"));
+    }
+
+    [Fact]
     public async Task An_inactive_sub_node_gives_its_tools_back_to_the_planner()
     {
         await using var harness = await CreateAsync(addNodes: false);
