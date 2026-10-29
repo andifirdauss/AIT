@@ -8,6 +8,11 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.12.1
+
+- **Perbaikan tampilan di CLI**: icon pemulihan unit test dan icon catatannya tidak lagi menutupi teks di sebelahnya;
+  AIT memakai emoji yang memang selebar dua kolom di terminal, di progress maupun laporan akhir.
+
 ## Yang baru di 1.12.0
 
 - **Tools node lebih cepat**: tools node menyebut rentang baris (`excerpts`) dan AIT menyalin kodenya langsung dari
