@@ -10,12 +10,14 @@ namespace AIThread.UI.Hosting;
 public static class Autostart
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "AIThread";
+    private const string ValueName = "AIT";
+    // Value name used before v1.12.x; still recognised and cleaned up.
+    private const string LegacyValueName = "AIThread";
 
     public static bool IsEnabled()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKey);
-        return key?.GetValue(ValueName) is string;
+        return key?.GetValue(ValueName) is string || key?.GetValue(LegacyValueName) is string;
     }
 
     // False when this is not a published exe (dotnet run / dotnet AIThread.UI.dll), which has no exe to launch.
@@ -26,12 +28,14 @@ public static class Autostart
         if (!CanEnable) throw new InvalidOperationException(Lang.T("Autostart hanya tersedia untuk AIThread.exe hasil publish.", "Autostart is only available for a published AIThread.exe."));
         using var key = Registry.CurrentUser.CreateSubKey(RunKey);
         key.SetValue(ValueName, $"\"{AppPaths.ExePath}\" tray");
+        key.DeleteValue(LegacyValueName, throwOnMissingValue: false);
     }
 
     public static void Disable()
     {
         using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
         key?.DeleteValue(ValueName, throwOnMissingValue: false);
+        key?.DeleteValue(LegacyValueName, throwOnMissingValue: false);
     }
 
     public static void Toggle()

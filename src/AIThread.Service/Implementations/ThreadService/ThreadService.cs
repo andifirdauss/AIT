@@ -16,6 +16,10 @@ public sealed partial class ThreadService(
     IEventBus eventBus,
     ILogger<ThreadService> logger) : IThreadService
 {
+    // aithread chat sessions are found among this many latest threads of a project; a title keeps this many characters.
+    private const int ChatSessionScan = 1_000;
+    private const int ChatSessionTitleChars = 80;
+
     private static readonly System.Linq.Expressions.Expression<Func<ThreadRun, ThreadSummaryDto>> SummaryProjection = t => new ThreadSummaryDto(
         t.Id,
         t.ProjectId,

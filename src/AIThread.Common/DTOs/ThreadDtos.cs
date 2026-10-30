@@ -76,7 +76,15 @@ public record ThreadDetailDto(
     string? UnitTestJson = null,
     ThreadGitDto? Git = null);
 
-public record StartThreadRequest(Guid ProjectId, string Prompt);
+// An image of a prompt started outside a coding CLI (aithread chat). Data: base64 without a "data:" prefix.
+public record ImageAttachmentDto(string MediaType, string Data);
+
+// Images: in the order of the [Image #N] markers of the prompt (Image N of the planner); limits in PromptImages.
+// SessionId: the aithread chat session the prompt belongs to (ChatSessionKey); null for a prompt on its own (dashboard).
+public record StartThreadRequest(Guid ProjectId, string Prompt, IReadOnlyList<ImageAttachmentDto>? Images = null, string? SessionId = null);
+
+// One aithread chat session of a project, for resuming it: Title is its first prompt, LastPrompt its latest.
+public record ChatSessionDto(string SessionId, string Title, string LastPrompt, int Turns, DateTime StartedAt, DateTime LastAt, ThreadStatus LastStatus);
 
 // The login for one retest from the thread page; both empty = without login. Never stored.
 public record RetestRequest(string? Username, string? Password);

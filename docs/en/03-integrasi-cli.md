@@ -290,6 +290,108 @@ your CLI sends none of them, set the `X-AIThread-Cwd` header (or `X-AIThread-Pro
 `X-AIThread-Session`, `x-claude-code-session-id`, `session_id` (Codex) or `x-session-id` header, from `prompt_cache_key`
 (OpenAI), or from `metadata.user_id`; without a session id, the project decision is remembered per working directory.
 
+## Terminal chat (`aithread chat`)
+
+No coding CLI needed: `aithread chat` (or `AIThread.exe chat`) opens a chat in the terminal that runs the AIT pipeline
+directly. `aithread` without arguments still opens the menu.
+
+```
+aithread chat [--project <name|path>] [--port <n>] [-c | -r [id]] [-p "<prompt>"] [-y]
+```
+
+- **Project**: `--project` is the name of a registered project or a folder inside one. Without `--project`, the chat
+  uses the registered project whose root holds the current folder (the deepest one). When there is none, the chat
+  shows a list to pick from.
+- **Server**: the chat uses the AIT instance running on that port (`--port`, by default the menu's port). When none
+  runs, AIT is started in the tray like `aithread tray` and waited for up to 30 seconds. The chat never runs the server
+  in its own process.
+- **Threads and sessions**: every prompt becomes one thread with the *Dashboard* source, and all prompts of one chat
+  belong to one **session** (`chat:<id>`, its short id shows in the banner). The planner reads the earlier turns of the
+  session: the latest context keeper summary plus the turns after it. A planner question waiting for an answer is
+  answered by just typing the next prompt, and the same thread goes on.
+- **Resuming a session** (like `--continue`/`--resume` in oh-my-pi): `aithread chat -c` resumes this project's most
+  recent session (a new one when there is none yet); `-r <id>` resumes that session (the short id or its start); `-r`
+  alone opens the list of sessions to pick from. Inside the chat: `/resume [id]` switches to another session, `/new`
+  starts a new session, and `/project` starts a new session too. On resume, the chat shows the session's last 5 prompts
+  with their result. The `-p` mode uses a session too: its first line names the session id, so a following `-p` can
+  use `-c` or `-r <id>`.
+- **Progress**: shows live as a vertical stepper 🧠 Planner → 🚀 Execution → 🔍 Verification → 🧪 Testing →
+  📦 Summary. Each stage shows its state (waiting, running, done, stopped), model and time. The running stage shows
+  what happens in it: the planner's last tools, the tasks with their file, node and time, and the log of verification
+  and testing. A finished stage folds into one line (the plan, tasks per state, check results), and a stage the thread
+  did not go through (e.g. testing) is not shown.
+- **Conclusion**: the status rule holds the total time and tokens. The answer is drawn from its Markdown (headings,
+  lists, quotes, tables, code blocks). After it come the table of files per task with their time, the verification,
+  unit test and testing results, the models used, then the link to the thread page.
+- **Permissions**: the rules are the Dashboard's. A thread stops only when the planner asks for permission, e.g. to
+  write outside the project folder, run a command, or commit/push. Below the permission card a list of choices
+  appears, chosen with `↑`/`↓` and `Enter`. A choice can also be picked at once with its letter: `y` once, `a` always,
+  `p` always for the pattern, `s` always for every command, and `n` deny; the digits `1`–`5`, as in the CLI, work too.
+  The last choice (*Later*) or `Esc` leaves the request waiting, to answer on the thread page. When the thread page answers first, the card closes
+  and the chat follows the thread that goes on.
+
+**Keys at the prompt:** `Enter` sends. `Shift+Enter`, `Alt+Enter`, `Ctrl+J`, or a trailing `\` start a new line; pasted
+text stays one prompt. A paste of more than 10 lines or 1000 characters folds into a `[Paste #N, +L lines]` /
+`[Paste #N, C chars]` marker (the limits of oh-my-pi) that is deleted as a whole; on send, the marker is replaced by
+the pasted text again. `↑`/`↓` go through the history. `Esc` clears the input, and `Ctrl+C` on an empty prompt quits.
+**While a thread runs:** press `Ctrl+C` twice to cancel the thread, `Esc` to detach (the thread goes on in the
+background), or `v` to show the task output.
+
+**Command list.** Typing `/` at the start of the prompt opens the list of commands with their description, filtered
+as you type (`/pr` → `/project`). `↑`/`↓` choose, `Tab` completes the command name, `Enter` runs the chosen command, and
+`Esc` closes the list. Text starting with `/` that matches no command is sent as an ordinary prompt.
+
+| Command | What it does |
+|---|---|
+| `/help` | help on commands and keys |
+| `/project [name]` | switch project (no name: pick from the list) |
+| `/cancel` | cancel the last thread while it runs |
+| `/retry` | run the failed tasks of the last thread again |
+| `/open` | open the page of the last thread in the browser |
+| `/verbose` | show/hide the task output |
+| `/clear` | remove the image attachments |
+| `/resume [id]` | resume another chat session (no id: pick from the list) |
+| `/new` | start a new chat session |
+| `/exit` (also `/quit`) | quit |
+
+**Images.** `Alt+V` attaches the image on the Windows clipboard: a screenshot or browser image, or an image file
+copied in Explorer. Typing `@path/image.png` followed by a space or `Enter` attaches a file; the path is relative to
+the current folder, and a path with spaces is written `@"C:\My Shots\a.png"`. Image files **dragged onto the
+terminal**, or pasted text that is nothing but paths of existing image files, become attachments right away too. Text
+that only mentions an image stays text.
+
+`Ctrl+V` in the chat pastes the image when the clipboard holds one, and the text otherwise. Windows Terminal and the
+VS Code terminal, however, use `Ctrl+V` to paste text themselves, so the key never reaches the chat; when the clipboard
+holds only an image, nothing happens. To make `Ctrl+V` handle images too, pass the key on to the application:
+
+- **Windows Terminal** (`settings.json`, the `actions` section): `{ "command": "unbound", "keys": "ctrl+v" }`.
+  PowerShell still pastes with `Ctrl+V` because PSReadLine reads the clipboard itself; cmd.exe does not.
+- **VS Code** (`keybindings.json`):
+  `{ "key": "ctrl+v", "command": "workbench.action.terminal.sendSequence", "args": { "text": "\u0016" }, "when": "terminalFocus" }`. Each attachment inserts `[Image #N]` at the cursor, and the
+list shows below the input. Deleting the marker removes its attachment. On send, the markers are numbered again in
+the order they appear, so `[Image #N]` is the Image N the planner sees. `@` tokens that are not image files (e.g.
+`@src/A.cs`) stay text.
+
+| Rule | Limit |
+|---|---|
+| Count | at most 6 images per prompt |
+| Size | at most 6 MB per image |
+| Format | png, jpg/jpeg, gif, webp, checked from the file content (not the name) |
+
+An image that breaks a rule is refused with a message and not attached.
+
+**Non-interactive (`-p`).** `aithread chat -p "fix the typo in the README" --project AIT` runs one prompt for scripts
+or CI. Image `@path` tokens in the prompt are attached. Progress is printed as plain text to stdout and errors to
+stderr, and the answer is printed at the end. `Ctrl+C` cancels the thread and waits until it stops. `-y` answers
+permission requests with *once*.
+
+| Exit code | Meaning |
+|---|---|
+| 0 | the thread completed |
+| 1 | the thread failed or was cancelled, or the server could not be started |
+| 2 | wrong arguments, or no project found |
+| 3 | the thread waits for permission and `-y` was not given (the thread keeps waiting; its page link is printed) |
+
 ## Verification
 
 1. **Open a new session** in that CLI — the configuration is only read when a session starts. For Codex run

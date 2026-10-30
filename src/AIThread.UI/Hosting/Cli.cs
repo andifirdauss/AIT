@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using AIThread.Common.Localization;
 using AIThread.Data;
+using AIThread.UI.Hosting.Chat;
 
 namespace AIThread.UI.Hosting;
 
@@ -27,6 +28,7 @@ public static class Cli
           logs export [f]   Tulis ZIP diagnostik (insiden + stack trace, log aktivitas, file log) ke f; --days n (bawaan 3)
           open              Buka Web UI di browser
           autostart on|off  Jalankan tray otomatis saat login Windows
+          chat              Chat terminal dengan AIT di project folder ini: prompt → thread, progress, izin, jawaban
           setup             Buka halaman Setup (semua langkah awal di satu halaman)
           setup export <f>  Tulis profil setup tim ke file f (tanpa API key dan password)
           setup import <f>  Terapkan profil setup tim dari file f; API key dan password ditanyakan di sini
@@ -37,7 +39,12 @@ public static class Cli
           --port <n>        Port server (default 5225 atau yang terakhir disimpan dari menu)
           --open            serve/tray: buka Web UI di browser setelah siap
           -f                logs: terus ikuti log baru
-          --yes             setup import: terapkan tanpa konfirmasi
+          --yes, -y         setup import: terapkan tanpa konfirmasi; chat -p: izinkan permintaan izin sekali
+          --project <x>     chat: nama project terdaftar atau folder di dalamnya (bawaan: folder saat ini)
+          -p, --prompt <t>  chat: jalankan satu prompt tanpa interaksi (exit 0 selesai, 1 gagal/batal,
+                            2 argumen/project salah, 3 menunggu izin)
+          -c, --continue    chat: lanjutkan sesi chat terakhir project ini
+          -r, --resume [id] chat: lanjutkan sesi chat itu (tanpa id: pilih dari daftar)
 
         Konfigurasi ada di appsettings.json di samping AIThread.exe; data dan log di %LOCALAPPDATA%\AIThread.
         """;
@@ -56,6 +63,7 @@ public static class Cli
           logs export [f]   Write the diagnostic ZIP (incidents + stack traces, activity log, log files) to f; --days n (default 3)
           open              Open the Web UI in the browser
           autostart on|off  Run the tray automatically at Windows login
+          chat              Terminal chat with AIT in the project of this folder: prompt → thread, progress, permissions, answer
           setup             Open the Setup page (every first step on one page)
           setup export <f>  Write the team setup profile to file f (without API keys and passwords)
           setup import <f>  Apply the team setup profile from file f; API keys and passwords are asked here
@@ -66,14 +74,19 @@ public static class Cli
           --port <n>        Server port (default 5225 or the one last saved from the menu)
           --open            serve/tray: open the Web UI in the browser once ready
           -f                logs: keep following new log lines
-          --yes             setup import: apply without confirmation
+          --yes, -y         setup import: apply without confirmation; chat -p: allow permission requests once
+          --project <x>     chat: name of a registered project or a folder inside it (default: the current folder)
+          -p, --prompt <t>  chat: run one prompt without interaction (exit 0 completed, 1 failed/cancelled,
+                            2 wrong arguments/project, 3 waiting for permission)
+          -c, --continue    chat: resume this project's most recent chat session
+          -r, --resume [id] chat: resume that chat session (no id: pick from the list)
 
         Configuration is in appsettings.json next to AIThread.exe; data and logs in %LOCALAPPDATA%\AIThread.
         """;
 
     private static string Help => Lang.T(HelpIndonesian, HelpEnglish);
 
-    private static readonly string[] Commands = ["serve", "tray", "stop", "status", "logs", "open", "autostart", "setup", "version", "help", "menu"];
+    private static readonly string[] Commands = ["serve", "tray", "stop", "status", "logs", "open", "autostart", "setup", "chat", "version", "help", "menu"];
 
     public static string Version { get; } =
         (Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0.0").Split('+')[0];
@@ -109,6 +122,10 @@ public static class Cli
             case "open": OpenBrowser($"http://localhost:{port}"); return 0;
             case "autostart": return AutostartCommand(options.Rest);
             case "setup": return await SetupCommand.RunAsync(port, options.Rest, options.Yes);
+            case "chat" when options.Rest.Count > 0:
+                Console.Error.WriteLine(Lang.T($"Argumen tidak dikenal: {string.Join(" ", options.Rest)}. Prompt diberikan lewat -p \"...\".", $"Unknown argument: {string.Join(" ", options.Rest)}. A prompt is given with -p \"...\"."));
+                return 2;
+            case "chat": return await ChatCommand.RunAsync(port, new ChatOptions(options.Project, options.Prompt, options.Yes, options.Continue, options.Resume));
             case "version": Console.WriteLine($"AIT {Version}"); return 0;
             default: Console.WriteLine(Help); return 0;
         }
@@ -317,18 +334,17 @@ public static class Cli
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { Console.Error.WriteLine(Lang.T($"Tidak bisa membuka {target}: {ex.Message}", $"Cannot open {target}: {ex.Message}")); }
     }
 
-    // A detached copy in tray mode: no console window, survives the terminal that started it.
+    // A detached copy in tray mode: no console window, survives the terminal that started it. Started through the shell
+    // so it inherits none of this process's handles: a redirected stdout (aithread chat -p | tee) still ends when this
+    // process does.
     public static void SpawnTray(int port)
     {
-        var start = new ProcessStartInfo(AppPaths.ExePath)
+        var start = new ProcessStartInfo(AppPaths.ExePath, $"tray --port {port}")
         {
-            UseShellExecute = false,
-            CreateNoWindow = true,
+            UseShellExecute = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
             WorkingDirectory = AppContext.BaseDirectory
         };
-        start.ArgumentList.Add("tray");
-        start.ArgumentList.Add("--port");
-        start.ArgumentList.Add(port.ToString());
         Process.Start(start)?.Dispose();
     }
 
@@ -352,12 +368,15 @@ public static class Cli
     [DllImport("kernel32.dll")]
     private static extern bool FreeConsole();
 
-    private sealed record Options(int? Port, bool Open, bool Follow, IReadOnlyList<string> Rest, string? Error, bool Yes = false)
+    // Resume: -r/--resume, with the session id that follows it, or "" when none follows (pick from the list).
+    private sealed record Options(int? Port, bool Open, bool Follow, IReadOnlyList<string> Rest, string? Error, bool Yes = false, string? Project = null,
+        string? Prompt = null, bool Continue = false, string? Resume = null)
     {
         public static Options Parse(string[] args)
         {
             int? port = null;
-            bool open = false, follow = false, yes = false;
+            bool open = false, follow = false, yes = false, resumeLast = false;
+            string? project = null, prompt = null, resume = null;
             var rest = new List<string>();
 
             for (var i = 0; i < args.Length; i++)
@@ -372,11 +391,23 @@ public static class Cli
                     case "--open": open = true; break;
                     case "-f" or "--follow": follow = true; break;
                     case "-y" or "--yes": yes = true; break;
+                    case "--project":
+                        if (i + 1 >= args.Length) return new Options(null, false, false, rest, Lang.T("--project butuh nama project atau path folder.", "--project needs a project name or a folder path."));
+                        project = args[++i];
+                        break;
+                    case "-p" or "--prompt":
+                        if (i + 1 >= args.Length) return new Options(null, false, false, rest, Lang.T("-p butuh teks prompt.", "-p needs the prompt text."));
+                        prompt = args[++i];
+                        break;
+                    case "-c" or "--continue": resumeLast = true; break;
+                    case "-r" or "--resume":
+                        resume = i + 1 < args.Length && !args[i + 1].StartsWith('-') ? args[++i] : string.Empty;
+                        break;
                     default: rest.Add(args[i]); break;
                 }
             }
 
-            return new Options(port, open, follow, rest, null, yes);
+            return new Options(port, open, follow, rest, null, yes, project, prompt, resumeLast, resume);
         }
     }
 }

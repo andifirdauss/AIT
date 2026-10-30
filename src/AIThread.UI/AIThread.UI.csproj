@@ -10,13 +10,16 @@
     <None Include="..\..\docs\**\*.md" LinkBase="docs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.57.2" />
+  </ItemGroup>
+
   <!-- The Playwright driver package of the tester node (.playwright\package) must stay next to AIThread.exe, where
        Microsoft.Playwright starts it from, outside the single-file bundle. Its node.exe (±90 MB, half the install) is
        left out: TestBrowserLauncher uses the Node.js on PATH or downloads one on first use. Builds keep it. -->
   <Target Name="KeepPlaywrightDriverBesideExe" AfterTargets="ComputeResolvedFilesToPublishList">
     <ItemGroup>
-      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
-                             Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('.playwright')) And $([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').EndsWith('node.exe'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('.playwright')) And $([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').EndsWith('node.exe'))" />
       <ResolvedFileToPublish Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('.playwright'))">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </ResolvedFileToPublish>
@@ -28,7 +31,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationIcon>Assets/aithread.ico</ApplicationIcon>
-    <Product>AIThread</Product>
+    <!-- What Windows shows for the exe (Task Manager, Startup apps name and publisher, file properties) is the product
+         name AIT; the exe and assembly keep their AIThread names. -->
+    <AssemblyTitle>AIT</AssemblyTitle>
+    <Product>AIT</Product>
+    <Company>AIT</Company>
     <Version>1.12.2</Version>
   </PropertyGroup>
 

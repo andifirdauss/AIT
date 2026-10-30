@@ -1,5 +1,7 @@
+using AIThread.Common.Chat;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
+using AIThread.Common.Images;
 using AIThread.Common.Localization;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -13,7 +15,7 @@ namespace AIThread.API.Controllers;
 [ApiController]
 [Route("api/threads")]
 public class ThreadsController(IThreadService threadService, IThreadOrchestrator orchestrator, IThreadRollback rollback, IGitChangeTracker gitChanges,
-    IPendingQuestionStore questions, IPendingApprovalStore publishApprovals)
+    IPendingQuestionStore questions, IPendingApprovalStore publishApprovals, IContextKeeper contextKeeper)
     : ControllerBase
 {
     // What the thread waits for the developer to allow (a paused planner, or a commit/push of a finished thread); null
@@ -34,8 +36,14 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
 
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<ThreadSummaryDto>>>> GetRecent([FromQuery] int take = 30, [FromQuery] Guid? projectId = null,
-        [FromQuery] string? search = null, CancellationToken cancellationToken = default) =>
-        ApiResponse<IReadOnlyList<ThreadSummaryDto>>.Ok(await threadService.GetRecentAsync(take, projectId, search, cancellationToken));
+        [FromQuery] string? search = null, [FromQuery] string? sessionId = null, CancellationToken cancellationToken = default) =>
+        ApiResponse<IReadOnlyList<ThreadSummaryDto>>.Ok(await threadService.GetRecentAsync(take, projectId, search, cancellationToken, sessionId));
+
+    // The aithread chat sessions of a project, most recently used first: what the chat offers to resume.
+    [HttpGet("sessions")]
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<ChatSessionDto>>>> GetSessions([FromQuery] Guid projectId, [FromQuery] int take = 20,
+        CancellationToken cancellationToken = default) =>
+        ApiResponse<IReadOnlyList<ChatSessionDto>>.Ok(await threadService.GetChatSessionsAsync(projectId, take, cancellationToken));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ApiResponse<ThreadDetailDto>>> Get(Guid id, CancellationToken cancellationToken) =>
@@ -53,20 +61,31 @@ public class ThreadsController(IThreadService threadService, IThreadOrchestrator
             : NotFound(ApiResponse<ThreadGitDto?>.Fail(Lang.T("Thread tidak ditemukan.", "Thread not found.")));
     }
 
-    // Runs a prompt from the dashboard against a registered project; progress arrives over SSE.
+    // Runs a prompt from the dashboard or aithread chat against a registered project; progress arrives over SSE. The
+    // limit fits six images of 6 MB as base64 (above Kestrel's default 30 MB).
     [HttpPost]
+    [RequestSizeLimit(50_000_000)]
     public async Task<ActionResult<ApiResponse<Guid>>> Start(StartThreadRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Prompt)) throw new AppValidationException(Lang.T("Prompt wajib diisi.", "A prompt is required."));
+        if (PromptImages.Validate(request.Images) is { } problem) throw new AppValidationException(problem);
+        if (request.SessionId is not null && !ChatSessionKey.IsValid(request.SessionId))
+            throw new AppValidationException(Lang.T("SessionId harus berbentuk chat:<32 digit hex>.", "SessionId must look like chat:<32 hex digits>."));
 
+        // An aithread chat session: the planner gets its earlier turns (context pack + the turns after it).
+        var chat = request.SessionId is { } sessionId ? await contextKeeper.ResolveChatAsync(request.ProjectId, sessionId, cancellationToken) : null;
         var threadId = await orchestrator.StartInBackgroundAsync(new ThreadRequest(
             ThreadSource.Dashboard,
             request.Prompt.Trim(),
             PromptContext: null,
-            ConversationContext: null,
+            ConversationContext: chat?.Conversation,
             WorkingDirectory: null,
             request.ProjectId,
-            SessionId: null), cancellationToken);
+            request.SessionId,
+            chat?.Context,
+            Images: request.Images is { Count: > 0 } images
+                ? images.Select(i => new ImageAttachment(i.MediaType.Trim().ToLowerInvariant(), i.Data)).ToList()
+                : null), cancellationToken);
 
         return ApiResponse<Guid>.Ok(threadId, Lang.T("Thread dimulai.", "Thread started."));
     }

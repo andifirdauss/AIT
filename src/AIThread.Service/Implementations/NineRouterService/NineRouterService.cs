@@ -36,6 +36,8 @@ public sealed partial class NineRouterService(
     private static readonly TimeSpan QuotaCacheDuration = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan QuotaTimeout = TimeSpan.FromSeconds(10);
     private const int MaxConnectionPages = 10;
+    // A reply cut at max tokens with fewer characters than this never got to its answer (see EnsureReply).
+    private const int ReasoningCutChars = 64;
     // A chat call that receives nothing for this long (no headers, no stream line) is dropped and retried: after a
     // network drop the connection can hang silently until RequestTimeoutSeconds, longer than a CLI waits.
     private static readonly TimeSpan DefaultStallTimeout = TimeSpan.FromSeconds(180);

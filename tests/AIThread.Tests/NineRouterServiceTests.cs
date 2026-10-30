@@ -150,6 +150,45 @@ public class NineRouterServiceTests
         Assert.Contains(reason, ex.Message);
     }
 
+    // An executor got "<<<<<<<" then "<<<<<<< SEARCH\n    private const" with finish "length": the limit went to
+    // reasoning, so the model is not asked again for "smaller blocks" but treated like an empty reply (fail-over).
+    [Theory]
+    [InlineData("<<<<<<<", 0)]
+    [InlineData("<<<<<<< SEARCH\\n    private const string ValueName = \\\"AIThread\\\";\\n    private const string Legacy", 4000)]
+    public async Task Reply_cut_by_max_tokens_after_a_few_characters_is_spent_on_reasoning(string content, int completionTokens)
+    {
+        var calls = 0;
+        var handler = new StubHandler(_ =>
+        {
+            calls++;
+            return Json(HttpStatusCode.OK,
+                $"{{\"choices\":[{{\"message\":{{\"content\":\"{content}\"}},\"finish_reason\":\"length\"}}],\"usage\":{{\"prompt_tokens\":900,\"completion_tokens\":{completionTokens}}}}}");
+        });
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance);
+
+        var ex = await Assert.ThrowsAsync<NineRouterException>(() =>
+            router.ChatAsync(new ChatCompletionRequest { Model = "qd/efficient", Messages = [ChatMessages.User("hi")] }));
+
+        Assert.Equal(1, calls);
+        Assert.True(ex.IsEmptyReply);
+        Assert.True(ex.IsModelUnavailable);
+        Assert.Contains("reasoning", ex.Message);
+    }
+
+    [Fact]
+    public async Task Long_reply_cut_by_max_tokens_is_still_returned()
+    {
+        var text = string.Concat(Enumerable.Repeat("word ", 400));
+        var handler = new StubHandler(_ => Json(HttpStatusCode.OK,
+            $"{{\"choices\":[{{\"message\":{{\"content\":\"{text}\"}},\"finish_reason\":\"length\"}}],\"usage\":{{\"prompt_tokens\":900,\"completion_tokens\":400}}}}"));
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(), NullLogger<NineRouterService>.Instance);
+
+        var result = await router.ChatAsync(new ChatCompletionRequest { Model = "m", Messages = [ChatMessages.User("hi")] });
+
+        Assert.Equal("length", result.FinishReason);
+        Assert.Equal(text, result.Content);
+    }
+
     [Fact]
     public async Task Prompt_cache_key_is_sent_and_dropped_for_a_model_whose_provider_rejects_it()
     {
