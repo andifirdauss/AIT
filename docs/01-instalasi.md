@@ -168,6 +168,7 @@ AIThread.exe autostart on     # atau off
 AIThread.exe setup            # buka halaman Setup di browser
 AIThread.exe setup export tim.json   # profil setup tim, tanpa API key dan password
 AIThread.exe setup import tim.json   # pratinjau, tanya API key/password, lalu terapkan (--yes = tanpa konfirmasi)
+AIThread.exe chat             # chat terminal dengan AIT di project folder ini; -p "..." tanpa interaksi (lihat bab 3)
 AIThread.exe serve --port 6000
 ```
 
