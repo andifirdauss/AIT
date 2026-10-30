@@ -290,6 +290,108 @@ tidak mengirim salah satunya, set header `X-AIThread-Cwd` (atau `X-AIThread-Proj
 `X-AIThread-Session`, `x-claude-code-session-id`, `session_id` (Codex) atau `x-session-id`, dari `prompt_cache_key`
 (OpenAI), atau dari `metadata.user_id`; tanpa id sesi, keputusan project diingat per working directory.
 
+## Chat terminal (`aithread chat`)
+
+Tanpa CLI coding sama sekali: `aithread chat` (atau `AIThread.exe chat`) membuka chat di terminal yang langsung
+menjalankan pipeline AIT. `aithread` tanpa argumen tetap membuka menu.
+
+```
+aithread chat [--project <nama|path>] [--port <n>] [-c | -r [id]] [-p "<prompt>"] [-y]
+```
+
+- **Project**: `--project` berisi nama project terdaftar atau folder di dalamnya. Tanpa `--project`, dipakai project
+  terdaftar yang root-nya memuat folder saat ini (yang terdalam); bila tidak ada, chat menampilkan daftar untuk dipilih.
+- **Server**: chat memakai instance AIT yang berjalan di port itu (`--port`, bawaan port menu). Bila belum berjalan,
+  AIT dijalankan di tray seperti `aithread tray` dan ditunggu sampai 30 detik. Chat tidak pernah menjalankan server di
+  prosesnya sendiri.
+- **Thread dan sesi**: setiap prompt menjadi satu thread dengan sumber *Dasbor*, dan semua prompt satu chat masuk ke
+  satu **sesi** (`chat:<id>`, id pendeknya tampil di banner). Planner membaca giliran sebelumnya di sesi itu: ringkasan
+  context keeper terakhir ditambah giliran sesudahnya. Pertanyaan planner yang menunggu jawaban dijawab cukup dengan
+  mengetik prompt berikutnya, dan thread yang sama berlanjut.
+- **Melanjutkan sesi** (seperti `--continue`/`--resume` di oh-my-pi): `aithread chat -c` melanjutkan sesi terakhir
+  project ini (sesi baru bila belum ada); `-r <id>` melanjutkan sesi itu (id pendek atau awalannya); `-r` saja membuka
+  daftar sesi untuk dipilih. Di dalam chat: `/resume [id]` pindah ke sesi lain, `/new` memulai sesi baru, dan
+  `/project` juga memulai sesi baru. Saat dilanjutkan, chat menampilkan 5 prompt terakhir sesi beserta hasilnya. Mode
+  `-p` juga memakai sesi: baris pertamanya menyebut id sesi, jadi `-p` berikutnya bisa memakai `-c` atau `-r <id>`.
+- **Progress**: tampil langsung sebagai stepper vertikal 🧠 Planner → 🚀 Eksekusi → 🔍 Verifikasi → 🧪 Testing →
+  📦 Rangkuman. Tiap tahap menunjukkan statusnya (menunggu, berjalan, selesai, berhenti), model, dan durasinya. Tahap
+  yang sedang berjalan menampilkan isinya: alat terakhir planner, tugas beserta file, node, dan waktunya, serta log
+  verifikasi dan testing. Tahap yang selesai dilipat menjadi satu baris (rencana, jumlah tugas per status, hasil cek),
+  dan tahap yang tidak dijalani (mis. testing) tidak ditampilkan.
+- **Kesimpulan**: garis status memuat total waktu dan token. Jawaban dirender dari Markdown (judul, daftar, kutipan,
+  tabel, blok kode). Sesudahnya tampil tabel file per tugas dengan waktunya, hasil verifikasi, unit test, dan testing,
+  model yang dipakai, lalu link halaman thread.
+- **Izin**: aturannya sama dengan Dasbor. Thread berhenti hanya bila planner meminta izin, mis. menulis di luar
+  folder project, menjalankan perintah, atau commit/push. Di bawah kartu izin muncul daftar pilihan yang dipilih
+  dengan `↑`/`↓` lalu `Enter`. Pilihan juga bisa langsung dengan hurufnya: `y` sekali, `a` selalu, `p` selalu untuk
+  pola, `s` selalu untuk semua perintah, dan `n` tolak; angka `1`–`5` seperti di CLI juga bisa. Pilihan terakhir
+  (*Nanti*) atau `Esc` membiarkan izin menunggu untuk dijawab di halaman thread. Bila halaman thread menjawab lebih dulu, kartu ditutup
+  dan chat mengikuti thread lanjutannya.
+
+**Tombol di prompt:** `Enter` mengirim. Baris baru dibuat dengan `Shift+Enter`, `Alt+Enter`, `Ctrl+J`, atau `\` di
+akhir baris; teks yang di-paste tetap menjadi satu prompt. Paste lebih dari 10 baris atau 1000 karakter dilipat menjadi
+penanda `[Paste #N, +L lines]` / `[Paste #N, C chars]` (batas yang sama dengan oh-my-pi) yang dihapus sebagai satu
+kesatuan; saat dikirim, penanda diganti lagi dengan teks aslinya. `↑`/`↓` membuka riwayat. `Esc` mengosongkan input, dan
+`Ctrl+C` di prompt kosong keluar dari chat.
+**Saat thread berjalan:** tekan `Ctrl+C` dua kali untuk membatalkan thread, `Esc` untuk melepas (thread lanjut di latar
+belakang), atau `v` untuk menampilkan output tugas.
+
+**Daftar perintah.** Mengetik `/` di awal prompt membuka daftar perintah beserta deskripsinya, dan daftar itu tersaring
+sambil mengetik (`/pr` → `/project`). `↑`/`↓` memilih, `Tab` melengkapi nama perintah, `Enter` menjalankan perintah
+terpilih, dan `Esc` menutup daftar. Teks diawali `/` yang tidak cocok dengan perintah mana pun dikirim sebagai prompt
+biasa.
+
+| Perintah | Fungsi |
+|---|---|
+| `/help` | bantuan perintah dan tombol |
+| `/project [nama]` | ganti project (tanpa nama: pilih dari daftar) |
+| `/cancel` | batalkan thread terakhir yang masih berjalan |
+| `/retry` | jalankan ulang tugas yang gagal dari thread terakhir |
+| `/open` | buka halaman thread terakhir di browser |
+| `/verbose` | tampilkan/sembunyikan output tugas |
+| `/clear` | hapus lampiran gambar |
+| `/resume [id]` | lanjutkan sesi chat lain (tanpa id: pilih dari daftar) |
+| `/new` | mulai sesi chat baru |
+| `/exit` (juga `/quit`) | keluar |
+
+**Gambar.** `Alt+V` melampirkan gambar dari clipboard Windows: gambar hasil screenshot/browser, atau file gambar yang
+di-copy di Explorer. Mengetik `@path/gambar.png` lalu spasi atau `Enter` melampirkan file; path relatif terhadap folder
+saat ini, dan path berspasi ditulis `@"C:\My Shots\a.png"`. File gambar yang **di-drag ke terminal**, atau teks yang
+di-paste dan isinya hanya path file gambar yang ada, juga langsung menjadi lampiran. Teks yang sekadar menyebut sebuah
+gambar tetap menjadi teks.
+
+`Ctrl+V` di chat menempelkan gambar bila clipboard berisi gambar, dan teks bila tidak. Namun Windows Terminal dan
+terminal VS Code memakai `Ctrl+V` untuk paste teks sendiri, sehingga tombolnya tidak sampai ke chat; bila clipboard
+hanya berisi gambar, tidak ada yang terjadi. Agar `Ctrl+V` melayani gambar juga, teruskan tombol itu ke aplikasi:
+
+- **Windows Terminal** (`settings.json`, bagian `actions`): `{ "command": "unbound", "keys": "ctrl+v" }`. PowerShell
+  tetap bisa paste dengan `Ctrl+V` karena PSReadLine membaca clipboard sendiri; cmd.exe tidak.
+- **VS Code** (`keybindings.json`):
+  `{ "key": "ctrl+v", "command": "workbench.action.terminal.sendSequence", "args": { "text": "\u0016" }, "when": "terminalFocus" }`. Setiap lampiran menyisipkan `[Image #N]` di posisi kursor, dan
+daftarnya tampil di bawah input. Menghapus penanda ikut menghapus lampirannya. Saat dikirim, penanda dinomori ulang
+sesuai urutan kemunculan, sehingga `[Image #N]` sama dengan Image N yang dilihat planner. Token `@` yang bukan file
+gambar (mis. `@src/A.cs`) tetap menjadi teks.
+
+| Aturan | Batas |
+|---|---|
+| Jumlah | maks 6 gambar per prompt |
+| Ukuran | maks 6 MB per gambar |
+| Format | png, jpg/jpeg, gif, webp, dicek dari isi file (bukan dari nama) |
+
+Gambar yang melanggar aturan ditolak dengan pesan dan tidak dilampirkan.
+
+**Tanpa interaksi (`-p`).** `aithread chat -p "perbaiki typo di README" --project AIT` menjalankan satu prompt untuk
+skrip/CI. Token `@path` gambar di prompt ikut dilampirkan. Progress dicetak sebagai teks polos ke stdout dan error ke
+stderr, lalu jawaban dicetak di akhir. `Ctrl+C` membatalkan thread dan menunggu sampai thread berhenti. `-y` menjawab
+permintaan izin dengan *sekali*.
+
+| Exit code | Arti |
+|---|---|
+| 0 | thread selesai |
+| 1 | thread gagal/dibatalkan, atau server tidak bisa dijalankan |
+| 2 | argumen salah, atau project tidak ditemukan |
+| 3 | thread menunggu izin dan `-y` tidak dipakai (thread dibiarkan menunggu; link halamannya dicetak) |
+
 ## Verifikasi
 
 1. **Buka sesi baru** di CLI tersebut — konfigurasi hanya dibaca saat sesi dimulai. Untuk Codex jalankan
