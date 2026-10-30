@@ -33,6 +33,11 @@ public sealed class ServerHost : IAsyncDisposable
 
         if (port is not null) builder.WebHost.UseUrls($"http://localhost:{port}");
 
+        // An exe started from a build folder (bin\Debug, e.g. the tray that aithread chat starts) has no wwwroot of its
+        // own, only the manifest pointing at the project's; outside Development that manifest is not read and the pages
+        // load without CSS and scripts. A published exe has wwwroot and no manifest, so this never applies there.
+        if (RunsFromBuildOutput()) builder.WebHost.UseStaticWebAssets();
+
         // Short, readable console log (warnings without stack traces, repeats folded). Menu and tray modes write the
         // console log to a file while the process may still own a real console, so color stays off there.
         builder.Logging.AddConsole(options => options.FormatterName = ReadableConsoleFormatter.FormatterName);
@@ -136,4 +141,11 @@ public sealed class ServerHost : IAsyncDisposable
     }
 
     public async ValueTask DisposeAsync() => await StopAsync();
+
+    private static bool RunsFromBuildOutput()
+    {
+        var folder = AppContext.BaseDirectory;
+        var name = typeof(ServerHost).Assembly.GetName().Name;
+        return !Directory.Exists(Path.Combine(folder, "wwwroot")) && File.Exists(Path.Combine(folder, $"{name}.staticwebassets.runtime.json"));
+    }
 }
