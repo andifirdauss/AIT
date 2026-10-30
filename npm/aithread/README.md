@@ -8,6 +8,22 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.13.0
+
+- **Chat AIT di terminal**: `aithread chat` menjalankan pipeline AIT tanpa coding CLI lain. Progress tampil sebagai
+  stepper Planner → Eksekusi → Verifikasi → Testing → Rangkuman, dan jawabannya dirender dari Markdown. Izin dipilih
+  dengan ↑/↓ atau langsung lewat huruf/angka. Mengetik `/` membuka daftar perintah beserta deskripsinya.
+- **Gambar dan paste**: `Alt+V` (atau `Ctrl+V` bila terminal meneruskannya) melampirkan gambar dari clipboard,
+  `@file.png` dan file yang di-drag ke terminal juga jadi `[Image #N]`. Paste lebih dari 10 baris atau 1000 karakter
+  dilipat jadi `[Paste #N, …]` dan dikirim utuh.
+- **Sesi yang bisa dilanjutkan** (seperti oh-my-pi): semua prompt satu chat masuk ke satu sesi, planner membaca giliran
+  sebelumnya, dan pertanyaan planner dijawab cukup dengan prompt berikutnya. `aithread chat -c` melanjutkan sesi
+  terakhir, `-r [id]` sesi tertentu, `/resume` dan `/new` di dalam chat.
+- **Untuk skrip**: `aithread chat -p "<prompt>"` dengan exit code 0/1/2/3 dan `-y` untuk mengizinkan sekali.
+- **Reasoning yang menghabiskan max tokens**: jawaban yang terpotong setelah beberapa karakter saja kini dianggap gagal
+  di model itu, sehingga node cadangan langsung dipakai, bukan diminta ulang dengan "blok lebih kecil".
+- **Nama AIT di Windows**: Task Manager, Startup apps (nama dan publisher), dan entri autostart memakai nama AIT.
+
 ## Yang baru di 1.12.2
 
 - **Navigasi lebih jelas**: sidebar punya sub menu yang bisa dilipat untuk Memori, Pengaturan, dan Log & diagnostik
