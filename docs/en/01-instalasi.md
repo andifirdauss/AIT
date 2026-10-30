@@ -169,6 +169,7 @@ AIThread.exe autostart on     # or off
 AIThread.exe setup            # open the Setup page in the browser
 AIThread.exe setup export team.json   # team setup profile, without API keys and passwords
 AIThread.exe setup import team.json   # preview, ask for API keys/passwords, then apply (--yes = no confirmation)
+AIThread.exe chat             # terminal chat with AIT in the project of this folder; -p "..." without interaction (see chapter 3)
 AIThread.exe serve --port 6000
 ```
 
