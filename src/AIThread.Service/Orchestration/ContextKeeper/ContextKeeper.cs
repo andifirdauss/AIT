@@ -10,6 +10,9 @@ namespace AIThread.Service.Orchestration;
 // PackMessageIndex is the chat message holding the anchor of the thread whose pack was found.
 public sealed record ResolvedSession(SessionContext Context, int? PackMessageIndex);
 
+// An aithread chat session read from the database: Conversation describes the turns after the pack's thread.
+public sealed record ResolvedChat(SessionContext Context, string? Conversation);
+
 // Keeps a running summary ("context pack") of each CLI conversation, so every planner run starts from a small,
 // current context instead of the whole chat. The pack written after a thread is stored on that thread, and threads are
 // found in the chat through their ThreadAnchor line: a rewound or compacted chat simply resolves to an earlier pack.
@@ -29,5 +32,10 @@ public sealed partial class ContextKeeper(
 
     // A turn's investigation as read_thread shows it; the pack input clips it further.
     private const int MaxInvestigationChars = 8_000;
+
+    // aithread chat: the turns after the pack that travel to the planner in full, and how much of each.
+    private const int MaxChatTurns = 6;
+    private const int MaxChatRequestChars = 2_000;
+    private const int MaxChatReplyChars = 4_000;
     private static readonly TimeSpan LookBack = TimeSpan.FromDays(60);
 }

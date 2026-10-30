@@ -9,6 +9,8 @@ public interface IContextKeeper
 {
     Task<ResolvedSession?> ResolveAsync(Guid projectId, IReadOnlyList<ThreadAnchorRef> anchors, CancellationToken cancellationToken);
 
+    Task<ResolvedChat?> ResolveChatAsync(Guid projectId, string sessionId, CancellationToken cancellationToken);
+
     Task<string> ReadThreadAsync(Guid projectId, string id, CancellationToken cancellationToken);
 
     Task UpdateAsync(ThreadRun thread, ThreadRequest request, CancellationToken cancellationToken);

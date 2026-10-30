@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\AIThread.Service\AIThread.Service.csproj" />
     <ProjectReference Include="..\..\src\AIThread.API\AIThread.API.csproj" />
+    <ProjectReference Include="..\..\src\AIThread.UI\AIThread.UI.csproj" />
   </ItemGroup>
 
 </Project>
