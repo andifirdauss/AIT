@@ -3,6 +3,7 @@ using AIThread.Common.Options;
 using AIThread.Service.Approvals;
 using AIThread.Service.Background;
 using AIThread.Service.Business;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Diagnostics;
 using AIThread.Service.CodeCalls;
 using AIThread.Service.Git;
@@ -68,6 +69,8 @@ public static class DependencyInjection
         // Stateless or self-synchronized services backed by IDbContextFactory: safe as singletons,
         // which the orchestrator and background workers need.
         services.AddSingleton<ISettingService, SettingService>();
+        services.AddSingleton<IClaudeCliAdapter, ClaudeCliAdapter>();
+        services.AddSingleton<ICliModelService, CliModelService>();
         services.AddSingleton<INineRouterService, NineRouterService>();
         services.AddSingleton<INineRouterLauncher, NineRouterLauncher>();
         services.AddSingleton<INodeService, NodeService>();

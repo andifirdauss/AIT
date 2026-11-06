@@ -139,6 +139,9 @@ public sealed class OrchestrationHarness : IAsyncDisposable
     // Any service of the real service layer, e.g. IProjectService or BusinessDigestRunner.
     public T Service<T>() where T : notnull => _services.GetRequiredService<T>();
 
+    // For building classes outside the service layer (e.g. the API's AgentProxyHandler) with ActivatorUtilities.
+    public IServiceProvider Services => _services;
+
     public Task<AIThreadDbContext> CreateDbAsync() =>
         _services.GetRequiredService<IDbContextFactory<AIThreadDbContext>>().CreateDbContextAsync();
 
