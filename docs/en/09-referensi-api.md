@@ -72,7 +72,8 @@ Validation error → `400`, 9router error → `502`, not found → `404`, with `
 | `DELETE` | `/api/security/secrets/{id}/allow` | mask again |
 | `GET` | `/api/security/secrets/{id}/value` | the real value (`id`, `value`); only from this computer (loopback), 404 after a restart |
 | `GET` | `/api/router/status?refresh=true` | the 9router status (without `refresh` the last monitor result is used) |
-| `GET` | `/api/router/models?refresh=true` | 9router models & combos (60-second cache) |
+| `GET` | `/api/router/models?refresh=true` | 9router models & combos (60-second cache) + models of the installed official CLIs (`cli:claude:…`) |
+| `GET` | `/api/router/cli?refresh=true` | official CLIs usable as a model engine (installed, version) |
 
 ### Setup
 
