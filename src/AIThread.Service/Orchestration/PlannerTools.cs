@@ -6,7 +6,7 @@ using AIThread.Service.Workspace;
 namespace AIThread.Service.Orchestration;
 
 // OpenAI function definitions offered to the planner, and to the tools nodes it delegates tools to.
-public static class PlannerTools
+public static partial class PlannerTools
 {
     public const string ListDirectory = "list_directory";
     public const string FindFiles = "find_files";
@@ -56,7 +56,7 @@ public static class PlannerTools
 
     // Column the arguments of a tool call start at in the progress (longest tool name plus two spaces).
     public static readonly int NameColumn = Delegable.Concat(Skeleton).Append(Investigate).Append(AskUser).Append(RunTests).Append(RunCommand)
-        .Concat(Processes).Max(n => n.Length) + 2;
+        .Concat(Processes).Append(ChangeDatabase).Max(n => n.Length) + 2;
 
     // canBuild: build verification is enabled and the project has a build command AIThread can run.
     // canAsk: the developer can answer a question (setting on, and the prompt came from a session that can reply).
@@ -67,9 +67,11 @@ public static class PlannerTools
     // is false (no test project yet). The list stays the same for the whole planner run so the provider's prompt cache
     // keeps matching.
     // canCommand: run_command is on in the settings. canPublish: commit/push is on and the project is a git repository,
-    // so submit_plan offers its publish section. canFetch: web_fetch is on in the settings.
+    // so submit_plan offers its publish section. canFetch: web_fetch is on in the settings. databases: the project has
+    // databases (list/describe/query); canChangeDatabase: one of them allows changes (change_database).
     public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false,
-        bool unitTests = false, bool canRunTests = true, bool canCommand = false, bool canPublish = false, bool canFetch = false)
+        bool unitTests = false, bool canRunTests = true, bool canCommand = false, bool canPublish = false, bool canFetch = false, bool databases = false,
+        bool canChangeDatabase = false)
     {
         var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
@@ -83,6 +85,7 @@ public static class PlannerTools
         if (unitTests && canRunTests) tools.Add(RunTestsDefinition());
         if (canCommand) tools.Add(RunCommandDefinition());
         if (canCommand) foreach (var definition in ProcessDefinitions()) tools.Add(definition);
+        if (databases) foreach (var definition in DatabaseDefinitions(canChangeDatabase)) tools.Add(definition);
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());

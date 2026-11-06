@@ -42,6 +42,25 @@ public class AIThreadOptions
     public NineRouterLaunchOptions NineRouter { get; set; } = new();
 
     public ClaudeCliOptions ClaudeCli { get; set; } = new();
+
+    public ProjectDatabaseOptions Databases { get; set; } = new();
+}
+
+// Project databases (Project > Detail → Database): limits of query_database and change_database.
+public class ProjectDatabaseOptions
+{
+    // A query or a change that runs longer is cancelled.
+    public int CommandTimeoutSeconds { get; set; } = 30;
+
+    // The most rows of a table a backup (and a rehearsal copy) may hold; a bigger table is refused, with the advice to
+    // have a DBA back it up.
+    public int BackupMaxRows { get; set; } = 50_000;
+
+    // Backups older than this are deleted (file and record); 0 keeps them.
+    public int BackupRetentionDays { get; set; } = 30;
+
+    // Backups and rehearsal copies. Empty = %LOCALAPPDATA%\AIThread\db-backups and \db-rehearsal.
+    public string? Directory { get; set; }
 }
 
 // Claude Code as a model engine for nodes whose model is "cli:claude:<model>" (CliBackend): AIT runs the official

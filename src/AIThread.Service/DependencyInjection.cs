@@ -4,6 +4,7 @@ using AIThread.Service.Approvals;
 using AIThread.Service.Background;
 using AIThread.Service.Business;
 using AIThread.Service.CliBackend;
+using AIThread.Service.Databases;
 using AIThread.Service.Diagnostics;
 using AIThread.Service.CodeCalls;
 using AIThread.Service.Git;
@@ -146,6 +147,9 @@ public static class DependencyInjection
         services.AddSingleton<ISecretGuard, SecretGuard>();
         services.AddSingleton<ISecurityService, SecurityService>();
         services.AddSingleton<IApprovalService, ApprovalService>();
+        services.AddSingleton<IDatabaseQueryService, DatabaseQueryService>();
+        services.AddSingleton<IDatabaseBackupStore, DatabaseBackupStore>();
+        services.AddSingleton<IProjectDatabaseService, ProjectDatabaseService>();
         services.AddSingleton<ICommandRunner, CommandRunner>();
         services.AddSingleton<IBackgroundProcesses, BackgroundProcesses>();
         services.AddSingleton<IWebFetcher, WebFetcher>();

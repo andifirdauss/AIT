@@ -24,6 +24,7 @@ public sealed partial class TesterAgent
         using var run = new TestRun(input, report, http, secrets);
         run.Accounts = await AccountsAsync(input.Project, cancellationToken);
         run.Routes = await RoutesAsync(input.Project, cancellationToken);
+        run.Databases = await DatabasesAsync(input.Project, cancellationToken);
         try
         {
             // An app that is not running is started first; one that still does not answer fails every scenario the same
@@ -54,8 +55,8 @@ public sealed partial class TesterAgent
     private async Task<TestingResult> LoopAsync(TestRun run, ThreadRecorder recorder, ClientProgress progress, CancellationToken cancellationToken)
     {
         var node = run.Input.Tester;
-        var tools = TesterTools.For(run.Test.Level, run.Input.CanAskLogin, CanSwitchUser(run));
-        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(run.Input, run.Accounts, run.Routes)) };
+        var tools = TesterTools.For(run.Test.Level, run.Input.CanAskLogin, CanSwitchUser(run), databases: run.Databases.Count > 0);
+        var messages = new JsonArray { await SystemMessageAsync(node, cancellationToken), ChatMessages.User(Brief(run.Input, run.Accounts, run.Routes, run.Databases)) };
         var tokens = 0;
 
         for (var step = 1; ; step++)

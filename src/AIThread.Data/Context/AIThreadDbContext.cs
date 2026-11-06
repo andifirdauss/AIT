@@ -21,6 +21,8 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
     public DbSet<ActivityLog> ActivityLogs => Set<ActivityLog>();
     public DbSet<TelegramChat> TelegramChats => Set<TelegramChat>();
     public DbSet<ApprovalGrant> ApprovalGrants => Set<ApprovalGrant>();
+    public DbSet<ProjectDatabase> ProjectDatabases => Set<ProjectDatabase>();
+    public DbSet<DatabaseBackup> DatabaseBackups => Set<DatabaseBackup>();
     public DbSet<SkillSource> SkillSources => Set<SkillSource>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<NodeSkill> NodeSkills => Set<NodeSkill>();
@@ -199,6 +201,34 @@ public class AIThreadDbContext(DbContextOptions<AIThreadDbContext> options) : Db
             e.Property(x => x.Username).HasMaxLength(100);
             e.HasOne(x => x.ActiveProject).WithMany().HasForeignKey(x => x.ActiveProjectId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.ChatId).IsUnique();
+        });
+
+        modelBuilder.Entity<ProjectDatabase>(e =>
+        {
+            e.ToTable("ProjectDatabases");
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Provider).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Environment).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Host).HasMaxLength(300);
+            e.Property(x => x.Database).HasMaxLength(500);
+            e.Property(x => x.Username).HasMaxLength(200);
+            e.Property(x => x.Options).HasMaxLength(1000);
+            e.Property(x => x.MaskedColumns).HasMaxLength(2000);
+            e.Property(x => x.Description).HasMaxLength(1000);
+            e.HasOne(x => x.Project).WithMany().HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ProjectId, x.Name }).IsUnique();
+        });
+
+        modelBuilder.Entity<DatabaseBackup>(e =>
+        {
+            e.ToTable("DatabaseBackups");
+            e.Property(x => x.Table).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Statement).IsRequired();
+            e.Property(x => x.Checksum).HasMaxLength(64);
+            e.Property(x => x.FilePath).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.RestoredBy).HasMaxLength(200);
+            e.HasOne(x => x.ProjectDatabase).WithMany().HasForeignKey(x => x.ProjectDatabaseId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.ProjectDatabaseId, x.CreatedAt });
         });
 
         modelBuilder.Entity<ApprovalGrant>(e =>

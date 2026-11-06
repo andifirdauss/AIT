@@ -197,6 +197,83 @@ dan pengaturannya dipakai bersama semua developer project (lewat project key) da
   detik; kosong = ikut *Timeout build*).
 - Kartu diperbarui sendiri saat thread project ini selesai.
 
+### Database
+
+Kartu **Database** (di bawah Unit test) berisi database project yang boleh dibaca planner dan Tester, dan boleh diubah
+planner. Koneksi disimpan **di mesin ini saja** (tabel `ProjectDatabases`), dan password dienkripsi Data Protection.
+Model hanya melihat nama koneksi, jenis database, environment, dan keterangan; connection string tidak pernah dikirim.
+
+- **Tambah database / Ubah:**
+  - jenis: SQL Server, PostgreSQL, MySQL, Oracle, atau SQLite;
+  - environment **Dev / Staging / Prod**;
+  - host, port, database (path file untuk SQLite), username (SQL Server kosong = Windows authentication), password (kosong
+    = tetap memakai yang tersimpan), opsi koneksi;
+  - kolom yang disamarkan, maks baris per query (bawaan 50, maks 500), keterangan untuk model;
+  - *Boleh diubah lewat change_database*.
+
+  **Test koneksi** memakai isi form apa adanya.
+- **Tool untuk model:**
+  - `list_databases` dan `describe_table` (kolom, tipe, primary key, identity, computed).
+  - `query_database`: satu `SELECT`/`WITH … SELECT`, di transaksi baca-saja bila engine mendukung, lalu selalu
+    di-rollback, dengan batas baris dan timeout 30 detik. Statement lain ditolak.
+  - `change_database`: hanya planner. Satu `INSERT`/`UPDATE`/`DELETE`/`MERGE` pada satu tabel yang punya primary key.
+    DDL, prosedur, `SELECT … INTO`, lebih dari satu statement, dan penulisan di dalam subquery/CTE ditolak.
+  - Tester juga mendapat ketiga tool baca, untuk memastikan data benar-benar tersimpan setelah memanggil API.
+- **Kolom sensitif** sampai ke model sebagai placeholder `{{AIT_SECRET:pii-<kolom>:<id>}}`:
+  - Yang disamarkan: daftar kolom pada koneksi (akhiran `*` = awalan nama), ditambah deteksi dari nama kolom: email,
+    telepon/hp, NIK/KTP, NPWP, paspor, password/hash/token/secret, alamat, tanggal lahir, nomor kartu/rekening, gaji.
+  - Nilai yang sama selalu mendapat placeholder yang sama, jadi model tetap bisa mencocokkan baris.
+  - Placeholder yang dipakai model di `change_database` dipulihkan ke nilai asli sebelum statement dijalankan.
+
+#### Alur change_database
+
+1. **Backup = titik restore.** Seluruh isi tabel target dibaca lalu disimpan terkompresi dan terenkripsi di
+   `%LOCALAPPDATA%\AIThread\db-backups`.
+   - File dibaca ulang dan checksum-nya dicocokkan.
+   - **Selama backup belum berhasil, tidak ada yang dijalankan.**
+   - Tabel tanpa primary key, atau dengan lebih dari 50.000 baris, ditolak: backup-nya perlu dibuat manual oleh DBA.
+2. **Dry test + test restore** dalam satu transaksi yang selalu di-rollback:
+   - statement dijalankan, dan jumlah baris terpengaruh serta contoh perubahan dicatat;
+   - backup dipulihkan per primary key;
+   - isi tabel dicocokkan dengan backup lewat checksum.
+
+   Bila salah satu gagal, alur berhenti dan tidak ada yang dijalankan. Tabel MySQL selain InnoDB ditolak, karena tanpa
+   transaksi dry test akan benar-benar mengubah data.
+3. **Kartu izin.** Kartu menampilkan environment, statement (nilai sensitif tetap placeholder), hasil dry test, hasil
+   test restore, dan id backup.
+   - **Dev/Staging:** *Izinkan sekali* / *Izinkan selalu* untuk database ini (berikutnya tanpa kartu, tetapi backup dan
+     dry test tetap jalan) / *Tolak*.
+   - **Prod:** tanpa *selalu*. Pilihan **6. Latihan lokal dulu** (disarankan):
+     - tabel yang disentuh (maks 5) disalin ke file SQLite sementara, lalu versi SQLite statement (`sqlite_sql`, wajib
+       untuk Prod) dijalankan di sana;
+     - hasilnya dibandingkan dengan dry test, lalu file dihapus;
+     - planner menerima hasilnya dan meminta izin lagi; kartu kedua menampilkan hasil latihan.
+
+     Latihan di SQLite hanya **mendekati** perilaku database target, karena dialek dan tipenya berbeda.
+4. **Eksekusi** dalam transaksi:
+   - di-commit hanya bila jumlah baris terpengaruh sama dengan dry test yang diizinkan;
+   - bila berbeda (data berubah sejak dry test) atau terjadi error, semuanya di-rollback.
+
+**Backup (titik restore)** di bawah tabel database mencantumkan waktu, tabel, statement, jumlah baris, dan status
+(*tidak dieksekusi* / *dieksekusi · n baris* / *dipulihkan*). **Pulihkan** mengembalikan tabel ke isi backup:
+- baris yang diubah, ditambah, atau dihapus sejak backup dikembalikan, termasuk perubahan orang lain sesudahnya;
+- di-commit hanya bila tabel lalu sama persis dengan backup;
+- untuk Prod ada konfirmasi kedua.
+
+Backup berumur lebih dari 30 hari dihapus.
+
+Trigger di tabel target bisa mengubah tabel lain yang tidak ikut di-backup. Bila trigger membuat isi tabel tidak sama
+setelah test restore, AIT menghentikan perubahan.
+
+Opsi di `appsettings.json` (section `AIThread:Databases`):
+
+| Kunci | Bawaan | Arti |
+|---|---|---|
+| `CommandTimeoutSeconds` | `30` | batas waktu satu query/perubahan |
+| `BackupMaxRows` | `50000` | baris terbanyak yang di-backup (juga untuk salinan latihan) |
+| `BackupRetentionDays` | `30` | umur backup sebelum dihapus; `0` = disimpan |
+| `Directory` | kosong | folder `db-backups` dan `db-rehearsal`; kosong = `%LOCALAPPDATA%\AIThread` |
+
 ### Akun uji
 
 Kartu **Akun uji** (di bawah Unit test) berisi akun yang dipakai node Tester untuk [berganti user](07-cara-kerja.md#akun-uji-berganti-user)

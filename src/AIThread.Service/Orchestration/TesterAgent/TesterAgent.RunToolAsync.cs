@@ -9,7 +9,7 @@ public sealed partial class TesterAgent
 {
     private async Task<string> RunToolAsync(ToolCall call, TestRun run, ThreadRecorder recorder, ClientProgress progress, string? badge, CancellationToken cancellationToken)
     {
-        var available = TesterTools.Available(run.Test.Level, canSwitchUser: CanSwitchUser(run));
+        var available = TesterTools.Available(run.Test.Level, canSwitchUser: CanSwitchUser(run), databases: run.Databases.Count > 0);
         if (!available.Contains(call.Name))
             return $"Error: tool '{call.Name}' is not available. Available: {string.Join(", ", available)}, {TesterTools.ReportTest}.";
 
@@ -34,6 +34,7 @@ public sealed partial class TesterAgent
                 TesterTools.HttpRequest => await HttpRequestAsync(args, run, recorder, progress, cancellationToken),
                 TesterTools.SwitchUser => await SwitchUserAsync(args, run, recorder),
                 TesterTools.Remember => Remember(args, run, recorder),
+                PlannerTools.ListDatabases or PlannerTools.DescribeTable or PlannerTools.QueryDatabase => await DatabaseAsync(call.Name, args, run, cancellationToken),
                 _ => await BrowserAsync(call.Name, args, run, progress, cancellationToken)
             });
         }

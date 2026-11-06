@@ -41,6 +41,7 @@ public sealed partial class ThreadOrchestrator(
     ITestLoginStore testLogins,
     ITestAccountStore testAccounts,
     ITestScenarioService testScenarios,
+    IProjectDatabaseService projectDatabases,
     ISecretGuard secrets,
     INineRouterService router,
     IHostApplicationLifetime lifetime,
