@@ -392,6 +392,48 @@ permintaan izin dengan *sekali*.
 | 2 | argumen salah, atau project tidak ditemukan |
 | 3 | thread menunggu izin dan `-y` tidak dipakai (thread dibiarkan menunggu; link halamannya dicetak) |
 
+## CLI resmi sebagai mesin model (tanpa 9router)
+
+Untuk developer yang tidak punya akses login provider di 9router, misalnya karena akun perusahaannya diloginkan
+atasan langsung di Claude Code. AIT menjalankan CLI resmi itu di belakang sebagai *model* node. Orkestrasi tetap
+milik AIT: planner, executor, reviewer, tester, wrapper, dan memory. Hasilnya, pencatatan tetap utuh: thread, tugas,
+`ThreadFileSnapshot`, rollback, memory, status git, dan wiki bisnis.
+
+- **Model node:** `cli:claude:<model>`. Alias `opus`, `sonnet`, `haiku`, `fable` mengikuti model terbaru provider;
+  nama lengkap seperti `cli:claude:claude-sonnet-5` juga bisa. Bila `claude` terpasang, model ini tampil di pemilih
+  model menu Node dan preset Setup, di grup **Claude Code (CLI)**.
+- **Setup:** pilih model CLI di preset node, mis. model kuat `cli:claude:opus` dan model murah `cli:claude:haiku`.
+  Bila semua node aktif memakai `cli:`, langkah *Hubungkan 9router* dianggap selesai (tidak diperlukan).
+- **Login:** memakai login yang sudah ada di komputer itu (`claude` → `/login` oleh pemilik akun). AIT tidak pernah
+  membaca, menyalin, atau meneruskan kredensial. Pemakaian tercatat di akun itu seperti pemakaian CLI biasa, dan
+  kebijakan *managed* perusahaan tetap berlaku.
+- **Cara jalan:** setiap panggilan model adalah satu proses `claude -p` tanpa status:
+  - tool bawaan mati (`--tools ""`), tanpa MCP, skill, maupun sesi tersimpan;
+  - system prompt dari agent AIT;
+  - folder kerja kosong di `%LOCALAPPDATA%\AIThread\cli-work`;
+  - `--setting-sources local`, sehingga `~/.claude/settings.json` (hook dan `ANTHROPIC_BASE_URL` ke AIT) serta
+    `CLAUDE.md` tidak ikut.
+
+  Prompt sudah disamarkan oleh `SecretGuard` sebelum dikirim. `ANTHROPIC_BASE_URL` di environment yang menunjuk ke
+  loopback dibuang agar tidak terjadi loop.
+- **Tool planner/tools node/tester:** CLI tidak punya function calling untuk AIT. Daftar tool ditulis di system prompt,
+  lalu model menjawab dengan blok `<tool_call name="…">{json}</tool_call>`, yang diubah AIT menjadi tool call biasa.
+- **Error:** belum login, model tidak tersedia, atau batas pemakaian tercapai menjadi error yang sama seperti 9router.
+  Akibatnya retry dan node cadangan (`FallbackNodeId`) tetap bekerja; boleh juga mencampur node CLI dan node 9router.
+- **Batasan:** `Temperature`/`MaxTokens` node diabaikan. Tidak ada prompt cache antar panggilan, karena seluruh
+  percakapan dikirim ulang setiap panggilan. Passthrough proxy tidak bisa memakai model `cli:`; pakai
+  `AIThread.exe chat` atau Dasbor. Tahap ini baru Claude Code; Codex dan Gemini CLI menyusul.
+
+Opsi di `appsettings.json` (section `AIThread:ClaudeCli`):
+
+| Kunci | Bawaan | Arti |
+|---|---|---|
+| `Path` | kosong | `claude.exe`, `claude.cmd`, atau `cli.js`. Kosong = PATH → `%USERPROFILE%\.local\bin` → shim npm |
+| `MaxProcesses` | `4` | proses CLI bersamaan di mesin ini (semua node) |
+| `SettingSources` | `local` | nilai `--setting-sources`. Isi `user` bila konfigurasi perusahaan (mis. Bedrock) ada di settings user |
+
+Status CLI yang terdeteksi: `GET /api/router/cli`.
+
 ## Verifikasi
 
 1. **Buka sesi baru** di CLI tersebut — konfigurasi hanya dibaca saat sesi dimulai. Untuk Codex jalankan
