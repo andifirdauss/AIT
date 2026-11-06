@@ -82,8 +82,10 @@ public partial class DatabaseOrchestrationTests : IDisposable
         Assert.Equal(ThreadStatus.Completed, second.Status);
         Assert.Equal("1:cancelled,2:new", Statuses());
         Assert.Contains("Committed: 1 row(s)", LastToolResult(router, 1));
+        // Only the row the WHERE matches is backed up.
+        Assert.Contains("hanya baris yang cocok dengan WHERE", firstObserver.Final);
         var backup = Assert.Single(await harness.Service<IProjectDatabaseService>().GetBackupsAsync(harness.ProjectId));
-        Assert.Equal(2, backup.Rows);
+        Assert.Equal(1, backup.Rows);
         Assert.Equal(1, backup.AffectedRows);
         Assert.True(backup.FileExists);
 
@@ -124,28 +126,61 @@ public partial class DatabaseOrchestrationTests : IDisposable
         Assert.Equal("1:paid,2:paid", Statuses());
     }
 
-    // A table above BackupMaxRows is refused as a whole: no partial backup, no dry test, nothing executed.
+    // The only limit is the disk: a backup that would leave less than the reserve free stops, leaves no file and no
+    // record behind, and nothing is dry tested or executed.
     [Fact]
-    public async Task A_table_above_the_backup_limit_is_refused_and_left_untouched()
+    public async Task A_backup_that_would_fill_the_disk_is_refused_and_leaves_nothing_behind()
     {
-        Exec("INSERT INTO Orders VALUES (3, 'citra@example.com', 'new');");
+        var folder = Path.Combine(Path.GetTempPath(), "aithread-tests", $"disk-{Guid.NewGuid():N}");
         await using var harness = await OrchestrationHarness.CreateAsync(configureServices: services =>
-            services.Configure<AIThread.Common.Options.AIThreadOptions>(o => o.Databases.BackupMaxRows = 2));
+            services.Configure<AIThread.Common.Options.AIThreadOptions>(o =>
+            {
+                o.Databases.Directory = folder;
+                o.Databases.BackupFreeSpaceReserveMb = int.MaxValue;
+            }));
         await harness.AddStandardNodesAsync();
         await AddDatabaseAsync(harness, DatabaseEnvironment.Dev);
         var router = harness.Router;
         router
             .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ChangeDatabase, new { database = "shop", sql = "UPDATE Orders SET Status = 'x' WHERE Id = 1", reason = "ubah satu order" }))
-            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Tidak bisa.", Answer = "Tabel terlalu besar untuk di-backup AIT." }));
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Tidak bisa.", Answer = "Disk tidak cukup untuk backup." }));
 
-        var (result, observer) = await harness.RunAsync("Ubah order 1", ThreadSource.ClaudeCode, "session-big");
+        var (result, observer) = await harness.RunAsync("Ubah order 1", ThreadSource.ClaudeCode, "session-disk");
 
         Assert.Equal(ThreadStatus.Completed, result.Status);
         Assert.Contains("the backup failed, so nothing was run", LastToolResult(router, 1));
-        Assert.Contains("has 3 rows, more than the 2", LastToolResult(router, 1));
+        Assert.Contains("not enough disk space", LastToolResult(router, 1));
         Assert.DoesNotContain("Izinkan sekali", observer.Final);
-        Assert.Equal("1:new,2:new,3:new", Statuses());
+        Assert.Equal("1:new,2:new", Statuses());
         Assert.Empty(await harness.Service<IProjectDatabaseService>().GetBackupsAsync(harness.ProjectId));
+        Assert.Empty(Directory.Exists(folder) ? Directory.GetFiles(folder, "*", SearchOption.AllDirectories) : []);
+        try { Directory.Delete(folder, recursive: true); } catch (IOException) { }
+    }
+
+    // An INSERT is backed up by the keys it adds: the restore deletes exactly those rows.
+    [Fact]
+    public async Task An_insert_is_restored_by_deleting_the_rows_it_added()
+    {
+        await using var harness = await CreateAsync();
+        await AddDatabaseAsync(harness, DatabaseEnvironment.Dev);
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ChangeDatabase, new { database = "shop", sql = "INSERT INTO Orders (Id, Status) VALUES (3, 'new')", reason = "order baru" }))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Ditambah.", Answer = "Order 3 ditambahkan." }));
+
+        var (first, firstObserver) = await harness.RunAsync("Tambah order 3", ThreadSource.ClaudeCode, "session-insert");
+        Assert.True(first.Status == ThreadStatus.AwaitingInput, firstObserver.Final);
+        Assert.Contains("Restore test: passed", firstObserver.Final);
+
+        await harness.RunAsync("1", ThreadSource.ClaudeCode, "session-insert");
+        Assert.Equal("1:new,2:new,3:new", Statuses());
+
+        var backup = Assert.Single(await harness.Service<IProjectDatabaseService>().GetBackupsAsync(harness.ProjectId));
+        Assert.Equal(0, backup.Rows);
+        var restored = await harness.Service<IProjectDatabaseService>().RestoreBackupAsync(harness.ProjectId, backup.Id);
+        Assert.True(restored.Success, restored.Message);
+        Assert.Equal(1, restored.Deleted);
+        Assert.Equal("1:new,2:new", Statuses());
     }
 
     [Fact]

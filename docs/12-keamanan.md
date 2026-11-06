@@ -219,8 +219,10 @@ Database di Project → Detail → *Database* ([detail](05-menu.md#database)):
   kartu/rekening, …) menjadi `{{AIT_SECRET:pii-<kolom>:<id>}}`. Jumlah baris per query dibatasi.
 - **Perubahan data:** tidak ada perubahan tanpa backup yang sudah diverifikasi, dry test dan test restore yang
   di-rollback, serta izin developer. Database Prod tidak pernah *diizinkan selalu*.
-- **Salinan lokal:** latihan Prod menyalin tabel ke file SQLite sementara, lalu menghapusnya setelah selesai. Backup
-  terenkripsi tersimpan di `%LOCALAPPDATA%\AIThread\db-backups` sampai umurnya habis (bawaan 30 hari).
+- **Salinan lokal:** latihan Prod menyalin tabel ke file SQLite sementara, lalu menghapusnya setelah selesai. File
+  kerja perbandingan di `db-work` hanya berisi hash kunci dan baris yang dienkripsi dengan kunci di memori, lalu dihapus.
+  Backup terenkripsi (Data Protection per bagian file, terikat ke file itu) tersimpan di
+  `%LOCALAPPDATA%\AIThread\db-backups` sampai umurnya habis (bawaan 30 hari).
 - **Saran:** pakai user database dengan hak seminimal mungkin, misalnya hanya baca untuk koneksi yang tidak boleh
   diubah.
 

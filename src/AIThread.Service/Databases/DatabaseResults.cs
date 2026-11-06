@@ -17,8 +17,11 @@ public sealed record RestoreCounts(int Updated, int Inserted, int Deleted)
 }
 
 // The rolled-back run of a change: rows it affected, a sample of what it changed, and whether restoring the backup in
-// the same transaction brought the table back exactly (RestoreVerified). Nothing of it was committed.
-public sealed record DryRunResult(int Affected, IReadOnlyList<RowChange> Sample, int ChangedRows, RestoreCounts Restore, bool RestoreVerified, string? Problem);
+// the same transaction brought the rows back exactly (RestoreVerified). Nothing of it was committed. Elapsed: the whole
+// dry test; Hold: from its transaction's start to the end of the statement (the same checks the real run makes first),
+// about how long the real change will hold its transaction and its locks.
+public sealed record DryRunResult(int Affected, IReadOnlyList<RowChange> Sample, int ChangedRows, RestoreCounts Restore, bool RestoreVerified, string? Problem,
+    TimeSpan Elapsed = default, TimeSpan Hold = default);
 
 public sealed record DatabaseTestOutcome(bool Success, long LatencyMs, string? ServerVersion, string? Error);
 

@@ -6,7 +6,7 @@ public sealed partial class DatabaseQueryService
     {
         await using var connection = await OpenAsync(database, cancellationToken);
         var schema = await ReadSchemaAsync(connection, null, database, table, cancellationToken);
-        var rows = await CountAsync(connection, null, database, table, cancellationToken);
+        var rows = await CountAsync(connection, null, SqlDialect.QuoteTable(database.Provider, table), null, cancellationToken);
         return new TableDescription(table, schema.Columns, rows);
     }
 }

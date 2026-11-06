@@ -3,19 +3,21 @@ using AIThread.Service.Databases;
 
 namespace AIThread.Service.Interfaces;
 
-// The restore points of change_database: the table's rows in a compressed, encrypted (Data Protection) file on this
-// machine, plus a DatabaseBackups record. A backup counts only after its file was read back and matched its checksum.
+// The restore points of change_database: what the statement can change, streamed into a compressed, encrypted (Data
+// Protection) file on this machine, plus a DatabaseBackups record. A backup counts only after its whole file was read
+// back and matched its checksum; there is no row limit, only the disk reserve.
 public interface IDatabaseBackupStore
 {
-    // Writes and verifies the file; throws DatabaseToolException when it cannot be read back exactly.
-    Task<DatabaseBackup> SaveAsync(DatabaseTarget database, TableSnapshot snapshot, string statement, Guid? threadId, CancellationToken cancellationToken = default);
+    // Streams scope of table to a new file and verifies it; throws DatabaseToolException (and deletes the file) when it
+    // cannot be written completely or read back exactly.
+    Task<StoredBackup> CreateAsync(DatabaseTarget database, TableName table, BackupScope scope, string statement, Guid? threadId, CancellationToken cancellationToken = default);
 
-    Task<(DatabaseBackup Record, TableSnapshot Snapshot)> LoadAsync(Guid backupId, CancellationToken cancellationToken = default);
+    Task<(DatabaseBackup Record, BackupSnapshot Snapshot)> LoadAsync(Guid backupId, CancellationToken cancellationToken = default);
 
     Task MarkExecutedAsync(Guid backupId, int affectedRows, CancellationToken cancellationToken = default);
 
     Task MarkRestoredAsync(Guid backupId, string restoredBy, CancellationToken cancellationToken = default);
 
-    // Deletes backups (file and record) older than ProjectDatabaseOptions.BackupRetentionDays.
+    // Deletes backups (file, added-keys file and record) older than ProjectDatabaseOptions.BackupRetentionDays.
     Task<int> CleanupAsync(CancellationToken cancellationToken = default);
 }
