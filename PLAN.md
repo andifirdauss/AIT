@@ -1,28 +1,57 @@
-Saya ingin membangun thread untuk do action ai dengan ai murah, tujuannya supaya workflow itu pertama planning dilakukan oleh ai yang mahal, dan aksi nya dikerjakan oleh ai yang murah. Perbedaan dengan workflow di komunitas apa? ini benar benar membagi pekerjaan menjadi sangat kecil. Contoh ketika aku prompt ke claude, akan di arahkan ke proxy project ini, untuk diteruskan ke model ai planner yang aku set (seharusnya paling cerdas), dan ai ini di set untuk dapat menciptakan to do untuk ai executor, yang notabennya akan bekerja pada scope yang kecil, konteks yang terbatas, tapi tetap akurat. Kenapa aku bilang konteks yang terbatas tapi akurat? karena aku paham ketika ai kekurangan konteks, dia akan berhalusinasi membuat apa yang ingin dia buat. Misal di project ini sudah ada interface + service + api User, dan UI aku minta di ui di tambah kolom deskripsi, pastikan yang ditambahkan adalah field di UI, logic di JS, parameter di API, parameter di Serice, validasi di service, dan ddl di database. Dari serangkaian tugas itukan ada 7 pekerjaan, misal ai executor di command untuk buat UI untuk tambah field, dan ai executor lain di suruh js nya, kalo konteksnya kebanyakan jatuhnya boros dong, jalanin 2 ai untuk 1 task sederhana banget, cuma kalo kurang konteks pasti akan miss, misal ai executor ui buat field dengan id description tapi si ai executor js dia buat js untuk get value dari #txtDesc itu kan udah miss, atau malah ai executor js malah buat file baru js karena dia kurang kontext untuk edit file yang udah ada. Nah dari sini aku mau buat sistem untuk ai thread, dapat mengerjakan/eksekusi ai executor dalam pekerjaan sangat kecil, sehingga konsep pararel disini dapat tercipta, selesai berdasarkan siapa yang paling lambat selesai, bukan setiap waktu ai di jumlahkan.
+# PLAN: Database project — backup tanpa batas (lanjutan)
 
+Branch: `feature/database-query`. Fitur dasar sudah di commit `8709e34 [FEAT] Akses Query`. Backup tanpa batas
+(di bawah) **sudah dikerjakan tetapi belum di-commit**.
 
-Secara konsep aku mau provider ai nya akan dari 9router, dan akan ada menu
-- setting
-    digunakan untuk mengatur koneksi 9router dan key
-- node
-    digunakan untuk setup ai pekerja (planner/executor/wrapper)
-    - wrapper bertugas untuk mewrapping output pekerjaan ketika sudah selesai, karena kan executor itu banyak, ga mungkin semua output nya akan di keluarkan semua, akan di pool dulu sampai semua selesai. dan wrapper akan membungkusnya untuk diinformasikan ke user. dan model yang ada adalah model yang tersedia pada provider yang di konekkan ke 9router + combo
-- dashboard
-    digunakan untuk memonitoring koneksi 9router apakah masih aktif, terus dashboard log
-- project 
-    digunakan untuk mendata project yang sudah terbaca oleh sistem ini, tujuannya supaya tidak hilang konteks / session kan pasti proxy project ini akan banyak di gunakan oleh project lain dalam 1 waktu yang sama, uniq nya menggunakan .sln/.slnx saja
-- memory
-    digunakan untuk dashboard terhadap sistem prompt yang sudah dikerjakan dan menghasilkan reuseable memory untuk tiap project, bertujuan untuk memahami kontek bisnis / teknikal lebih dalam. memory ini berisikan 2 data, 1 label ditujukan untuk keywording ai untuk mencari topik tanpa membaca full deskripsi, dan deskripsi itu sendiri, untuk isi dari topik memory yang dibuat oleh ai.
+## Selesai
+- Fitur dasar (commit `8709e34`): koneksi per mesin + project, tool planner, izin Prod + latihan SQLite, docs, test.
+  Rancangan: [docs/rancangan/database-query.md](docs/rancangan/database-query.md).
+- **Backup tanpa batas baris.** `BackupMaxRows` dihapus. Satu-satunya batas adalah disk (`BackupFreeSpaceReserveMb`,
+  bawaan 512 MB; `DiskSpace`), dicek sebelum mulai, per frame, dan dari perkiraan `COUNT(*)` × ukuran per baris.
+  - `SnapshotFile` (`SnapshotWriter`/`SnapshotReader`): format 2. Frame gzip + Data Protection terikat id file, nomor
+    urut, trailer jumlah baris + `RowChecksum` (jumlah SHA-256 per baris, tidak bergantung urutan, tanpa sorting).
+  - Backup gagal di tengah → file dihapus dan tidak ada eksekusi. Format lama ditandai tidak didukung.
+- **Backup sesempit mungkin** (`BackupScope` dari `SqlStatement`):
+  - `Rows`: `WHERE` persis dari `UPDATE`/`DELETE` biasa;
+  - `Insert`: kunci baris baru dicatat saat eksekusi (`<backup>.added`), karena identity saat dry test berbeda;
+  - `Table`: selain itu, termasuk `WHERE` nondeterministik (`TOP`/`LIMIT`/`RAND`/`NEWID`/…).
+- **Dry test, test restore, eksekusi, dan restore di-stream** lewat `DiffScratch`: SQLite sementara di `db-work`, kunci
+  di-hash, baris dienkripsi AES-GCM dengan kunci di memori. Delete restore per batch (≤ 500 kunci). Contoh perubahan
+  tetap maks 5.
+  - Dry test `Rows`/`Insert` membandingkan checksum **seluruh tabel** sebelum/sesudah, sehingga trigger, cascade, atau
+    PK yang berubah dan menyentuh baris di luar backup menghentikan alur.
+  - Eksekusi mengecek ulang bahwa baris yang dicakup masih sama dengan backup. Untuk `Insert`, kunci baru harus sama
+    dengan baris terpengaruh.
+- **Kartu izin** menampilkan cakupan, jumlah baris dan ukuran backup, lama backup, lama dry test, dan `Hold`
+  (perkiraan lama lock).
+- **Latihan SQLite** di-stream tanpa batas baris, per 10.000 baris, dengan cek disk.
+- Tambahan dari review sendiri: `SqlStatement` kini menolak `INSERT ALL/FIRST` (Oracle multi-tabel) dan
+  `OUTPUT … INTO` (menulis tabel kedua); modifier MySQL (`LOW_PRIORITY`, `IGNORE`, …) dilewati saat membaca target.
+- Docs ID/EN (`05-menu.md`, `12-keamanan.md`), `rancangan/database-query.md`, dan `CLAUDE.md` diperbarui.
 
-    level memory ini ada 2, short memory dan long memory, bertujuan untuk diakses oleh planner, siapa tau prompt itu baru saja di kerjakan dalam 1 hari yang sama, dan long memory yang akan didump dari short memory setelah lewat 1 hari. secara penyimpanan juga berbeda. short menggunakan redist, dan long menggunakan database.
+## Verifikasi
+- `dotnet test tests/AIThread.Tests -c Release`: 1113/1115 lulus. Dua yang gagal tidak terkait database dan gagal
+  karena lingkungan mesin: `ChatWindowsTests.Prompt_mode_turns_image_paths_into_numbered_markers` (path temp berisi
+  spasi) dan `EmbeddedRedisServerTests.A_taken_port_is_left_to_its_owner` (port sedang dipakai).
+- Test baru:
+  - `DatabaseLargeTableTests`: 200.000 baris, backup + dry test + eksekusi + restore. Puncak memori managed hidup
+    2,0 MB, backup 3,7 MB, dry test 8,2 s, hold 0,4 s. `WHERE` sempit di tabel besar hanya mem-backup 10 baris.
+  - `DatabaseQueryTests`: cakupan per statement, backup `WHERE`, INSERT (kunci dicatat, restore hanya menghapus baris
+    itu), data berubah sejak backup, trigger ke baris di luar backup, file backup rusak, disk penuh.
+  - `DatabaseOrchestrationTests`: disk penuh (tanpa file/record tersisa), alur INSERT end to end.
 
-    kemudian tipe memory akan dibagi 2, project memory dan knowledge memory, yaitu project tentu saja berkaitan dengan bisnis, validasi, flow dan lain lain tentang project itu, dan knowledge memory apa yang diprompt user, dan itu adalah sebuah fitur yang bisa digeneralkan ke project lain yang bermanfaat misal seperti get master di tampung ke redist, dan akan direfresh setiap 5 menit.
+- Live `AIT_LIVE_SQLSERVER=1` (LocalDB 17.0) lulus. Kasus yang diuji: backup `WHERE` + `IDENTITY_INSERT`,
+  `UPDATE … FROM` sebagai seluruh tabel, dan INSERT ke tabel IDENTITY (kunci dicatat saat eksekusi, restore menghapus
+  baris itu).
 
-Technical
-- selalu gunakan SSE untuk update apa yang terjadi di belakang ke UI
-- buatkan service secara mandiri
-    - NineRouterService
-    - NodeService
-    - ProjectService
-    - MemoryService
-- memanfaatkan setting.json claude untuk merubah url ke proxy ini
+## Belum
+- PostgreSQL, MySQL, dan Oracle belum pernah diuji ke server sungguhan.
+- UI kartu Database belum dicoba di browser.
+- Batasan yang diketahui ada di bagian "Batasan yang diketahui" pada rancangan:
+  - trigger/cascade ke tabel lain tidak terdeteksi;
+  - jeda kecil READ COMMITTED antara cek dan statement;
+  - dry test `Rows`/`Insert` membaca seluruh tabel dua kali.
+
+## Sesudahnya
+- Commit di `feature/database-query`, merge ke `main`, lalu rilis (versi, banner `_Layout.cshtml`, README npm,
+  publish-npm; lihat pola rilis 1.14.0/1.14.1).

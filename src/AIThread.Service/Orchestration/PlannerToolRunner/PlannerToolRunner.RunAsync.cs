@@ -21,7 +21,7 @@ public sealed partial class PlannerToolRunner
     {
         var real = (JsonObject)args.DeepClone();
         secrets.RestoreJson(real);
-        var outcome = await RunToolAsync(tool, real, input, tools, memoriesRead, prefix, recorder, progress, cancellationToken);
+        var outcome = await RunToolAsync(tool, real, args, input, tools, memoriesRead, prefix, recorder, progress, cancellationToken);
         return outcome with { Output = secrets.Redact(outcome.Output) };
     }
 }

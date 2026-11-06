@@ -69,7 +69,8 @@ public sealed partial class ThreadOrchestrator
             // Permission can always be asked of a session, and of a dashboard thread through its page.
             var canApprove = !string.IsNullOrEmpty(request.SessionId) || request.Source == ThreadSource.Dashboard;
             var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles,
-                AutoTesting: tester is not null, PreviousTurn: previousTurn, UnitTests: unitTests, SessionChanges: sessionChanges, CanApprove: canApprove);
+                AutoTesting: tester is not null, PreviousTurn: previousTurn, UnitTests: unitTests, SessionChanges: sessionChanges, CanApprove: canApprove,
+                Databases: await DatabasesAsync(project.ProjectId, cancellationToken));
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
@@ -78,7 +79,9 @@ public sealed partial class ThreadOrchestrator
                 var decision = ApprovalReply.Parse(prepared.Reply);
                 await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern or ApprovalDecision.AlwaysAll
                     ? Lang.T("🔐 Izin diberikan, rencana dilanjutkan", "🔐 Permission given, the plan goes on")
-                    : Lang.T("🔐 Izin ditolak, planner mencari jalan lain", "🔐 Permission denied, the planner looks for another way"), cancellationToken, hang: 3);
+                    : decision is ApprovalDecision.Rehearse && approval.Request.AllowRehearse
+                        ? Lang.T("🧪 Latihan lokal dulu, eksekusi menunggu izin berikutnya", "🧪 Local rehearsal first, running waits for the next permission")
+                        : Lang.T("🔐 Izin ditolak, planner mencari jalan lain", "🔐 Permission denied, the planner looks for another way"), cancellationToken, hang: 3);
                 planning = await plannerAgent.ResumeApprovalAsync(plannerInput, waiting.Conversation, approval, decision, prepared.Reply ?? string.Empty, recorder, progress, cancellationToken);
             }
             else if (prepared.Resume is { } resume)

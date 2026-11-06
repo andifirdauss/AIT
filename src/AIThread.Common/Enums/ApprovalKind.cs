@@ -23,5 +23,9 @@ public enum ApprovalKind
     Branch = 6,
 
     // Opening a pull/merge request after the push; the target is "<repository>|<base><-<head>".
-    PullRequest = 7
+    PullRequest = 7,
+
+    // Changing rows of a project database (change_database, DML only, after backup and a rolled-back dry test); the
+    // target is the database name. Never saved for a Prod database.
+    DatabaseWrite = 8
 }

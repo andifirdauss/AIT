@@ -35,7 +35,10 @@ public class ApprovalTests : IDisposable
     [InlineData("5", ApprovalDecision.AlwaysAll)]
     [InlineData("izinkan semua perintah", ApprovalDecision.AlwaysAll)]
     [InlineData("allow all", ApprovalDecision.AlwaysAll)]
-    [InlineData("6", null)]
+    [InlineData("6", ApprovalDecision.Rehearse)]
+    [InlineData("latihan lokal dulu", ApprovalDecision.Rehearse)]
+    [InlineData("rehearse locally first", ApprovalDecision.Rehearse)]
+    [InlineData("7", null)]
     [InlineData("sekali lagi coba cara lain", null)]
     public void Replies_are_read_in_both_languages(string reply, ApprovalDecision? expected) =>
         Assert.Equal(expected, ApprovalReply.Parse(reply));

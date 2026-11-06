@@ -19,6 +19,7 @@ public sealed class ApiExceptionFilter : IExceptionFilter
             AppValidationException ex => (StatusCodes.Status400BadRequest, ex.Message),
             NineRouterException ex => (StatusCodes.Status502BadGateway, ex.Message),
             OrchestrationException ex => (StatusCodes.Status409Conflict, ex.Message),
+            Service.Databases.DatabaseToolException ex => (StatusCodes.Status400BadRequest, ex.Message),
             _ => (0, string.Empty)
         };
         if (status == 0) return;
