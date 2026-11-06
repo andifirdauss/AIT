@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text;
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Memory;
 using AIThread.Service.Models;
@@ -168,6 +169,15 @@ public sealed class AgentProxyHandler(
         {
             await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status503ServiceUnavailable, "api_error",
                 Lang.T("AIT: passthrough model belum diatur (menu Pengaturan) dan tidak ada node aktif yang bisa dipakai.", "AIT: no passthrough model is set (Setting menu) and there is no active node to use."));
+            return;
+        }
+
+        // A node model served by an official CLI (CliBackend) has no 9router route to forward the client's own request to.
+        if (CliModelId.IsCli(model))
+        {
+            await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status503ServiceUnavailable, "api_error",
+                Lang.T($"AIT: model passthrough '{model}' dijalankan lewat CLI resmi dan tidak bisa dipakai untuk passthrough. Pakai `AIThread.exe chat` atau Dasbor, atau isi model passthrough 9router di menu Pengaturan.",
+                    $"AIT: passthrough model '{model}' runs through an official CLI and cannot be used for passthrough. Use `AIThread.exe chat` or the Dashboard, or set a 9router passthrough model in the Setting menu."));
             return;
         }
 

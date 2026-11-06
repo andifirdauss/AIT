@@ -40,6 +40,23 @@ public class AIThreadOptions
     public EmbeddedRedisOptions EmbeddedRedis { get; set; } = new();
 
     public NineRouterLaunchOptions NineRouter { get; set; } = new();
+
+    public ClaudeCliOptions ClaudeCli { get; set; } = new();
+}
+
+// Claude Code as a model engine for nodes whose model is "cli:claude:<model>" (CliBackend): AIT runs the official
+// `claude -p` headless with the login already on this machine, built-in tools off.
+public class ClaudeCliOptions
+{
+    // claude.exe, claude.cmd or the package's cli.js. Empty = PATH, then %USERPROFILE%\.local\bin, then the npm shim.
+    public string? Path { get; set; }
+
+    // CLI processes running at once on this machine, over all nodes.
+    public int MaxProcesses { get; set; } = 4;
+
+    // --setting-sources of every run. "local" (in an empty working folder) skips the user's ~/.claude/settings.json and
+    // CLAUDE.md: their hooks and an ANTHROPIC_BASE_URL pointing back at AIT must not apply. Managed policy always does.
+    public string SettingSources { get; set; } = "local";
 }
 
 // Starting (and installing) 9router for the user. Only applies when the 9router URL in Setting is a local address.
