@@ -82,9 +82,26 @@ public static class DatabaseToolText
         }
         if (dry.ChangedRows > dry.Sample.Count) text.Append($"- … and {dry.ChangedRows - dry.Sample.Count} more\n");
         text.Append(dry.RestoreVerified
-            ? $"Restore test: passed ({dry.Restore.Updated} changed back, {dry.Restore.Inserted} inserted again, {dry.Restore.Deleted} deleted; the table matched the backup).\n"
+            ? $"Restore test: passed ({dry.Restore.Updated} changed back, {dry.Restore.Inserted} inserted again, {dry.Restore.Deleted} deleted; the rows matched the backup).\n"
             : $"Restore test: FAILED — {dry.Problem}\n");
         return text.ToString();
+    }
+
+    // The backup behind a change: what it covers, its size and how long it and the dry test took (the dry test is about
+    // how long the real change holds its locks).
+    public static string Backup(StoredBackup stored, DryRunResult dry)
+    {
+        var scope = stored.Snapshot.Header.Scope.Kind switch
+        {
+            BackupScopeKind.Rows => "the rows the WHERE matches",
+            BackupScopeKind.Insert => "none yet: the keys of the new rows are recorded when it runs",
+            _ => "the whole table"
+        };
+        var made = stored.Elapsed.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+        var tested = dry.Elapsed.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+        var held = dry.Hold.TotalSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+        return $"Backup: {stored.Snapshot.Rows} row(s) ({scope}), {DiskSpace.Format(stored.Snapshot.Bytes)}, made in {made} s; the dry test took {tested} s " +
+               $"(the real change holds its transaction about {held} s).\n";
     }
 
     private static string Show(Cell? cell, string column, DatabaseTarget database, ISecretGuard secrets) =>

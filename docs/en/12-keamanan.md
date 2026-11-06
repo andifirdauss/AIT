@@ -223,8 +223,10 @@ Databases under Project → Detail → *Database* ([details](05-menu.md#database
   numbers, …) as `{{AIT_SECRET:pii-<column>:<id>}}`. Rows per query are limited.
 - **Changing data:** nothing changes without a verified backup, a rolled-back dry test and restore test, and the
   developer's permission. A Prod database is never *always allowed*.
-- **Local copies:** a Prod rehearsal copies tables to a temporary SQLite file, then deletes it once it is done.
-  Encrypted backups stay under `%LOCALAPPDATA%\AIThread\db-backups` until they expire (30 days by default).
+- **Local copies:** a Prod rehearsal copies tables to a temporary SQLite file, then deletes it once it is done. The
+  comparison work files under `db-work` hold only key hashes and rows encrypted with a key that lives in memory, and are
+  deleted afterwards. Encrypted backups (Data Protection per part of the file, bound to that file) stay under
+  `%LOCALAPPDATA%\AIThread\db-backups` until they expire (30 days by default).
 - **Advice:** use a database user with the least rights possible, e.g. read only for a connection that must not change.
 
 ## Limits
