@@ -206,6 +206,8 @@ public sealed partial class TesterAgent(
     ISecretGuard secrets,
     ITestAccountStore accountStore,
     IImpersonationDetector impersonation,
+    IProjectDatabaseService projectDatabases,
+    IDatabaseQueryService databaseQueries,
     ILogger<TesterAgent> logger) : ITesterAgent
 {
     private const int MaxSteps = 40;
@@ -253,6 +255,9 @@ public sealed partial class TesterAgent(
 
         // The endpoints the code declares (AspNetRoutes), for the brief and the hint after a 404.
         public IReadOnlyList<CodeRoute> Routes { get; set; } = [];
+
+        // The project databases the read-only database tools reach (Project > Detail → Database).
+        public IReadOnlyList<Databases.DatabaseTarget> Databases { get; set; } = [];
 
         // The account switch_user made current; null: the developer's login (Input.Login), if any.
         public TestAccount? Account { get; private set; }

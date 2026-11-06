@@ -164,6 +164,13 @@ punya key). Respons **tidak pernah** memuat snapshot isi file test; hanya `hasSn
 | `POST` | `/api/projects/{id}/test-accounts` | `{ "username": "atasan01", "role": "Atasan", "attributes": { "Unit": "Sales" }, "notes": null }` → akun. Username unik per project (tidak peka huruf besar/kecil), tanpa spasi; maks 30 atribut, 200 akun |
 | `PUT` | `/api/projects/{id}/test-accounts/{accountId}` | sama dengan `POST` → akun |
 | `DELETE` | `/api/projects/{id}/test-accounts/{accountId}` | — → `true` |
+| `GET` | `/api/projects/{id}/databases` | — → database project (`id`, `name`, `provider`, `host`, `port`, `database`, `username`, `hasPassword`, `options`, `environment` `Dev`/`Staging`/`Prod`, `maskedColumns`, `maxRows`, `allowWrites`, `description`, `display`); password tidak pernah dikembalikan |
+| `POST` | `/api/projects/{id}/databases` | `{ "name": "orders-dev", "provider": "SqlServer", "host": "localhost", "port": 1433, "database": "Orders", "username": "app", "password": "…", "options": null, "environment": "Dev", "maskedColumns": "full_name", "maxRows": 50, "allowWrites": true, "description": null }` → database. Nama unik per project |
+| `PUT` | `/api/projects/{id}/databases/{databaseId}` | sama dengan `POST`; `password` `null` = tetap, `""` = hapus → database |
+| `DELETE` | `/api/projects/{id}/databases/{databaseId}` | — → `true` (backup-nya ikut dihapus) |
+| `POST` | `/api/projects/{id}/databases/test` | `{ "id": null, "database": { …seperti POST… } }` → `success`, `latencyMs`, `message`, `serverVersion`; dengan `id`, password tersimpan dipakai bila `password` `null` |
+| `GET` | `/api/projects/{id}/databases/backups` | — → backup (`id`, `databaseName`, `environment`, `table`, `statement`, `rows`, `bytes`, `threadId`, `createdAt`, `executedAt`, `affectedRows`, `restoredAt`, `restoredBy`, `fileExists`) |
+| `POST` | `/api/projects/{id}/databases/backups/{backupId}/restore` | — → `success`, `updated`, `inserted`, `deleted`, `message`; 409 bila restore gagal (tidak ada yang di-commit) |
 | `PUT` | `/api/projects/{id}/testing-settings` | `{ "devPassword": "123" }` — kosong/`null` = kembali ke bawaan `Test@1234` → `settings` |
 | `PUT` | `/api/projects/{id}/testing-settings/impersonation` | `{ "status": "available", "how": "GET /Account/LoginAs?username={{target}}", "back": null, "roles": ["Administrator"], "confirmed": true }` — `status` `available`/`none`/`unknown`; `available` wajib `how` dan `roles` → `settings` |
 | `POST` | `/api/projects/{id}/testing-settings/impersonation/detect` | — → `settings`. Scan kode + model murah; hasilnya belum dikonfirmasi (`impersonation.source` = `scan`) |

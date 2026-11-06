@@ -181,6 +181,30 @@
     <div class="card-footer d-flex justify-content-between align-items-center small d-none" id="unitTestPager"></div>
 </div>
 
+<div class="card mt-3" id="databaseCard">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+        <span class="me-auto">Database <span class="small text-secondary fw-normal" id="databaseCount"></span></span>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="btnDatabaseAdd">@Lang.T("Tambah database", "Add database")</button>
+    </div>
+    <div class="card-body small text-secondary border-bottom">
+        @Html.Raw(Lang.T("Database yang boleh dibaca planner dan Tester (<span class=\"mono\">query_database</span>, hanya baca) dan diubah planner (<span class=\"mono\">change_database</span>, hanya INSERT/UPDATE/DELETE/MERGE). Sebelum mengubah, AIT selalu membuat <strong>backup</strong> tabel sebagai titik restore, menjalankan <strong>dry test</strong> dan <strong>test restore</strong> dalam transaksi yang di-rollback, lalu meminta izin Anda. Database <strong>Prod</strong> selalu ditanya dan disarankan latihan lokal di SQLite dulu. Disimpan di mesin ini saja; password terenkripsi dan tidak pernah dikirim ke model. Kolom sensitif (email, telepon, NIK, password, …) hanya terlihat sebagai placeholder oleh model.",
+            "Databases the planner and the Tester may read (<span class=\"mono\">query_database</span>, read only) and the planner may change (<span class=\"mono\">change_database</span>, INSERT/UPDATE/DELETE/MERGE only). Before a change AIT always makes a <strong>backup</strong> of the table as a restore point, runs a <strong>dry test</strong> and a <strong>restore test</strong> in a transaction it rolls back, then asks your permission. A <strong>Prod</strong> database is always asked, with a local SQLite rehearsal suggested first. Kept on this machine only; the password is encrypted and never sent to a model. Sensitive columns (email, phone, national id, password, …) reach the model as placeholders only."))
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>@Lang.T("Nama", "Name")</th><th>@Lang.T("Koneksi", "Connection")</th><th>Environment</th><th>@Lang.T("Akses", "Access")</th><th>@Lang.T("Kolom disamarkan", "Masked columns")</th><th></th></tr></thead>
+            <tbody id="databaseRows"><tr><td colspan="6" class="text-secondary">@Lang.T("Memuat…", "Loading…")</td></tr></tbody>
+        </table>
+    </div>
+    <div class="card-body border-top py-2 small fw-semibold">@Html.Raw(Lang.T("Backup (titik restore) <span class=\"text-secondary fw-normal\" id=\"databaseBackupCount\"></span>", "Backups (restore points) <span class=\"text-secondary fw-normal\" id=\"databaseBackupCount\"></span>"))</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>@Lang.T("Waktu", "Time")</th><th>Database</th><th>@Lang.T("Tabel", "Table")</th><th>@Lang.T("Perubahan", "Change")</th><th>Status</th><th></th></tr></thead>
+            <tbody id="databaseBackupRows"><tr><td colspan="6" class="text-secondary">–</td></tr></tbody>
+        </table>
+    </div>
+</div>
+
 <div class="card mt-3" id="testAccountCard">
     <div class="card-header d-flex flex-wrap align-items-center gap-2">
         <span class="me-auto">@Html.Raw(Lang.T("Akun uji <span class=\"small text-secondary fw-normal\" id=\"testAccountCount\"></span>", "Test accounts <span class=\"small text-secondary fw-normal\" id=\"testAccountCount\"></span>"))</span>
@@ -411,6 +435,95 @@
     </div>
 </div>
 
+<div class="modal fade" id="databaseModal" tabindex="-1" aria-labelledby="databaseModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" id="databaseForm" autocomplete="off">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="databaseModalTitle">Database</h5>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="databaseName">@Lang.T("Nama", "Name")</label>
+                        <input type="text" class="form-control mono" id="databaseName" maxlength="100" required pattern="[A-Za-z0-9][A-Za-z0-9_.\-]*" placeholder="orders-dev" />
+                        <div class="form-text">@Lang.T("Nama yang dipakai model.", "The name the model uses.")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="databaseProvider">@Lang.T("Jenis", "Type")</label>
+                        <select class="form-select" id="databaseProvider">
+                            <option value="SqlServer">SQL Server</option>
+                            <option value="PostgreSql">PostgreSQL</option>
+                            <option value="MySql">MySQL</option>
+                            <option value="Oracle">Oracle</option>
+                            <option value="Sqlite">SQLite</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="databaseEnvironment">Environment</label>
+                        <select class="form-select" id="databaseEnvironment">
+                            <option value="Dev">Dev</option>
+                            <option value="Staging">Staging</option>
+                            <option value="Prod">Prod</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 database-server">
+                        <label class="form-label" for="databaseHost">Host</label>
+                        <input type="text" class="form-control mono" id="databaseHost" maxlength="300" placeholder="localhost" />
+                    </div>
+                    <div class="col-md-2 database-server">
+                        <label class="form-label" for="databasePort">Port</label>
+                        <input type="number" class="form-control mono" id="databasePort" min="1" max="65535" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="databaseDatabase" id="databaseDatabaseLabel">Database</label>
+                        <input type="text" class="form-control mono" id="databaseDatabase" maxlength="500" required />
+                    </div>
+                    <div class="col-md-6 database-server">
+                        <label class="form-label" for="databaseUsername">Username</label>
+                        <input type="text" class="form-control mono" id="databaseUsername" maxlength="200" />
+                        <div class="form-text" id="databaseUsernameHint"></div>
+                    </div>
+                    <div class="col-md-6 database-server">
+                        <label class="form-label" for="databasePassword">Password</label>
+                        <input type="password" class="form-control mono" id="databasePassword" maxlength="500" autocomplete="new-password" />
+                        <div class="form-text" id="databasePasswordHint"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="databaseOptions">@Lang.T("Opsi koneksi (opsional)", "Connection options (optional)")</label>
+                        <input type="text" class="form-control mono" id="databaseOptions" maxlength="1000" placeholder="Encrypt=True;Timeout=30" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label" for="databaseMasked">@Lang.T("Kolom yang disamarkan (selain deteksi otomatis)", "Columns to mask (on top of the automatic ones)")</label>
+                        <input type="text" class="form-control mono" id="databaseMasked" maxlength="2000" placeholder="full_name, customer*" />
+                        <div class="form-text">@Lang.T("Pisahkan dengan koma; akhiran * = awalan nama. Otomatis: email, telepon/hp, NIK/KTP, NPWP, password/hash/token, alamat, tanggal lahir, nomor kartu/rekening.", "Comma separated; a trailing * matches a name prefix. Automatic: email, phone, national id, tax id, password/hash/token, address, birth date, card/account numbers.")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="databaseMaxRows">@Lang.T("Maks baris per query", "Max rows per query")</label>
+                        <input type="number" class="form-control" id="databaseMaxRows" min="1" max="500" value="50" />
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label" for="databaseDescription">@Lang.T("Keterangan untuk model (opsional)", "Description for the model (optional)")</label>
+                        <input type="text" class="form-control" id="databaseDescription" maxlength="1000" placeholder="@Lang.T("mis. database order & pembayaran aplikasi toko", "e.g. orders & payments database of the shop app")" />
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="databaseAllowWrites" checked />
+                            <label class="form-check-label" for="databaseAllowWrites">@Lang.T("Boleh diubah lewat change_database (selalu dengan backup, dry test, test restore, dan izin)", "May be changed through change_database (always with backup, dry test, restore test and permission)")</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="small mt-3" id="databaseTestResult"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary me-auto" id="btnDatabaseTest">@Lang.T("Test koneksi", "Test connection")</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Lang.T("Batal", "Cancel")</button>
+                <button type="submit" class="btn btn-primary" id="btnDatabaseSave">@Lang.T("Simpan", "Save")</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="testAccountModal" tabindex="-1" aria-labelledby="testAccountModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <form class="modal-content" id="testAccountForm" autocomplete="off">
@@ -491,6 +604,7 @@
     <script src="~/js/pages/project-detail.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-unittests.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-testaccounts.js" asp-append-version="true"></script>
+    <script src="~/js/pages/project-databases.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-scenarios.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-structure.js" asp-append-version="true"></script>
     <script src="~/js/pages/project-git.js" asp-append-version="true"></script>
