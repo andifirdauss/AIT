@@ -21,6 +21,9 @@ public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string R
     // "Always allow every command of the project" is offered: an item is a command (a long chain fits too, "*" is saved).
     public bool AllowAll => Items.Any(i => i.Kind == ApprovalKind.Command);
 
+    // A Prod database change: "rehearse locally first" is offered (and suggested).
+    public bool AllowRehearse { get; init; }
+
     // Shown to the developer (CLI, Telegram, the thread page) as the thread's reply.
     public string ToText()
     {
@@ -34,6 +37,9 @@ public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string R
         }
 
         builder.Append('\n').Append(Lang.T("1. **Izinkan sekali** — hanya untuk aksi ini\n", "1. **Allow once** — for this action only\n"));
+        if (AllowRehearse)
+            builder.Append(Lang.T("6. **Latihan lokal dulu** (disarankan) — tabel disalin ke SQLite di komputer ini dan perubahan dicoba di sana; AIT bertanya lagi sesudahnya\n",
+                "6. **Rehearse locally first** (suggested) — the table is copied to SQLite on this computer and the change is tried there; AIT asks again afterwards\n"));
         if (AllowAlways)
             builder.Append(Lang.T("2. **Izinkan selalu** — disimpan di mesin ini untuk project ini (cabut di Project → Detail → Izin AIT)\n",
                 "2. **Always allow** — saved on this machine for this project (revoke in Project → Detail → AIT permissions)\n"));
@@ -53,7 +59,7 @@ public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string R
 
     // For the buttons on the thread page; afterThread: a commit/push of a finished thread rather than a paused planner.
     public PendingApprovalDto ToDto(bool afterThread) =>
-        new(Items.Select(i => new ApprovalItemDto(i.Kind, i.Target, i.Detail, i.Pattern)).ToList(), Reason, AllowAlways, ToText(), afterThread, AllowPattern, AllowAll);
+        new(Items.Select(i => new ApprovalItemDto(i.Kind, i.Target, i.Detail, i.Pattern)).ToList(), Reason, AllowAlways, ToText(), afterThread, AllowPattern, AllowAll, AllowRehearse);
 
     public static string KindLabel(ApprovalKind kind) => kind switch
     {
@@ -64,6 +70,7 @@ public sealed record ApprovalRequest(IReadOnlyList<ApprovalItem> Items, string R
         ApprovalKind.Push => Lang.T("Push", "Push"),
         ApprovalKind.Branch => Lang.T("Buat branch", "Create a branch"),
         ApprovalKind.PullRequest => Lang.T("Buka pull request", "Open a pull request"),
+        ApprovalKind.DatabaseWrite => Lang.T("Ubah data database", "Change database rows"),
         _ => kind.ToString()
     };
 }

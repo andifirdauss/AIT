@@ -204,6 +204,84 @@ with long memory.
   *Build timeout*).
 - The card updates itself when a thread of this project finishes.
 
+### Database
+
+The **Database** card (below Unit tests) holds the project databases the planner and the Tester may read, and the planner
+may change. Connections are kept **on this machine only** (table `ProjectDatabases`), and the password is encrypted with
+Data Protection. The model only sees the connection name, engine, environment and description; the connection string
+is never sent.
+
+- **Add database / Edit:**
+  - engine: SQL Server, PostgreSQL, MySQL, Oracle or SQLite;
+  - environment **Dev / Staging / Prod**;
+  - host, port, database (the file path for SQLite), user name (SQL Server empty = Windows authentication), password
+    (empty = keep the stored one), connection options;
+  - masked columns, max rows per query (default 50, at most 500), a description for the model;
+  - *May be changed through change_database*.
+
+  **Test connection** uses the form as it is.
+- **Tools for the model:**
+  - `list_databases` and `describe_table` (columns, types, primary key, identity, computed).
+  - `query_database`: one `SELECT`/`WITH … SELECT`, in a read-only transaction where the engine has one, always rolled
+    back, with a row limit and a 30-second timeout. Any other statement is refused.
+  - `change_database`: planner only. One `INSERT`/`UPDATE`/`DELETE`/`MERGE` on one table with a primary key. DDL,
+    procedures, `SELECT … INTO`, more than one statement, and writes inside a subquery/CTE are refused.
+  - The Tester gets the three reading tools too, to check that a request really stored its data.
+- **Sensitive columns** reach the model as placeholders `{{AIT_SECRET:pii-<column>:<id>}}`:
+  - What is masked: the columns listed on the connection (a trailing `*` = name prefix), plus names AIT detects: email,
+    phone, national id, tax id, passport, password/hash/token/secret, address, birth date, card/account numbers, salary.
+  - The same value always gets the same placeholder, so the model can still match rows.
+  - A placeholder the model uses in `change_database` is put back to the real value before the statement runs.
+
+#### The change_database flow
+
+1. **Backup = restore point.** The whole target table is read and stored compressed and encrypted under
+   `%LOCALAPPDATA%\AIThread\db-backups`.
+   - The file is read back and its checksum compared.
+   - **Nothing runs until the backup succeeded.**
+   - A table without a primary key, or with more than 50,000 rows, is refused: its backup needs a DBA.
+2. **Dry test + restore test** in one transaction that is always rolled back:
+   - the statement runs, and the rows affected and a sample of the changes are noted;
+   - the backup is restored by primary key;
+   - the table is compared with the backup by checksum.
+
+   If either fails, the flow stops and nothing runs. MySQL tables that are not InnoDB are refused, since without
+   transactions a dry test would really change the data.
+3. **Permission card.** The card shows the environment, the statement (sensitive values stay placeholders), the dry
+   test result, the restore test result and the backup id.
+   - **Dev/Staging:** *Allow once* / *Always allow* for this database (later changes skip the card, but the backup and
+     dry test still run) / *Deny*.
+   - **Prod:** no *always*. Option **6. Rehearse locally first** (suggested):
+     - the touched tables (at most 5) are copied to a temporary SQLite file, and the SQLite version of the statement
+       (`sqlite_sql`, required for Prod) runs there;
+     - the result is compared with the dry test, then the file is deleted;
+     - the planner gets the result and asks again; the second card shows the rehearsal.
+
+     A SQLite rehearsal only **approximates** the target database, since its dialect and types differ.
+4. **Running** in a transaction:
+   - committed only when it affects exactly the row count of the approved dry test;
+   - if the count differs (the data changed since the dry test) or an error occurs, everything is rolled back.
+
+**Backups (restore points)** below the database table list the time, table, statement, row count and state (*not
+executed* / *executed · n rows* / *restored*). **Restore** brings the table back to the backup:
+- rows changed, added or deleted since the backup go back, including later changes by others;
+- it commits only when the table then matches the backup exactly;
+- Prod asks a second time.
+
+Backups older than 30 days are deleted.
+
+A trigger on the target table may change other tables that are not backed up. When a trigger leaves the table different
+after the restore test, AIT stops the change.
+
+Options in `appsettings.json` (section `AIThread:Databases`):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `CommandTimeoutSeconds` | `30` | time limit of one query/change |
+| `BackupMaxRows` | `50000` | most rows backed up (also for a rehearsal copy) |
+| `BackupRetentionDays` | `30` | age before a backup is deleted; `0` = kept |
+| `Directory` | empty | folder of `db-backups` and `db-rehearsal`; empty = `%LOCALAPPDATA%\AIThread` |
+
 ### Test accounts
 
 The **Test accounts** card (below Unit tests) holds the accounts the Tester node uses to

@@ -20,6 +20,7 @@ namespace AIThread.Service.Orchestration;
 // TestAccounts: the project's test accounts, with Auto Testing: listed in the brief, and the actors a scenario may name.
 // CanApprove: the developer can be asked for permission (run_command, files outside the root): a session to answer in,
 // or the thread page of a dashboard thread.
+// Databases: the project databases (Project > Detail → Database) the database tools may reach; null or empty: none offered.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -35,7 +36,8 @@ public sealed record PlannerInput(
     UnitTestSession? UnitTests = null,
     IReadOnlyList<SessionModuleChange>? SessionChanges = null,
     TestAccountSet? TestAccounts = null,
-    bool CanApprove = false);
+    bool CanApprove = false,
+    IReadOnlyList<Databases.DatabaseTarget>? Databases = null);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.
