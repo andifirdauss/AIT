@@ -186,8 +186,9 @@ instance kedua mendeteksi yang pertama dan hanya membuka dashboard.
 
 `.\scripts\publish-npm.ps1` membuat dua paket di `dist\npm`: `aithread-win-x64` (berisi `AIThread.exe`, ±80 MB terkompresi) dan
 `aithread` (launcher kecil, `optionalDependencies` ke paket platform, `dependencies` ke `9router`). Pasang dengan
-`npm i -g dist\npm\aithread-win-x64-<versi>.tgz dist\npm\aithread-<versi>.tgz`, lalu jalankan `aithread` (perintah dan
-opsinya sama dengan exe). `-Publish` menjalankan `npm publish` untuk kedua paket; versi diambil dari `<Version>` di
+`npm i -g dist\npm\aithread-win-x64-<versi>.tgz dist\npm\aithread-<versi>.tgz`, lalu jalankan `aithread` atau nama
+pendeknya `ait` (perintah dan opsinya sama dengan exe; sejak 1.14.1). Nama paket npm tetap `aithread`, karena paket `ait`
+sudah dimiliki orang lain. `-Publish` menjalankan `npm publish` untuk kedua paket; versi diambil dari `<Version>` di
 `AIThread.UI.csproj`. Hanya Windows x64.
 
 Karena folder `node_modules` ditimpa saat update, ubah konfigurasi di `%LOCALAPPDATA%\AIThread\appsettings.json` (opsional,
