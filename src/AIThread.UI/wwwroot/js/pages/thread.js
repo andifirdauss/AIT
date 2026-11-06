@@ -518,7 +518,8 @@
     Commit: () => 'Commit',
     Push: () => 'Push',
     Branch: () => t('Buat branch', 'Create a branch'),
-    PullRequest: () => t('Buka pull request', 'Open a pull request')
+    PullRequest: () => t('Buka pull request', 'Open a pull request'),
+    DatabaseWrite: () => t('Ubah data database', 'Change database rows')
   };
 
   // A paused planner or a commit/push of a finished thread waiting for the developer: answered here or in the chat.
@@ -540,6 +541,7 @@
     el('btnApprovePattern').classList.toggle('d-none', !approval.allowPattern || !patterns.length);
     el('approvalPattern').textContent = patterns.join(', ');
     el('btnApproveAll').classList.toggle('d-none', !approval.allowAll);
+    el('btnApproveRehearse').classList.toggle('d-none', !approval.allowRehearse);
   }
 
   el('approvalCard').addEventListener('click', async event => {
@@ -548,7 +550,9 @@
     el('approvalCard').querySelectorAll('button').forEach(b => b.disabled = true);
     try {
       await api.post(`/api/threads/${threadId}/approval`, { decision: button.dataset.approval });
-      toast(button.dataset.approval === 'Deny' ? t('Izin ditolak.', 'Permission denied.') : t('Izin diberikan.', 'Permission given.'), 'success');
+      toast(button.dataset.approval === 'Deny' ? t('Izin ditolak.', 'Permission denied.')
+        : button.dataset.approval === 'Rehearse' ? t('Latihan lokal dimulai.', 'Local rehearsal started.')
+        : t('Izin diberikan.', 'Permission given.'), 'success');
       el('approvalCard').classList.add('d-none');
     } catch (error) {
       toast(error.message, 'error');

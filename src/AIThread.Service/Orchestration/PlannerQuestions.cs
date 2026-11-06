@@ -19,9 +19,24 @@ public sealed record PendingCommand(string Command, string WorkingDirectory, str
 // A web_fetch URL on an outside host waiting for the developer's permission; MaxChars as the planner asked.
 public sealed record PendingFetch(string Url, string? Reason, int? MaxChars = null);
 
+// A change_database statement waiting for the developer, after its backup (BackupId) and its rolled-back dry test
+// (ExpectedRows) passed. Sql and SqliteSql hold the real values; Shown is the statement with its placeholders kept.
+public sealed record PendingDatabaseChange(
+    Guid DatabaseId,
+    string DatabaseName,
+    string Sql,
+    string? SqliteSql,
+    string Shown,
+    Guid BackupId,
+    int ExpectedRows,
+    Databases.TableName Target,
+    IReadOnlyList<Databases.TableName> Tables,
+    string? Reason);
+
 // What the planner waits for permission to do: run a command, read a page on an outside host (Fetch), or carry out a
 // plan that changes files outside the project root (Plan holds it, already validated). Request is what the developer sees.
-public sealed record PlannerApproval(ApprovalRequest Request, ThreadPlan? Plan = null, PendingCommand? Command = null, PendingFetch? Fetch = null);
+public sealed record PlannerApproval(ApprovalRequest Request, ThreadPlan? Plan = null, PendingCommand? Command = null, PendingFetch? Fetch = null,
+    PendingDatabaseChange? DatabaseChange = null);
 
 // A clarifying question from the planner's ask_user tool, in the developer's language; or, with Approval, a request for
 // the developer's permission (not counted as a question).

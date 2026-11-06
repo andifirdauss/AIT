@@ -9,7 +9,8 @@ public sealed partial class TesterAgent
     // What the tester knows about the change: the request, the plan, the diffs, the project's test accounts, the
     // endpoints the code declares and the planner's test section, with a target no route serves set to the route it is
     // meant for.
-    public static string Brief(TestingInput input, TestAccountSet? accounts = null, IReadOnlyList<CodeRoute>? routes = null)
+    public static string Brief(TestingInput input, TestAccountSet? accounts = null, IReadOnlyList<CodeRoute>? routes = null,
+        IReadOnlyList<Databases.DatabaseTarget>? databases = null)
     {
         var plan = input.Plan;
         var test = plan.Test!;
@@ -109,6 +110,9 @@ public sealed partial class TesterAgent
             }
             builder.Append($"Expect: {scenario.Expect}\n");
         }
+        if (databases is { Count: > 0 })
+            builder.Append("\n# Project databases (read only for you)\n").Append(Databases.DatabaseToolText.Databases(databases))
+                .Append("When a scenario stores or changes data, check it with query_database after the request instead of trusting the response alone.\n");
         return builder.ToString();
     }
 }

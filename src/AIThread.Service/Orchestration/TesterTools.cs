@@ -37,17 +37,27 @@ public static class TesterTools
     public static readonly ImmutableArray<string> Methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
     // ui: the browser and http_request; api: http_request only. canAskLogin adds ask_login, canSwitchUser switch_user.
-    public static IReadOnlyList<string> Available(string level, bool canAskLogin = false, bool canSwitchUser = false) =>
+    // databases: the project has databases, so the read-only database tools check what a request stored.
+    public static IReadOnlyList<string> Available(string level, bool canAskLogin = false, bool canSwitchUser = false, bool databases = false) =>
         (level == TestPlan.Ui ? [.. Browser, HttpRequest] : new[] { HttpRequest })
         .Concat([Remember])
         .Concat(canSwitchUser ? [SwitchUser] : [])
+        .Concat(databases ? PlannerTools.DatabaseReads : [])
         .Concat(canAskLogin ? [AskLogin] : []).ToList();
 
     // The same list for the whole run, so the provider's prompt cache keeps matching.
-    public static JsonArray For(string level, bool canAskLogin = false, bool canSwitchUser = false)
+    public static JsonArray For(string level, bool canAskLogin = false, bool canSwitchUser = false, bool databases = false)
     {
         var tools = new JsonArray();
-        foreach (var name in Available(level, canAskLogin, canSwitchUser)) tools.Add(name == AskLogin ? AskLoginDefinition() : Definition(name));
+        foreach (var name in Available(level, canAskLogin, canSwitchUser, databases))
+            tools.Add(name switch
+            {
+                AskLogin => AskLoginDefinition(),
+                PlannerTools.ListDatabases => PlannerTools.ListDatabasesDefinition(),
+                PlannerTools.DescribeTable => PlannerTools.DescribeTableDefinition(),
+                PlannerTools.QueryDatabase => PlannerTools.QueryDatabaseDefinition(),
+                _ => Definition(name)
+            });
         tools.Add(ReportDefinition());
         return tools;
     }

@@ -53,6 +53,8 @@ public sealed partial class PlannerToolRunner
                                          + (Str(args, "wait_for_url") is { } readyAt ? $" → {readyAt}" : string.Empty),
             PlannerTools.ProcessOutput or PlannerTools.StopProcess => $"`{Str(args, "id")}`",
             PlannerTools.WebFetch => $"`{Query("url")}`",
+            PlannerTools.DescribeTable => $"{Str(args, "database")} · `{Str(args, "table")}`",
+            PlannerTools.QueryDatabase or PlannerTools.ChangeDatabase => $"{Str(args, "database")} · `{Query("sql")}`",
             PlannerTools.Investigate => Quote(Str(args, "question")),
             PlannerTools.AskUser => Quote(Str(args, "question")),
             _ => string.Empty

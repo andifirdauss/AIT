@@ -41,9 +41,12 @@ public sealed partial class PlannerAgent
             ApprovalDecision.AlwaysAll => Lang.T("selalu, semua perintah", "always, all commands"),
             _ => Lang.T("sekali", "once")
         };
-        recorder.Log(allowed ? ActivityLevel.Info : ActivityLevel.Warning, allowed
-            ? Lang.T($"Developer mengizinkan ({how}): {Targets(approval)}", $"The developer allowed ({how}): {Targets(approval)}")
-            : Lang.T($"Developer menolak: {Targets(approval)}", $"The developer denied: {Targets(approval)}"));
+        if (decision is ApprovalDecision.Rehearse)
+            recorder.Log(ActivityLevel.Info, Lang.T($"Developer memilih latihan lokal dulu: {Targets(approval)}", $"The developer chose a local rehearsal first: {Targets(approval)}"));
+        else
+            recorder.Log(allowed ? ActivityLevel.Info : ActivityLevel.Warning, allowed
+                ? Lang.T($"Developer mengizinkan ({how}): {Targets(approval)}", $"The developer allowed ({how}): {Targets(approval)}")
+                : Lang.T($"Developer menolak: {Targets(approval)}", $"The developer denied: {Targets(approval)}"));
 
         if (allowed && approval.Plan is { } plan)
         {
@@ -53,7 +56,13 @@ public sealed partial class PlannerAgent
 
         var instruction = decision is null && !string.IsNullOrWhiteSpace(reply) ? $"\nThe developer replied instead (it may change the request):\n{reply.Trim()}" : string.Empty;
         string toolResult;
-        if (allowed && approval.Command is { } command)
+        if (approval.DatabaseChange is { } change)
+            toolResult = decision is ApprovalDecision.Rehearse && approval.Request.AllowRehearse
+                ? await runner.RehearseDatabaseChangeAsync(change, input, recorder, progress, cancellationToken)
+                : allowed
+                    ? await runner.RunApprovedDatabaseChangeAsync(change, input, recorder, progress, cancellationToken)
+                    : $"Error: the developer did not allow changing {change.DatabaseName}. Nothing was run (the backup {change.BackupId.ToString("N")[..8]} was kept). Do without it, or give the statement in the summary for the developer to run.{instruction}";
+        else if (allowed && approval.Command is { } command)
             toolResult = await runner.RunApprovedCommandAsync(command, input, recorder, progress, cancellationToken);
         else if (allowed && approval.Fetch is { } fetch)
             toolResult = await runner.RunApprovedFetchAsync(fetch, input, recorder, progress, cancellationToken);

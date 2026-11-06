@@ -17,8 +17,17 @@ public sealed partial class PlannerToolRunner(
     ICommandRunner commandRunner,
     IApprovalService approvals,
     IBackgroundProcesses processes,
-    IWebFetcher webFetcher) : IPlannerToolRunner
+    IWebFetcher webFetcher,
+    IDatabaseQueryService databases,
+    IDatabaseBackupStore databaseBackups) : IPlannerToolRunner
 {
+    // Prod changes rehearsed in this process (thread + database + statement): the next card for the same change offers
+    // no second rehearsal.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _rehearsed = new(StringComparer.Ordinal);
+
+    // Tables a rehearsal copies at most: the changed one first, then the others the statement names.
+    private const int MaxRehearsalTables = 5;
+
     // Paths and queries are shortened in the client progress so a tool line rarely wraps; the activity log keeps them whole.
     private const int ProgressPathChars = 48;
     private const int ProgressQueryChars = 60;

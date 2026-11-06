@@ -164,6 +164,13 @@ no key yet). Responses **never** hold the snapshot of a test file's content; onl
 | `POST` | `/api/projects/{id}/test-accounts` | `{ "username": "atasan01", "role": "Manager", "attributes": { "Unit": "Sales" }, "notes": null }` → the account. A username is unique per project (case-insensitive), without spaces; at most 30 attributes, 200 accounts |
 | `PUT` | `/api/projects/{id}/test-accounts/{accountId}` | the same as `POST` → the account |
 | `DELETE` | `/api/projects/{id}/test-accounts/{accountId}` | — → `true` |
+| `GET` | `/api/projects/{id}/databases` | — → project databases (`id`, `name`, `provider`, `host`, `port`, `database`, `username`, `hasPassword`, `options`, `environment` `Dev`/`Staging`/`Prod`, `maskedColumns`, `maxRows`, `allowWrites`, `description`, `display`); the password is never returned |
+| `POST` | `/api/projects/{id}/databases` | `{ "name": "orders-dev", "provider": "SqlServer", "host": "localhost", "port": 1433, "database": "Orders", "username": "app", "password": "…", "options": null, "environment": "Dev", "maskedColumns": "full_name", "maxRows": 50, "allowWrites": true, "description": null }` → database. Name unique per project |
+| `PUT` | `/api/projects/{id}/databases/{databaseId}` | like `POST`; `password` `null` = keep, `""` = clear → database |
+| `DELETE` | `/api/projects/{id}/databases/{databaseId}` | — → `true` (its backups are deleted too) |
+| `POST` | `/api/projects/{id}/databases/test` | `{ "id": null, "database": { …as POST… } }` → `success`, `latencyMs`, `message`, `serverVersion`; with `id`, the stored password is used when `password` is `null` |
+| `GET` | `/api/projects/{id}/databases/backups` | — → backups (`id`, `databaseName`, `environment`, `table`, `statement`, `rows`, `bytes`, `threadId`, `createdAt`, `executedAt`, `affectedRows`, `restoredAt`, `restoredBy`, `fileExists`) |
+| `POST` | `/api/projects/{id}/databases/backups/{backupId}/restore` | — → `success`, `updated`, `inserted`, `deleted`, `message`; 409 when the restore failed (nothing committed) |
 | `PUT` | `/api/projects/{id}/testing-settings` | `{ "devPassword": "123" }` — empty/`null` = back to the default `Test@1234` → `settings` |
 | `PUT` | `/api/projects/{id}/testing-settings/impersonation` | `{ "status": "available", "how": "GET /Account/LoginAs?username={{target}}", "back": null, "roles": ["Administrator"], "confirmed": true }` — `status` `available`/`none`/`unknown`; `available` requires `how` and `roles` → `settings` |
 | `POST` | `/api/projects/{id}/testing-settings/impersonation/detect` | — → `settings`. A code scan + a cheap model; the result is not confirmed (`impersonation.source` = `scan`) |

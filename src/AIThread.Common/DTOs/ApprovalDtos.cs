@@ -11,7 +11,9 @@ public record ApprovalItemDto(ApprovalKind Kind, string Target, string? Detail, 
 // What a thread waits for the developer to allow, for the buttons on the thread page. Text is the card the CLI got.
 // AllowPattern: the "always allow the pattern" option is offered (an item has a Pattern). AllowAll: "always allow every
 // command of the project" is offered (an item is a command).
-public record PendingApprovalDto(IReadOnlyList<ApprovalItemDto> Items, string Reason, bool AllowAlways, string Text, bool AfterThread, bool AllowPattern = false, bool AllowAll = false);
+// AllowRehearse: a Prod database change, so "rehearse locally first" (ApprovalDecision.Rehearse) is offered.
+public record PendingApprovalDto(IReadOnlyList<ApprovalItemDto> Items, string Reason, bool AllowAlways, string Text, bool AfterThread, bool AllowPattern = false, bool AllowAll = false,
+    bool AllowRehearse = false);
 
 public record ApproveRequest(ApprovalDecision Decision);
 
