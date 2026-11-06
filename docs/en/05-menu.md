@@ -235,52 +235,80 @@ is never sent.
 
 #### The change_database flow
 
-1. **Backup = restore point.** The whole target table is read and stored compressed and encrypted under
-   `%LOCALAPPDATA%\AIThread\db-backups`.
-   - The file is read back and its checksum compared.
-   - **Nothing runs until the backup succeeded.**
-   - A table without a primary key, or with more than 50,000 rows, is refused: its backup needs a DBA.
+1. **Backup = restore point.** What the statement can change is read and streamed into a compressed, encrypted file
+   under `%LOCALAPPDATA%\AIThread\db-backups`. A backup has **no row limit**, and holds as little as possible:
+   - `UPDATE`/`DELETE` with a plain `WHERE`: only the rows that `WHERE` matches;
+   - a plain `INSERT`: no rows; the keys of the new rows are recorded when the statement runs, and a restore deletes
+     those rows;
+   - anything else (`MERGE`, upserts, `UPDATE … FROM`, `DELETE … USING`, a CTE, no `WHERE`, or a `WHERE` that is not
+     deterministic such as `TOP`/`LIMIT`/`RAND()`): the whole table.
+
+   The rules:
+   - The file is read back to its end and its checksum compared.
+   - **Nothing runs until the backup is complete.** A backup that fails midway (disk full, lost connection, failed
+     check) is deleted; it never counts.
+   - The disk is the only limit: a backup stops before the disk would keep less than the reserve free
+     (`BackupFreeSpaceReserveMb`, default 512 MB).
+   - A table without a primary key is refused.
 2. **Dry test + restore test** in one transaction that is always rolled back:
+   - the backed-up rows must still be the backup (if someone changed them since, the flow stops);
    - the statement runs, and the rows affected and a sample of the changes are noted;
    - the backup is restored by primary key;
-   - the table is compared with the backup by checksum.
+   - the backed-up rows are compared with the backup again by checksum. For a `WHERE` or `INSERT` backup the whole
+     table must also be as it was before the statement, so a trigger, a cascade or a changed primary key that reaches
+     rows outside the backup stops the flow too.
+
+   Comparisons go through a temporary work file under `db-work` (keys hashed, rows encrypted with a key that only
+   lives in memory, the file deleted afterwards), so memory does not grow with the table.
 
    If either fails, the flow stops and nothing runs. MySQL tables that are not InnoDB are refused, since without
    transactions a dry test would really change the data.
 3. **Permission card.** The card shows the environment, the statement (sensitive values stay placeholders), the dry
-   test result, the restore test result and the backup id.
+   test result, the restore test result, the backup id, what the backup covers, its row count and file size, how long
+   the backup and the dry test took, and about how long the real change will hold its transaction (and its locks).
+   Time and locks are not refused, only shown: the developer decides whether to go ahead, rehearse locally, or run it
+   outside peak hours.
    - **Dev/Staging:** *Allow once* / *Always allow* for this database (later changes skip the card, but the backup and
      dry test still run) / *Deny*.
    - **Prod:** no *always*. Option **6. Rehearse locally first** (suggested):
-     - the touched tables (at most 5) are copied to a temporary SQLite file, and the SQLite version of the statement
-       (`sqlite_sql`, required for Prod) runs there;
+     - the touched tables (at most 5) are streamed into a temporary SQLite file (no row limit, the same disk check),
+       and the SQLite version of the statement (`sqlite_sql`, required for Prod) runs there;
      - the result is compared with the dry test, then the file is deleted;
      - the planner gets the result and asks again; the second card shows the rehearsal.
 
      A SQLite rehearsal only **approximates** the target database, since its dialect and types differ.
 4. **Running** in a transaction:
+   - the backed-up rows must still be the backup; otherwise nothing runs and the planner is asked for a fresh backup and
+     dry test;
    - committed only when it affects exactly the row count of the approved dry test;
+   - for an `INSERT`, the keys of the new rows are written next to the backup before the commit. If more new keys
+     appear than rows were inserted (another session inserted at the same time), it is rolled back;
    - if the count differs (the data changed since the dry test) or an error occurs, everything is rolled back.
 
 **Backups (restore points)** below the database table list the time, table, statement, row count and state (*not
-executed* / *executed · n rows* / *restored*). **Restore** brings the table back to the backup:
-- rows changed, added or deleted since the backup go back, including later changes by others;
-- it commits only when the table then matches the backup exactly;
+executed* / *executed · n rows* / *restored*). **Restore** brings the backed-up rows back:
+- a `WHERE` backup: only the rows the `WHERE` matched at backup time; other rows (including others' changes there) are
+  left alone;
+- an `INSERT` backup: the rows the statement inserted are deleted;
+- a whole-table backup: rows changed, added or deleted since the backup go back, including later changes by others;
+- it commits only when those rows then match the backup exactly;
 - Prod asks a second time.
 
 Backups older than 30 days are deleted.
 
-A trigger on the target table may change other tables that are not backed up. When a trigger leaves the table different
-after the restore test, AIT stops the change.
+A trigger or cascade on the target table may change other tables that are not backed up; that is not detected. When a
+trigger leaves the target table different after the restore test, AIT stops the change.
+
+Backups made by an AIT version from before streamed backups (the old format) can no longer be restored automatically.
 
 Options in `appsettings.json` (section `AIThread:Databases`):
 
 | Key | Default | Meaning |
 |---|---|---|
 | `CommandTimeoutSeconds` | `30` | time limit of one query/change |
-| `BackupMaxRows` | `50000` | most rows backed up (also for a rehearsal copy) |
+| `BackupFreeSpaceReserveMb` | `512` | disk space (MB) always left free; a backup, work file or rehearsal copy stops before going below it (there is no row limit) |
 | `BackupRetentionDays` | `30` | age before a backup is deleted; `0` = kept |
-| `Directory` | empty | folder of `db-backups` and `db-rehearsal`; empty = `%LOCALAPPDATA%\AIThread` |
+| `Directory` | empty | folder of `db-backups`, `db-work` and `db-rehearsal`; empty = `%LOCALAPPDATA%\AIThread` |
 
 ### Test accounts
 

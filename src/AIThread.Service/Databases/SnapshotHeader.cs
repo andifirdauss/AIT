@@ -1,4 +1,3 @@
-using System.Data.Common;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -65,41 +64,48 @@ public sealed record Cell(string Tag, string? Text)
     };
 }
 
-// The rows of one table as they were: the content of a backup and of a rehearsal copy. Rows follow Columns.
-public sealed class TableSnapshot
+
+// The shape of a backup or a compared table: its columns in order (primary key marked) and what the backup covers.
+// KeyOf and RowHash give the identity and the content of a row; a checksum is built from them (RowChecksum).
+public sealed class SnapshotHeader
 {
-    public required TableName Table { get; init; }
-    public required IReadOnlyList<SnapshotColumn> Columns { get; init; }
-    public required List<Cell[]> Rows { get; init; }
-    public DateTime TakenAt { get; init; } = DateTime.UtcNow;
+    private readonly int[] _keys;
+    private readonly int[] _compare;
 
-    public IReadOnlyList<int> KeyIndexes => Columns.Select((c, i) => (c, i)).Where(x => x.c.IsKey).Select(x => x.i).ToList();
-
-    public IReadOnlyList<int> CompareIndexes => Columns.Select((c, i) => (c, i)).Where(x => x.c.Writable || x.c.IsKey).Select(x => x.i).ToList();
-
-    public string KeyOf(Cell[] row) => string.Join("\u001f", KeyIndexes.Select(i => row[i].Canonical));
-
-    public string RowHash(Cell[] row) => Hash(string.Join("\u001f", CompareIndexes.Select(i => Columns[i].Name + "=" + row[i].Canonical)));
-
-    // Over the rows sorted by key: equal for two snapshots that hold the same data, whatever order it was read in.
-    public string Checksum()
+    public SnapshotHeader(TableName table, IReadOnlyList<SnapshotColumn> columns, BackupScope scope, DateTime takenAt)
     {
-        var lines = Rows.Select(r => KeyOf(r) + "\u001e" + RowHash(r)).Order(StringComparer.Ordinal);
-        return Hash(string.Join("\n", lines));
+        Table = table;
+        Columns = columns;
+        Scope = scope;
+        TakenAt = takenAt;
+        _keys = columns.Select((c, i) => (c, i)).Where(x => x.c.IsKey).Select(x => x.i).ToArray();
+        _compare = columns.Select((c, i) => (c, i)).Where(x => x.c.Writable || x.c.IsKey).Select(x => x.i).ToArray();
     }
 
-    public static async Task<List<Cell[]>> ReadRowsAsync(DbDataReader reader, int columns, int maxRows, CancellationToken cancellationToken)
+    public TableName Table { get; }
+    public IReadOnlyList<SnapshotColumn> Columns { get; }
+    public BackupScope Scope { get; }
+    public DateTime TakenAt { get; }
+
+    public IReadOnlyList<int> KeyIndexes => _keys;
+
+    // Writable columns and the key: what a restore writes back, so what a checksum covers.
+    public IReadOnlyList<int> CompareIndexes => _compare;
+
+    public bool HasKey => _keys.Length > 0;
+
+    public string KeyOf(Cell[] row) => string.Join("\u001f", _keys.Select(i => row[i].Canonical));
+
+    public string RowHash(Cell[] row) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join("\u001f", _compare.Select(i => Columns[i].Name + "=" + row[i].Canonical)))));
+
+    public Cell[] KeyCells(Cell[] row)
     {
-        var rows = new List<Cell[]>();
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            if (rows.Count >= maxRows) throw new DatabaseToolException($"the table has more than {maxRows} rows, the most a backup or rehearsal copy may hold");
-            var row = new Cell[columns];
-            for (var i = 0; i < columns; i++) row[i] = Cell.From(await reader.IsDBNullAsync(i, cancellationToken) ? null : reader.GetValue(i));
-            rows.Add(row);
-        }
-        return rows;
+        var key = new Cell[_keys.Length];
+        for (var n = 0; n < _keys.Length; n++) key[n] = row[_keys[n]];
+        return key;
     }
 
-    private static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
+    // The same table seen through its key columns only (in key order): the rows of an INSERT's key lists.
+    public SnapshotHeader KeysOnly() => new(Table, _keys.Select(i => Columns[i]).ToList(), Scope, TakenAt);
 }

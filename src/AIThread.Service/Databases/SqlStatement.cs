@@ -15,6 +15,9 @@ public enum SqlStatementKind
 public sealed record SqlClassification(SqlStatementKind Kind, string? Verb, TableName? Target, IReadOnlyList<TableName> Tables, string? Reason)
 {
     public static SqlClassification Refuse(string reason) => new(SqlStatementKind.Refused, null, null, [], reason);
+
+    // What the backup of a write must hold (BackupScope); the whole table whenever the statement cannot be read exactly.
+    public BackupScope Scope { get; init; } = BackupScope.WholeTable;
 }
 
 // Reads one SQL statement without running it: comments and string literals are skipped, quoted names kept exact,
@@ -50,7 +53,22 @@ public static class SqlStatement
         Symbol
     }
 
-    private sealed record Token(TokenType Type, string Text, int Depth)
+    // Words that end the WHERE of an UPDATE/DELETE (what follows limits or returns rows, it does not choose them).
+    private static readonly HashSet<string> FilterEndWords = new(StringComparer.OrdinalIgnoreCase) { "ORDER", "LIMIT", "RETURNING", "OPTION", "OFFSET", "FETCH" };
+
+    // In a WHERE, these make the rows it matches differ from one evaluation to the next: the backup's SELECT and the
+    // statement could then pick different rows, so such a statement is backed up as a whole table.
+    private static readonly HashSet<string> NondeterministicWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "RAND", "RANDOM", "NEWID", "NEWSEQUENTIALID", "UUID", "GEN_RANDOM_UUID", "SYS_GUID", "DBMS_RANDOM", "TOP", "LIMIT",
+        "FETCH", "ROWNUM", "SAMPLE", "TABLESAMPLE"
+    };
+
+    // MySQL modifiers between the verb and the table (UPDATE LOW_PRIORITY IGNORE t …).
+    private static readonly HashSet<string> VerbModifiers = new(StringComparer.OrdinalIgnoreCase) { "LOW_PRIORITY", "HIGH_PRIORITY", "DELAYED", "QUICK", "IGNORE" };
+
+    // Start/End: where the token is in the statement text (End exclusive), so parts of it can be reused verbatim.
+    private sealed record Token(TokenType Type, string Text, int Depth, int Start = 0, int End = 0)
     {
         public bool Is(string word) => Type == TokenType.Word && string.Equals(Text, word, StringComparison.OrdinalIgnoreCase);
 
@@ -113,6 +131,11 @@ public static class SqlStatement
         }
 
         var verb = tokens[verbIndex].Text.ToUpperInvariant();
+        if (verb == "INSERT" && verbIndex + 1 < tokens.Count && (tokens[verbIndex + 1].Is("ALL") || tokens[verbIndex + 1].Is("FIRST")))
+            return SqlClassification.Refuse("a multi-table INSERT ALL/FIRST changes several tables; change one table per statement");
+        var output = tokens.FindIndex(t => t.Depth == 0 && t.Is("OUTPUT"));
+        if (output >= 0 && tokens.Skip(output + 1).Any(t => t.Depth == 0 && t.Is("INTO")))
+            return SqlClassification.Refuse("OUTPUT … INTO writes a second table; change one table per statement");
         var tables = Tables(tokens, provider);
         if (verb == "SELECT")
         {
@@ -126,25 +149,68 @@ public static class SqlStatement
         if (!WriteVerbs.Contains(verb)) return SqlClassification.Refuse($"{verb} is not allowed");
         var target = WriteTarget(tokens, verbIndex, provider);
         if (target is null) return SqlClassification.Refuse($"the table that {verb} changes could not be read from the statement; name it plainly (e.g. {verb} {(verb == "INSERT" ? "INTO " : verb == "DELETE" ? "FROM " : "")}schema.table …)");
-        return new SqlClassification(SqlStatementKind.Write, verb, target, tables.Any(t => t == target) ? tables : [target, .. tables], null);
+        return new SqlClassification(SqlStatementKind.Write, verb, target, tables.Any(t => t == target) ? tables : [target, .. tables], null)
+        {
+            Scope = ScopeOf(sql, tokens, verbIndex, verb, first.Is("WITH"), provider)
+        };
+    }
+
+    // UPDATE/DELETE on one table with a plain WHERE: only the rows it matches (Rows). An INSERT that cannot touch existing
+    // rows: none, the keys it adds are recorded when it runs (Insert). Anything else (MERGE, upserts, UPDATE … FROM,
+    // DELETE … USING, a CTE, no WHERE, a WHERE that is not deterministic): the whole table.
+    private static BackupScope ScopeOf(string sql, List<Token> tokens, int verbIndex, string verb, bool withCte, MemoryStoreProvider provider)
+    {
+        if (verb == "INSERT")
+            return tokens.Any(t => t.Depth == 0 && (t.Is("UPDATE") || t.Is("DUPLICATE") || t.Is("REPLACE"))) ? BackupScope.WholeTable : BackupScope.NewRows;
+        if (withCte || verb is not ("UPDATE" or "DELETE")) return BackupScope.WholeTable;
+
+        var i = SkipTop(tokens, verbIndex + 1);
+        while (i < tokens.Count && tokens[i].Type == TokenType.Word && VerbModifiers.Contains(tokens[i].Text)) i++;
+        if (verb == "DELETE" && i < tokens.Count && tokens[i].Is("FROM")) i++;
+        if (i < tokens.Count && tokens[i].Is("ONLY")) i++;
+        var nameStart = i;
+        if (ReadName(tokens, ref i, provider) is null) return BackupScope.WholeTable;
+
+        // An alias, with or without AS.
+        if (i < tokens.Count && tokens[i].Is("AS")) i++;
+        if (i < tokens.Count && tokens[i].IsName && !(tokens[i].Type == TokenType.Word && ClauseWords.Contains(tokens[i].Text))) i++;
+        var source = sql[tokens[nameStart].Start..tokens[i - 1].End];
+
+        if (i >= tokens.Count || !tokens[i].Is(verb == "UPDATE" ? "SET" : "WHERE")) return BackupScope.WholeTable;
+        var rest = tokens.Skip(i).Where(t => t.Depth == 0).ToList();
+        if (rest.Any(t => t.Is("FROM") || t.Is("JOIN") || t.Is("USING") || t.Is("APPLY") || t.Is("INTO"))) return BackupScope.WholeTable;
+        var wheres = rest.Where(t => t.Is("WHERE")).ToList();
+        if (wheres.Count != 1) return BackupScope.WholeTable;
+
+        var w = tokens.IndexOf(wheres[0]);
+        if (w + 1 >= tokens.Count || tokens[w + 1].Is("CURRENT")) return BackupScope.WholeTable;
+        var end = tokens.FindIndex(w + 1, t => t.Depth == 0 && t.Type == TokenType.Word && FilterEndWords.Contains(t.Text));
+        if (end < 0) end = tokens.Count;
+        if (end <= w + 1) return BackupScope.WholeTable;
+        if (tokens.Skip(w + 1).Take(end - w - 1).Any(t => t.Type == TokenType.Word && NondeterministicWords.Contains(t.Text))) return BackupScope.WholeTable;
+        return BackupScope.Matching(source, sql[tokens[w + 1].Start..tokens[end - 1].End]);
+    }
+
+    // Past SQL Server's TOP (n) / TOP n.
+    private static int SkipTop(List<Token> tokens, int i)
+    {
+        if (i >= tokens.Count || !tokens[i].Is("TOP")) return i;
+        i++;
+        if (i < tokens.Count && tokens[i].Text == "(")
+        {
+            var depth = tokens[i].Depth;
+            i++;
+            while (i < tokens.Count && !(tokens[i].Text == ")" && tokens[i].Depth == depth)) i++;
+        }
+        return i + 1;
     }
 
     // The table named after INSERT INTO / UPDATE / DELETE FROM / MERGE INTO; an alias (SQL Server's UPDATE o … FROM t o)
     // is resolved through the FROM list.
     private static TableName? WriteTarget(List<Token> tokens, int verbIndex, MemoryStoreProvider provider)
     {
-        var i = verbIndex + 1;
-        if (i < tokens.Count && tokens[i].Is("TOP"))
-        {
-            i++;
-            if (i < tokens.Count && tokens[i].Text == "(")
-            {
-                var depth = tokens[i].Depth;
-                i++;
-                while (i < tokens.Count && !(tokens[i].Text == ")" && tokens[i].Depth == depth)) i++;
-                i++;
-            }
-        }
+        var i = SkipTop(tokens, verbIndex + 1);
+        while (i < tokens.Count && tokens[i].Type == TokenType.Word && VerbModifiers.Contains(tokens[i].Text)) i++;
         if (i < tokens.Count && (tokens[i].Is("INTO") || tokens[i].Is("FROM"))) i++;
         if (i < tokens.Count && tokens[i].Is("ONLY")) i++;
 
@@ -254,9 +320,10 @@ public static class SqlStatement
             }
             if (c == '\'' || ((c == 'N' || c == 'n' || c == 'E' || c == 'e') && Peek(sql, i + 1) == '\''))
             {
+                var literalStart = i;
                 if (c != '\'') i++;
                 i = SkipQuoted(sql, i, '\'', "a string literal is not closed");
-                tokens.Add(new Token(TokenType.String, "'…'", depth));
+                tokens.Add(new Token(TokenType.String, "'…'", depth, literalStart, i));
                 continue;
             }
             if (c == '$' && DollarTag(sql, i) is { } tag)
@@ -264,14 +331,16 @@ public static class SqlStatement
                 // PostgreSQL dollar quoting: $$ … $$ or $tag$ … $tag$.
                 var end = sql.IndexOf(tag, i + tag.Length, StringComparison.Ordinal);
                 if (end < 0) throw new FormatException("a $$ string is not closed");
+                var dollarStart = i;
                 i = end + tag.Length;
-                tokens.Add(new Token(TokenType.String, "'…'", depth));
+                tokens.Add(new Token(TokenType.String, "'…'", depth, dollarStart, i));
                 continue;
             }
             if (c is '"' or '`' or '[')
             {
                 var close = c == '[' ? ']' : c;
                 var builder = new StringBuilder();
+                var quotedStart = i;
                 i++;
                 while (true)
                 {
@@ -290,26 +359,26 @@ public static class SqlStatement
                     builder.Append(sql[i]);
                     i++;
                 }
-                tokens.Add(new Token(TokenType.Quoted, builder.ToString(), depth));
+                tokens.Add(new Token(TokenType.Quoted, builder.ToString(), depth, quotedStart, i));
                 continue;
             }
             if (char.IsLetter(c) || c == '_' || c == '@')
             {
                 var start = i;
                 while (i < sql.Length && (char.IsLetterOrDigit(sql[i]) || sql[i] is '_' or '$' or '@' or '#')) i++;
-                tokens.Add(new Token(TokenType.Word, sql[start..i], depth));
+                tokens.Add(new Token(TokenType.Word, sql[start..i], depth, start, i));
                 continue;
             }
             if (char.IsDigit(c))
             {
                 var start = i;
                 while (i < sql.Length && (char.IsLetterOrDigit(sql[i]) || sql[i] == '.')) i++;
-                tokens.Add(new Token(TokenType.Number, sql[start..i], depth));
+                tokens.Add(new Token(TokenType.Number, sql[start..i], depth, start, i));
                 continue;
             }
             if (c == '(')
             {
-                tokens.Add(new Token(TokenType.Symbol, "(", depth));
+                tokens.Add(new Token(TokenType.Symbol, "(", depth, i, i + 1));
                 depth++;
                 i++;
                 continue;
@@ -317,11 +386,11 @@ public static class SqlStatement
             if (c == ')')
             {
                 depth = Math.Max(0, depth - 1);
-                tokens.Add(new Token(TokenType.Symbol, ")", depth));
+                tokens.Add(new Token(TokenType.Symbol, ")", depth, i, i + 1));
                 i++;
                 continue;
             }
-            tokens.Add(new Token(TokenType.Symbol, c.ToString(), depth));
+            tokens.Add(new Token(TokenType.Symbol, c.ToString(), depth, i, i + 1));
             i++;
         }
         return tokens;

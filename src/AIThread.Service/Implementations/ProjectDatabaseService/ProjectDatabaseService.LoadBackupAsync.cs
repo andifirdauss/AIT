@@ -6,7 +6,7 @@ namespace AIThread.Service.Implementations;
 
 public sealed partial class ProjectDatabaseService
 {
-    private async Task<(Common.Entities.DatabaseBackup Record, TableSnapshot Snapshot)> LoadBackupAsync(Guid backupId, CancellationToken cancellationToken)
+    private async Task<(Common.Entities.DatabaseBackup Record, BackupSnapshot Snapshot)> LoadBackupAsync(Guid backupId, CancellationToken cancellationToken)
     {
         try
         {
