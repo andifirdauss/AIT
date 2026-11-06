@@ -70,7 +70,7 @@ public sealed class AgentProxyHandler(
             reason = "session outside any project (no project marker)";
         }
 
-        await PassthroughAsync(http, call, body, reason, settings, cancellationToken);
+        await PassthroughAsync(http, call, body, info, reason, settings, cancellationToken);
     }
 
     public async Task<bool> AuthorizeAsync(HttpRequest request, CancellationToken cancellationToken) =>
@@ -162,7 +162,7 @@ public sealed class AgentProxyHandler(
         }
     }
 
-    private async Task PassthroughAsync(HttpContext http, ProxyCall call, JsonObject body, string reason, RuntimeSettings settings, CancellationToken cancellationToken)
+    private async Task PassthroughAsync(HttpContext http, ProxyCall call, JsonObject body, ClaudeRequestInfo info, string reason, RuntimeSettings settings, CancellationToken cancellationToken)
     {
         var model = await PassthroughModelAsync(settings, cancellationToken);
         if (model is null)
@@ -172,12 +172,11 @@ public sealed class AgentProxyHandler(
             return;
         }
 
-        // A node model served by an official CLI (CliBackend) has no 9router route to forward the client's own request to.
+        // A node model served by an official CLI (CliBackend) has no 9router route to forward the client's own request
+        // to: the request is answered as text by that CLI instead.
         if (CliModelId.IsCli(model))
         {
-            await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status503ServiceUnavailable, "api_error",
-                Lang.T($"AIT: model passthrough '{model}' dijalankan lewat CLI resmi dan tidak bisa dipakai untuk passthrough. Pakai `AIThread.exe chat` atau Dasbor, atau isi model passthrough 9router di menu Pengaturan.",
-                    $"AIT: passthrough model '{model}' runs through an official CLI and cannot be used for passthrough. Use `AIThread.exe chat` or the Dashboard, or set a 9router passthrough model in the Setting menu."));
+            await CliPassthroughAsync(http, call, body, info, model, reason, cancellationToken);
             return;
         }
 
@@ -226,6 +225,66 @@ public sealed class AgentProxyHandler(
 
         activityLog.Debug("proxy", $"Passthrough ({reason}) [{call.Protocol}] {requestedModel} → {model} [{(int)upstream.StatusCode}]"
                                    + (masked > 0 ? Lang.T($" · 🔒 {masked} secret disamarkan", $" · 🔒 {masked} secret(s) masked") : string.Empty));
+    }
+
+    // Passthrough on an official CLI: the client's request becomes plain chat messages (PassthroughTranscript), the CLI
+    // answers through router.ChatAsync (masked like every model call), and the text goes back in the client's own
+    // format. Text only: the client's tools are not offered (a session outside any project can talk, not act).
+    private async Task CliPassthroughAsync(HttpContext http, ProxyCall call, JsonObject body, ClaudeRequestInfo info, string model, string reason,
+        CancellationToken cancellationToken)
+    {
+        var (messages, hadTools) = PassthroughTranscript.ToMessages(call.Protocol, body);
+        if (messages.Count == 0)
+        {
+            await WriteErrorAsync(http.Response, call.Protocol, StatusCodes.Status400BadRequest, "invalid_request_error", "AIT: the request has no message.");
+            return;
+        }
+
+        var request = new ChatCompletionRequest { Model = model, Messages = messages };
+        var shownModel = string.IsNullOrWhiteSpace(info.Model) || info.Model == "unknown" ? model : info.Model;
+        var started = DateTime.UtcNow;
+        if (!info.Stream)
+        {
+            try
+            {
+                var result = await router.ChatAsync(request, null, cancellationToken);
+                http.Response.ContentType = "application/json";
+                await http.Response.WriteAsync(JsonSerializer.Serialize(ClientResponses.Message(call.Protocol, shownModel, result.Content, result.PromptTokens)), cancellationToken);
+            }
+            catch (NineRouterException ex)
+            {
+                await WriteErrorAsync(http.Response, call.Protocol, ex.StatusCode is >= 400 and < 600 ? ex.StatusCode.Value : StatusCodes.Status502BadGateway, "api_error", $"AIT: {ex.Message}");
+                LogCliPassthrough(call, info, model, reason, hadTools, started, ex.Message);
+                return;
+            }
+            LogCliPassthrough(call, info, model, reason, hadTools, started, null);
+            return;
+        }
+
+        await using var writer = ClientResponses.CreateWriter(call.Protocol, http.Response, shownModel);
+        await writer.StartAsync(info.EstimatedInputTokens, cancellationToken);
+        string? error = null;
+        try
+        {
+            await router.ChatAsync(request, delta => writer.TextAsync(delta, cancellationToken), cancellationToken);
+        }
+        catch (NineRouterException ex)
+        {
+            // The stream has started: the failure can only travel as text.
+            error = ex.Message;
+            await writer.TextAsync($"❌ AIT: {ex.Message}", cancellationToken);
+        }
+        if (!cancellationToken.IsCancellationRequested) await writer.FinishAsync(cancellationToken);
+        LogCliPassthrough(call, info, model, reason, hadTools, started, error);
+    }
+
+    private void LogCliPassthrough(ProxyCall call, ClaudeRequestInfo info, string model, string reason, bool hadTools, DateTime started, string? error)
+    {
+        var seconds = (DateTime.UtcNow - started).TotalSeconds;
+        var tools = hadTools ? Lang.T(" · tanpa tool klien", " · without the client's tools") : string.Empty;
+        var line = $"Passthrough CLI ({reason}) [{call.Protocol}] {info.Model} → {model} · {seconds:0.0}s{tools}";
+        if (error is null) activityLog.Debug("proxy", line);
+        else activityLog.Warn("proxy", $"{line} · {error}");
     }
 
     // Explicit setting first, then the cheapest configured workers.
