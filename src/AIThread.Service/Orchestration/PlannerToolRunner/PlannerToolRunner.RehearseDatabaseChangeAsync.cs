@@ -19,17 +19,7 @@ public sealed partial class PlannerToolRunner
         await progress.StepAsync(Lang.T($"🧪 Latihan lokal: salin {change.Target.Display} dari {database.Name} ke SQLite", $"🧪 Local rehearsal: copying {change.Target.Display} from {database.Name} to SQLite"),
             cancellationToken);
         var tables = new[] { change.Target }.Concat(change.Tables.Where(t => t != change.Target)).Take(MaxRehearsalTables).ToList();
-        var copies = new List<TableSnapshot>();
-        try
-        {
-            foreach (var table in tables) copies.Add(await databases.SnapshotAsync(database, table, forRestore: table == change.Target, cancellationToken));
-        }
-        catch (DatabaseToolException ex)
-        {
-            return $"Error: the tables could not be copied for the rehearsal: {ex.Message}. Nothing was run on {database.Name}. Ask the developer whether to run it without a rehearsal (call change_database again).";
-        }
-
-        var result = await databases.RehearseAsync(copies, change.Target, change.SqliteSql, recorder.Thread.Id, cancellationToken);
+        var result = await databases.RehearseAsync(database, tables, change.Target, change.SqliteSql, recorder.Thread.Id, cancellationToken);
         if (result.Problem is not null)
         {
             recorder.Log(ActivityLevel.Warning, Lang.T($"Latihan lokal {database.Name} gagal: {result.Problem}", $"Local rehearsal on {database.Name} failed: {result.Problem}"));

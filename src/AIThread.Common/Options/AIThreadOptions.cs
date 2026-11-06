@@ -52,9 +52,9 @@ public class ProjectDatabaseOptions
     // A query or a change that runs longer is cancelled.
     public int CommandTimeoutSeconds { get; set; } = 30;
 
-    // The most rows of a table a backup (and a rehearsal copy) may hold; a bigger table is refused, with the advice to
-    // have a DBA back it up.
-    public int BackupMaxRows { get; set; } = 50_000;
+    // A backup has no row limit, only the disk: a backup, comparison file or rehearsal copy stops (and nothing runs)
+    // before its disk would keep less than this many MB free.
+    public int BackupFreeSpaceReserveMb { get; set; } = 512;
 
     // Backups older than this are deleted (file and record); 0 keeps them.
     public int BackupRetentionDays { get; set; } = 30;

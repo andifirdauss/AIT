@@ -1,87 +1,56 @@
 # PLAN: Database project — backup tanpa batas (lanjutan)
 
-Branch: `feature/database-query` (dari `main` setelah rilis 1.14.1). **Belum di-commit** saat catatan ini dibuat.
+Branch: `feature/database-query`. Fitur dasar sudah di commit `8709e34 [FEAT] Akses Query`. Backup tanpa batas
+(di bawah) **sudah dikerjakan tetapi belum di-commit**.
 
-## Status sekarang (sudah jadi, test lulus 1092/1092)
-- Rancangan awal: [docs/rancangan/database-query.md](docs/rancangan/database-query.md).
-- Koneksi per mesin + project: entity `ProjectDatabase`, `DatabaseBackup`, migrasi `AddProjectDatabases`.
-  - Service: `ProjectDatabaseService`.
-  - API: `/api/projects/{id}/databases` (CRUD, test koneksi, daftar backup, restore).
-  - UI: kartu Database di Project → Detail (`pages/project-databases.js`).
-- Mesin: `src/AIThread.Service/Databases/`:
-  - `SqlStatement` mengklasifikasi statement;
-  - `DatabaseQueryService` menangani query, describe, snapshot, dry run + test restore, execute, restore, dan latihan
-    SQLite;
-  - `DatabaseBackupStore` menyimpan file backup (gzip + Data Protection) beserta verifikasi checksum;
-  - `SensitiveColumns` + `SecretGuard.Protect` menyamarkan kolom sensitif sebagai placeholder `pii-<kolom>`.
-- Tool planner `list_databases` / `describe_table` / `query_database` / `change_database`; Tester mendapat tiga tool
-  baca.
-- Izin: `ApprovalKind.DatabaseWrite`. Prod tanpa "selalu" dan punya `ApprovalDecision.Rehearse` (pilihan 6), di kartu
-  CLI, halaman thread, dan TUI.
-- Docs ID/EN: `05-menu.md#database`, `12-keamanan.md`, `09-referensi-api.md`, plus `CLAUDE.md`.
-- Test:
-  - `DatabaseQueryTests` (SQLite);
-  - `DatabaseOrchestrationTests` (alur penuh: Dev, Prod + latihan, tanpa PK, PII, batas backup);
-  - `DatabaseSqlServerLiveTests` (opt-in `AIT_LIVE_SQLSERVER=1`, LocalDB, lulus).
-- Bug yang sudah diperbaiki:
-  - parameter `DateTime` → `DateTime2` (SQL Server) / `TimeStamp` (Oracle);
-  - urutan inisialisasi statis di `PlannerTools` (field di file partial lain).
-
-## Masalah yang harus diperbaiki
-Batas `BackupMaxRows` (50.000) salah secara desain. Guard-nya adalah **"tidak ada eksekusi tanpa backup lengkap"**,
-dan aturan itu tidak boleh dibatasi ukuran tabel. Batas itu ada karena implementasi sekarang menampung semua baris di
-memori (`TableSnapshot.Rows`), membaca tabel tiga kali, dan melakukan diff di memori.
-
-## Desain baru (disetujui user)
-1. **Backup di-stream ke disk, tanpa batas baris.**
-   - `SELECT … ORDER BY <PK>` → tulis per baris ke file gzip + Data Protection (format per baris / chunk, bukan satu
-     JSON besar).
-   - Checksum dihitung sambil jalan: hash per baris, digabung berurutan menurut PK, jadi tidak perlu sorting di memori.
-   - Hapus `BackupMaxRows` dari `ProjectDatabaseOptions`, docs, dan test `A_table_above_the_backup_limit…` (ganti
-     dengan test tabel besar atau disk penuh).
-2. **Satu-satunya batas = batas fisik, tetap sebagai guard.**
-   - Cek ruang disk sebelum backup (perkiraan dari `COUNT(*)` × lebar rata-rata).
-   - Backup yang tidak selesai utuh (disk penuh, koneksi putus, verifikasi gagal) → file dihapus dan tidak ada
-     eksekusi. Tidak ada backup sebagian yang dianggap sah.
-3. **Backup sesempit mungkin, tetapi selalu lengkap untuk yang bisa berubah.**
-   - UPDATE/DELETE: ambil `WHERE` dari statement (`SqlStatement`, harus ketat), lalu backup
-     `SELECT * FROM t WHERE <sama>`. Bila `WHERE` tidak bisa dipastikan (JOIN/alias rumit, subquery berkorelasi),
-     backup seluruh tabel (stream).
-   - INSERT/MERGE: catat kunci baris baru saat dry test (diff PK yang di-stream). Restore = hapus kunci itu + kembalikan
-     baris yang diubah MERGE.
-   - Dry test wajib memastikan tidak ada baris di luar backup yang berubah. Bila ada, alur berhenti.
-4. **Dry test, test restore, dan restore di-stream.**
-   - Data saat ini (dibaca berurutan menurut PK, ke file sementara bila engine tidak bisa membuka reader + command
-     bersamaan; SQL Server tanpa MARS) di-merge-join dengan file backup.
-   - Perintah restore dikirim per batch (mis. 500 baris per statement, atau multi-row VALUES), memori O(1).
-   - Contoh perubahan untuk kartu tetap maks 5 baris.
-5. **Waktu dan lock tidak ditolak, tetapi ditampilkan.** Kartu izin menampilkan jumlah baris yang di-backup, ukuran
-   file, durasi backup, dan durasi dry test (perkiraan lama transaksi). Developer memutuskan: lanjut, latihan lokal,
-   atau di luar jam sibuk. Prod tetap selalu ditanya.
-6. **Latihan SQLite** memakai stream yang sama: salinan tabel ditulis bertahap, tanpa batas baris, dengan cek ruang
-   disk.
-
-## File utama yang akan disentuh
-- `Databases/TableSnapshot.cs` → ganti dengan writer/reader stream (mis. `SnapshotWriter`, `SnapshotReader`, checksum
-  berjalan).
-- `Databases/DatabaseQueryService/*`: `SnapshotAsync`, `ReadSnapshotAsync`, `ApplyRestoreAsync`, `Diff`,
-  `DryRunAsync`, `RestoreAsync`, `RehearseAsync`, `LoadCopyAsync`.
-- `Databases/DatabaseBackupStore/*`: format file baru, verifikasi streaming. Backup lama boleh tetap dibaca, atau
-  ditandai tidak didukung.
-- `Databases/SqlStatement.cs`: ekstraksi `WHERE` untuk UPDATE/DELETE (plus test).
-- `Orchestration/PlannerToolRunner/PlannerToolRunner.ChangeDatabaseAsync.cs`: info ukuran dan durasi di kartu.
-- `Common/Options/AIThreadOptions.cs` (hapus `BackupMaxRows`), docs `05-menu.md` (tabel opsi + teks batas), EN, dan
-  `rancangan/database-query.md`.
+## Selesai
+- Fitur dasar (commit `8709e34`): koneksi per mesin + project, tool planner, izin Prod + latihan SQLite, docs, test.
+  Rancangan: [docs/rancangan/database-query.md](docs/rancangan/database-query.md).
+- **Backup tanpa batas baris.** `BackupMaxRows` dihapus. Satu-satunya batas adalah disk (`BackupFreeSpaceReserveMb`,
+  bawaan 512 MB; `DiskSpace`), dicek sebelum mulai, per frame, dan dari perkiraan `COUNT(*)` × ukuran per baris.
+  - `SnapshotFile` (`SnapshotWriter`/`SnapshotReader`): format 2. Frame gzip + Data Protection terikat id file, nomor
+    urut, trailer jumlah baris + `RowChecksum` (jumlah SHA-256 per baris, tidak bergantung urutan, tanpa sorting).
+  - Backup gagal di tengah → file dihapus dan tidak ada eksekusi. Format lama ditandai tidak didukung.
+- **Backup sesempit mungkin** (`BackupScope` dari `SqlStatement`):
+  - `Rows`: `WHERE` persis dari `UPDATE`/`DELETE` biasa;
+  - `Insert`: kunci baris baru dicatat saat eksekusi (`<backup>.added`), karena identity saat dry test berbeda;
+  - `Table`: selain itu, termasuk `WHERE` nondeterministik (`TOP`/`LIMIT`/`RAND`/`NEWID`/…).
+- **Dry test, test restore, eksekusi, dan restore di-stream** lewat `DiffScratch`: SQLite sementara di `db-work`, kunci
+  di-hash, baris dienkripsi AES-GCM dengan kunci di memori. Delete restore per batch (≤ 500 kunci). Contoh perubahan
+  tetap maks 5.
+  - Dry test `Rows`/`Insert` membandingkan checksum **seluruh tabel** sebelum/sesudah, sehingga trigger, cascade, atau
+    PK yang berubah dan menyentuh baris di luar backup menghentikan alur.
+  - Eksekusi mengecek ulang bahwa baris yang dicakup masih sama dengan backup. Untuk `Insert`, kunci baru harus sama
+    dengan baris terpengaruh.
+- **Kartu izin** menampilkan cakupan, jumlah baris dan ukuran backup, lama backup, lama dry test, dan `Hold`
+  (perkiraan lama lock).
+- **Latihan SQLite** di-stream tanpa batas baris, per 10.000 baris, dengan cek disk.
+- Tambahan dari review sendiri: `SqlStatement` kini menolak `INSERT ALL/FIRST` (Oracle multi-tabel) dan
+  `OUTPUT … INTO` (menulis tabel kedua); modifier MySQL (`LOW_PRIORITY`, `IGNORE`, …) dilewati saat membaca target.
+- Docs ID/EN (`05-menu.md`, `12-keamanan.md`), `rancangan/database-query.md`, dan `CLAUDE.md` diperbarui.
 
 ## Verifikasi
-- `dotnet test tests/AIThread.Tests -c Release` (Release dipakai bila AIT jalan di debugger VS, karena Debug terkunci).
+- `dotnet test tests/AIThread.Tests -c Release`: 1113/1115 lulus. Dua yang gagal tidak terkait database dan gagal
+  karena lingkungan mesin: `ChatWindowsTests.Prompt_mode_turns_image_paths_into_numbered_markers` (path temp berisi
+  spasi) dan `EmbeddedRedisServerTests.A_taken_port_is_left_to_its_owner` (port sedang dipakai).
 - Test baru:
-  - tabel besar (mis. 200.000 baris SQLite), dengan pemakaian memori tetap kecil dan restore terverifikasi;
-  - `WHERE` sempit di tabel besar, yang hanya mem-backup baris terdampak;
-  - statement yang mengubah baris di luar backup, yang harus berhenti;
-  - disk penuh / backup gagal di tengah, tanpa eksekusi.
-- Live: `AIT_LIVE_SQLSERVER=1` (LocalDB). PostgreSQL, MySQL, dan Oracle belum pernah diuji ke server sungguhan.
+  - `DatabaseLargeTableTests`: 200.000 baris, backup + dry test + eksekusi + restore. Puncak memori managed hidup
+    2,0 MB, backup 3,7 MB, dry test 8,2 s, hold 0,4 s. `WHERE` sempit di tabel besar hanya mem-backup 10 baris.
+  - `DatabaseQueryTests`: cakupan per statement, backup `WHERE`, INSERT (kunci dicatat, restore hanya menghapus baris
+    itu), data berubah sejak backup, trigger ke baris di luar backup, file backup rusak, disk penuh.
+  - `DatabaseOrchestrationTests`: disk penuh (tanpa file/record tersisa), alur INSERT end to end.
+
+- Live `AIT_LIVE_SQLSERVER=1` (LocalDB 17.0) lulus. Kasus yang diuji: backup `WHERE` + `IDENTITY_INSERT`,
+  `UPDATE … FROM` sebagai seluruh tabel, dan INSERT ke tabel IDENTITY (kunci dicatat saat eksekusi, restore menghapus
+  baris itu).
+
+## Belum
+- PostgreSQL, MySQL, dan Oracle belum pernah diuji ke server sungguhan.
 - UI kartu Database belum dicoba di browser.
+- Batasan yang diketahui ada di bagian "Batasan yang diketahui" pada rancangan:
+  - trigger/cascade ke tabel lain tidak terdeteksi;
+  - jeda kecil READ COMMITTED antara cek dan statement;
+  - dry test `Rows`/`Insert` membaca seluruh tabel dua kali.
 
 ## Sesudahnya
 - Commit di `feature/database-query`, merge ke `main`, lalu rilis (versi, banner `_Layout.cshtml`, README npm,

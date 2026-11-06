@@ -18,13 +18,14 @@ public sealed partial class PlannerToolRunner
 
         try
         {
-            var affected = await databases.ExecuteAsync(database, change.Sql, change.ExpectedRows, cancellationToken);
+            var (_, backup) = await databaseBackups.LoadAsync(change.BackupId, cancellationToken);
+            var affected = await databases.ExecuteAsync(database, change.Sql, change.ExpectedRows, backup, cancellationToken);
             await databaseBackups.MarkExecutedAsync(change.BackupId, affected, cancellationToken);
             var backupId = change.BackupId.ToString("N")[..8];
             recorder.Log(ActivityLevel.Success, Lang.T($"Database {database.Name} diubah: {affected} baris di {change.Target.Display} (backup {backupId} bisa memulihkannya).",
                 $"Database {database.Name} changed: {affected} rows in {change.Target.Display} (backup {backupId} can restore it)."));
             await progress.DetailAsync(Lang.T($"✅ {affected} baris diubah · backup {backupId}", $"✅ {affected} rows changed · backup {backupId}"), cancellationToken, hang: Hang(string.Empty));
-            return $"Committed: {affected} row(s) of {change.Target.Display} on {database.Name} changed, the same count as the dry test. Backup {backupId} restores the table as it was (Project > Detail → Database); mention it in the summary.";
+            return $"Committed: {affected} row(s) of {change.Target.Display} on {database.Name} changed, the same count as the dry test. Backup {backupId} restores the changed rows as they were (Project > Detail → Database); mention it in the summary.";
         }
         catch (DatabaseToolException ex)
         {

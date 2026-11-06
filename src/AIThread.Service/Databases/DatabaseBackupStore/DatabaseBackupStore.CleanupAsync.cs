@@ -12,7 +12,11 @@ public sealed partial class DatabaseBackupStore
 
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
         var old = await db.DatabaseBackups.Where(b => b.CreatedAt < cutoff).ToListAsync(cancellationToken);
-        foreach (var backup in old) TryDelete(backup.FilePath);
+        foreach (var backup in old)
+        {
+            TryDelete(backup.FilePath);
+            TryDelete(backup.FilePath + ".added");
+        }
         db.DatabaseBackups.RemoveRange(old);
         await db.SaveChangesAsync(cancellationToken);
         return old.Count;
