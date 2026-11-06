@@ -17,11 +17,13 @@ public sealed partial class SetupService
         var projectCount = databaseConnected ? await CountProjectsAsync(cancellationToken) : 0;
         var storage = databaseConnected ? await Safe<MemoryStorageSettingsDto?>(async () => await memoryStorage.GetAsync(cancellationToken), null) : null;
         var clis = await EnabledClisAsync(proxyBaseUrl, cancellationToken);
+        var nodes = databaseConnected ? await Safe(() => nodeService.GetAllAsync(cancellationToken), []) : [];
+        var engines = await Safe(() => cliModels.DetectAsync(refreshRouter, cancellationToken), []);
 
         IReadOnlyList<SetupStepDto> steps =
         [
             SystemStep(databaseConnected, shortMemoryStore.IsConnected, storage),
-            RouterStep(routerStatus),
+            RouterStep(routerStatus, CliOnly(nodes), engines.FirstOrDefault(e => e.Installed)),
             NodesStep(pipeline),
             ProjectStep(projectCount),
             CliStep(clis),
