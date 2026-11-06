@@ -23,7 +23,8 @@ public sealed partial class NineRouterService(
     ISettingService settingService,
     ISecretGuard secrets,
     ILogger<NineRouterService> logger,
-    TimeSpan? stallTimeout = null) : INineRouterService
+    TimeSpan? stallTimeout = null,
+    ICliModelService? cliModels = null) : INineRouterService
 {
     public const string HttpClientName = "NineRouter";
     public static string KeyMissingMessage => Lang.T("9router mewajibkan API key, tetapi belum ada API key tersimpan. Isi API key di menu Pengaturan lalu klik Simpan.", "9router requires an API key, but no API key is stored yet. Fill in the API key in the Setting menu, then click Save.");
