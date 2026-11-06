@@ -8,6 +8,13 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.14.1
+
+- **Perintah pendek `ait`**: paket ini kini memasang perintah `ait` selain `aithread`, jadi cukup ketik `ait chat`,
+  `ait setup`, dan seterusnya. `aithread` tetap jalan dan isinya sama persis.
+  - Nama paket npm tetap `aithread`, karena paket `ait` sudah dimiliki orang lain.
+  - Bila perintah `ait` dari paket lain sudah terpasang global, npm menolak menimpanya; tetap pakai `aithread`.
+
 ## Yang baru di 1.14.0
 
 - **CLI resmi sebagai mesin model, tanpa 9router**:
@@ -297,7 +304,11 @@ Framework** lewat MSBuild, serta dukungan **Codex CLI, Gemini CLI, opencode, dan
 ```powershell
 npm i -g aithread
 aithread            # menu interaktif
+ait chat            # `ait` = nama pendek untuk perintah yang sama
 ```
+
+Paket ini memasang dua perintah, `aithread` dan `ait`, yang isinya sama persis. Bila perintah `ait` dari paket lain
+sudah terpasang global, npm menolak menimpanya; tetap pakai `aithread`, atau hapus paket lain itu dulu.
 
 Untuk mencoba tanpa memasang: `npx aithread serve`. Untuk update ke versi terbaru: `npm i -g aithread@latest`.
 Web UI juga menampilkan *Update tersedia* di sidebar bila ada versi baru.
