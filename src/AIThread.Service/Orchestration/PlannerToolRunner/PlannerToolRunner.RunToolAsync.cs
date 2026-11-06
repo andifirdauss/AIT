@@ -8,9 +8,11 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class PlannerToolRunner
 {
+    // shown: the arguments as the model wrote them (placeholders kept), for what the developer and the model see.
     private async Task<PlannerToolOutcome> RunToolAsync(
         string tool,
         JsonObject args,
+        JsonObject shown,
         PlannerInput input,
         WorkspaceTools tools,
         HashSet<Guid> memoriesRead,
@@ -123,6 +125,18 @@ public sealed partial class PlannerToolRunner
 
                 case PlannerTools.WebFetch:
                     return await WebFetchAsync(input, args, prefix, recorder, progress, cancellationToken);
+
+                case PlannerTools.ListDatabases:
+                    return await ListDatabasesAsync(input, prefix, recorder, progress, cancellationToken);
+
+                case PlannerTools.DescribeTable:
+                    return await DescribeTableAsync(input, args, prefix, recorder, progress, cancellationToken);
+
+                case PlannerTools.QueryDatabase:
+                    return await QueryDatabaseAsync(input, args, shown, prefix, recorder, progress, cancellationToken);
+
+                case PlannerTools.ChangeDatabase:
+                    return await ChangeDatabaseAsync(input, args, shown, prefix, recorder, progress, cancellationToken);
 
                 default:
                     return new PlannerToolOutcome($"Error: unknown tool '{tool}'.", null, true);

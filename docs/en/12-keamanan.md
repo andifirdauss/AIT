@@ -212,6 +212,23 @@ After AIT restarts, values that were not marked only show up in the list again o
   recognize become `[secret:<label>]`, but code, file paths and prompts stay — share it only with people who may see
   them ([Log & diagnostics](05-menu.md#log--diagnostics)).
 
+## Project databases
+
+Databases under Project → Detail → *Database* ([details](05-menu.md#database)):
+
+- **Credentials:** the password is encrypted with Data Protection on this machine, and never goes to a model, a log or
+  an export. The model only sees the connection name.
+- **Personal data:** plain secret masking only covers passwords/tokens. For query results, sensitive columns are masked
+  too (the connection's list + name detection: email, phone, national id, tax id, address, birth date, card/account
+  numbers, …) as `{{AIT_SECRET:pii-<column>:<id>}}`. Rows per query are limited.
+- **Changing data:** nothing changes without a verified backup, a rolled-back dry test and restore test, and the
+  developer's permission. A Prod database is never *always allowed*.
+- **Local copies:** a Prod rehearsal copies tables to a temporary SQLite file, then deletes it once it is done. The
+  comparison work files under `db-work` hold only key hashes and rows encrypted with a key that lives in memory, and are
+  deleted afterwards. Encrypted backups (Data Protection per part of the file, bound to that file) stay under
+  `%LOCALAPPDATA%\AIThread\db-backups` until they expire (30 days by default).
+- **Advice:** use a database user with the least rights possible, e.g. read only for a connection that must not change.
+
 ## Limits
 
 - Masking works from patterns and setting names. A secret in an unusual format, or written straight in code without a

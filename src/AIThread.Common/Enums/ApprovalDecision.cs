@@ -9,5 +9,8 @@ public enum ApprovalDecision
     Always = 2,
     Deny = 3,
     AlwaysPattern = 4,
-    AlwaysAll = 5
+    AlwaysAll = 5,
+
+    // A Prod database change: copy the touched tables to a local SQLite file and try the change there first.
+    Rehearse = 6
 }

@@ -208,6 +208,24 @@ Setelah AIT di-restart, nilai yang belum ditandai baru muncul lagi di daftar saa
   dikenali pola diganti `[secret:<label>]`, tapi kode, path file, dan prompt tetap ada — bagikan hanya ke orang yang
   boleh melihatnya ([Log & diagnostik](05-menu.md#log--diagnostik)).
 
+## Database project
+
+Database di Project → Detail → *Database* ([detail](05-menu.md#database)):
+
+- **Kredensial:** password dienkripsi Data Protection di mesin ini, dan tidak pernah dikirim ke model, log, atau
+  export. Model hanya melihat nama koneksi.
+- **Data pribadi:** penyamaran secret biasa hanya menutup password/token. Untuk hasil query, kolom sensitif juga
+  disamarkan (daftar per koneksi + deteksi nama: email, telepon, NIK, NPWP, alamat, tanggal lahir, nomor
+  kartu/rekening, …) menjadi `{{AIT_SECRET:pii-<kolom>:<id>}}`. Jumlah baris per query dibatasi.
+- **Perubahan data:** tidak ada perubahan tanpa backup yang sudah diverifikasi, dry test dan test restore yang
+  di-rollback, serta izin developer. Database Prod tidak pernah *diizinkan selalu*.
+- **Salinan lokal:** latihan Prod menyalin tabel ke file SQLite sementara, lalu menghapusnya setelah selesai. File
+  kerja perbandingan di `db-work` hanya berisi hash kunci dan baris yang dienkripsi dengan kunci di memori, lalu dihapus.
+  Backup terenkripsi (Data Protection per bagian file, terikat ke file itu) tersimpan di
+  `%LOCALAPPDATA%\AIThread\db-backups` sampai umurnya habis (bawaan 30 hari).
+- **Saran:** pakai user database dengan hak seminimal mungkin, misalnya hanya baca untuk koneksi yang tidak boleh
+  diubah.
+
 ## Batasan
 
 - Penyamaran bekerja berdasarkan pola dan nama setting. Secret dengan format yang tidak lazim, atau yang ditulis langsung

@@ -8,6 +8,22 @@ Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.15.0
+
+- **Database project**: kartu *Database* di Project → Detail menyimpan koneksi SQL Server, PostgreSQL, MySQL, Oracle,
+  atau SQLite **di mesin ini saja** (password dienkripsi), dengan environment Dev, Staging, atau Prod.
+  - Planner dan Tester membaca lewat `list_databases`, `describe_table`, dan `query_database`, di transaksi baca-saja
+    yang selalu di-rollback, dengan batas baris.
+  - Kolom sensitif (email, telepon, NIK, password, …, plus daftar per koneksi) sampai ke model sebagai placeholder, dan
+    dipulihkan ke nilai asli saat dipakai di perubahan.
+- **Perubahan data lewat `change_database`** (hanya planner, satu `INSERT`/`UPDATE`/`DELETE`/`MERGE` pada tabel ber-PK):
+  - **Backup terverifikasi dulu, tanpa batas baris**: hanya baris yang cocok dengan `WHERE`, kunci baris baru untuk
+    `INSERT`, atau seluruh tabel. Backup di-stream ke file terenkripsi; satu-satunya batas adalah ruang disk.
+  - Dry test + test restore dalam transaksi yang selalu di-rollback, lalu kartu izin yang menampilkan contoh perubahan,
+    ukuran backup, dan perkiraan lama lock.
+  - Prod tidak pernah *diizinkan selalu* dan menawarkan latihan lokal di SQLite dulu.
+  - Eksekusi di-commit hanya bila jumlah baris sama dengan dry test; backup bisa dipulihkan dari kartu Database.
+
 ## Yang baru di 1.14.1
 
 - **Perintah pendek `ait`**: paket ini kini memasang perintah `ait` selain `aithread`, jadi cukup ketik `ait chat`,

@@ -43,4 +43,9 @@ public interface ISecretGuard
     void SetAllowed(IEnumerable<string> ids);
 
     string? Reveal(string id);
+
+    // Masks one known value under a label of its own (a sensitive database column, "pii-email"): the model sees the
+    // placeholder, and AIT writes the value back wherever it restores placeholders (tool arguments, a change_database
+    // statement). Masks whether or not secret masking is on in the settings.
+    string Protect(string label, string value);
 }

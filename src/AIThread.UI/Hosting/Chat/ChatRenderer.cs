@@ -483,6 +483,9 @@ public sealed partial class ChatRenderer(bool rich)
     public static IReadOnlyList<ApprovalOption> ApprovalOptions(PendingApprovalDto approval)
     {
         var options = new List<ApprovalOption> { new('y', '1', ApprovalDecision.Once, Lang.T("**Izinkan sekali** — hanya untuk aksi ini", "**Allow once** — for this action only")) };
+        if (approval.AllowRehearse)
+            options.Insert(0, new('l', '6', ApprovalDecision.Rehearse, Lang.T("**Latihan lokal dulu** (disarankan) — coba perubahan di salinan SQLite lokal; AIT bertanya lagi sesudahnya",
+                "**Rehearse locally first** (suggested) — try the change on a local SQLite copy; AIT asks again afterwards")));
         if (approval.AllowAlways)
             options.Add(new('a', '2', ApprovalDecision.Always, Lang.T("**Izinkan selalu** — disimpan di mesin ini untuk project ini (cabut di Project → Detail → Izin AIT)",
                 "**Always allow** — saved on this machine for this project (revoke in Project → Detail → AIT permissions)")));
