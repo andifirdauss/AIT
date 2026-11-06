@@ -1,10 +1,14 @@
+using System.Text;
 using System.Text.Json.Nodes;
+using AIThread.API.Infrastructure;
 using AIThread.Common.Enums;
 using AIThread.Common.Options;
 using AIThread.Service.CliBackend;
 using AIThread.Service.Implementations;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
+using AIThread.Service.Proxy;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -67,6 +71,51 @@ public class ClaudeCliLiveTests
         Assert.True(await db.ThreadFileSnapshots.AnyAsync(s => s.ThreadRunId == result.ThreadId));
         var thread = await harness.LoadThreadAsync(result.ThreadId);
         Assert.NotEmpty(thread.Tasks);
+    }
+
+    // A request the proxy does not orchestrate (a session title, here) with a cli: passthrough model: answered by the
+    // CLI in the client's own format, plain JSON and SSE.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Proxy_passthrough_on_a_cli_model_answers_in_the_client_format(bool stream)
+    {
+        if (!Enabled) return;
+        await using var harness = await OrchestrationHarness.CreateAsync(
+            settings => settings.PassthroughModel = "cli:claude:haiku",
+            services => services.AddSingleton<INineRouterService>(sp => new NineRouterService(sp.GetRequiredService<IHttpClientFactory>(),
+                sp.GetRequiredService<ISettingService>(), sp.GetRequiredService<ISecretGuard>(), NullLogger<NineRouterService>.Instance,
+                cliModels: sp.GetRequiredService<ICliModelService>())));
+        var handler = ActivatorUtilities.CreateInstance<AgentProxyHandler>(harness.Services);
+        var body = new JsonObject
+        {
+            ["model"] = "claude-haiku-5-5",
+            ["max_tokens"] = 64,
+            ["stream"] = stream,
+            ["system"] = "Write a 3-word title for the conversation. Reply with the title only.",
+            ["messages"] = new JsonArray { new JsonObject { ["role"] = "user", ["content"] = "Please fix the login bug in the auth module." } }
+        };
+        var http = new DefaultHttpContext();
+        http.Request.Method = "POST";
+        http.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body.ToJsonString()));
+        var output = new MemoryStream();
+        http.Response.Body = output;
+
+        await handler.HandleAsync(http, new ProxyCall(ClientProtocol.AnthropicMessages), CancellationToken.None);
+
+        var text = Encoding.UTF8.GetString(output.ToArray());
+        Assert.Equal(200, http.Response.StatusCode);
+        if (stream)
+        {
+            Assert.Contains("event: content_block_delta", text);
+            Assert.Contains("event: message_stop", text);
+        }
+        else
+        {
+            var reply = JsonNode.Parse(text)!;
+            Assert.Equal("message", reply["type"]!.GetValue<string>());
+            Assert.False(string.IsNullOrWhiteSpace(reply["content"]![0]!["text"]!.GetValue<string>()));
+        }
     }
 
     [Fact]
