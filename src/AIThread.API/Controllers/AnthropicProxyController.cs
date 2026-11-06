@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using AIThread.API.Infrastructure;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
 using AIThread.Service.Proxy;
@@ -38,7 +39,8 @@ public class AnthropicProxyController(
             return;
         }
 
-        if (TryParse(raw, out var body) && await handler.PassthroughModelAsync(settings, cancellationToken) is { } model)
+        // A CLI model (CliBackend) has no 9router route to count with: the estimate below is used.
+        if (TryParse(raw, out var body) && await handler.PassthroughModelAsync(settings, cancellationToken) is { } model && !CliModelId.IsCli(model))
         {
             body["model"] = model;
             try
