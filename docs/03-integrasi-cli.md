@@ -420,9 +420,17 @@ milik AIT: planner, executor, reviewer, tester, wrapper, dan memory. Hasilnya, p
   lalu model menjawab dengan blok `<tool_call name="…">{json}</tool_call>`, yang diubah AIT menjadi tool call biasa.
 - **Error:** belum login, model tidak tersedia, atau batas pemakaian tercapai menjadi error yang sama seperti 9router.
   Akibatnya retry dan node cadangan (`FallbackNodeId`) tetap bekerja; boleh juga mencampur node CLI dan node 9router.
+- **CLI diarahkan ke AIT (menu CLI, global atau per project):** tidak terjadi loop. Proses `claude -p` milik node
+  tidak membaca `~/.claude/settings.json`, sehingga tetap langsung ke provider.
+  - Request yang diorkestrasi masuk ke pipeline seperti biasa.
+  - Request passthrough (judul sesi, ringkasan, `/compact`, sesi di luar project) dijawab lewat CLI bila model
+    passthrough adalah `cli:`. Jawabannya dikirim dalam format klien (Anthropic/OpenAI/Gemini, JSON atau stream).
+  - Jawaban passthrough itu **hanya teks**: tool klien tidak ditawarkan. Tool call dan hasil tool yang sudah ada di
+    percakapan ikut sebagai teks, dan model diberi tahu bahwa tool tidak tersedia. Sesi di luar project bisa diajak
+    bicara, tapi tidak bisa mengubah file; daftarkan project-nya agar diorkestrasi.
+  - `count_tokens` memakai estimasi.
 - **Batasan:** `Temperature`/`MaxTokens` node diabaikan. Tidak ada prompt cache antar panggilan, karena seluruh
-  percakapan dikirim ulang setiap panggilan. Passthrough proxy tidak bisa memakai model `cli:`; pakai
-  `AIThread.exe chat` atau Dasbor. Tahap ini baru Claude Code; Codex dan Gemini CLI menyusul.
+  percakapan dikirim ulang setiap panggilan. Tahap ini baru Claude Code; Codex dan Gemini CLI menyusul.
 
 Opsi di `appsettings.json` (section `AIThread:ClaudeCli`):
 

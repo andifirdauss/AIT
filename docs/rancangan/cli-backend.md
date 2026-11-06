@@ -47,7 +47,21 @@ file, memory, status git, wiki bisnis).
 - AIT tidak membaca, menyalin, atau meneruskan kredensial CLI; binary resmi dijalankan sebagai user OS yang sama.
 - Kebijakan managed perusahaan tetap berlaku, dan pemakaian tercatat di akun itu.
 
+## Passthrough proxy lewat CLI
+Bila CLI coding diarahkan ke AIT dan model passthrough adalah `cli:`:
+- `AgentProxyHandler.CliPassthroughAsync` mengubah body klien menjadi pesan chat teks lewat `PassthroughTranscript`.
+  Ini berlaku untuk keempat protokol; tool call/hasil tool menjadi teks, dan gambar ikut.
+- Pesan itu dijawab lewat `router.ChatAsync`, sehingga disamarkan dan diteruskan ke CLI.
+- Jawaban ditulis dengan `ClientResponses.Message` / `CreateWriter` yang sama dengan balasan orkestrasi.
+- Tool klien tidak ditawarkan, dan model diberi catatan `TextOnlyNote`. Tool call asli dalam format klien perlu
+  emulasi penuh per protokol, dan itu belum dikerjakan.
+- `count_tokens` dengan model `cli:` langsung memakai estimasi.
+
+Loop tidak terjadi walaupun `~/.claude/settings.json` mengarah ke AIT. Ini sudah diuji: dengan settings palsu yang
+mengarah ke listener lokal, `claude -p` default mengirim 22 request ke sana, sedangkan dengan
+`--setting-sources local` mengirim 0.
+
 ## Di luar cakupan tahap 1
 - Adapter Codex dan Gemini CLI.
-- Passthrough proxy lewat CLI. Saat ini dijawab error dua bahasa yang mengarahkan ke `AIThread.exe chat`/Dasbor.
+- Tool call asli pada passthrough lewat CLI (sesi di luar project yang bisa bertindak).
 - Prompt cache antar panggilan (bisa memakai `--resume` per thread+peran bila biaya jadi masalah).

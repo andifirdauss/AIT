@@ -421,9 +421,18 @@ thread, its tasks, `ThreadFileSnapshot`, rollback, memory, git status and the bu
   normal tool calls.
 - **Errors:** not logged in, model unavailable, or usage limit reached become the same errors as 9router's. As a
   result, retries and fallback nodes (`FallbackNodeId`) keep working, and CLI and 9router nodes can be mixed.
+- **A CLI pointed at AIT (CLI menu, global or per project):** there is no loop. The node's `claude -p` process does
+  not read `~/.claude/settings.json`, so it still goes straight to the provider.
+  - Orchestrated requests go to the pipeline as usual.
+  - Passthrough requests (session title, recap, `/compact`, sessions outside a project) are answered through the CLI
+    when the passthrough model is `cli:`. The answer is sent in the client's own format (Anthropic/OpenAI/Gemini,
+    JSON or stream).
+  - That passthrough answer is **text only**: the client's tools are not offered. Tool calls and tool results already
+    in the conversation come along as text, and the model is told that no tools are available. A session outside a
+    project can talk but cannot change files; register its project so it is orchestrated.
+  - `count_tokens` uses an estimate.
 - **Limits:** the node's `Temperature`/`MaxTokens` are ignored. There is no prompt cache across calls, because the
-  whole conversation is sent again on each call. Proxy passthrough cannot use a `cli:` model; use `AIThread.exe chat`
-  or the Dashboard. Only Claude Code for now; Codex and Gemini CLI come later.
+  whole conversation is sent again on each call. Only Claude Code for now; Codex and Gemini CLI come later.
 
 Options in `appsettings.json` (section `AIThread:ClaudeCli`):
 
