@@ -1,3 +1,5 @@
+using AIThread.Common.Localization;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Models;
 using Microsoft.Extensions.Logging;
 
@@ -28,6 +30,14 @@ public sealed partial class NineRouterService
         {
             try
             {
+                // A "cli:<tool>:<model>" node runs on an official CLI of this machine instead (CliBackend), after the
+                // masking above, with the same retries and fallback.
+                if (CliModelId.TryParse(request.Model, out var cliModel))
+                {
+                    if (cliModels is null) throw new NineRouterException(Lang.T($"Model CLI '{request.Model}' tidak tersedia di proses ini.", $"CLI model '{request.Model}' is not available in this process."), 400);
+                    return await cliModels.ChatAsync(cliModel, request,
+                        new CliCallLimits(TimeSpan.FromSeconds(Math.Max(30, settings.RequestTimeoutSeconds)), _stallTimeout), trackedDelta, cancellationToken);
+                }
                 return await SendChatAsync(settings, request, trackedDelta, cancellationToken);
             }
             catch (NineRouterException ex) when (ex.IsTransient && attempt < maxAttempts && !emitted && !cancellationToken.IsCancellationRequested

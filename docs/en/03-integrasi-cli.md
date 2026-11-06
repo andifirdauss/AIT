@@ -392,6 +392,49 @@ permission requests with *once*.
 | 2 | wrong arguments, or no project found |
 | 3 | the thread waits for permission and `-y` was not given (the thread keeps waiting; its page link is printed) |
 
+## Official CLI as the model engine (no 9router)
+
+This is for a developer who has no provider login in 9router, for example because a manager signed the company
+account in to Claude Code directly. AIT runs that official CLI behind the scenes as a node's *model*. Orchestration
+stays with AIT: planner, executor, reviewer, tester, wrapper and memory. As a result, recording stays complete: the
+thread, its tasks, `ThreadFileSnapshot`, rollback, memory, git status and the business wiki.
+
+- **Node model:** `cli:claude:<model>`. The aliases `opus`, `sonnet`, `haiku`, `fable` follow the provider's newest
+  model; full names such as `cli:claude:claude-sonnet-5` work too. When `claude` is installed, these models appear in
+  the model picker of the Node menu and the Setup preset, in the **Claude Code (CLI)** group.
+- **Setup:** choose CLI models in the node preset, e.g. `cli:claude:opus` as the strong model and `cli:claude:haiku`
+  as the cheap one. When every active node uses `cli:`, the *Connect 9router* step counts as done (not needed).
+- **Login:** the login already on that computer is used (the account owner runs `claude` → `/login`). AIT never
+  reads, copies or forwards the credentials. Usage counts on that account like any CLI usage, and the company's
+  *managed* policy still applies.
+- **How it runs:** every model call is one stateless `claude -p` process:
+  - built-in tools are off (`--tools ""`), with no MCP, skill or saved session;
+  - the AIT agent's own system prompt is used;
+  - it runs in an empty working folder under `%LOCALAPPDATA%\AIThread\cli-work`;
+  - it uses `--setting-sources local`, so `~/.claude/settings.json` (hooks, an `ANTHROPIC_BASE_URL` pointing at AIT)
+    and `CLAUDE.md` do not apply.
+
+  `SecretGuard` masks the prompt before it is sent. A loopback `ANTHROPIC_BASE_URL` in the environment is dropped to
+  avoid a loop.
+- **Planner/tools node/tester tools:** the CLI has no function calling for AIT. The tool list is written into the
+  system prompt, and the model answers with `<tool_call name="…">{json}</tool_call>` blocks, which AIT turns into
+  normal tool calls.
+- **Errors:** not logged in, model unavailable, or usage limit reached become the same errors as 9router's. As a
+  result, retries and fallback nodes (`FallbackNodeId`) keep working, and CLI and 9router nodes can be mixed.
+- **Limits:** the node's `Temperature`/`MaxTokens` are ignored. There is no prompt cache across calls, because the
+  whole conversation is sent again on each call. Proxy passthrough cannot use a `cli:` model; use `AIThread.exe chat`
+  or the Dashboard. Only Claude Code for now; Codex and Gemini CLI come later.
+
+Options in `appsettings.json` (section `AIThread:ClaudeCli`):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `Path` | empty | `claude.exe`, `claude.cmd` or `cli.js`. Empty = PATH → `%USERPROFILE%\.local\bin` → npm shim |
+| `MaxProcesses` | `4` | CLI processes at once on this machine (all nodes) |
+| `SettingSources` | `local` | value of `--setting-sources`. Set `user` when the company configuration (e.g. Bedrock) is in user settings |
+
+Detected CLI status: `GET /api/router/cli`.
+
 ## Verification
 
 1. **Open a new session** in that CLI — the configuration is only read when a session starts. For Codex run

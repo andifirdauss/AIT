@@ -15,6 +15,7 @@ namespace AIThread.Service.Implementations;
 public sealed partial class SetupService(
     IDbContextFactory<AIThreadDbContext> dbFactory,
     INineRouterService router,
+    ICliModelService cliModels,
     INodeService nodeService,
     ISettingService settingService,
     IShortMemoryStore shortMemoryStore,

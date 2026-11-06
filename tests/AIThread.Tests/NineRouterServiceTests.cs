@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using AIThread.Common.DTOs;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Implementations;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Models;
@@ -261,6 +262,59 @@ public class NineRouterServiceTests
 
         Assert.InRange(rateLimited.TotalSeconds, 5, 7.5);
         Assert.InRange(serverError.TotalSeconds, 2, 3);
+    }
+
+    [Fact]
+    public async Task Cli_model_runs_on_the_cli_backend_with_masked_messages_and_no_router_call()
+    {
+        var handler = new StubHandler(_ => throw new InvalidOperationException("9router must not be called for a cli: model"));
+        var cli = new RecordingCli(_ => new ChatCompletionResult("ok", [], "stop", 1, 1));
+        var router = new NineRouterService(new StubFactory(handler), new StubSettings(GoodKey), TestSecrets.Guard(),
+            NullLogger<NineRouterService>.Instance, cliModels: cli);
+        var token = "ghp_" + new string('a', 18) + "B1c2D3e4F5g6H7i8J9";
+
+        var result = await router.ChatAsync(new ChatCompletionRequest { Model = "cli:claude:sonnet", Messages = [ChatMessages.User($"token {token}")] });
+
+        Assert.Equal("ok", result.Content);
+        Assert.Equal(new CliModelId("claude", "sonnet"), cli.Model);
+        Assert.DoesNotContain(token, cli.SeenMessages);
+        Assert.Contains("{{AIT_SECRET:", cli.SeenMessages);
+    }
+
+    [Fact]
+    public async Task Cli_login_failure_is_not_retried_so_the_node_falls_back()
+    {
+        var cli = new RecordingCli(_ => throw new NineRouterException("not logged in") { IsProviderLoginRequired = true });
+        var router = new NineRouterService(new StubFactory(new StubHandler(_ => throw new InvalidOperationException())), new StubSettings(GoodKey),
+            TestSecrets.Guard(), NullLogger<NineRouterService>.Instance, cliModels: cli);
+
+        var ex = await Assert.ThrowsAsync<NineRouterException>(() =>
+            router.ChatAsync(new ChatCompletionRequest { Model = "cli:claude:opus", Messages = [ChatMessages.User("hi")] }));
+
+        Assert.True(ex.IsModelUnavailable);
+        Assert.Equal(1, cli.Calls);
+    }
+
+    private sealed class RecordingCli(Func<ChatCompletionRequest, ChatCompletionResult> answer) : ICliModelService
+    {
+        public CliModelId? Model { get; private set; }
+        public string SeenMessages { get; private set; } = string.Empty;
+        public int Calls { get; private set; }
+
+        public Task<ChatCompletionResult> ChatAsync(CliModelId model, ChatCompletionRequest request, CliCallLimits limits,
+            Func<string, Task>? onDelta = null, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            Model = model;
+            SeenMessages = request.Messages.ToJsonString();
+            return Task.FromResult(answer(request));
+        }
+
+        public Task<IReadOnlyList<RouterModelDto>> GetModelsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<RouterModelDto>>([]);
+
+        public Task<IReadOnlyList<CliBackendStatusDto>> DetectAsync(bool refresh = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CliBackendStatusDto>>([]);
     }
 
     private static HttpResponseMessage Json(HttpStatusCode status, string body) =>
