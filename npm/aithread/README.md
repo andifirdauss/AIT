@@ -3,10 +3,30 @@
 **AIT** adalah proxy lokal untuk coding CLI (Claude Code, Codex CLI, Gemini CLI, opencode, Qwen Code, oh-my-pi) yang
 memecah satu permintaan menjadi tugas-tugas kecil. **Planner** (model paling cerdas) membaca kode dan menyusun rencana.
 Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT membuild project dan **reviewer**
-(opsional) memeriksa hasilnya sampai lolos, lalu **wrapper** merangkum hasilnya untuk Anda. Semua model diakses lewat
-[9router](https://github.com/decolua/9router).
+(opsional) memeriksa hasilnya sampai lolos, lalu **wrapper** merangkum hasilnya untuk Anda. Model diakses lewat
+[9router](https://github.com/decolua/9router), atau lewat CLI resmi yang sudah login di komputer Anda (Claude Code).
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
+
+## Yang baru di 1.14.0
+
+- **CLI resmi sebagai mesin model, tanpa 9router**:
+  - Node kini bisa memakai model `cli:claude:opus`, `cli:claude:sonnet`, `cli:claude:haiku`, atau `cli:claude:fable`.
+  - AIT menjalankan Claude Code (`claude -p`) di belakang dengan login yang sudah ada di komputer itu, mis. akun
+    perusahaan yang diloginkan atasan. AIT tidak membaca, menyalin, atau meneruskan kredensialnya.
+  - Orkestrasi dan penulisan file tetap milik AIT, jadi thread, journal file, rollback, memory, dan status git tetap
+    terekam.
+- **Pemakaiannya**:
+  - Model CLI muncul di menu Node dan preset Setup (grup *Claude Code (CLI)*) bila `claude` terpasang.
+  - Node CLI dan node 9router bisa dicampur; retry dan node cadangan tetap jalan.
+  - Bila semua node memakai `cli:`, langkah 9router di Setup tidak diperlukan.
+- **Tool planner, tools node, dan tester** diemulasikan lewat teks (`<tool_call>`), karena CLI tidak menerima tool AIT.
+- **Aman bila Claude Code diarahkan ke AIT** (menu CLI, global atau per project):
+  - Proses `claude -p` milik node tidak membaca `~/.claude/settings.json`, jadi tidak muter balik ke AIT.
+  - Request passthrough (judul sesi, ringkasan, `/compact`, sesi di luar project) dijawab lewat CLI sebagai teks, dalam
+    format klien.
+- **Opsi** di `appsettings.json` section `AIThread:ClaudeCli` (`Path`, `MaxProcesses`, `SettingSources`), dan status CLI
+  di `GET /api/router/cli`.
 
 ## Yang baru di 1.13.0
 
