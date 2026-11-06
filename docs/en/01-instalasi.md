@@ -188,7 +188,8 @@ a second instance detects the first one and only opens the dashboard.
 `.\scripts\publish-npm.ps1` creates two packages in `dist\npm`: `aithread-win-x64` (holding `AIThread.exe`, ±80 MB
 compressed) and `aithread` (a small launcher, `optionalDependencies` on the platform package, `dependencies` on
 `9router`). Install them with `npm i -g dist\npm\aithread-win-x64-<version>.tgz dist\npm\aithread-<version>.tgz`, then
-run `aithread` (same commands and options as the exe). `-Publish` runs `npm publish` for both packages; the version is
+run `aithread` or its short name `ait` (same commands and options as the exe; since 1.14.1). The npm package name stays
+`aithread`, because the `ait` package belongs to someone else. `-Publish` runs `npm publish` for both packages; the version is
 taken from `<Version>` in `AIThread.UI.csproj`. Windows x64 only.
 
 Because the `node_modules` folder is overwritten on update, change the configuration in
