@@ -3,12 +3,15 @@ using System.Diagnostics.CodeAnalysis;
 namespace AIThread.Service.CliBackend;
 
 // A node model served by an official coding CLI on this machine instead of 9router: "cli:<tool>:<model>", e.g.
-// "cli:claude:opus". The CLI runs with its own login (whoever signed it in), so a developer without a 9router account
+// "cli:claude:opus", "cli:codex:gpt-5.5", "cli:gemini:pro". The CLI runs with its own login (whoever signed it in), so a developer without a 9router account
 // can still work through AIT. An empty model ("cli:claude") means the CLI's own default model.
 public sealed record CliModelId(string Tool, string Model)
 {
     public const string Prefix = "cli:";
     public const string Claude = "claude";
+    public const string Codex = "codex";
+    public const string Gemini = "gemini";
+    public const string Antigravity = "agy";
 
     public string Id => Model.Length == 0 ? $"{Prefix}{Tool}" : $"{Prefix}{Tool}:{Model}";
 

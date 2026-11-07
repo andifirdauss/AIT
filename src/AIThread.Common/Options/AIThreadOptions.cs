@@ -43,6 +43,12 @@ public class AIThreadOptions
 
     public ClaudeCliOptions ClaudeCli { get; set; } = new();
 
+    public CodexCliOptions CodexCli { get; set; } = new();
+
+    public GeminiCliOptions GeminiCli { get; set; } = new();
+
+    public AntigravityCliOptions AntigravityCli { get; set; } = new();
+
     public ProjectDatabaseOptions Databases { get; set; } = new();
 }
 
@@ -63,19 +69,42 @@ public class ProjectDatabaseOptions
     public string? Directory { get; set; }
 }
 
-// Claude Code as a model engine for nodes whose model is "cli:claude:<model>" (CliBackend): AIT runs the official
-// `claude -p` headless with the login already on this machine, built-in tools off.
-public class ClaudeCliOptions
+// An official coding CLI run as a model engine for nodes whose model is "cli:<tool>:<model>" (CliBackend): AIT runs
+// it headless with the login already on this machine, built-in tools off.
+public class CliEngineOptions
 {
-    // claude.exe, claude.cmd or the package's cli.js. Empty = PATH, then %USERPROFILE%\.local\bin, then the npm shim.
+    // The executable, the npm shim (.cmd) or the package's JS entry. Empty = PATH, then the usual install folders.
     public string? Path { get; set; }
 
-    // CLI processes running at once on this machine, over all nodes.
+    // Processes of this CLI running at once on this machine, over all nodes.
     public int MaxProcesses { get; set; } = 4;
+}
 
+// Claude Code: `claude -p` ("cli:claude:<model>").
+public class ClaudeCliOptions : CliEngineOptions
+{
     // --setting-sources of every run. "local" (in an empty working folder) skips the user's ~/.claude/settings.json and
     // CLAUDE.md: their hooks and an ANTHROPIC_BASE_URL pointing back at AIT must not apply. Managed policy always does.
     public string SettingSources { get; set; } = "local";
+}
+
+// Codex CLI: `codex exec` ("cli:codex:<model>").
+public class CodexCliOptions : CliEngineOptions
+{
+    // --ignore-user-config: skip $CODEX_HOME/config.toml (its MCP servers, profiles, and a provider pointing back at
+    // AIT). The login (auth.json) and managed config still apply. Turn off when the company provider is in config.toml.
+    public bool IgnoreUserConfig { get; set; } = true;
+}
+
+// Gemini CLI: `gemini -p` ("cli:gemini:<model>").
+public class GeminiCliOptions : CliEngineOptions;
+
+// Antigravity CLI: `agy -p` ("cli:agy:<model>", the models `agy models` lists).
+public class AntigravityCliOptions : CliEngineOptions
+{
+    // agy saves every run as a conversation (~/.gemini/antigravity-cli/conversations/<id>.db and brain/<id>/, a few
+    // hundred KB each, dozens per thread). AIT deletes the ones its own calls made, right after each call.
+    public bool DeleteConversations { get; set; } = true;
 }
 
 // Starting (and installing) 9router for the user. Only applies when the 9router URL in Setting is a local address.
