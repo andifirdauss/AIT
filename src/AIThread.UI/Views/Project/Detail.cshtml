@@ -63,9 +63,17 @@
                 <hr />
                 <div class="fw-semibold mb-1">@Lang.T("Commit di luar AIT", "Commits made outside AIT")</div>
                 <p class="text-secondary mb-2">@Lang.T("Bila aktif, commit yang dibuat tanpa AIT dirangkum node memory menjadi catatan perubahan dan ikut ke wiki bisnis. Memakai token per commit; dipakai bersama semua developer project ini.", "When on, commits made without AIT are summarized by the memory node into change entries and go into the business wiki. Costs tokens per commit; shared by every developer of this project.")</p>
-                <div class="form-check form-switch mb-2">
+                <div class="alert alert-info small py-2 mb-2 d-none" id="ingestSuggest">
+                    <div id="ingestSuggestText" class="mb-2"></div>
+                    <button class="btn btn-sm btn-primary" type="button" id="btnIngestSuggest">@Lang.T("Nyalakan & rangkum", "Turn on & summarize")</button>
+                </div>
+                <div class="form-check form-switch mb-1">
                     <input class="form-check-input" type="checkbox" role="switch" id="ingestEnabled" />
                     <label class="form-check-label" for="ingestEnabled">@Lang.T("Rangkum commit di luar AIT", "Summarize commits made outside AIT")</label>
+                </div>
+                <div class="form-check form-switch mb-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="ingestWorkingBranch" />
+                    <label class="form-check-label" for="ingestWorkingBranch" title="@Lang.T("Commit di branch yang sedang di-checkout di clone tiap developer yang belum ada di ref (feature branch, atau main yang belum di-push) ikut dirangkum, jadi memory sudah tahu sebelum di-merge. Rebase, cherry-pick, dan squash merge-nya tidak dirangkum ulang.", "Commits on the branch checked out in each developer's clone that are not in the ref yet (a feature branch, or main not pushed yet) are summarized too, so memory knows them before they are merged. Their rebase, cherry-pick and squash merge are not summarized again.")">@Lang.T("Baca juga branch yang sedang di-checkout", "Also read the branch checked out")</label>
                 </div>
                 <div class="row g-2 mb-2">
                     <div class="col-7"><input type="text" class="form-control form-control-sm mono" id="ingestRef" maxlength="250" placeholder="@Lang.T("ref (kosong = environment prod)", "ref (empty = the prod environment)")" /></div>

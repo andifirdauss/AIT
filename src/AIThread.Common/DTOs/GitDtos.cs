@@ -52,6 +52,9 @@ public record SaveProjectEnvironmentsRequest(IReadOnlyList<SaveProjectEnvironmen
 
 // Summarizing commits made outside AIT (shared per project key). Ref = as set (null = the production environment's
 // ref, else origin/HEAD); EffectiveRef = what is read in this clone (null: none found). Counts per status.
+// WorkingBranch: the branch checked out here is read too (its commits not in the ref yet); CurrentBranch = that branch
+// (null when HEAD is detached). Outside: while it is off, the commits made outside AIT in the last OutsideDays days that
+// it would take on (the ref's and the working branch's), so the card can suggest turning it on; null when on or unknown.
 public record CommitIngestDto(
     bool Enabled,
     string? Ref,
@@ -62,12 +65,17 @@ public record CommitIngestDto(
     int Skipped,
     int Failed,
     DateTime? LastIngestedAt,
-    IReadOnlyList<IngestedCommitDto> Recent);
+    IReadOnlyList<IngestedCommitDto> Recent,
+    bool WorkingBranch = true,
+    string? CurrentBranch = null,
+    int? Outside = null,
+    int OutsideDays = 0);
 
+// Branch: the working branch it was read from (null = the ref).
 public record IngestedCommitDto(Guid Id, string Commit, IngestStatus Status, string? Title, string? Author, DateTime? CommittedAt, string? ClaimedBy,
-    Guid? MemoryId, string? Note, DateTime CreatedAt);
+    Guid? MemoryId, string? Note, DateTime CreatedAt, string? Branch = null);
 
-// Since: null keeps the stored moment (turning it on for the first time starts now).
-public record SaveCommitIngestRequest(bool Enabled, string? Ref, DateTime? Since, int? MaxPerRun);
+// Since: null keeps the stored moment (turning it on for the first time starts now). WorkingBranch: null keeps it.
+public record SaveCommitIngestRequest(bool Enabled, string? Ref, DateTime? Since, int? MaxPerRun, bool? WorkingBranch = null);
 
 public record CommitIngestResultDto(int Ingested, int Skipped, int Failed, string? Problem);

@@ -140,6 +140,25 @@ environment dari entri yang sudah masuk environment itu (F3).
 Worker *ingest commit* merangkum commit yang tidak berasal dari thread AIT (diff + pesan commit) menjadi memory dan
 digest wiki, dengan author dari author commit. Memakai token, jadi opt-in per project.
 
+### 9. Prompt langsung ke provider lain (F5)
+
+Developer yang memakai CLI langsung ke provider-nya (tanpa proxy AIT) tidak meninggalkan thread, jadi memory tidak tahu
+perubahannya. Tiga lapis, dari yang paling murah:
+
+- **Belum di-commit** → bagian brief `# Uncommitted changes made outside AIT` (`GitChangeTracker.OutsideChangesAsync`):
+  `git diff HEAD --name-status/--numstat --relative` + `ls-files --others --exclude-standard`, dikurangi file yang isinya
+  masih = `AfterHash` snapshot thread AIT (30 hari). Tanpa model, tanpa isi file, tidak disimpan ke memory (isinya masih
+  bisa berubah).
+- **Sudah di-commit di branch kerja** → ingest commit membaca juga `rev-list HEAD ^<ref>` (branch yang di-checkout,
+  bukan `HEAD` detached). Commit yang muncul lagi dengan id lain tidak dirangkum ulang: `patch-id --stable` sama
+  (rebase/amend/cherry-pick) atau semua blob commit = blob commit branch lain yang sudah dirangkum (squash merge) → baris
+  `IngestedCommit` *Skipped* dengan catatan, dan SHA-nya ditambahkan ke `ThreadChange.Commits` commit asal (squash juga ke
+  commit lebih awal branch itu yang semua path-nya tersentuh). Status diikuti AIT pengklaim di clone-nya:
+  `Pushed`/`Committed`/`Lost` (`Lost` hanya bila objek commit masih ada di clone ini tapi tak tercapai ref mana pun —
+  objek yang tidak ada berarti clone lain, status dibiarkan).
+- **Fitur mati** → `GET git/ingest` menghitung commit 30 hari terakhir yang tidak dikenal (`KnownAsync`, tanpa membaca
+  commit) → kartu Git menyarankan *Nyalakan & rangkum* (`since` = 30 hari lalu).
+
 ## Fase
 
 | Fase | Isi |
@@ -148,6 +167,7 @@ digest wiki, dengan author dari author commit. Memakai token, jadi opt-in per pr
 | **F2** ✓ | Tabel bersama `ThreadChanges` (status + commit + blob per file per thread, ditulis AIT pemilik thread, dibaca AIT developer lain); `Pushed`, `Stashed`, `Lost`; `git fetch --all --prune` berkala per project (bawaan 15 menit, 0 = mati) + kartu Git di Proyek > Detail; `PresenceAsync` (commit di `HEAD` atau semua blob di `HEAD` = ada di branch ini) → planner melewati memory yang dibuang/hilang dan menandai + menurunkan memory dari branch lain / belum di-commit; ringkasan modul melewati entri yang dibuang/hilang; badge status di menu Memori. Beda dari rancangan: fallback `patch-id` / hunk diganti pencocokan baris diff tugas (≥ 80% baris tambahan ada dan ≥ 80% baris hapus hilang di `HEAD`, `GitEdited`); commit revert di riwayat `HEAD` = `Discarded`, bukan `OnOtherBranch`; isi yang sama ditulis ulang memakai commit terbaru yang menambah blob. Batas: entri yang sudah masuk ringkasan modul sebelum dibuang tidak dikeluarkan lagi. |
 | **F3** ✓ | Environment per project key (bersama tim, Proyek > Detail → Git), `ChangePresence` per thread + environment (bukan `CommitPresence` per commit: commit squash berbeda dari commit thread), dicek setelah fetch / sapuan 5 menit / *Cek sekarang* oleh AIT developer mana pun; halaman wiki per environment (`BusinessEnvPage`) = **salinan** revisi terbaru yang semua thread sumbernya sudah masuk (bukan susun ulang oleh model: deterministik, tanpa token; konsekuensinya halaman tertahan bila thread revisi lama belum masuk); compare dua sisi (environment atau wiki kerja) + perubahan yang hanya di satu sisi; filter memory per environment. |
 | **F4** ✓ | Ingest commit di luar AIT: opt-in per project key (bersama), ref (bawaan: environment prod → `origin/HEAD`), mulai dari saat dinyalakan, maks commit per putaran; commit AIT dilewati (commit/squash thread, atau semua blob = tulisan thread); klaim di `IngestedCommits` (satu AIT per commit); prompt `CommitExtractor` (node memory murah) → memory `Change` + `ThreadChange` *ingested* (status, environment, dan wiki per environment tanpa jalur khusus) + digest ke penulis wiki AIT pengklaim. Gagal = tidak dicoba ulang otomatis. |
+| **F5** ✓ | Perubahan dari prompt di luar AIT (bagian 9): brief `# Uncommitted changes made outside AIT`; ingest branch kerja (`CommitIngestSettings.IgnoreWorkingBranch`, bawaan dibaca) + `IngestedCommit.PatchId`/`Branch` + salinan rebase/squash tanpa token + status `Pushed`/`Committed`/`Lost` per clone pengklaim; `PresenceAsync` menanyakan `merge-base --is-ancestor` untuk commit ingest yang lebih tua dari jendela riwayat; saran menyalakan di kartu Git. |
 
 ## Skenario
 

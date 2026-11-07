@@ -50,6 +50,8 @@ public sealed partial class ThreadOrchestrator
             var unitTests = await unitTestStage.OpenAsync(project, settings, cancellationToken);
             var (codeMap, labelsFromSession, promptFiles, previousTurn) = await PromptCodeMapAsync(project, request, thread.Id, cancellationToken);
             var sessionChanges = await SessionChangesAsync(project, request.Session, thread.Id, cancellationToken);
+            // What the working tree holds that no AIT thread wrote (another CLI, an IDE): memory does not know it yet.
+            var outsideChanges = await gitChanges.OutsideChangesAsync(project.ProjectId, cancellationToken);
             // Without a test project there is nothing to restore into or to run before the change.
             if (unitTests is { Suites.Count: > 0 })
             {
@@ -70,7 +72,7 @@ public sealed partial class ThreadOrchestrator
             var canApprove = !string.IsNullOrEmpty(request.SessionId) || request.Source == ThreadSource.Dashboard;
             var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles,
                 AutoTesting: tester is not null, PreviousTurn: previousTurn, UnitTests: unitTests, SessionChanges: sessionChanges, CanApprove: canApprove,
-                Databases: await DatabasesAsync(project.ProjectId, cancellationToken));
+                Databases: await DatabasesAsync(project.ProjectId, cancellationToken), OutsideChanges: outsideChanges);
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);

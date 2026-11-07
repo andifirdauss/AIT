@@ -426,6 +426,165 @@ public class GitChangeTrackerTests
         Assert.Contains("made outside AIT", digests[1].Text);
     }
 
+    private const string OtherEntry = """
+        {"entry": {"title": "Tambah class Other", "module": "Other", "other_modules": [], "feature": "Class `Other` tersedia.",
+          "files": [{"path": "src/Other.cs", "change": "class `Other` baru"}], "validation": [], "flow": [], "notes": [], "keywords": ["Other"]}}
+        """;
+
+    [Fact]
+    public async Task A_working_branch_commit_is_in_memory_before_it_is_merged_and_its_rebase_and_squash_merge_are_not_summarized_again()
+    {
+        await using var harness = await CreateAsync();
+        await harness.AddStandardNodesAsync();
+        GitIn(harness.Project.Root, DateTimeOffset.UtcNow.AddDays(-2), "commit", "--quiet", "--amend", "--no-edit");
+        using var remote = new TempWorkspace();
+        GitIn(remote.Root, "init", "--bare", "--quiet", "--initial-branch=main");
+        Git(harness, "remote", "add", "origin", remote.Root);
+        Git(harness, "push", "--quiet", "origin", "main");
+        Git(harness, "fetch", "--quiet", "origin");
+        for (var i = 0; i < 3; i++) harness.Router.On(ScriptedAgent.CommitExtractor, ScriptedRouter.Text(OtherEntry));
+        var ingestor = harness.Service<ICommitIngestor>();
+        var settings = await ingestor.SaveAsync(harness.ProjectId, new SaveCommitIngestRequest(true, "origin/main", DateTime.UtcNow.AddHours(-1), 10));
+        Assert.True(settings!.WorkingBranch);
+
+        // Two commits made with another tool on a feature branch nobody pushed: summarized before any merge.
+        Git(harness, "checkout", "--quiet", "-b", "feature/other");
+        harness.Project.Write("src/Other.cs", "class Other { }\n");
+        Git(harness, "add", "src/Other.cs");
+        Git(harness, "commit", "--quiet", "-m", "Add Other");
+        harness.Project.Write("src/Other.cs", "class Other { int X; }\n");
+        Git(harness, "commit", "--quiet", "-am", "Other gets X");
+        var second = Git(harness, "rev-parse", "HEAD");
+        var result = await ingestor.RunAsync(harness.ProjectId);
+        Assert.Equal((2, 0, 0), (result.Ingested, result.Skipped, result.Failed));
+        Assert.Equal(2, harness.Router.CallsTo(ScriptedAgent.CommitExtractor).Count);
+        var ids = await ChangesAsync(harness);
+        Assert.Equal(2, ids.Count);
+        Assert.All(ids, c => Assert.Equal(("feature/other", GitChangeState.Committed), (c.GitBranch, c.State)));
+        var secondId = ids.Single(c => c.GitBaseCommit == second).Id;
+        Assert.Equal("feature/other", (await ingestor.GetAsync(harness.ProjectId))!.CurrentBranch);
+
+        // Rebased (a new id, the same patch): a copy, no model call.
+        GitIn(harness.Project.Root, DateTimeOffset.UtcNow.AddMinutes(1), "commit", "--quiet", "--amend", "--no-edit");
+        var rebased = Git(harness, "rev-parse", "HEAD");
+        Assert.NotEqual(second, rebased);
+        Assert.Equal(0, (await ingestor.RunAsync(harness.ProjectId)).Ingested);
+        Assert.Equal(2, harness.Router.CallsTo(ScriptedAgent.CommitExtractor).Count);
+        Assert.Contains(rebased, (await ChangesAsync(harness)).Single(c => c.Id == secondId).Commits);
+
+        // Squash merged into main and pushed: the squash commit stands for both, nothing summarized twice.
+        Git(harness, "checkout", "--quiet", "main");
+        Git(harness, "merge", "--quiet", "--squash", "feature/other");
+        Git(harness, "commit", "--quiet", "-m", "Squash feature/other");
+        var squash = Git(harness, "rev-parse", "HEAD");
+        Git(harness, "push", "--quiet", "origin", "main");
+        Git(harness, "fetch", "--quiet", "origin");
+        Assert.Equal(0, (await ingestor.RunAsync(harness.ProjectId)).Ingested);
+        Assert.Equal(2, harness.Router.CallsTo(ScriptedAgent.CommitExtractor).Count);
+        await using (var shared = await harness.Service<AIThread.Data.Memory.LongMemoryStore>().CreateGitAsync())
+        {
+            var notes = await shared.IngestedCommits.Where(c => c.Note != null).Select(c => c.Note!).ToListAsync();
+            Assert.Contains(notes, n => n.StartsWith("copy of ", StringComparison.Ordinal));
+            Assert.Contains("squash of 2 commit(s)", notes);
+        }
+
+        // The branch deleted: the memory stays, its change is pushed in the squash commit.
+        Git(harness, "branch", "--quiet", "-D", "feature/other");
+        await ingestor.RunAsync(harness.ProjectId);
+        ids = await ChangesAsync(harness);
+        Assert.All(ids, c => Assert.Contains(squash, c.Commits));
+        Assert.All(ids, c => Assert.Equal(GitChangeState.Pushed, c.State));
+        var presence = await harness.Service<IGitChangeTracker>().PresenceAsync(harness.ProjectId, ids.Select(c => c.Id).ToList());
+        Assert.All(ids, c => Assert.Equal(MemoryGitPlace.Here, presence[c.Id].Place));
+
+        // A working-branch commit thrown away with its branch: lost, the planner leaves its memory out.
+        Git(harness, "checkout", "--quiet", "-b", "feature/drop");
+        harness.Project.Write("src/Drop.cs", "class Drop { }\n");
+        Git(harness, "add", "src/Drop.cs");
+        Git(harness, "commit", "--quiet", "-m", "Add Drop");
+        var drop = Git(harness, "rev-parse", "HEAD");
+        Assert.Equal(1, (await ingestor.RunAsync(harness.ProjectId)).Ingested);
+        Git(harness, "checkout", "--quiet", "main");
+        Git(harness, "branch", "--quiet", "-D", "feature/drop");
+        await ingestor.RunAsync(harness.ProjectId);
+        var dropped = (await ChangesAsync(harness)).Single(c => c.GitBaseCommit == drop);
+        Assert.Equal(GitChangeState.Lost, dropped.State);
+        Assert.Equal(MemoryGitPlace.Gone, (await harness.Service<IGitChangeTracker>().PresenceAsync(harness.ProjectId, [dropped.Id]))[dropped.Id].Place);
+    }
+
+    [Fact]
+    public async Task While_commit_ingest_is_off_the_card_counts_the_commits_memory_does_not_know()
+    {
+        await using var harness = await CreateAsync();
+        GitIn(harness.Project.Root, DateTimeOffset.UtcNow.AddDays(-40), "commit", "--quiet", "--amend", "--no-edit");
+        using var remote = new TempWorkspace();
+        GitIn(remote.Root, "init", "--bare", "--quiet", "--initial-branch=main");
+        Git(harness, "remote", "add", "origin", remote.Root);
+        // An AIT thread's commit is known, a commit by hand is not.
+        var threadId = await ThreadWritesAsync(harness, File1, Changed);
+        Git(harness, "commit", "--quiet", "-am", "Halo (AIT)");
+        await harness.Service<IGitChangeTracker>().RefreshThreadsAsync([threadId]);
+        harness.Project.Write("src/Other.cs", "class Other { }\n");
+        Git(harness, "add", "src/Other.cs");
+        Git(harness, "commit", "--quiet", "-m", "Add Other by hand");
+        Git(harness, "push", "--quiet", "origin", "main");
+        Git(harness, "fetch", "--quiet", "origin");
+        Git(harness, "remote", "set-head", "origin", "main");
+        // And one on the branch checked out, not pushed.
+        Git(harness, "checkout", "--quiet", "-b", "feature/z");
+        harness.Project.Write("src/Z.cs", "class Z { }\n");
+        Git(harness, "add", "src/Z.cs");
+        Git(harness, "commit", "--quiet", "-m", "Add Z");
+
+        var ingestor = harness.Service<ICommitIngestor>();
+        var off = await ingestor.GetAsync(harness.ProjectId);
+        Assert.Equal(("origin/HEAD", false, 2, CommitIngestor.SuggestDays, "feature/z"), (off!.EffectiveRef, off.Enabled, off.Outside, off.OutsideDays, off.CurrentBranch));
+
+        var on = await ingestor.SaveAsync(harness.ProjectId, new SaveCommitIngestRequest(true, null, DateTime.UtcNow.AddDays(-CommitIngestor.SuggestDays), 10, WorkingBranch: false));
+        Assert.Null(on!.Outside);
+        Assert.False(on.WorkingBranch);
+    }
+
+    [Fact]
+    public async Task The_planner_brief_lists_the_uncommitted_files_no_AIT_thread_wrote()
+    {
+        await using var harness = await CreateAsync();
+        harness.Project.Write("src/Lib.cs", "class Lib { }\n");
+        Git(harness, "add", "src/Lib.cs");
+        Git(harness, "commit", "--quiet", "-m", "Lib");
+        await ThreadWritesAsync(harness, File1, Changed);
+        harness.Project.Write("src/Lib.cs", "class Lib { int Y; }\n");
+        harness.Project.Write("src/Hand.cs", "class Hand\n{ }\n");
+        harness.Project.Write("config/secrets.json", "{ \"token\": \"abc\" }\n");
+        var tracker = harness.Service<IGitChangeTracker>();
+
+        // What the AIT thread left is AIT's; the hand edits and the new file are not; a credential file is never listed.
+        var changes = await tracker.OutsideChangesAsync(harness.ProjectId);
+        Assert.Equal([("src/Hand.cs", "new", 2, (int?)null, false), ("src/Lib.cs", "modified", 1, 1, false)],
+            changes.Files.Select(f => (f.Path, f.Status, f.Added, f.Removed, f.AfterAit)));
+
+        // Edited by hand after the thread: listed again, with the note.
+        harness.Project.Write(File1, "class Greeter { string Hello() => \"Hai\"; }\n");
+        changes = await tracker.OutsideChangesAsync(harness.ProjectId);
+        Assert.Contains(changes.Files, f => f is { Path: File1, Status: "modified", AfterAit: true });
+        var brief = OutsideChanges.Brief(changes);
+        Assert.Contains("# Uncommitted changes made outside AIT", brief);
+        Assert.Contains("- src/Hand.cs (new, +2)", brief);
+        Assert.Contains("- src/Greeter.cs (modified, +1 -1, edited after an AIT thread wrote it)", brief);
+        Assert.DoesNotContain("secrets.json", brief);
+
+        // Not a repository: nothing, no failure.
+        await using (var db = await harness.CreateDbAsync())
+            await db.Projects.Where(p => p.Id == harness.ProjectId).ExecuteUpdateAsync(p => p.SetProperty(x => x.RootPath, Path.GetTempPath()));
+        Assert.Equal(0, (await tracker.OutsideChangesAsync(harness.ProjectId)).Total);
+    }
+
+    private static async Task<List<ThreadChange>> ChangesAsync(OrchestrationHarness harness)
+    {
+        await using var shared = await harness.Service<AIThread.Data.Memory.LongMemoryStore>().CreateGitAsync();
+        return await shared.ThreadChanges.AsNoTracking().Where(c => c.Ingested).ToListAsync();
+    }
+
     [Fact]
     public void A_thread_takes_the_least_advanced_state_of_the_files_it_still_has()
     {

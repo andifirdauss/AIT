@@ -28,4 +28,6 @@ public interface IGitChangeTracker
 
     Task<IReadOnlyDictionary<Guid, MemoryGitPresence>> PresenceAsync(Guid projectId, IReadOnlyCollection<Guid> threadIds,
         CancellationToken cancellationToken = default);
+
+    Task<OutsideChangeSet> OutsideChangesAsync(Guid projectId, CancellationToken cancellationToken = default);
 }

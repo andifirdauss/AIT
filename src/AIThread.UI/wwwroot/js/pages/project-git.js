@@ -140,20 +140,49 @@
     Pending: ['info', t('diproses', 'in progress')]
   };
 
+  // Notes the ingestor stores (for the list): AIT's own words, shown in the UI language.
+  function ingestNote(note) {
+    if (!note) return '';
+    const copy = /^copy of (\w+)$/.exec(note);
+    if (copy) return isEn ? `copy of ${copy[1]} (rebase/cherry-pick)` : `salinan ${copy[1]} (rebase/cherry-pick)`;
+    const squash = /^squash of (\d+) commit\(s\)$/.exec(note);
+    if (squash) return isEn ? `squash of ${squash[1]} summarized commit(s)` : `squash dari ${squash[1]} commit yang sudah dirangkum`;
+    const known = { 'no files': t('tanpa file', 'no files'), 'nothing to keep': t('tidak ada yang perlu diingat', 'nothing to keep') };
+    return known[note] || note;
+  }
+
+  let lastIngest = null;
+
   function renderIngest(ingest) {
+    lastIngest = ingest;
     if (document.activeElement !== el('ingestRef')) el('ingestRef').value = ingest.ref || '';
     if (document.activeElement !== el('ingestMax')) el('ingestMax').value = ingest.maxPerRun;
     el('ingestEnabled').checked = ingest.enabled;
+    el('ingestWorkingBranch').checked = ingest.workingBranch;
     el('btnIngestRun').disabled = !ingest.enabled;
     const source = ingest.effectiveRef
       ? (isEn ? `Reads <span class="mono">${escapeHtml(ingest.effectiveRef)}</span>` : `Membaca <span class="mono">${escapeHtml(ingest.effectiveRef)}</span>`)
       : `<span class="text-warning">${t('ref tidak ditemukan di clone ini', 'ref not found in this clone')}</span>`;
-    el('ingestStatus').innerHTML = `${source} · ${isEn ? `since ${fmt.dateTime(ingest.since)}` : `sejak ${fmt.dateTime(ingest.since)}`}`
+    const branch = ingest.workingBranch && ingest.currentBranch ? ` + branch <span class="mono">${escapeHtml(ingest.currentBranch)}</span>` : '';
+    el('ingestStatus').innerHTML = `${source}${branch} · ${isEn ? `since ${fmt.dateTime(ingest.since)}` : `sejak ${fmt.dateTime(ingest.since)}`}`
       + ` · ${isEn ? `${ingest.done} summarized, ${ingest.skipped} skipped, ${ingest.failed} failed` : `${ingest.done} dirangkum, ${ingest.skipped} dilewati, ${ingest.failed} gagal`}`;
+
+    // Off while commits made outside AIT are piling up: memory does not know them.
+    const outside = !ingest.enabled && ingest.outside > 0 ? ingest.outside : 0;
+    el('ingestSuggest').classList.toggle('d-none', outside === 0);
+    if (outside > 0) {
+      const where = escapeHtml(ingest.effectiveRef || '') + (ingest.workingBranch && ingest.currentBranch ? ` + ${escapeHtml(ingest.currentBranch)}` : '');
+      el('ingestSuggestText').innerHTML = isEn
+        ? `There ${outside === 1 ? 'is' : 'are'} <b>${outside}${outside >= 200 ? '+' : ''}</b> commit(s) made outside AIT in the last ${ingest.outsideDays} days on <span class="mono">${where}</span> that memory does not know yet (e.g. a prompt sent to a provider directly). Turn on commit ingest so they are summarized, ${ingest.maxPerRun} per pass.`
+        : `Ada <b>${outside}${outside >= 200 ? '+' : ''}</b> commit di luar AIT dalam ${ingest.outsideDays} hari terakhir di <span class="mono">${where}</span> yang belum diketahui memory (mis. prompt langsung ke provider lain). Nyalakan ingest commit supaya ikut dirangkum, ${ingest.maxPerRun} per putaran.`;
+    }
+
     el('ingestRecent').innerHTML = ingest.recent.map(c => {
       const [color, label] = ingestLabels[c.status] || ['secondary', c.status];
-      return `<li class="mb-1"><span class="badge text-bg-${color}">${label}</span> <span class="mono">${escapeHtml(c.commit.substring(0, 8))}</span>
-        ${escapeHtml(c.title || '')} <span class="text-secondary">— ${escapeHtml(c.author || '')}${c.note ? ` · ${escapeHtml(c.note)}` : ''}</span></li>`;
+      const from = c.branch ? ` <span class="badge text-bg-light border mono" title="${escapeHtml(t('Dibaca dari branch kerja', 'Read from the working branch'))}">${escapeHtml(c.branch)}</span>` : '';
+      const note = ingestNote(c.note);
+      return `<li class="mb-1"><span class="badge text-bg-${color}">${label}</span>${from} <span class="mono">${escapeHtml(c.commit.substring(0, 8))}</span>
+        ${escapeHtml(c.title || '')} <span class="text-secondary">— ${escapeHtml(c.author || '')}${note ? ` · ${escapeHtml(note)}` : ''}</span></li>`;
     }).join('');
   }
 
@@ -169,9 +198,27 @@
     if (el('ingestEnabled').checked && !confirm(t('Setiap commit di luar AIT akan dirangkum model (memakai token). Lanjut?', 'Every commit made outside AIT will be summarized by a model (costs tokens). Continue?'))) return;
     const max = el('ingestMax').value.trim();
     renderIngest(await api.put(`/api/projects/${projectId}/git/ingest`, {
-      enabled: el('ingestEnabled').checked, ref: el('ingestRef').value.trim() || null, since: null, maxPerRun: max === '' ? null : Number(max)
+      enabled: el('ingestEnabled').checked, ref: el('ingestRef').value.trim() || null, since: null, maxPerRun: max === '' ? null : Number(max),
+      workingBranch: el('ingestWorkingBranch').checked
     }));
     toast(t('Pengaturan ingest commit disimpan.', 'Commit ingest settings saved.'));
+  }));
+
+  // The suggestion: on from the start of the counted window, so the commits it counted are summarized.
+  el('btnIngestSuggest').addEventListener('click', () => run(el('btnIngestSuggest'), async () => {
+    if (!lastIngest) return;
+    const count = lastIngest.outside;
+    if (!confirm(isEn
+      ? `${count} commit(s) made outside AIT will be summarized by a model (costs tokens), ${lastIngest.maxPerRun} per pass, and new ones from now on. Continue?`
+      : `${count} commit di luar AIT akan dirangkum model (memakai token), ${lastIngest.maxPerRun} per putaran, begitu juga commit baru berikutnya. Lanjut?`)) return;
+    const since = new Date(Date.now() - lastIngest.outsideDays * 24 * 3600 * 1000).toISOString();
+    renderIngest(await api.put(`/api/projects/${projectId}/git/ingest`, {
+      enabled: true, ref: lastIngest.ref, since, maxPerRun: lastIngest.maxPerRun, workingBranch: lastIngest.workingBranch
+    }));
+    const result = await api.post(`/api/projects/${projectId}/git/ingest/run`);
+    toast(result.problem || (isEn ? `Commit ingest on: ${result.ingested} commit(s) summarized in the first pass.`
+      : `Ingest commit menyala: ${result.ingested} commit dirangkum di putaran pertama.`), result.problem ? 'error' : 'success');
+    loadIngest();
   }));
 
   el('btnIngestRun').addEventListener('click', () => run(el('btnIngestRun'), async () => {

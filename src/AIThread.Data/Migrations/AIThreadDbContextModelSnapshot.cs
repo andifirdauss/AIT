@@ -624,6 +624,9 @@ namespace AIThread.Data.Migrations
                     b.Property<bool>("Enabled")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IgnoreWorkingBranch")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MaxPerRun")
                         .HasColumnType("int");
 
@@ -726,6 +729,10 @@ namespace AIThread.Data.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("Branch")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
                     b.Property<DateTime?>("BusinessDigestedAt")
                         .HasColumnType("datetime2");
 
@@ -754,6 +761,10 @@ namespace AIThread.Data.Migrations
                     b.Property<string>("Note")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("PatchId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("ProjectKey")
                         .IsRequired()

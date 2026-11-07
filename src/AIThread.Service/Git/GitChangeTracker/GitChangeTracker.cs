@@ -26,6 +26,19 @@ public sealed record MemoryGitPresence(MemoryGitPlace Place, GitChangeState? Sta
 // The last automatic or manual git fetch of a project.
 public sealed record GitFetchStatus(DateTime At, string? Error);
 
+// One uncommitted file of the working tree that is not an AIT thread's (GitChangeTracker.OutsideChangesAsync). Path is
+// relative to the project root; Status = modified, added (staged new), deleted or new (untracked); line counts against
+// HEAD when git or the file tells (null for a binary file); AfterAit = an AIT thread wrote it and it changed since.
+public sealed record OutsideFile(string Path, string Status, int? Added, int? Removed, bool AfterAit);
+
+// The files (at most MaxFiles, by path) and how many there are in all.
+public sealed record OutsideChangeSet(IReadOnlyList<OutsideFile> Files, int Total)
+{
+    public const int MaxFiles = 30;
+
+    public static readonly OutsideChangeSet None = new([], 0);
+}
+
 // Follows the change of every AIT thread through git: whether it is still only in the working tree, staged, committed
 // (and in which commit), pushed, stashed, changed again or thrown away outside AIT, left on another branch, or lost with
 // a dropped commit. The fingerprint is git's blob id of what the thread wrote (ThreadFileSnapshot.AfterBlob), so a

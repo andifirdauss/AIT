@@ -99,9 +99,16 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
    benar-benar mengubah file; thread yang hanya menjawab/membaca dan thread yang di-rollback tidak ikut), dikelompokkan
    per modul (file tanpa modul di peta kode dikelompokkan per thread), terbaru dulu, beserta unit test yang
    meng-cover-nya — lihat [Merujuk perubahan sebelumnya](#merujuk-perubahan-sebelumnya);
-9. **unit test** dari [katalog unit test](#unit-test) project (bila aktif): suite, aturan membuat test baru, dan test
+9. **perubahan belum di-commit di luar AIT** (`# Uncommitted changes made outside AIT`): file di working tree yang
+   berbeda dari `HEAD` (diubah, dihapus, atau file baru yang tidak di-ignore git) tetapi bukan tulisan thread AIT —
+   diubah manual, di IDE, atau lewat CLI lain yang langsung ke provider-nya sehingga AIT tidak pernah melihat prompt-nya.
+   File yang ditulis thread AIT 30 hari terakhir dianggap milik AIT selama isinya masih persis tulisan thread; bila
+   diubah lagi, file itu ikut tercantum dengan catatan *diubah setelah thread AIT*. Isinya hanya path, jenis perubahan,
+   dan jumlah baris +/− (maks 30 file, tanpa isi file dan tanpa model); file kredensial dan folder `.aithread/` tidak
+   ikut. Planner diminta membaca isi file tersebut sebelum memercayai memory tentangnya;
+10. **unit test** dari [katalog unit test](#unit-test) project (bila aktif): suite, aturan membuat test baru, dan test
    yang terkait file/modul permintaan beserta hasil terakhirnya (maks 30);
-10. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
+11. permintaan terbaru developer (tanpa `<system-reminder>`), maks 40.000 karakter.
 
 Bila sebuah bagian melebihi batas, yang dibuang adalah bagian tengahnya; awal dan akhir teks tetap ada.
 
@@ -964,10 +971,12 @@ project key itu.
 | Ref | Branch yang commit-nya dibaca, mis. `origin/develop`. Kosong = ref environment *prod*, atau `origin/HEAD` |
 | Mulai dari | Hanya commit setelah fitur dinyalakan (menyalakan ulang mulai dari saat itu), supaya riwayat lama tidak dirangkum sekaligus |
 | Commit per putaran | Maks commit yang dirangkum per putaran (bawaan 10, maks 50) |
+| Baca juga branch yang sedang di-checkout | Bawaan nyala. Commit di branch yang sedang di-checkout di clone tiap developer yang belum ada di ref (feature branch lokal, atau `main` yang belum di-push) ikut dirangkum, jadi memory sudah tahu perubahannya sebelum di-merge |
 
-Setiap putaran (setelah `git fetch`, tiap 5 menit, atau *Rangkum sekarang*) AIT membaca commit ref itu, yang paling lama
-dulu, tanpa merge commit, lalu **melewati** commit milik AIT sendiri: commit atau commit squash dari thread AIT yang dibagi
-tim, dan commit yang semua filenya berisi persis tulisan thread AIT. Sisanya:
+Setiap putaran (setelah `git fetch`, tiap 5 menit, atau *Rangkum sekarang*) AIT membaca commit ref itu, lalu commit branch
+yang sedang di-checkout yang belum ada di ref (dilewati bila `HEAD` *detached*, mis. saat rebase berjalan), yang paling
+lama dulu, tanpa merge commit, lalu **melewati** commit milik AIT sendiri: commit atau commit squash dari thread AIT yang
+dibagi tim, dan commit yang semua filenya berisi persis tulisan thread AIT. Sisanya:
 
 1. **diklaim** di tabel bersama `IngestedCommits` — satu commit hanya diproses satu AIT, walau beberapa developer
    menyalakannya;
@@ -979,7 +988,32 @@ tim, dan commit yang semua filenya berisi persis tulisan thread AIT. Sisanya:
 4. dirangkum ke **wiki bisnis** oleh penulis wiki AIT yang mengklaimnya, bersama thread berikutnya.
 
 Commit tanpa hal yang perlu diingat (format, versi, file hasil generate) dilewati model. Commit yang gagal dirangkum
-ditandai *gagal* dan tidak dicoba lagi otomatis. Daftar commit terbaru beserta statusnya tampil di kartu Git.
+ditandai *gagal* dan tidak dicoba lagi otomatis. Daftar commit terbaru beserta statusnya (dan branch kerja asalnya)
+tampil di kartu Git.
+
+**Commit branch kerja yang muncul lagi dengan id lain tidak dirangkum ulang** (tanpa token):
+
+| Kejadian | Dikenali dari | Hasil |
+|---|---|---|
+| Rebase, amend, cherry-pick | `git patch-id --stable` sama dengan commit yang sudah dirangkum | *salinan &lt;id&gt;* |
+| Squash merge ke ref | Semua file commit squash berisi blob yang ditulis commit branch lain yang sudah dirangkum (atau tulisan thread AIT) | *squash dari N commit*; commit squash juga mewakili commit lebih awal di branch itu yang semua filenya ikut tersentuh |
+| Merge biasa | Commit-nya sendiri sudah tercatat | dilewati |
+
+Id commit salinan ditambahkan ke `ThreadChange` commit asalnya, jadi memory tetap dianggap *ada di branch ini* walau
+branch asalnya sudah dihapus setelah di-merge. AIT yang mengklaim commit branch kerja terus mengikutinya di clone-nya
+(30 hari): *Sudah di-push* bila ada di branch remote, *Sudah di-commit* bila masih di branch lokal/tag, dan *Commit hilang* bila git masih
+menyimpan commit-nya tetapi tidak ada ref yang memuatnya lagi (branch di-reset atau dihapus tanpa di-merge) — planner
+semua developer lalu melewati memory-nya, sama seperti thread yang perubahannya hilang. Bila branch-nya kembali memuat
+commit itu, statusnya ikut kembali.
+
+**Saran menyalakan.** Selama fitur ini mati, kartu Git menghitung commit 30 hari terakhir di ref (dan di branch yang
+sedang di-checkout) yang belum diketahui AIT — bukan commit thread AIT dan belum pernah diklaim — tanpa membaca isi
+commit dan tanpa model. Bila ada, kartu menampilkan saran beserta tombol *Nyalakan & rangkum*: fitur dinyalakan mulai
+30 hari lalu (supaya commit yang dihitung ikut dirangkum, sesuai *Commit per putaran*) lalu satu putaran langsung
+dijalankan.
+
+Perubahan yang **belum di-commit** dari luar AIT tidak dirangkum ke memory (isinya masih bisa berubah); planner
+melihatnya lewat bagian brief *perubahan belum di-commit di luar AIT* (lihat [Planner](#3-planner)).
 
 ## Unit test
 

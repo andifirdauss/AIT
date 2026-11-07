@@ -134,6 +134,9 @@ public sealed partial class PlannerAgent
         if (input.SessionChanges is { Count: > 0 } sessionChanges)
             builder.Append(SessionChanges.Brief(sessionChanges, input.CanAsk, input.UnitTests, DateTime.UtcNow)).Append('\n');
 
+        if (input.OutsideChanges is { Total: > 0 } outsideChanges)
+            builder.Append(OutsideChanges.Brief(outsideChanges)).Append('\n');
+
         if (input.UnitTests is { } unitTests)
         {
             var files = (input.Files ?? []).Concat(input.CodeMap?.Select(h => h.Path) ?? []).Distinct(StringComparer.OrdinalIgnoreCase).ToList();

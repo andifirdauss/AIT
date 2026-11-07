@@ -39,6 +39,7 @@ public sealed partial class CommitIngestor
             settings.Ref = reference;
             if (request.Since is { } since) settings.Since = since.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(since, DateTimeKind.Utc) : since.ToUniversalTime();
             settings.MaxPerRun = request.MaxPerRun ?? settings.MaxPerRun;
+            if (request.WorkingBranch is { } workingBranch) settings.IgnoreWorkingBranch = !workingBranch;
             settings.UpdatedBy = GitIdentity.UserName;
             settings.UpdatedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);

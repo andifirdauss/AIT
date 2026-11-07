@@ -99,6 +99,8 @@ public sealed class LongMemoryStore(IDbContextFactory<AIThreadDbContext> mainFac
                     await MemorySchema.EnsureAsync(connection, db, (c, ct) => c.ThreadChanges.AnyAsync(ct), cancellationToken);
                     await MemorySchema.EnsureTablesAsync(db, cancellationToken, "ProjectEnvironments", "ChangePresences", "CommitIngestSettings", "IngestedCommits");
                     await MemorySchema.EnsureColumnsAsync<ThreadChange>(db, cancellationToken, nameof(ThreadChange.Ingested));
+                    await MemorySchema.EnsureColumnsAsync<CommitIngestSettings>(db, cancellationToken, nameof(CommitIngestSettings.IgnoreWorkingBranch));
+                    await MemorySchema.EnsureColumnsAsync<IngestedCommit>(db, cancellationToken, nameof(IngestedCommit.PatchId), nameof(IngestedCommit.Branch));
                     _gitReady = true;
                 }
                 return db;
