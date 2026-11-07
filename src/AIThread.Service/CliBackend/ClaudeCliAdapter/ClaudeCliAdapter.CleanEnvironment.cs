@@ -9,7 +9,7 @@ public sealed partial class ClaudeCliAdapter
     {
         foreach (var name in new[] { "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT" }) environment.Remove(name);
 
-        if (environment.TryGetValue("ANTHROPIC_BASE_URL", out var baseUrl) && IsLoopback(baseUrl))
+        if (environment.TryGetValue("ANTHROPIC_BASE_URL", out var baseUrl) && CliProcess.IsLoopback(baseUrl))
         {
             environment.Remove("ANTHROPIC_BASE_URL");
             environment.Remove("ANTHROPIC_AUTH_TOKEN");

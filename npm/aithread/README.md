@@ -4,9 +4,30 @@
 memecah satu permintaan menjadi tugas-tugas kecil. **Planner** (model paling cerdas) membaca kode dan menyusun rencana.
 Banyak **executor** (model murah) mengerjakannya secara paralel. Setelah itu AIT membuild project dan **reviewer**
 (opsional) memeriksa hasilnya sampai lolos, lalu **wrapper** merangkum hasilnya untuk Anda. Model diakses lewat
-[9router](https://github.com/decolua/9router), atau lewat CLI resmi yang sudah login di komputer Anda (Claude Code).
+[9router](https://github.com/decolua/9router), atau lewat CLI resmi yang sudah login di komputer Anda (Claude Code,
+Codex CLI, Gemini CLI, atau Antigravity CLI).
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
+
+## Yang baru di 1.16.0
+
+- **Mesin model CLI kini empat**: selain `cli:claude:<model>`, node bisa memakai:
+  - `cli:codex[:<model>]`, yaitu Codex CLI (`codex exec`). Login lewat `codex login`.
+  - `cli:gemini:<model>` (`auto`, `pro`, `flash`, `flash-lite`), yaitu Gemini CLI. Login lewat `gemini` → `/auth`.
+  - `cli:agy:<model>`, yaitu Antigravity CLI (`agy`). Modelnya diambil dari `agy models` akun Google itu, misalnya
+    Gemini, Claude, dan GPT-OSS.
+- **Cara jalan sama seperti Claude Code**: satu proses tanpa status per panggilan di folder kosong, tool bawaan CLI
+  mati, system prompt dari AIT, dan login yang sudah ada di komputer itu (AIT tidak membaca kredensialnya). Model CLI
+  yang terpasang muncul di menu Node dan preset Setup.
+- **Tidak muter balik ke AIT**: base URL loopback dibuang dari environment, `config.toml` Codex yang default ke
+  profile `aithread` dilewati, dan `.gemini/.env` yang menunjuk AIT diganti endpoint resmi Google.
+- **Antigravity**: agen sementara tanpa tool dengan system prompt AIT, dan semua izin ditolak sebagai cadangan.
+  Percakapan yang disimpan agy untuk panggilan AIT dihapus setelah tiap panggilan; ini bisa dimatikan lewat
+  `AIThread:AntigravityCli:DeleteConversations`.
+- **Batasan**: gambar belum bisa dikirim lewat Gemini CLI dan agy (model diberi catatan), dan Codex mengirim jawaban
+  utuh tanpa streaming.
+- **Opsi** di `appsettings.json` section `AIThread:CodexCli`, `AIThread:GeminiCli`, dan `AIThread:AntigravityCli`
+  (`Path`, `MaxProcesses`, plus `IgnoreUserConfig` / `DeleteConversations`).
 
 ## Yang baru di 1.15.0
 
