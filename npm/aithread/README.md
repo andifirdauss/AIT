@@ -9,6 +9,20 @@ Codex CLI, Gemini CLI, atau Antigravity CLI).
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.17.0
+
+- **Memory dari commit branch kerja**: ingest commit (Project → Detail → Git, *Commit di luar AIT*) kini juga membaca
+  commit di branch yang sedang di-checkout yang belum ada di ref. Perubahan yang dibuat lewat CLI atau provider lain
+  masuk memory sebelum di-merge. Ini bisa dimatikan per project lewat *Baca juga branch yang sedang di-checkout*.
+- **Tidak dirangkum dua kali**: salinan rebase, amend, dan cherry-pick dikenali lewat `git patch-id --stable`, dan
+  squash merge lewat blob commit branch lain. Memory asalnya tetap terhitung ada setelah branch dihapus.
+- **Branch yang dibuang**: commit yang tidak tercapai dari ref mana pun menjadi *Commit hilang*, dan planner melewati
+  memory-nya.
+- **Perubahan yang belum di-commit**: brief planner mencantumkan file yang berbeda dari `HEAD` yang bukan tulisan
+  thread AIT (atau diedit lagi setelahnya). Isinya hanya path, jenis perubahan, dan jumlah baris, tanpa memanggil model.
+- **Saran menyalakan**: selama ingest mati, kartu Git menghitung commit 30 hari terakhir yang belum dikenal memory dan
+  menawarkan *Nyalakan & rangkum*.
+
 ## Yang baru di 1.16.0
 
 - **Mesin model CLI kini empat**: selain `cli:claude:<model>`, node bisa memakai:
