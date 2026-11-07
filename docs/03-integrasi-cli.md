@@ -395,33 +395,58 @@ permintaan izin dengan *sekali*.
 ## CLI resmi sebagai mesin model (tanpa 9router)
 
 Untuk developer yang tidak punya akses login provider di 9router, misalnya karena akun perusahaannya diloginkan
-atasan langsung di Claude Code. AIT menjalankan CLI resmi itu di belakang sebagai *model* node. Orkestrasi tetap
+atasan langsung di CLI resmi. AIT menjalankan CLI resmi itu di belakang sebagai *model* node. Orkestrasi tetap
 milik AIT: planner, executor, reviewer, tester, wrapper, dan memory. Hasilnya, pencatatan tetap utuh: thread, tugas,
 `ThreadFileSnapshot`, rollback, memory, status git, dan wiki bisnis.
 
-- **Model node:** `cli:claude:<model>`. Alias `opus`, `sonnet`, `haiku`, `fable` mengikuti model terbaru provider;
-  nama lengkap seperti `cli:claude:claude-sonnet-5` juga bisa. Bila `claude` terpasang, model ini tampil di pemilih
-  model menu Node dan preset Setup, di grup **Claude Code (CLI)**.
-- **Setup:** pilih model CLI di preset node, mis. model kuat `cli:claude:opus` dan model murah `cli:claude:haiku`.
-  Bila semua node aktif memakai `cli:`, langkah *Hubungkan 9router* dianggap selesai (tidak diperlukan).
-- **Login:** memakai login yang sudah ada di komputer itu (`claude` → `/login` oleh pemilik akun). AIT tidak pernah
-  membaca, menyalin, atau meneruskan kredensial. Pemakaian tercatat di akun itu seperti pemakaian CLI biasa, dan
-  kebijakan *managed* perusahaan tetap berlaku.
-- **Cara jalan:** setiap panggilan model adalah satu proses `claude -p` tanpa status:
-  - tool bawaan mati (`--tools ""`), tanpa MCP, skill, maupun sesi tersimpan;
-  - system prompt dari agent AIT;
-  - folder kerja kosong di `%LOCALAPPDATA%\AIThread\cli-work`;
-  - `--setting-sources local`, sehingga `~/.claude/settings.json` (hook dan `ANTHROPIC_BASE_URL` ke AIT) serta
-    `CLAUDE.md` tidak ikut.
+| CLI | Model node | Model di pemilih | Login oleh pemilik akun |
+|---|---|---|---|
+| Claude Code | `cli:claude:<model>` | `opus`, `sonnet`, `haiku`, `fable` | `claude` → `/login` |
+| Codex CLI | `cli:codex[:<model>]` | `cli:codex` (model bawaan Codex) | `codex login` |
+| Gemini CLI | `cli:gemini:<model>` | `auto`, `pro`, `flash`, `flash-lite` | `gemini` → `/auth` (mis. *Login with Google*) |
+| Antigravity CLI | `cli:agy:<model>` | daftar `agy models` milik akun itu (mis. `gemini-3.8-flash-high`, `claude-opus-4-6-thinking`) | `agy` → login dengan akun Google |
 
-  Prompt sudah disamarkan oleh `SecretGuard` sebelum dikirim. `ANTHROPIC_BASE_URL` di environment yang menunjuk ke
-  loopback dibuang agar tidak terjadi loop.
+- **Model node:** alias mengikuti model terbaru provider; nama lengkap yang dikenal CLI itu juga bisa, mis.
+  `cli:claude:claude-sonnet-5` atau `cli:codex:<nama model>`. CLI yang terpasang tampil di pemilih model menu Node
+  dan preset Setup, di grup **Claude Code (CLI)**, **Codex (CLI)**, **Gemini (CLI)**, atau **Antigravity (CLI)**.
+- **Setup:** pilih model CLI di preset node, mis. model kuat `cli:claude:opus` dan model murah `cli:claude:haiku`
+  (atau `cli:gemini:pro` + `cli:gemini:flash`). Bila semua node aktif memakai `cli:`, langkah *Hubungkan 9router*
+  dianggap selesai (tidak diperlukan).
+- **Login:** memakai login yang sudah ada di komputer itu. AIT tidak pernah membaca, menyalin, atau meneruskan
+  kredensial. Pemakaian tercatat di akun itu seperti pemakaian CLI biasa, dan kebijakan *managed* perusahaan tetap
+  berlaku.
+- **Cara jalan:** setiap panggilan model adalah satu proses CLI tanpa status di folder kerja kosong
+  `%LOCALAPPDATA%\AIThread\cli-work`, dengan system prompt dari agent AIT. Prompt sudah disamarkan oleh `SecretGuard`
+  sebelum dikirim.
+  - **Claude Code:** `claude -p` stream-json; tool bawaan mati (`--tools ""`), tanpa MCP, skill, maupun sesi
+    tersimpan; `--setting-sources local`, sehingga `~/.claude/settings.json` (hook dan `ANTHROPIC_BASE_URL` ke AIT)
+    serta `CLAUDE.md` tidak ikut.
+  - **Codex CLI:** `codex exec --json --ephemeral --sandbox read-only`; shell dan web search mati, `AGENTS.md` tidak
+    dibaca, system prompt lewat `model_instructions_file`; `--ignore-user-config` sehingga `config.toml` user (MCP,
+    profile `aithread`) tidak ikut, sedangkan login (`auth.json`) dan config *managed* tetap berlaku. Gambar ikut
+    lewat `--image`. Codex mengirim jawaban utuh (tidak per potongan).
+  - **Gemini CLI:** `gemini --output-format stream-json`, prompt lewat stdin, system prompt lewat `GEMINI_SYSTEM_MD`;
+    `.gemini/settings.json` di folder kerja menolak semua tool (`tools.core` kosong), tanpa MCP, extension, maupun
+    `GEMINI.md`. Gambar tidak bisa dikirim lewat Gemini CLI: model diberi catatan bahwa ada gambar yang tidak ikut.
+  - **Antigravity CLI (`agy`):** `agy --input-format stream-json --output-format stream-json --disable-slash-commands
+    --agent ait`. Agen workspace `.agents/agents/ait/agent.md` di folder kerja punya daftar tool kosong
+    (`tools: []`) dan `commandExecutionPolicy: off`, dan isi Markdown-nya adalah system prompt agent AIT. Sebagai
+    cadangan, `--settings` menolak semua aksi izin (`command(*)`, `read_file(*)`, `write_file(*)`, `read_url(*)`,
+    `execute_url(*)`, `mcp(*)`). Input hanya teks, jadi gambar diganti catatan. Model Gemini sesekali tetap mengirim
+    *function call* native yang ditolak agy; panggilan itu langsung diulang, paling banyak 3 kali. agy menyimpan
+    setiap panggilan sebagai percakapan, jadi AIT menghapus percakapan milik panggilannya sendiri
+    (`conversations/<id>.db`, `brain/<id>/`) setelah selesai.
+- **Pencegah loop:** base URL loopback (alamat AIT sendiri, yang dipasang menu CLI) tidak dipakai CLI node:
+  `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` loopback dibuang dari environment; untuk Codex, `config.toml` yang
+  `profile`/`model_provider` tingkat atasnya `aithread` selalu dilewati; untuk Gemini, bila `.gemini/.env` yang akan
+  dibaca CLI (atau environment) menunjuk ke AIT, `GOOGLE_GEMINI_BASE_URL` diisi endpoint resmi Google. Dari `.env`
+  itu AIT hanya membaca kunci base URL.
 - **Tool planner/tools node/tester:** CLI tidak punya function calling untuk AIT. Daftar tool ditulis di system prompt,
   lalu model menjawab dengan blok `<tool_call name="…">{json}</tool_call>`, yang diubah AIT menjadi tool call biasa.
 - **Error:** belum login, model tidak tersedia, atau batas pemakaian tercapai menjadi error yang sama seperti 9router.
-  Akibatnya retry dan node cadangan (`FallbackNodeId`) tetap bekerja; boleh juga mencampur node CLI dan node 9router.
-- **CLI diarahkan ke AIT (menu CLI, global atau per project):** tidak terjadi loop. Proses `claude -p` milik node
-  tidak membaca `~/.claude/settings.json`, sehingga tetap langsung ke provider.
+  Akibatnya retry dan node cadangan (`FallbackNodeId`) tetap bekerja; boleh juga mencampur node CLI (dari CLI mana
+  pun) dan node 9router.
+- **CLI diarahkan ke AIT (menu CLI, global atau per project):** tidak terjadi loop (lihat *Pencegah loop*).
   - Request yang diorkestrasi masuk ke pipeline seperti biasa.
   - Request passthrough (judul sesi, ringkasan, `/compact`, sesi di luar project) dijawab lewat CLI bila model
     passthrough adalah `cli:`. Jawabannya dikirim dalam format klien (Anthropic/OpenAI/Gemini, JSON atau stream).
@@ -430,15 +455,20 @@ milik AIT: planner, executor, reviewer, tester, wrapper, dan memory. Hasilnya, p
     bicara, tapi tidak bisa mengubah file; daftarkan project-nya agar diorkestrasi.
   - `count_tokens` memakai estimasi.
 - **Batasan:** `Temperature`/`MaxTokens` node diabaikan. Tidak ada prompt cache antar panggilan, karena seluruh
-  percakapan dikirim ulang setiap panggilan. Tahap ini baru Claude Code; Codex dan Gemini CLI menyusul.
+  percakapan dikirim ulang setiap panggilan. Codex dan Gemini CLI butuh versi yang mendukung flag di atas (versi
+  terbaru); bila CLI menolak sebuah flag, pesan errornya tampil di uji node. Antigravity CLI diuji dengan `agy` 1.5.2;
+  agy tetap menambahkan konteks lingkungannya sendiri, sekitar 2.000 token input per panggilan.
 
-Opsi di `appsettings.json` (section `AIThread:ClaudeCli`):
+Opsi di `appsettings.json`, section `AIThread:ClaudeCli`, `AIThread:CodexCli`, `AIThread:GeminiCli`, dan
+`AIThread:AntigravityCli`:
 
 | Kunci | Bawaan | Arti |
 |---|---|---|
-| `Path` | kosong | `claude.exe`, `claude.cmd`, atau `cli.js`. Kosong = PATH → `%USERPROFILE%\.local\bin` → shim npm |
-| `MaxProcesses` | `4` | proses CLI bersamaan di mesin ini (semua node) |
-| `SettingSources` | `local` | nilai `--setting-sources`. Isi `user` bila konfigurasi perusahaan (mis. Bedrock) ada di settings user |
+| `Path` | kosong | executable, shim npm (`.cmd`), atau file JS paket. Kosong = PATH → (Claude Code: `%USERPROFILE%\.local\bin`; agy: `%LOCALAPPDATA%\agy\bin`) → shim npm di `%APPDATA%\npm` |
+| `MaxProcesses` | `4` | proses CLI itu yang berjalan bersamaan di mesin ini (semua node) |
+| `ClaudeCli:SettingSources` | `local` | nilai `--setting-sources`. Isi `user` bila konfigurasi perusahaan (mis. Bedrock) ada di settings user |
+| `CodexCli:IgnoreUserConfig` | `true` | `--ignore-user-config`. Isi `false` bila provider perusahaan ada di `config.toml` user (profile `aithread` tetap dilewati) |
+| `AntigravityCli:DeleteConversations` | `true` | hapus percakapan agy yang dibuat panggilan AIT, langsung setelah setiap panggilan |
 
 Status CLI yang terdeteksi: `GET /api/router/cli`.
 

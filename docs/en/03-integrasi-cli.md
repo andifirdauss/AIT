@@ -395,34 +395,59 @@ permission requests with *once*.
 ## Official CLI as the model engine (no 9router)
 
 This is for a developer who has no provider login in 9router, for example because a manager signed the company
-account in to Claude Code directly. AIT runs that official CLI behind the scenes as a node's *model*. Orchestration
-stays with AIT: planner, executor, reviewer, tester, wrapper and memory. As a result, recording stays complete: the
-thread, its tasks, `ThreadFileSnapshot`, rollback, memory, git status and the business wiki.
+account in to an official CLI directly. AIT runs that official CLI behind the scenes as a node's *model*.
+Orchestration stays with AIT: planner, executor, reviewer, tester, wrapper and memory. As a result, recording stays
+complete: the thread, its tasks, `ThreadFileSnapshot`, rollback, memory, git status and the business wiki.
 
-- **Node model:** `cli:claude:<model>`. The aliases `opus`, `sonnet`, `haiku`, `fable` follow the provider's newest
-  model; full names such as `cli:claude:claude-sonnet-5` work too. When `claude` is installed, these models appear in
-  the model picker of the Node menu and the Setup preset, in the **Claude Code (CLI)** group.
+| CLI | Node model | Models in the picker | Login by the account owner |
+|---|---|---|---|
+| Claude Code | `cli:claude:<model>` | `opus`, `sonnet`, `haiku`, `fable` | `claude` → `/login` |
+| Codex CLI | `cli:codex[:<model>]` | `cli:codex` (Codex's default model) | `codex login` |
+| Gemini CLI | `cli:gemini:<model>` | `auto`, `pro`, `flash`, `flash-lite` | `gemini` → `/auth` (e.g. *Login with Google*) |
+| Antigravity CLI | `cli:agy:<model>` | what `agy models` lists for that account (e.g. `gemini-3.8-flash-high`, `claude-opus-4-6-thinking`) | `agy` → sign in with a Google account |
+
+- **Node model:** the aliases follow the provider's newest model; any full name that CLI knows works too, e.g.
+  `cli:claude:claude-sonnet-5` or `cli:codex:<model name>`. Installed CLIs appear in the model picker of the Node
+  menu and the Setup preset, in the **Claude Code (CLI)**, **Codex (CLI)**, **Gemini (CLI)** or **Antigravity (CLI)**
+  group.
 - **Setup:** choose CLI models in the node preset, e.g. `cli:claude:opus` as the strong model and `cli:claude:haiku`
-  as the cheap one. When every active node uses `cli:`, the *Connect 9router* step counts as done (not needed).
-- **Login:** the login already on that computer is used (the account owner runs `claude` → `/login`). AIT never
-  reads, copies or forwards the credentials. Usage counts on that account like any CLI usage, and the company's
-  *managed* policy still applies.
-- **How it runs:** every model call is one stateless `claude -p` process:
-  - built-in tools are off (`--tools ""`), with no MCP, skill or saved session;
-  - the AIT agent's own system prompt is used;
-  - it runs in an empty working folder under `%LOCALAPPDATA%\AIThread\cli-work`;
-  - it uses `--setting-sources local`, so `~/.claude/settings.json` (hooks, an `ANTHROPIC_BASE_URL` pointing at AIT)
-    and `CLAUDE.md` do not apply.
-
-  `SecretGuard` masks the prompt before it is sent. A loopback `ANTHROPIC_BASE_URL` in the environment is dropped to
-  avoid a loop.
+  as the cheap one (or `cli:gemini:pro` + `cli:gemini:flash`). When every active node uses `cli:`, the *Connect
+  9router* step counts as done (not needed).
+- **Login:** the login already on that computer is used. AIT never reads, copies or forwards the credentials. Usage
+  counts on that account like any CLI usage, and the company's *managed* policy still applies.
+- **How it runs:** every model call is one stateless CLI process in an empty working folder under
+  `%LOCALAPPDATA%\AIThread\cli-work`, with the AIT agent's own system prompt. `SecretGuard` masks the prompt before it
+  is sent.
+  - **Claude Code:** `claude -p` stream-json; built-in tools off (`--tools ""`), no MCP, skill or saved session;
+    `--setting-sources local`, so `~/.claude/settings.json` (hooks, an `ANTHROPIC_BASE_URL` pointing at AIT) and
+    `CLAUDE.md` do not apply.
+  - **Codex CLI:** `codex exec --json --ephemeral --sandbox read-only`; shell and web search off, `AGENTS.md` not
+    read, system prompt through `model_instructions_file`; `--ignore-user-config`, so the user's `config.toml` (MCP,
+    the `aithread` profile) does not apply, while the login (`auth.json`) and managed config still do. Images go
+    through `--image`. Codex sends the answer whole (not in chunks).
+  - **Gemini CLI:** `gemini --output-format stream-json`, prompt on stdin, system prompt through `GEMINI_SYSTEM_MD`;
+    a `.gemini/settings.json` in the working folder denies every tool (empty `tools.core`), with no MCP, extension or
+    `GEMINI.md`. Images cannot be sent through Gemini CLI: the model gets a note that images were left out.
+  - **Antigravity CLI (`agy`):** `agy --input-format stream-json --output-format stream-json --disable-slash-commands
+    --agent ait`. The workspace agent `.agents/agents/ait/agent.md` in the working folder has an empty tool list
+    (`tools: []`) and `commandExecutionPolicy: off`, and its Markdown body is the AIT agent's system prompt. As a
+    backup, `--settings` denies every permission action (`command(*)`, `read_file(*)`, `write_file(*)`,
+    `read_url(*)`, `execute_url(*)`, `mcp(*)`). Input is text only, so images are replaced by a note. A Gemini model
+    now and then still emits a native *function call*, which agy rejects; that call is tried again right away, up to
+    3 times. agy saves every run as a conversation, so AIT deletes the ones its own calls made
+    (`conversations/<id>.db`, `brain/<id>/`) once each call is done.
+- **Loop guard:** a loopback base URL (AIT's own address, set by the CLI menu) is never used by a node's CLI: a
+  loopback `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` is dropped from the environment; for Codex, a `config.toml` whose
+  top-level `profile`/`model_provider` is `aithread` is always skipped; for Gemini, when the `.gemini/.env` the CLI
+  would read (or the environment) points at AIT, `GOOGLE_GEMINI_BASE_URL` is set to Google's official endpoint. AIT
+  reads only the base URL key of that `.env`.
 - **Planner/tools node/tester tools:** the CLI has no function calling for AIT. The tool list is written into the
   system prompt, and the model answers with `<tool_call name="…">{json}</tool_call>` blocks, which AIT turns into
   normal tool calls.
 - **Errors:** not logged in, model unavailable, or usage limit reached become the same errors as 9router's. As a
-  result, retries and fallback nodes (`FallbackNodeId`) keep working, and CLI and 9router nodes can be mixed.
-- **A CLI pointed at AIT (CLI menu, global or per project):** there is no loop. The node's `claude -p` process does
-  not read `~/.claude/settings.json`, so it still goes straight to the provider.
+  result, retries and fallback nodes (`FallbackNodeId`) keep working, and CLI nodes (of any CLI) and 9router nodes
+  can be mixed.
+- **A CLI pointed at AIT (CLI menu, global or per project):** there is no loop (see *Loop guard*).
   - Orchestrated requests go to the pipeline as usual.
   - Passthrough requests (session title, recap, `/compact`, sessions outside a project) are answered through the CLI
     when the passthrough model is `cli:`. The answer is sent in the client's own format (Anthropic/OpenAI/Gemini,
@@ -432,15 +457,20 @@ thread, its tasks, `ThreadFileSnapshot`, rollback, memory, git status and the bu
     project can talk but cannot change files; register its project so it is orchestrated.
   - `count_tokens` uses an estimate.
 - **Limits:** the node's `Temperature`/`MaxTokens` are ignored. There is no prompt cache across calls, because the
-  whole conversation is sent again on each call. Only Claude Code for now; Codex and Gemini CLI come later.
+  whole conversation is sent again on each call. Codex and Gemini CLI need a version that supports the flags above
+  (a recent one); when a CLI rejects a flag, its error shows in the node test. Antigravity CLI was tested with `agy`
+  1.5.2; agy still adds its own environment context, about 2,000 input tokens per call.
 
-Options in `appsettings.json` (section `AIThread:ClaudeCli`):
+Options in `appsettings.json`, sections `AIThread:ClaudeCli`, `AIThread:CodexCli`, `AIThread:GeminiCli` and
+`AIThread:AntigravityCli`:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `Path` | empty | `claude.exe`, `claude.cmd` or `cli.js`. Empty = PATH → `%USERPROFILE%\.local\bin` → npm shim |
-| `MaxProcesses` | `4` | CLI processes at once on this machine (all nodes) |
-| `SettingSources` | `local` | value of `--setting-sources`. Set `user` when the company configuration (e.g. Bedrock) is in user settings |
+| `Path` | empty | the executable, the npm shim (`.cmd`) or the package's JS file. Empty = PATH → (Claude Code: `%USERPROFILE%\.local\bin`; agy: `%LOCALAPPDATA%\agy\bin`) → npm shim in `%APPDATA%\npm` |
+| `MaxProcesses` | `4` | processes of that CLI at once on this machine (all nodes) |
+| `ClaudeCli:SettingSources` | `local` | value of `--setting-sources`. Set `user` when the company configuration (e.g. Bedrock) is in user settings |
+| `CodexCli:IgnoreUserConfig` | `true` | `--ignore-user-config`. Set `false` when the company provider is in the user's `config.toml` (the `aithread` profile is still skipped) |
+| `AntigravityCli:DeleteConversations` | `true` | delete the agy conversation each AIT call made, right after the call |
 
 Detected CLI status: `GET /api/router/cli`.
 

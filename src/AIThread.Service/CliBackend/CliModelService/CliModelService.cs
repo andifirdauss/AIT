@@ -2,10 +2,10 @@ using AIThread.Service.Interfaces;
 
 namespace AIThread.Service.CliBackend;
 
-public sealed partial class CliModelService(IClaudeCliAdapter claude) : ICliModelService
+public sealed partial class CliModelService(IEnumerable<ICliEngine> engines) : ICliModelService
 {
-    public const string ClaudeOwner = "Claude Code (CLI)";
+    private readonly IReadOnlyList<ICliEngine> _engines = engines.ToList();
 
-    // Claude Code's model aliases: each follows the provider's newest model of that family.
-    private static readonly string[] ClaudeAliases = ["opus", "sonnet", "haiku", "fable"];
+    // The owner label of an engine's models in the pickers: "Claude Code (CLI)", "Codex (CLI)", "Gemini (CLI)".
+    public static string Owner(ICliEngine engine) => $"{engine.Name} (CLI)";
 }
