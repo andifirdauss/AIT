@@ -71,6 +71,14 @@ public static class DependencyInjection
         // which the orchestrator and background workers need.
         services.AddSingleton<ISettingService, SettingService>();
         services.AddSingleton<IClaudeCliAdapter, ClaudeCliAdapter>();
+        services.AddSingleton<ICodexCliAdapter, CodexCliAdapter>();
+        services.AddSingleton<IGeminiCliAdapter, GeminiCliAdapter>();
+        services.AddSingleton<IAntigravityCliAdapter, AntigravityCliAdapter>();
+        // The engines CliModelService picks from by tool ("cli:<tool>:…"), in the order the pickers list them.
+        services.AddSingleton<ICliEngine>(sp => sp.GetRequiredService<IClaudeCliAdapter>());
+        services.AddSingleton<ICliEngine>(sp => sp.GetRequiredService<ICodexCliAdapter>());
+        services.AddSingleton<ICliEngine>(sp => sp.GetRequiredService<IGeminiCliAdapter>());
+        services.AddSingleton<ICliEngine>(sp => sp.GetRequiredService<IAntigravityCliAdapter>());
         services.AddSingleton<ICliModelService, CliModelService>();
         services.AddSingleton<INineRouterService, NineRouterService>();
         services.AddSingleton<INineRouterLauncher, NineRouterLauncher>();

@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Localization;
+using AIThread.Service.CliBackend;
 
 namespace AIThread.Service.Implementations;
 
@@ -26,10 +27,18 @@ public sealed partial class SetupService
             var hint = FindNodeJs() is null
                 ? Lang.T(" Node.js belum ditemukan: pasang Node.js 18+ agar AIT bisa memasang dan menjalankan 9router.", " Node.js was not found yet: install Node.js 18+ so AIT can install and run 9router.")
                 : Lang.T(" Klik Jalankan 9router.", " Click Start 9router.");
+            var example = cliEngine?.Tool switch
+            {
+                CliModelId.Claude => "cli:claude:opus",
+                CliModelId.Gemini => "cli:gemini:pro",
+                CliModelId.Antigravity => "cli:agy:<model>",
+                { } tool => CliModelId.Format(tool, string.Empty),
+                null => string.Empty
+            };
             var cliHint = cliEngine is null
                 ? string.Empty
-                : Lang.T($" Tanpa akses 9router? {cliEngine.Name} terpasang di sini: pilih model \"{cliEngine.Name} (CLI)\" (mis. cli:claude:opus) di preset node, maka langkah ini tidak diperlukan.",
-                    $" No 9router access? {cliEngine.Name} is installed here: choose a \"{cliEngine.Name} (CLI)\" model (e.g. cli:claude:opus) in the node preset, and this step is no longer needed.");
+                : Lang.T($" Tanpa akses 9router? {cliEngine.Name} terpasang di sini: pilih model \"{cliEngine.Name} (CLI)\" (mis. {example}) di preset node, maka langkah ini tidak diperlukan.",
+                    $" No 9router access? {cliEngine.Name} is installed here: choose a \"{cliEngine.Name} (CLI)\" model (e.g. {example}) in the node preset, and this step is no longer needed.");
             return new SetupStepDto(id, title, true, false, $"9router offline{where}.{hint}{cliHint}");
         }
 

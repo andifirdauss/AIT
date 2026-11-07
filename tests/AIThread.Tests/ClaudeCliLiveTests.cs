@@ -24,7 +24,7 @@ public class ClaudeCliLiveTests
     private static bool Enabled => Environment.GetEnvironmentVariable("AIT_LIVE_CLAUDE") == "1";
 
     private static CliModelService Service() =>
-        new(new ClaudeCliAdapter(Options.Create(new AIThreadOptions()), NullLogger<ClaudeCliAdapter>.Instance));
+        new([new ClaudeCliAdapter(Options.Create(new AIThreadOptions()), NullLogger<ClaudeCliAdapter>.Instance)]);
 
     private static readonly CliCallLimits Limits = new(TimeSpan.FromMinutes(3), TimeSpan.FromMinutes(2));
 
