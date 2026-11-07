@@ -82,6 +82,8 @@ public static class GitTrackingModel
             e.Property(x => x.ClaimedBy).HasMaxLength(MemorySchema.GitAuthorLength);
             e.Property(x => x.Digest).HasMaxLength(IngestedCommit.MaxDigestLength);
             e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.PatchId).HasMaxLength(MemorySchema.GitCommitLength);
+            e.Property(x => x.Branch).HasMaxLength(ProjectEnvironment.MaxRefLength);
             e.HasIndex(x => new { x.ProjectKey, x.Commit }).IsUnique();
             e.HasIndex(x => new { x.ProjectKey, x.Status, x.BusinessDigestedAt });
         });

@@ -17,6 +17,7 @@ namespace AIThread.Service.Orchestration;
 // UnitTests: the project's unit test catalog for this thread: the brief lists the related tests, and run_tests and the
 // tests section of submit_plan are offered.
 // SessionChanges: what the earlier threads of this chat changed, per module — what "this change" can refer to.
+// OutsideChanges: the uncommitted files of the working tree changed without AIT (by hand, another CLI); null or empty: none.
 // TestAccounts: the project's test accounts, with Auto Testing: listed in the brief, and the actors a scenario may name.
 // CanApprove: the developer can be asked for permission (run_command, files outside the root): a session to answer in,
 // or the thread page of a dashboard thread.
@@ -37,7 +38,8 @@ public sealed record PlannerInput(
     IReadOnlyList<SessionModuleChange>? SessionChanges = null,
     TestAccountSet? TestAccounts = null,
     bool CanApprove = false,
-    IReadOnlyList<Databases.DatabaseTarget>? Databases = null);
+    IReadOnlyList<Databases.DatabaseTarget>? Databases = null,
+    Git.OutsideChangeSet? OutsideChanges = null);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.

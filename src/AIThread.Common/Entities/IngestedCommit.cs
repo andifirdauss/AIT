@@ -28,4 +28,11 @@ public class IngestedCommit : BaseEntity
 
     // Why it was skipped or failed.
     public string? Note { get; set; }
+
+    // git patch-id --stable of the commit: a rebase or cherry-pick of a summarized commit has the same one, and is
+    // recorded as a copy of it instead of being summarized again.
+    public string? PatchId { get; set; }
+
+    // The working branch the commit was read from (not in the ingest ref yet when taken on); null = read from the ref.
+    public string? Branch { get; set; }
 }

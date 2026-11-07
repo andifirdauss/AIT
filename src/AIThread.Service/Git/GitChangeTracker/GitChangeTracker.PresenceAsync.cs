@@ -61,6 +61,14 @@ public sealed partial class GitChangeTracker
                 if (commits.Count > 0)
                     history ??= await HeadHistoryAsync(root, rows.Min(r => r.CreatedAt), cancellationToken);
                 var place = commits.Any(c => history?.Contains(c) == true) ? MemoryGitPlace.Here : MemoryGitPlace.OtherBranch;
+                // An ingested commit can be much older than its row (taken on after the fact): asked of git one by one.
+                if (place != MemoryGitPlace.Here && row.Ingested)
+                    foreach (var commit in commits)
+                        if ((await GitProcess.RunAsync(root, ["merge-base", "--is-ancestor", commit, "HEAD"], cancellationToken)).Ok)
+                        {
+                            place = MemoryGitPlace.Here;
+                            break;
+                        }
                 if (place != MemoryGitPlace.Here && files.Count > 0 && files.All(f => f.Removed || f.Blob is not null))
                 {
                     facts ??= await ReadFactsAsync(root, rows.SelectMany(r => ThreadChangeFiles.Read(r.Files)).Select(f => f.Path).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),

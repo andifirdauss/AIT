@@ -106,9 +106,16 @@ can be reused between steps and between threads, and the request comes after all
    really changed files; threads that only answered/read and rolled-back threads are left out), grouped per module (files
    without a module in the code map are grouped per thread), newest first, with the unit tests that cover them — see
    [Referring to earlier changes](#referring-to-earlier-changes);
-9. the **unit tests** from the project's [unit test catalog](#unit-tests) (when active): suites, the rule for new tests,
+9. **the uncommitted changes made outside AIT** (`# Uncommitted changes made outside AIT`): files of the working tree
+   that differ from `HEAD` (modified, deleted, or new files git does not ignore) but were not written by an AIT thread —
+   changed by hand, in an IDE, or with another CLI talking to its provider directly, so AIT never saw the prompt. A file
+   an AIT thread wrote in the last 30 days counts as AIT's while it still holds exactly what the thread wrote; changed
+   again, it is listed with the note *edited after an AIT thread*. Only the path, the kind of change and the +/− line
+   counts (at most 30 files, no file content, no model); credential files and the `.aithread/` folder are left out. The
+   planner is told to read those files before relying on memory about them;
+10. the **unit tests** from the project's [unit test catalog](#unit-tests) (when active): suites, the rule for new tests,
    and the tests related to the request's files/modules with their last results (at most 30);
-10. the developer's latest request (without `<system-reminder>`), at most 40,000 characters.
+11. the developer's latest request (without `<system-reminder>`), at most 40,000 characters.
 
 When a part exceeds its limit, its middle is dropped; the start and the end of the text stay.
 
@@ -997,10 +1004,12 @@ developer of the project key.
 | Ref | The branch whose commits are read, e.g. `origin/develop`. Empty = the *prod* environment's ref, or `origin/HEAD` |
 | Since | Only commits after it was turned on (turning it on again starts from then), so old history is not summarized at once |
 | Commits per pass | At most this many commits summarized per pass (default 10, at most 50) |
+| Also read the branch checked out | On by default. Commits on the branch checked out in each developer's clone that are not in the ref yet (a local feature branch, or `main` not pushed yet) are summarized too, so memory knows the change before it is merged |
 
-Each pass (after a `git fetch`, every 5 minutes, or *Summarize now*) AIT reads that ref's commits, oldest first, without
-merge commits, and **leaves out** AIT's own: a commit or squash commit of a thread change the team shares, and a commit
-whose every file holds exactly what an AIT thread wrote. The rest is:
+Each pass (after a `git fetch`, every 5 minutes, or *Summarize now*) AIT reads that ref's commits, then the commits of the
+branch checked out that are not in the ref yet (skipped while `HEAD` is *detached*, e.g. during a rebase), oldest first,
+without merge commits, and **leaves out** AIT's own: a commit or squash commit of a thread change the team shares, and a
+commit whose every file holds exactly what an AIT thread wrote. The rest is:
 
 1. **claimed** in the shared `IngestedCommits` table — one commit is taken by one AIT only, even when several developers
    have it on;
@@ -1012,8 +1021,32 @@ whose every file holds exactly what an AIT thread wrote. The rest is:
 4. summarized into the **business wiki** by the wiki writer of the AIT that claimed it, with the next threads.
 
 A commit with nothing worth keeping (formatting, a version bump, generated files) is skipped by the model. A commit that
-fails to be summarized is marked *failed* and not tried again automatically. The newest commits and their state show on
-the Git card.
+fails to be summarized is marked *failed* and not tried again automatically. The newest commits and their state (and the
+working branch they came from) show on the Git card.
+
+**A working-branch commit that comes back with another id is not summarized again** (no tokens):
+
+| Event | Recognised by | Result |
+|---|---|---|
+| Rebase, amend, cherry-pick | The same `git patch-id --stable` as a commit summarized before | *copy of &lt;id&gt;* |
+| Squash merge into the ref | Every file of the squash commit holds a blob a summarized commit of another branch wrote (or an AIT thread wrote) | *squash of N commit(s)*; the squash commit also stands for the earlier commits of that branch whose files it all touches |
+| Plain merge | The commit itself is already recorded | skipped |
+
+A copy's commit id is added to the `ThreadChange` of the commit it brings back, so the memory still counts as *in this
+branch* after the original branch is deleted once merged. The AIT that claimed a working-branch commit keeps following it
+in its clone (30 days): *Pushed* when a remote branch holds it, *Committed* while a local branch or tag does, and
+*Commit lost* when git still has the commit but no ref holds it any more (the branch was reset or deleted without being
+merged) — the planner of every developer then leaves its memory out, as for a thread whose change was lost. When a branch
+holds the commit again, its state comes back too.
+
+**Suggestion to turn it on.** While the feature is off, the Git card counts the commits of the last 30 days on the ref
+(and on the branch checked out) that AIT does not know — not an AIT thread's and never claimed — without reading the
+commits and without a model. When there are some, the card shows a suggestion with a *Turn on & summarize* button: the
+feature is turned on from 30 days ago (so the counted commits are summarized, *Commits per pass* at a time) and one pass
+runs right away.
+
+Changes made outside AIT that are **not committed** are not summarized into memory (their content can still change); the
+planner sees them through the brief section *the uncommitted changes made outside AIT* (see [Planner](#3-planner)).
 
 ## Unit tests
 

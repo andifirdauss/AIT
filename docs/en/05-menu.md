@@ -156,7 +156,7 @@ pattern like `npm install *`; see [Developer permission](04-penggunaan.md#develo
 the last fetch and its error, the number of threads followed, the *Fetch now* and *Sync* buttons; see
 [Git state of a thread's change](07-cara-kerja.md#git-state-of-a-threads-change); then the team's shared
 **Environments**: name, ref, *prod* mark, number of changes that reached it, *Save environments* and *Check now*; see
-[Environments](07-cara-kerja.md#environments); then *Commits made outside AIT*: on/off (costs tokens), ref, commits per
+[Environments](07-cara-kerja.md#environments); then *Commits made outside AIT*: a suggestion to turn it on when there are commits made outside AIT memory does not know (*Turn on & summarize*), on/off (costs tokens), *Also read the branch checked out*, ref, commits per
 pass, how many summarized/skipped/failed, the newest commits, *Summarize now*; see
 [Commits made outside AIT](07-cara-kerja.md#commits-made-outside-ait)), the solution/build files found in the
 project, CLI sessions (session id, number of threads, last active), this project's
