@@ -16,10 +16,13 @@
 
   <!-- The Playwright driver package of the tester node (.playwright\package) must stay next to AIThread.exe, where
        Microsoft.Playwright starts it from, outside the single-file bundle. Its node.exe (±90 MB, half the install) is
-       left out: TestBrowserLauncher uses the Node.js on PATH or downloads one on first use. Builds keep it. -->
+       left out: TestBrowserLauncher uses the Node.js on PATH or downloads one on first use. So are types\ and lib\vite\
+       (TypeScript declarations; trace viewer, recorder and report pages), which browser automation never loads. Builds
+       keep them all. -->
   <Target Name="KeepPlaywrightDriverBesideExe" AfterTargets="ComputeResolvedFilesToPublishList">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('.playwright')) And $([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').EndsWith('node.exe'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('/', '\').StartsWith('.playwright\package\types\')) Or $([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('/', '\').StartsWith('.playwright\package\lib\vite\'))" />
       <ResolvedFileToPublish Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('.playwright'))">
         <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       </ResolvedFileToPublish>
