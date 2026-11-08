@@ -93,6 +93,10 @@ dotnet run --project src/AIThread.UI --no-launch-profile --urls http://localhost
 After the port changes, turn the active CLI switches in the **CLI** menu off and on again so the new URL is written
 (see [CLI integration](03-integrasi-cli.md)).
 
+Claude Code users can skip the manual steps with the
+[AIT plugin](03-integrasi-cli.md#claude-code-plugin-ait-as-a-skill): the built-in AI installs and sets up AIT after one
+confirmation.
+
 ## 5. Running in the background
 
 `dotnet run` and Visual Studio only run AIT while their terminal/debugger is open. In Visual Studio, closing the browser

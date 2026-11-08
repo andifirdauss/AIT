@@ -53,7 +53,7 @@ public sealed class ScriptedRouter : INineRouterService
 
     public IReadOnlyList<RouterCall> CallsTo(ScriptedAgent agent) => _calls.Where(c => c.Agent == agent).ToList();
 
-    public RouterStatusDto? LastStatus => null;
+    public RouterStatusDto? LastStatus { get; set; }
 
     public ScriptedRouter On(ScriptedAgent agent, Func<RouterCall, ChatCompletionResult> reply)
     {

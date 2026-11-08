@@ -23,11 +23,15 @@ public sealed partial class ChatRenderer(bool rich)
 
     public bool Verbose { get; set; }
 
+    // Stdout carries one JSON document: progress notes stay out of it. Errors still go to stderr.
+    public bool Quiet { get; set; }
+
     public static ChatRenderer ForConsole(bool forcePlain) =>
         new(!forcePlain && !Console.IsOutputRedirected && AnsiConsole.Profile.Capabilities.Ansi);
 
     public void Info(string text)
     {
+        if (Quiet) return;
         if (Rich) AnsiConsole.MarkupLine($"[grey]{Markup.Escape(text)}[/]");
         else Console.Out.WriteLine(text);
     }
@@ -633,7 +637,7 @@ public sealed partial class ChatRenderer(bool rich)
         _ => "grey"
     };
 
-    private static string FileOf(ThreadTaskDto task) =>
+    public static string FileOf(ThreadTaskDto task) =>
         task.TargetPath is { Length: > 0 } target ? $"{task.FilePath} → {target}" : task.FilePath;
 
     // "950", "12.3k", "1.2M".

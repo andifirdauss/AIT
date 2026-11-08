@@ -11,6 +11,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- What "aithread skill install" writes for a coding CLI; the skill and the gate script are the Claude Code plugin's own files. -->
+    <EmbeddedResource Include="..\..\integrations\claude-plugin\aithread\hooks\gate.mjs" LogicalName="ait.gate.mjs" />
+    <EmbeddedResource Include="..\..\integrations\claude-plugin\aithread\skills\aithread-orchestrator\SKILL.md" LogicalName="ait.SKILL.md" />
+    <EmbeddedResource Include="..\..\integrations\adapters\opencode.js" LogicalName="ait.opencode.js" />
+    <EmbeddedResource Include="..\..\integrations\adapters\omp.ts" LogicalName="ait.omp.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Spectre.Console" Version="0.57.2" />
   </ItemGroup>
 

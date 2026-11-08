@@ -1,0 +1,12 @@
+{
+  "name": "aithread",
+  "owner": { "name": "AIT" },
+  "metadata": { "description": "AIT plugins for coding CLIs." },
+  "plugins": [
+    {
+      "name": "aithread",
+      "source": "./integrations/claude-plugin/aithread",
+      "description": "Delegates every code change to AIT and installs AIT when it is missing."
+    }
+  ]
+}

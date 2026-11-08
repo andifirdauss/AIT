@@ -172,6 +172,8 @@ public static class CliProcess
         };
         foreach (var argument in launch.Prefix.Concat(arguments)) startInfo.ArgumentList.Add(argument);
         cleanEnvironment(startInfo.Environment);
+        // A node's own CLI must not be sent back to AIT by the plugin hook of the developer's CLI session.
+        startInfo.Environment["AITHREAD_CLI_ENGINE"] = "1";
 
         using var process = new Process { StartInfo = startInfo };
         try

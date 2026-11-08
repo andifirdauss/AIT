@@ -92,6 +92,10 @@ dotnet run --project src/AIThread.UI --no-launch-profile --urls http://localhost
 Setelah port berubah, matikan lalu nyalakan lagi switch CLI yang aktif di menu **CLI** agar URL baru tertulis
 (lihat [Integrasi CLI](03-integrasi-cli.md)).
 
+Pengguna Claude Code bisa melewati langkah manual lewat
+[plugin AIT](03-integrasi-cli.md#plugin-claude-code-ait-sebagai-skill): AI bawaan memasang dan menyetel AIT setelah
+satu konfirmasi.
+
 ## 5. Menjalankan di background
 
 `dotnet run` dan Visual Studio hanya menjalankan AIT selama terminal/debugger-nya terbuka. Di Visual Studio,

@@ -7,13 +7,13 @@ namespace AIThread.Service.Implementations;
 public sealed partial class SetupService
 {
     // Online is not enough: chat calls also need an accepted key and at least one provider (a model) behind 9router.
-    // When every active node runs on an official CLI (cliOnly), 9router is not needed; when it is offline and a CLI is
-    // installed, the step says that the CLI is the other way.
+    // When every active node runs on an official CLI (cliOnly), 9router is not needed, even when one runs here without a
+    // usable key or provider; when it is offline and a CLI is installed, the step says that the CLI is the other way.
     private SetupStepDto RouterStep(RouterStatusDto? status, bool cliOnly, CliBackendStatusDto? cliEngine)
     {
         const string id = "router";
         var title = Lang.T("Hubungkan 9router", "Connect 9router");
-        if (cliOnly && status is not { IsOnline: true })
+        if (cliOnly && status is not { IsOnline: true, ApiKeyValid: not false, ModelCount: > 0 })
         {
             var engine = cliEngine is null ? "CLI" : $"{cliEngine.Name} {cliEngine.Version}".Trim();
             return new SetupStepDto(id, title, true, true,

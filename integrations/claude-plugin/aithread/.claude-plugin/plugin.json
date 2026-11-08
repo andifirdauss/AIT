@@ -1,0 +1,6 @@
+{
+  "name": "aithread",
+  "description": "Delegates every code change to AIT (planner, parallel executors, build, tests, memory) and installs AIT when it is missing.",
+  "author": { "name": "AIT" },
+  "repository": "https://github.com/andifirdauss/AIT"
+}

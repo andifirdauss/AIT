@@ -82,6 +82,20 @@ public class SetupTests
     }
 
     [Fact]
+    public async Task A_9router_without_a_key_does_not_hold_back_nodes_on_official_clis()
+    {
+        await using var harness = await CreateAsync();
+        harness.Router.LastStatus = new RouterStatusDto(true, "http://localhost:20128", 1, 0, 0, false, false, null, DateTime.UtcNow);
+        var setup = harness.Service<ISetupService>();
+
+        Assert.False(Step(await setup.GetStatusAsync("http://localhost:5225"), "router").Done);
+
+        await setup.ApplyPresetAsync(new SetupPresetRequest("cli:claude:opus", "cli:claude:haiku"));
+
+        Assert.True(Step(await setup.GetStatusAsync("http://localhost:5225"), "router").Done);
+    }
+
+    [Fact]
     public async Task Exported_profile_recreates_the_nodes_on_another_machine_without_the_secrets()
     {
         await using var lead = await CreateAsync();

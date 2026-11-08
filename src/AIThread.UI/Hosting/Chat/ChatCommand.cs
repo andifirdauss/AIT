@@ -4,18 +4,21 @@ using AIThread.Common.Chat;
 using AIThread.Common.DTOs;
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
+using AIThread.UI.Hosting.Agent;
 using Spectre.Console;
 
 namespace AIThread.UI.Hosting.Chat;
 
 // Project: --project (name or folder). Prompt: -p, the non-interactive mode. Yes: -y, permission requests are
 // answered "once" under -p. Continue: -c, the project's most recent chat session goes on. Resume: -r, the session with
-// that id; empty: pick one from the list.
-public sealed record ChatOptions(string? Project, string? Prompt, bool Yes, bool Continue = false, string? Resume = null);
+// that id; empty: pick one from the list. Detach: under -p, start the thread and return its ids at once (aithread thread
+// wait follows it). Json: --detach prints one JSON document on stdout.
+public sealed record ChatOptions(string? Project, string? Prompt, bool Yes, bool Continue = false, string? Resume = null, bool Detach = false, bool Json = false);
 
 // aithread chat: a terminal chat with the AIT pipeline of a running instance (started in the tray when none runs; the
 // chat never hosts the server itself). Exit codes of -p: 0 completed, 1 failed/cancelled or no server, 2 wrong
-// arguments or no project, 3 waiting for permission without -y.
+// arguments or no project, 3 waiting for permission without -y. "-p -" reads the prompt from stdin, which keeps long
+// multi-line prompts away from the quoting and length limits of a shell.
 [SupportedOSPlatform("windows")]
 public static class ChatCommand
 {
@@ -24,9 +27,25 @@ public static class ChatCommand
     public const int BadArguments = 2;
     public const int AwaitingApproval = 3;
 
+    // aithread thread wait: the thread goes on after --timeout.
+    public const int StillRunning = 4;
+
     public static async Task<int> RunAsync(int port, ChatOptions options)
     {
+        if (options.Prompt == "-")
+        {
+            if (!Console.IsInputRedirected) return Refuse(Lang.T("-p - membaca prompt dari stdin, tetapi stdin kosong.", "-p - reads the prompt from stdin, but stdin is empty."));
+            using var input = new StreamReader(Console.OpenStandardInput(), Encoding.UTF8);
+            options = options with { Prompt = await input.ReadToEndAsync() };
+        }
+
         var promptMode = options.Prompt is not null;
+        if (options.Detach && !promptMode)
+            return Refuse(Lang.T("--detach hanya berlaku bersama -p.", "--detach only works together with -p."));
+        if (options.Detach && options.Yes)
+            return Refuse(Lang.T("--detach tidak bisa bersama -y; jawab izin lewat 'thread approve'.", "--detach does not work with -y; answer permissions with 'thread approve'."));
+        if (options.Json && !options.Detach)
+            return Refuse(Lang.T("--json di chat hanya berlaku bersama --detach.", "--json in chat only works together with --detach."));
         if (options.Yes && !promptMode)
             return Refuse(Lang.T("-y hanya berlaku bersama -p.", "-y only works together with -p."));
         if (promptMode && string.IsNullOrWhiteSpace(options.Prompt))
@@ -42,8 +61,9 @@ public static class ChatCommand
         Console.OutputEncoding = Encoding.UTF8;
         if (!promptMode) Console.InputEncoding = Encoding.UTF8;
         var renderer = ChatRenderer.ForConsole(forcePlain: promptMode);
+        renderer.Quiet = options.Json;
 
-        if (!await EnsureServerAsync(port, renderer)) return Failed;
+        if (!await Cli.EnsureServerAsync(port, renderer.Info, renderer.Error)) return Failed;
 
         using var api = new ChatApiClient(port);
         using var quit = new CancellationTokenSource();
@@ -135,28 +155,6 @@ public static class ChatCommand
         return picked.SessionId.Length == 0 ? null : picked;
     }
 
-    // The running instance, or a new one in the tray (as 'AIThread.exe tray'), waited for up to 30 seconds.
-    private static async Task<bool> EnsureServerAsync(int port, ChatRenderer renderer)
-    {
-        using var client = new ServerClient(port);
-        if (await client.GetInfoAsync() is not null) return true;
-
-        renderer.Info(Lang.T($"AIT belum berjalan; menjalankannya di latar belakang ({client.BaseUrl}) ...", $"AIT is not running; starting it in the background ({client.BaseUrl}) ..."));
-        try
-        {
-            Cli.SpawnTray(port);
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-        {
-            renderer.Error(Lang.T($"AIT tidak bisa dijalankan: {ex.Message}", $"AIT could not be started: {ex.Message}"));
-            return false;
-        }
-
-        if (await Cli.WaitUntilAsync(async () => await client.GetInfoAsync() is not null, TimeSpan.FromSeconds(30))) return true;
-        renderer.Error(Lang.T($"AIT belum menjawab di {client.BaseUrl} setelah 30 detik. Log: {AppPaths.LogDir}", $"AIT did not answer at {client.BaseUrl} after 30 seconds. Log: {AppPaths.LogDir}"));
-        return false;
-    }
-
     // -p: one prompt, plain progress on stdout, errors on stderr, the answer at the end.
     private static async Task<int> RunPromptAsync(ChatApiClient api, ChatRenderer renderer, ProjectDto project, ChatOptions options, string sessionId,
         CancellationToken cancellationToken)
@@ -184,6 +182,13 @@ public static class ChatCommand
             : null;
         var threadId = await api.StartThreadAsync(project.Id, prompt, images, sessionId, cancellationToken);
         var shortId = ChatSessionKey.Short(sessionId);
+        if (options.Detach)
+        {
+            if (options.Json) AgentOutput.Write(new { threadId, sessionId, session = shortId, project = project.Name, url = api.ThreadUrl(threadId) });
+            else Console.WriteLine($"{threadId} {shortId} {api.ThreadUrl(threadId)}");
+            return Ok;
+        }
+
         renderer.Info(Lang.T($"Thread {threadId} · {project.Name} · sesi {shortId} (lanjutkan: -r {shortId})",
             $"Thread {threadId} · {project.Name} · session {shortId} (resume: -r {shortId})"));
 

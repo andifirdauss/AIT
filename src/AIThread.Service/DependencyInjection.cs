@@ -107,6 +107,7 @@ public static class DependencyInjection
         services.AddSingleton<IDashboardService, DashboardService>();
         services.AddSingleton<ISetupService, SetupService>();
         services.AddSingleton<ISetupProfileService, SetupProfileService>();
+        services.AddSingleton<ISkillGateService, SkillGateService>();
         services.AddSingleton<IClaudeSettingsService, ClaudeSettingsService>();
         services.AddSingleton<ICliIntegration, ClaudeCodeIntegration>();
         services.AddSingleton<ICliIntegration>(sp => new OhMyPiProviderIntegration(sp.GetRequiredService<ISettingService>()));

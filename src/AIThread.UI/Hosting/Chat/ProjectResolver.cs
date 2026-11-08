@@ -1,5 +1,6 @@
 using AIThread.Common.DTOs;
 using AIThread.Common.Localization;
+using AIThread.Common.Projects;
 
 namespace AIThread.UI.Hosting.Chat;
 
@@ -34,31 +35,6 @@ public static class ProjectResolver
     }
 
     // The deepest registered root that is the folder or one of its parents.
-    public static ProjectDto? ByFolder(IReadOnlyList<ProjectDto> projects, string folder)
-    {
-        var path = Normalize(folder);
-        return projects
-            .Where(p => !string.IsNullOrWhiteSpace(p.RootPath) && Contains(Normalize(p.RootPath), path))
-            .OrderByDescending(p => Normalize(p.RootPath).Length)
-            .ThenByDescending(p => p.Exists)
-            .FirstOrDefault();
-    }
-
-    private static bool Contains(string root, string path) =>
-        path.Equals(root, StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-        || (root.EndsWith(Path.DirectorySeparatorChar) && path.StartsWith(root, StringComparison.OrdinalIgnoreCase));
-
-    private static string Normalize(string path)
-    {
-        try
-        {
-            path = Path.GetFullPath(path.Replace('/', Path.DirectorySeparatorChar));
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { }
-
-        // C:\ keeps its separator; any other root loses the trailing one.
-        var trimmed = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return trimmed.EndsWith(':') ? trimmed + Path.DirectorySeparatorChar : trimmed;
-    }
+    public static ProjectDto? ByFolder(IReadOnlyList<ProjectDto> projects, string folder) =>
+        ProjectFolders.Holding(projects, p => p.RootPath, folder).ThenByDescending(p => p.Exists).FirstOrDefault();
 }

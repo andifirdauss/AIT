@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using AIThread.Common.Localization;
 using AIThread.Data;
+using AIThread.UI.Hosting.Agent;
 using AIThread.UI.Hosting.Chat;
 
 namespace AIThread.UI.Hosting;
@@ -32,6 +33,15 @@ public static class Cli
           setup             Buka halaman Setup (semua langkah awal di satu halaman)
           setup export <f>  Tulis profil setup tim ke file f (tanpa API key dan password)
           setup import <f>  Terapkan profil setup tim dari file f; API key dan password ditanyakan di sini
+          setup auto        Buat node dari CLI resmi yang terpasang di komputer ini (dilewati bila node sudah lengkap)
+          doctor            Periksa prasyarat, server, setup, project folder ini, dan langkah berikutnya
+          project add [p]   Daftarkan folder p sebagai project (bawaan: folder saat ini)
+          thread wait <id>  Tunggu thread (exit 0 selesai, 1 gagal/batal, 3 menunggu izin/jawaban, 4 masih berjalan)
+          thread approve <id> once|always|deny
+                            Jawab permintaan izin thread
+          skill on|off [p]  Nyalakan/matikan paksaan plugin AIT untuk folder p (bawaan: project folder ini)
+          skill install|uninstall <cli>
+                            Pasang/lepas skill + hook AIT di codex, gemini, opencode, qwen, omp, atau all
           version           Tampilkan versi
           help              Bantuan ini
 
@@ -45,6 +55,10 @@ public static class Cli
                             2 argumen/project salah, 3 menunggu izin)
           -c, --continue    chat: lanjutkan sesi chat terakhir project ini
           -r, --resume [id] chat: lanjutkan sesi chat itu (tanpa id: pilih dari daftar)
+          --detach          chat -p: mulai thread lalu langsung keluar; ikuti dengan 'thread wait' (-p - baca prompt dari stdin)
+          --json            chat --detach, doctor, setup auto, project add, thread: satu dokumen JSON di stdout
+          --start           doctor: jalankan server bila belum berjalan
+          --timeout <s>     thread wait: batas tunggu dalam detik (bawaan 240)
 
         Konfigurasi ada di appsettings.json di samping AIThread.exe; data dan log di %LOCALAPPDATA%\AIThread.
         """;
@@ -67,6 +81,15 @@ public static class Cli
           setup             Open the Setup page (every first step on one page)
           setup export <f>  Write the team setup profile to file f (without API keys and passwords)
           setup import <f>  Apply the team setup profile from file f; API keys and passwords are asked here
+          setup auto        Create the nodes from the official CLIs installed on this computer (skipped when the nodes are complete)
+          doctor            Check the prerequisites, server, setup, this folder's project and the next step
+          project add [p]   Register folder p as a project (default: the current folder)
+          thread wait <id>  Wait for a thread (exit 0 completed, 1 failed/cancelled, 3 waiting for permission/an answer, 4 still running)
+          thread approve <id> once|always|deny
+                            Answer a thread's permission request
+          skill on|off [p]  Turn the AIT plugin's enforcement on/off for folder p (default: this folder's project)
+          skill install|uninstall <cli>
+                            Add/remove AIT's skill + hook in codex, gemini, opencode, qwen, omp, or all
           version           Show the version
           help              This help
 
@@ -80,13 +103,17 @@ public static class Cli
                             2 wrong arguments/project, 3 waiting for permission)
           -c, --continue    chat: resume this project's most recent chat session
           -r, --resume [id] chat: resume that chat session (no id: pick from the list)
+          --detach          chat -p: start the thread and exit at once; follow it with 'thread wait' (-p - reads the prompt from stdin)
+          --json            chat --detach, doctor, setup auto, project add, thread: one JSON document on stdout
+          --start           doctor: start the server when it is not running
+          --timeout <s>     thread wait: how long to wait, in seconds (default 240)
 
         Configuration is in appsettings.json next to AIThread.exe; data and logs in %LOCALAPPDATA%\AIThread.
         """;
 
     private static string Help => Lang.T(HelpIndonesian, HelpEnglish);
 
-    private static readonly string[] Commands = ["serve", "tray", "stop", "status", "logs", "open", "autostart", "setup", "chat", "version", "help", "menu"];
+    private static readonly string[] Commands = ["serve", "tray", "stop", "status", "logs", "open", "autostart", "setup", "chat", "doctor", "project", "thread", "skill", "version", "help", "menu"];
 
     public static string Version { get; } =
         (Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0.0").Split('+')[0];
@@ -121,11 +148,16 @@ public static class Cli
             case "logs": return await LogsAsync(options.Follow);
             case "open": OpenBrowser($"http://localhost:{port}"); return 0;
             case "autostart": return AutostartCommand(options.Rest);
+            case "setup" when options.Rest.FirstOrDefault()?.ToLowerInvariant() == "auto": return await SetupAutoCommand.RunAsync(port, options.Json);
             case "setup": return await SetupCommand.RunAsync(port, options.Rest, options.Yes);
+            case "doctor": return await DoctorCommand.RunAsync(port, options.Start, options.Json);
+            case "project": return await ProjectCommand.RunAsync(port, options.Rest, options.Json);
+            case "thread": return await ThreadCommand.RunAsync(port, options.Rest, options.Timeout, options.Json);
+            case "skill": return await SkillCommand.RunAsync(port, options.Rest);
             case "chat" when options.Rest.Count > 0:
                 Console.Error.WriteLine(Lang.T($"Argumen tidak dikenal: {string.Join(" ", options.Rest)}. Prompt diberikan lewat -p \"...\".", $"Unknown argument: {string.Join(" ", options.Rest)}. A prompt is given with -p \"...\"."));
                 return 2;
-            case "chat": return await ChatCommand.RunAsync(port, new ChatOptions(options.Project, options.Prompt, options.Yes, options.Continue, options.Resume));
+            case "chat": return await ChatCommand.RunAsync(port, new ChatOptions(options.Project, options.Prompt, options.Yes, options.Continue, options.Resume, options.Detach, options.Json));
             case "version": Console.WriteLine($"AIT {Version}"); return 0;
             default: Console.WriteLine(Help); return 0;
         }
@@ -348,6 +380,28 @@ public static class Cli
         Process.Start(start)?.Dispose();
     }
 
+    // The running instance, or a new one in the tray (as 'AIThread.exe tray'), waited for up to 30 seconds.
+    public static async Task<bool> EnsureServerAsync(int port, Action<string> info, Action<string> error)
+    {
+        using var client = new ServerClient(port);
+        if (await client.GetInfoAsync() is not null) return true;
+
+        info(Lang.T($"AIT belum berjalan; menjalankannya di latar belakang ({client.BaseUrl}) ...", $"AIT is not running; starting it in the background ({client.BaseUrl}) ..."));
+        try
+        {
+            SpawnTray(port);
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            error(Lang.T($"AIT tidak bisa dijalankan: {ex.Message}", $"AIT could not be started: {ex.Message}"));
+            return false;
+        }
+
+        if (await WaitUntilAsync(async () => await client.GetInfoAsync() is not null, TimeSpan.FromSeconds(30))) return true;
+        error(Lang.T($"AIT belum menjawab di {client.BaseUrl} setelah 30 detik. Log: {AppPaths.LogDir}", $"AIT did not answer at {client.BaseUrl} after 30 seconds. Log: {AppPaths.LogDir}"));
+        return false;
+    }
+
     public static async Task<bool> WaitUntilAsync(Func<Task<bool>> condition, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
@@ -369,13 +423,13 @@ public static class Cli
     private static extern bool FreeConsole();
 
     // Resume: -r/--resume, with the session id that follows it, or "" when none follows (pick from the list).
-    private sealed record Options(int? Port, bool Open, bool Follow, IReadOnlyList<string> Rest, string? Error, bool Yes = false, string? Project = null,
-        string? Prompt = null, bool Continue = false, string? Resume = null)
+    public sealed record Options(int? Port, bool Open, bool Follow, IReadOnlyList<string> Rest, string? Error, bool Yes = false, string? Project = null,
+        string? Prompt = null, bool Continue = false, string? Resume = null, bool Json = false, bool Detach = false, bool Start = false, int? Timeout = null)
     {
         public static Options Parse(string[] args)
         {
-            int? port = null;
-            bool open = false, follow = false, yes = false, resumeLast = false;
+            int? port = null, timeout = null;
+            bool open = false, follow = false, yes = false, resumeLast = false, json = false, detach = false, start = false;
             string? project = null, prompt = null, resume = null;
             var rest = new List<string>();
 
@@ -403,11 +457,19 @@ public static class Cli
                     case "-r" or "--resume":
                         resume = i + 1 < args.Length && !args[i + 1].StartsWith('-') ? args[++i] : string.Empty;
                         break;
+                    case "--json": json = true; break;
+                    case "--detach": detach = true; break;
+                    case "--start": start = true; break;
+                    case "--timeout":
+                        if (i + 1 >= args.Length || !int.TryParse(args[++i], out var seconds) || seconds is < 1 or > 3600)
+                            return new Options(null, false, false, rest, Lang.T("--timeout butuh angka detik 1-3600.", "--timeout needs a number of seconds 1-3600."));
+                        timeout = seconds;
+                        break;
                     default: rest.Add(args[i]); break;
                 }
             }
 
-            return new Options(port, open, follow, rest, null, yes, project, prompt, resumeLast, resume);
+            return new Options(port, open, follow, rest, null, yes, project, prompt, resumeLast, resume, json, detach, start, timeout);
         }
     }
 }

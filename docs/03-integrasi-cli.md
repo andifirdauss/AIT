@@ -392,6 +392,76 @@ permintaan izin dengan *sekali*.
 | 2 | argumen salah, atau project tidak ditemukan |
 | 3 | thread menunggu izin dan `-y` tidak dipakai (thread dibiarkan menunggu; link halamannya dicetak) |
 
+**Perintah untuk skrip dan agen AI.** `-p -` membaca prompt dari stdin, sehingga prompt panjang tidak terkena batas
+kutip dan panjang shell. Perintah di bawah menerima `--json` dan mencetak satu dokumen JSON di stdout:
+
+| Perintah | Fungsi |
+|---|---|
+| `aithread chat -p - --detach --json` | mulai thread lalu langsung keluar, mencetak `threadId`, `session`, `url`. Thread tetap jalan di server walau prosesnya berakhir |
+| `aithread thread wait <id> [--timeout s]` | tunggu thread (bawaan 240 detik; langkah commit/push bisa menambah sampai 60 detik). Exit 0 selesai, 1 gagal/batal, 3 menunggu izin/jawaban (`waitingFor`), 4 masih berjalan, jalankan lagi |
+| `aithread thread approve <id> once\|always\|deny` | jawab permintaan izin |
+| `aithread doctor [--start]` | prasyarat, server, setup, project folder ini, dan langkah berikutnya (`fixes`) |
+| `aithread setup auto` | buat node dari CLI resmi yang terpasang (Claude Code → Gemini CLI → Codex). Dilewati bila node sudah lengkap |
+| `aithread project add [path]` | daftarkan folder sebagai project |
+
+Karena menunggu dilakukan dalam langkah pendek yang bisa diulang, cara ini berlaku untuk CLI apa pun, termasuk yang
+tool shell-nya punya batas waktu atau tidak bisa menjalankan perintah di background.
+
+## Plugin Claude Code (AIT sebagai skill)
+
+Cara tanpa setup untuk Claude Code: AI bawaan tetap menjadi lawan bicara, dan setiap perubahan kode didelegasikan ke
+AIT. Berbeda dengan switch di menu **CLI** yang mengarahkan semua prompt ke proxy, di sini tanya jawab tetap dijawab AI
+bawaan. Jangan memakai keduanya sekaligus; bila sesi sudah lewat proxy AIT, plugin diam.
+
+```
+/plugin marketplace add andifirdauss/AIT
+/plugin install aithread@aithread
+```
+
+Isi plugin ada di `integrations/claude-plugin/aithread`: skill `aithread-orchestrator` dan satu hook.
+
+- **Prompt yang mengubah kode:** AI memuat skill, menulis brief untuk AIT, menunggu lewat `thread wait`, lalu
+  melaporkan hasilnya. Claude Code bisa meminta izin sekali untuk memakai skill ini.
+- **AIT belum terpasang atau belum siap:** AI meminta persetujuan satu kali, lalu menjalankan `npm i -g aithread`,
+  `doctor`, `setup auto`, dan `project add`. Bila ditolak, plugin diam sampai `aithread skill on`.
+- **Paksaan:** hook `PreToolUse` menolak `Edit`, `Write`, `MultiEdit`, dan `NotebookEdit` pada file di dalam project
+  yang siap, kecuali di `.claude/` dan `.aithread/`. Hook `UserPromptSubmit` memberi tahu model status AIT di folder itu.
+- **Izin:** kartu izin AIT selalu ditanyakan ke developer; plugin tidak memakai `-y`.
+- **Mematikan:** `aithread skill off [path]` untuk satu project, `aithread skill on [path]` untuk menyalakan lagi
+  (disimpan di `%LOCALAPPDATA%\AIThread\skill.json`). AIT yang mati atau bermasalah tidak pernah mengunci sesi: hook
+  mengizinkan edit bila AIT tidak menjawab.
+
+Batasan:
+
+- Hanya Windows x64. Di sistem lain plugin diam.
+- `Bash` tidak diblokir, jadi larangan menulis file lewat shell hanya berupa instruksi di skill.
+- SQL Server LocalDB tidak ikut npm. `doctor` menyebut cara memasangnya, dan langkah ini dikerjakan developer.
+- Tanpa CLI resmi yang sudah login, 9router perlu dihubungkan di halaman Setup karena API key diketik di sana.
+- Node `cli:` tetap dibatasi 180 detik tanpa output, yang paling terasa pada Codex karena jawabannya tidak bertahap.
+
+### CLI lain
+
+Skill dan hook yang sama tersedia untuk CLI lain dengan satu perintah, yang tidak butuh AIT terpasang lebih dulu:
+
+```
+npx -y aithread skill install all      # CLI yang pernah dipakai di komputer ini
+npx -y aithread skill install gemini   # atau satu per satu: codex, gemini, opencode, qwen, omp
+aithread skill uninstall gemini        # melepas lagi; hook buatan Anda tidak disentuh
+```
+
+| CLI | Skill | Paksaan edit file | Catatan |
+|---|---|---|---|
+| Codex CLI | `~/.agents/skills` | hook `apply_patch` di `~/.codex/hooks.json` | Hook baru harus disetujui: buka Codex, `/hooks`, setujui dua hook AIT. Sebelum itu hanya skill yang aktif |
+| Gemini CLI | `~/.agents/skills` | hook `write_file`/`replace` di `~/.gemini/settings.json` | |
+| opencode | `~/.agents/skills` | plugin `~/.config/opencode/plugins/aithread.js` | Memakai API plugin V1 |
+| Qwen Code | `~/.qwen/skills` | hook `write_file`/`edit` di `~/.qwen/settings.json` | |
+| oh-my-pi | `~/.omp/agent/skills` | hook `~/.omp/agent/hooks/pre/aithread.ts` | |
+
+Perilakunya sama dengan plugin Claude Code, termasuk konfirmasi sekali, `aithread skill off`, dan batasan di atas. File
+konfigurasi yang berisi komentar tidak ditulis; AIT melaporkannya. File lama disimpan sebagai `*.aithread-backup`.
+Salinan skill dan skrip hook berasal dari versi AIT saat perintah dijalankan, jadi ulangi `skill install` setelah
+memperbarui AIT.
+
 ## CLI resmi sebagai mesin model (tanpa 9router)
 
 Untuk developer yang tidak punya akses login provider di 9router, misalnya karena akun perusahaannya diloginkan

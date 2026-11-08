@@ -55,6 +55,19 @@ public sealed class ChatApiClient(int port) : IDisposable
     public Task<Guid> ApproveAsync(Guid threadId, ApprovalDecision decision, CancellationToken cancellationToken) =>
         SendAsync<Guid>(HttpMethod.Post, $"/api/threads/{threadId}/approval", new ApproveRequest(decision), cancellationToken);
 
+    public Task<SetupStatusDto> GetSetupStatusAsync(CancellationToken cancellationToken) =>
+        SendAsync<SetupStatusDto>(HttpMethod.Get, "/api/setup/status", null, cancellationToken);
+
+    public Task<SetupPresetResultDto> ApplyPresetAsync(SetupPresetRequest request, CancellationToken cancellationToken) =>
+        SendAsync<SetupPresetResultDto>(HttpMethod.Post, "/api/setup/preset", request, cancellationToken);
+
+    // The official CLIs this computer can use as a model (cli:<tool>:<model>).
+    public Task<IReadOnlyList<CliBackendStatusDto>> GetCliEnginesAsync(CancellationToken cancellationToken) =>
+        SendAsync<IReadOnlyList<CliBackendStatusDto>>(HttpMethod.Get, "/api/router/cli", null, cancellationToken);
+
+    public Task<ProjectDto> RegisterProjectAsync(string path, CancellationToken cancellationToken) =>
+        SendAsync<ProjectDto>(HttpMethod.Post, "/api/projects", new RegisterProjectRequest(path), cancellationToken);
+
     public Task<bool> CancelAsync(Guid threadId, CancellationToken cancellationToken) =>
         SendAsync<bool>(HttpMethod.Post, $"/api/threads/{threadId}/cancel", null, cancellationToken);
 

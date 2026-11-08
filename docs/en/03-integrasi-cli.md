@@ -392,6 +392,76 @@ permission requests with *once*.
 | 2 | wrong arguments, or no project found |
 | 3 | the thread waits for permission and `-y` was not given (the thread keeps waiting; its page link is printed) |
 
+**Commands for scripts and AI agents.** `-p -` reads the prompt from stdin, so a long prompt avoids the shell's quoting
+and length limits. The commands below accept `--json` and print one JSON document on stdout:
+
+| Command | What it does |
+|---|---|
+| `aithread chat -p - --detach --json` | starts the thread and exits at once, printing `threadId`, `session`, `url`. The thread keeps running on the server after the process ends |
+| `aithread thread wait <id> [--timeout s]` | waits for a thread (default 240 seconds; a commit/push step can add up to 60). Exit 0 completed, 1 failed/cancelled, 3 waiting for permission or an answer (`waitingFor`), 4 still running, run it again |
+| `aithread thread approve <id> once\|always\|deny` | answers a permission request |
+| `aithread doctor [--start]` | prerequisites, server, setup, this folder's project, and the next step (`fixes`) |
+| `aithread setup auto` | creates the nodes from the installed official CLI (Claude Code → Gemini CLI → Codex). Skipped when the nodes are complete |
+| `aithread project add [path]` | registers a folder as a project |
+
+Because waiting happens in short repeatable steps, this works with any CLI, including those whose shell tool has a time
+limit or cannot run a command in the background.
+
+## Claude Code plugin (AIT as a skill)
+
+The no-setup way for Claude Code: the built-in AI stays the one you talk to, and every code change is delegated to AIT.
+Unlike the switch in the **CLI** menu, which sends every prompt to the proxy, questions are still answered by the
+built-in AI here. Do not use both at once; when a session already goes through AIT's proxy, the plugin stays silent.
+
+```
+/plugin marketplace add andifirdauss/AIT
+/plugin install aithread@aithread
+```
+
+The plugin lives in `integrations/claude-plugin/aithread`: the `aithread-orchestrator` skill and one hook.
+
+- **A prompt that changes code:** the AI loads the skill, writes a brief for AIT, waits with `thread wait`, and reports
+  the result. Claude Code may ask once for permission to use this skill.
+- **AIT not installed or not ready:** the AI asks for consent once, then runs `npm i -g aithread`, `doctor`,
+  `setup auto`, and `project add`. If declined, the plugin stays silent until `aithread skill on`.
+- **Enforcement:** the `PreToolUse` hook refuses `Edit`, `Write`, `MultiEdit`, and `NotebookEdit` on files inside a ready
+  project, except in `.claude/` and `.aithread/`. The `UserPromptSubmit` hook tells the model AIT's state in that folder.
+- **Permissions:** AIT's permission cards always go to the developer; the plugin does not use `-y`.
+- **Turning it off:** `aithread skill off [path]` for one project, `aithread skill on [path]` to turn it back on (stored
+  in `%LOCALAPPDATA%\AIThread\skill.json`). An AIT that is down or failing never locks the session: the hook lets edits
+  through when AIT does not answer.
+
+Limits:
+
+- Windows x64 only. On other systems the plugin stays silent.
+- `Bash` is not blocked, so the rule against writing files through the shell is only an instruction in the skill.
+- SQL Server LocalDB does not come with npm. `doctor` says how to install it, and the developer does that step.
+- Without a signed-in official CLI, 9router has to be connected on the Setup page, because the API key is typed there.
+- `cli:` nodes keep their limit of 180 seconds without output, most noticeable with Codex, which does not stream its answer.
+
+### Other CLIs
+
+The same skill and hook are available for other CLIs with one command, which does not need AIT installed first:
+
+```
+npx -y aithread skill install all      # the CLIs that have been used on this computer
+npx -y aithread skill install gemini   # or one at a time: codex, gemini, opencode, qwen, omp
+aithread skill uninstall gemini        # removes it again; your own hooks are not touched
+```
+
+| CLI | Skill | File edit enforcement | Notes |
+|---|---|---|---|
+| Codex CLI | `~/.agents/skills` | `apply_patch` hook in `~/.codex/hooks.json` | New hooks must be approved: open Codex, `/hooks`, approve the two AIT hooks. Until then only the skill is active |
+| Gemini CLI | `~/.agents/skills` | `write_file`/`replace` hook in `~/.gemini/settings.json` | |
+| opencode | `~/.agents/skills` | plugin `~/.config/opencode/plugins/aithread.js` | Uses the V1 plugin API |
+| Qwen Code | `~/.qwen/skills` | `write_file`/`edit` hook in `~/.qwen/settings.json` | |
+| oh-my-pi | `~/.omp/agent/skills` | hook `~/.omp/agent/hooks/pre/aithread.ts` | |
+
+They behave like the Claude Code plugin, including the single confirmation, `aithread skill off`, and the limits above.
+A configuration file with comments is not written; AIT reports it. The old file is kept as `*.aithread-backup`. The
+skill and hook script are copies from the AIT version that ran the command, so run `skill install` again after updating
+AIT.
+
 ## Official CLI as the model engine (no 9router)
 
 This is for a developer who has no provider login in 9router, for example because a manager signed the company

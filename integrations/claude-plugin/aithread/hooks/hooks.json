@@ -1,0 +1,20 @@
+{
+  "description": "Keeps code changes going through AIT: reports AIT's state on every prompt and refuses direct edits in a project AIT is ready for.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate.mjs\" || exit 0", "timeout": 3 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/gate.mjs\" || exit 0", "timeout": 3 }
+        ]
+      }
+    ]
+  }
+}
