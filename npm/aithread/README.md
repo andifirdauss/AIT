@@ -9,6 +9,19 @@ Codex CLI, Gemini CLI, atau Antigravity CLI).
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.18.0
+
+- **AI bawaan CLI memakai AIT dengan sendirinya**: `npx -y aithread skill install all` memasang skill dan hook AIT di
+  Codex CLI, Gemini CLI, opencode, Qwen Code, dan oh-my-pi; Claude Code lewat plugin. Prompt yang mengubah kode
+  didelegasikan ke AIT, dan tanya jawab tetap dijawab AI bawaan.
+- **Tanpa setup manual**: bila AIT belum terpasang, AI meminta konfirmasi sekali lalu memasang dan menyetelnya, memakai
+  login CLI resmi yang sudah ada.
+- **Paksaan yang bisa dimatikan**: hook menolak edit file langsung di project yang siap, dan `aithread skill off`
+  mematikannya per project. Di Codex, hook AIT perlu disetujui sekali lewat `/hooks`.
+- **Perintah untuk agen AI**: `doctor`, `setup auto`, `project add`, `thread wait`, `thread approve`, dan
+  `chat -p - --detach`, dengan `--json`.
+- **Paket lebih kecil**: file pustaka, driver, dan terjemahan yang tidak dipakai tidak lagi ikut.
+
 ## Yang baru di 1.17.0
 
 - **Memory dari commit branch kerja**: ingest commit (Project → Detail → Git, *Commit di luar AIT*) kini juga membaca
