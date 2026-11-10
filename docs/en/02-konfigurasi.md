@@ -181,6 +181,13 @@ See
 The **Test** button sends a short prompt ("Reply with exactly one word: pong") and shows the latency, tokens and reply — a
 quick way to make sure the model and key are right.
 
+The **Benchmark** button at the top of the page estimates one small change without running a thread, so no file changes
+and no new memory. Each model used by an active node is called 3 times with a short piece of code (a model shared by
+several nodes is measured once). Its median is multiplied by the number of calls in one small change: Planner 2, Tools
+Node 3 (when used), Executor 1, Reviewer 1, Wrapper 1 (when not skipped). The result: the estimated total, each node's
+share, the node that is the slow spot, unstable models, and tips to improve. Build and tests are not included and the
+real context is larger, so treat the number as the fastest estimate.
+
 ### Node selection rules
 
 - **Planner**: the active node with the lowest priority is used. When it hits a rate limit, the one that takes over is

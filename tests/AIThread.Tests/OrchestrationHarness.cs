@@ -89,6 +89,8 @@ public sealed class OrchestrationHarness : IAsyncDisposable
 
     public INodeService Nodes => _services.GetRequiredService<INodeService>();
 
+    public INodeBenchmarkService Benchmark => _services.GetRequiredService<INodeBenchmarkService>();
+
     public async Task<AiNode> AddNodeAsync(NodeRole role, string model, int priority = 100, bool isActive = true, Guid? fallbackNodeId = null,
         bool autoTesting = false, bool directRead = false, int directReadPercent = 100)
     {

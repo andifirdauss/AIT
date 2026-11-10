@@ -505,6 +505,74 @@
     }
   });
 
+  // --- Benchmark: the estimate of one small change, its slowest node and what to do about it ---
+
+  const benchmarkModal = bootstrap.Modal.getOrCreateInstance(el('benchmarkModal'));
+
+  function benchmarkStage(s) {
+    const failed = s.failed > 0 ? ` <span class="text-danger" title="${escapeHtml(s.error || '')}">${isEn ? `${s.failed} failed` : `${s.failed} gagal`}</span>` : '';
+    const unstable = s.unstable ? ` <span class="badge text-bg-warning">${t('tidak stabil', 'unstable')}</span>` : '';
+    const slow = s.isBottleneck ? ` <span class="badge text-bg-danger">${t('titik lambat', 'slow spot')}</span>` : '';
+    return `<tr>
+        <td>
+          <div class="fw-semibold">${escapeHtml(s.nodeName)}${slow}${unstable}</div>
+          <div class="small text-secondary mono text-break">${escapeHtml(roleLabels[s.role] || s.role)} · ${escapeHtml(s.model)}</div>
+        </td>
+        <td class="text-nowrap">${s.calls}×</td>
+        <td class="text-nowrap" title="${s.minMs == null ? '' : `${fmt.ms(s.minMs)} – ${fmt.ms(s.maxMs)}`}">${s.medianMs == null ? '—' : fmt.ms(s.medianMs)}${failed}</td>
+        <td class="text-nowrap">${s.estimatedMs == null ? '—' : fmt.ms(s.estimatedMs)}</td>
+        <td style="min-width: 6rem">
+          <div class="progress" role="progressbar" aria-valuenow="${s.sharePercent}" aria-valuemin="0" aria-valuemax="100" title="${s.sharePercent}%">
+            <div class="progress-bar ${s.isBottleneck ? 'bg-danger' : ''}" style="width: ${s.sharePercent}%"></div>
+          </div>
+        </td>
+      </tr>`;
+  }
+
+  function renderBenchmark(r) {
+    const summary = r.bottleneckNode
+      ? (isEn
+        ? `One small change: about <strong>${fmt.ms(r.estimatedMs)}</strong> of model time. Slowest node: <strong>${escapeHtml(r.bottleneckNode)}</strong>.`
+        : `Satu perubahan kecil: sekitar <strong>${fmt.ms(r.estimatedMs)}</strong> waktu model. Node paling lambat: <strong>${escapeHtml(r.bottleneckNode)}</strong>.`)
+      : t('Tidak ada node yang berhasil diukur.', 'No node could be measured.');
+    const table = r.stages.length ? `<div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead><tr>
+            <th>Node</th>
+            <th>${t('Panggilan', 'Calls')}</th>
+            <th>${t('Median', 'Median')}</th>
+            <th>${t('Perkiraan', 'Estimate')}</th>
+            <th>${t('Porsi', 'Share')}</th>
+          </tr></thead>
+          <tbody>${r.stages.map(benchmarkStage).join('')}</tbody>
+        </table>
+      </div>
+      <div class="form-text mb-3">${isEn ? `${r.samplesPerModel} calls per model. A model shared by several nodes is measured once.` : `${r.samplesPerModel} panggilan per model. Model yang dipakai beberapa node diukur sekali.`}</div>` : '';
+    el('benchmarkResult').innerHTML = `<p>${summary}</p>${table}
+      <div class="fw-semibold small mb-1">${t('Tips', 'Tips')}</div>
+      <ul class="small mb-0">${r.tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}</ul>`;
+  }
+
+  async function runBenchmark() {
+    el('btnBenchmark').disabled = true;
+    el('btnBenchmarkAgain').disabled = true;
+    el('benchmarkResult').innerHTML = `<div class="d-flex align-items-center gap-2 text-secondary"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> ${t('Mengukur node, bisa sampai beberapa menit kalau modelnya lambat…', 'Measuring the nodes, this can take a few minutes when the models are slow…')}</div>`;
+    try {
+      renderBenchmark(await api.post('/api/nodes/benchmark'));
+    } catch (error) {
+      el('benchmarkResult').innerHTML = `<div class="text-danger">✕ ${escapeHtml(error.message)}</div>`;
+    } finally {
+      el('btnBenchmark').disabled = false;
+      el('btnBenchmarkAgain').disabled = false;
+    }
+  }
+
+  el('btnBenchmark').addEventListener('click', () => {
+    benchmarkModal.show();
+    runBenchmark();
+  });
+  el('btnBenchmarkAgain').addEventListener('click', runBenchmark);
+
   // --- Skills: suggested by the skill orchestrator, picked by the user, saved as part of the node ---
 
   const maxSkills = 10;

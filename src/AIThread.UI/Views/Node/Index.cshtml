@@ -8,6 +8,7 @@
         <p class="page-subtitle">@Lang.T("Pekerja AI pipeline. Model diambil dari provider yang terhubung ke 9router, termasuk combo.", "The AI workers of the pipeline. Models come from the providers connected to 9router, combos included.")</p>
     </div>
     <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnBenchmark">@Lang.T("Benchmark", "Benchmark")</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefreshModels">@Lang.T("Muat ulang model 9router", "Reload 9router models")</button>
         <button type="button" class="btn btn-primary btn-sm" id="btnAddNode">@Lang.T("Tambah node", "Add node")</button>
     </div>
@@ -299,6 +300,24 @@
                 <button type="submit" class="btn btn-primary">@Lang.T("Simpan", "Save")</button>
             </div>
         </form>
+    </div>
+</div>
+
+<div class="modal fade" id="benchmarkModal" tabindex="-1" aria-labelledby="benchmarkModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header win-bar">
+                <win-controls for="modal" />
+                <h5 class="modal-title" id="benchmarkModalTitle">@Lang.T("Benchmark node", "Node benchmark")</h5>
+            </div>
+            <div class="modal-body">
+                <p class="small text-secondary">@Lang.T("Mengukur model tiap node yang dipakai pipeline, lalu memperkirakan waktu satu perubahan kecil. Tanpa thread: tidak ada file berubah dan tidak ada memory baru, hanya memakai sedikit token. Belum termasuk build dan test, dan konteks asli lebih besar, jadi anggap ini perkiraan tercepat.", "Measures the model of each node the pipeline uses, then estimates one small change. No thread: no file changes and no new memory, it only uses a few tokens. Build and tests are not included and the real context is larger, so treat this as the fastest estimate.")</p>
+                <div id="benchmarkResult"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="btnBenchmarkAgain">@Lang.T("Ulangi", "Run again")</button>
+            </div>
+        </div>
     </div>
 </div>
 

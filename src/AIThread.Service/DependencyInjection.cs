@@ -83,6 +83,7 @@ public static class DependencyInjection
         services.AddSingleton<INineRouterService, NineRouterService>();
         services.AddSingleton<INineRouterLauncher, NineRouterLauncher>();
         services.AddSingleton<INodeService, NodeService>();
+        services.AddSingleton<INodeBenchmarkService, NodeBenchmarkService>();
         services.AddSingleton<IProjectMemoryKeys, ProjectMemoryKeys>();
         services.AddSingleton<IProjectService, ProjectService>();
         services.AddSingleton<IMemoryService, MemoryService>();

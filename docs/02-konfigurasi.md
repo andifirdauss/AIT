@@ -175,6 +175,13 @@ Pengaturan → Penyimpanan memory; tempat penyimpanan wiki-nya tetap diatur di s
 Tombol **Test** mengirim prompt singkat ("Reply with exactly one word: pong") dan menampilkan latency, token, dan
 balasan — cara cepat memastikan model dan key benar.
 
+Tombol **Benchmark** di atas halaman memperkirakan lama satu perubahan kecil tanpa menjalankan thread, jadi tidak ada
+file berubah dan tidak ada memory baru. Tiap model yang dipakai node aktif dipanggil 3 kali dengan potongan kode pendek
+(model yang dipakai beberapa node diukur sekali). Mediannya dikalikan jumlah panggilan dalam satu perubahan kecil:
+Planner 2, Tools Node 3 (bila dipakai), Executor 1, Reviewer 1, Wrapper 1 (bila tidak dilewati). Hasilnya: perkiraan
+total, porsi tiap node, node yang menjadi titik lambat, model yang tidak stabil, dan tips perbaikannya. Build dan test
+belum termasuk dan konteks asli lebih besar, jadi anggap angkanya perkiraan tercepat.
+
 ### Aturan pemilihan node
 
 - **Planner**: node aktif dengan prioritas terkecil yang dipakai. Bila ia kena rate limit, yang mengambil alih adalah

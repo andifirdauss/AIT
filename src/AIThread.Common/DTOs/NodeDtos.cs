@@ -56,3 +56,29 @@ public record PipelineStatusDto(
     IReadOnlyList<string> Issues);
 
 public record NodeTestResultDto(bool Success, string? Reply, long LatencyMs, int Tokens, string? Error);
+
+// One node in the benchmark of a small change. Calls: how many times a small change calls it; EstimatedMs: Calls times
+// the median of its model (null when every sample failed); SharePercent: its part of the estimate.
+public record NodeBenchmarkStageDto(
+    NodeRole Role,
+    Guid NodeId,
+    string NodeName,
+    string Model,
+    int Calls,
+    long? MedianMs,
+    long? MinMs,
+    long? MaxMs,
+    long? EstimatedMs,
+    int SharePercent,
+    int Failed,
+    string? Error,
+    bool Unstable,
+    bool IsBottleneck);
+
+// SamplesPerModel: the calls made to each distinct model. BottleneckNode: null when nothing could be measured.
+public record NodeBenchmarkDto(
+    IReadOnlyList<NodeBenchmarkStageDto> Stages,
+    long EstimatedMs,
+    int SamplesPerModel,
+    string? BottleneckNode,
+    IReadOnlyList<string> Tips);

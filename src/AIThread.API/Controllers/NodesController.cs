@@ -7,7 +7,7 @@ namespace AIThread.API.Controllers;
 
 [ApiController]
 [Route("api/nodes")]
-public class NodesController(INodeService nodeService) : ControllerBase
+public class NodesController(INodeService nodeService, INodeBenchmarkService benchmark) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ApiResponse<IReadOnlyList<NodeDto>>>> GetAll(CancellationToken cancellationToken) =>
@@ -16,6 +16,11 @@ public class NodesController(INodeService nodeService) : ControllerBase
     [HttpGet("pipeline")]
     public async Task<ActionResult<ApiResponse<PipelineStatusDto>>> Pipeline(CancellationToken cancellationToken) =>
         ApiResponse<PipelineStatusDto>.Ok(await nodeService.GetPipelineStatusAsync(cancellationToken));
+
+    // Measures the models of the active nodes and estimates one small change; no thread, no file change, no memory.
+    [HttpPost("benchmark")]
+    public async Task<ActionResult<ApiResponse<NodeBenchmarkDto>>> Benchmark(CancellationToken cancellationToken) =>
+        ApiResponse<NodeBenchmarkDto>.Ok(await benchmark.RunAsync(cancellationToken));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ApiResponse<NodeDto>>> Get(Guid id, CancellationToken cancellationToken) =>

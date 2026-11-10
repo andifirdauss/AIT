@@ -305,7 +305,7 @@ public class ToolsNodeTests
         Assert.Contains("transactions", PlannerToolRunner.Describe(PlannerTools.ReadFile, args));
     }
 
-    private static async Task DelegateAsync(OrchestrationHarness harness, Guid plannerId, Guid toolsNodeId, params string[] tools)
+    internal static async Task DelegateAsync(OrchestrationHarness harness, Guid plannerId, Guid toolsNodeId, params string[] tools)
     {
         await using var db = await harness.CreateDbAsync();
         foreach (var tool in tools) db.PlannerToolDelegations.Add(new PlannerToolDelegation { PlannerNodeId = plannerId, ToolsNodeId = toolsNodeId, Tool = tool });
