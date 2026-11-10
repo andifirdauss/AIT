@@ -75,6 +75,12 @@ namespace AIThread.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("DirectRead")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("DirectReadPercent")
+                        .HasColumnType("int");
+
                     b.Property<Guid?>("FallbackNodeId")
                         .HasColumnType("uniqueidentifier");
 

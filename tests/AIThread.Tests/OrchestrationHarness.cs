@@ -38,7 +38,10 @@ public sealed class OrchestrationHarness : IAsyncDisposable
                 ["AIThread:SkillsDirectory"] = Path.Combine(_dataDir, "skills"),
                 ["AIThread:SecretKeyPath"] = Path.Combine(_dataDir, "secret-mask.key"),
                 ["AIThread:DiagnosticsDirectory"] = Path.Combine(_dataDir, "diagnostics"),
-                ["AIThread:LogDirectory"] = Path.Combine(_dataDir, "logs")
+                ["AIThread:LogDirectory"] = Path.Combine(_dataDir, "logs"),
+                // The runs check the wrapper's text and the footer's memory count; a test can override both.
+                ["AIThread:WrapperSkipMaxTasks"] = "0",
+                ["AIThread:MemoryWaitSeconds"] = "30"
             })
             .Build();
 
@@ -87,12 +90,13 @@ public sealed class OrchestrationHarness : IAsyncDisposable
     public INodeService Nodes => _services.GetRequiredService<INodeService>();
 
     public async Task<AiNode> AddNodeAsync(NodeRole role, string model, int priority = 100, bool isActive = true, Guid? fallbackNodeId = null,
-        bool autoTesting = false)
+        bool autoTesting = false, bool directRead = false, int directReadPercent = 100)
     {
         var node = new AiNode
         {
             Name = $"{role}-{model}", Role = role, Model = model, Priority = priority, MaxConcurrency = 4,
-            IsActive = isActive, FallbackNodeId = fallbackNodeId, AutoTesting = autoTesting
+            IsActive = isActive, FallbackNodeId = fallbackNodeId, AutoTesting = autoTesting,
+            DirectRead = directRead, DirectReadPercent = directReadPercent
         };
         await using var db = await CreateDbAsync();
         db.Nodes.Add(node);

@@ -38,4 +38,9 @@ public class AiNode : BaseEntity
     // Planner only: the plan says how the change can be tested from outside, and the active Tester node runs that test
     // after verification.
     public bool AutoTesting { get; set; }
+
+    // Planner only: the planner may also run its delegated tools itself instead of asking a tools node, up to
+    // DirectReadPercent of its reading budget; from there on only investigate reads. 100 = no limit, 0 = same as off.
+    public bool DirectRead { get; set; }
+    public int DirectReadPercent { get; set; } = 100;
 }

@@ -68,12 +68,13 @@ public static partial class PlannerTools
     // keeps matching.
     // canCommand: run_command is on in the settings. canPublish: commit/push is on and the project is a git repository,
     // so submit_plan offers its publish section. canFetch: web_fetch is on in the settings. databases: the project has
-    // databases (list/describe/query); canChangeDatabase: one of them allows changes (change_database).
+    // databases (list/describe/query); canChangeDatabase: one of them allows changes (change_database). directRead: the
+    // planner keeps its delegated tools next to investigate.
     public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false,
         bool unitTests = false, bool canRunTests = true, bool canCommand = false, bool canPublish = false, bool canFetch = false, bool databases = false,
-        bool canChangeDatabase = false)
+        bool canChangeDatabase = false, bool directRead = false)
     {
-        var delegated = groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
+        var delegated = directRead ? [] : groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
         foreach (var name in Delegable)
         {

@@ -10,10 +10,10 @@ public sealed partial class PlannerAgent
 {
     // The planner can read a skill's supporting files with its read tools. unitTests: how the project adds new tests,
     // null when it has no unit test catalog.
-    private async Task<JsonObject> SystemMessageAsync(AiNode node, IReadOnlyList<ToolsNodeGroup> groups, bool autoTesting, UnitTestAuthoring? unitTests,
+    private async Task<JsonObject> SystemMessageAsync(AiNode node, IReadOnlyList<ToolsNodeGroup> groups, bool directRead, bool autoTesting, UnitTestAuthoring? unitTests,
         CancellationToken cancellationToken) =>
         ChatMessages.System(await prompts.BuildAsync(
-            AgentPrompts.Planner + (groups.Count == 0 ? string.Empty : AgentPrompts.PlannerDelegation(groups)) + (autoTesting ? AgentPrompts.PlannerTesting : string.Empty)
+            AgentPrompts.Planner + (groups.Count == 0 ? string.Empty : AgentPrompts.PlannerDelegation(groups, directRead)) + (autoTesting ? AgentPrompts.PlannerTesting : string.Empty)
             + (unitTests is { } authoring ? AgentPrompts.PlannerUnitTests(authoring, autoTesting) : string.Empty)
             + "\n\n# UI language\n" + TextLanguage.Ui,
             node, cancellationToken, canReadFiles: true));

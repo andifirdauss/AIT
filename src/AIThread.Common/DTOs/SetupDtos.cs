@@ -72,7 +72,9 @@ public record SetupProfileNode(
     string? Fallback = null,
     IReadOnlyList<SetupProfileDelegation>? ToolDelegations = null,
     IReadOnlyList<SetupProfileSkillRef>? Skills = null,
-    bool? AutoTesting = null);
+    bool? AutoTesting = null,
+    bool? DirectRead = null,
+    int? DirectReadPercent = null);
 
 public record SetupProfileDelegation(string Tool, string ToolsNode);
 

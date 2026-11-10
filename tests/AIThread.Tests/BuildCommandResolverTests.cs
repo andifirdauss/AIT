@@ -21,7 +21,7 @@ public class BuildCommandResolverTests : IDisposable
         Assert.Null(error);
         Assert.Equal(".NET", command.Stack);
         Assert.Equal("dotnet", command.FileName);
-        Assert.Equal("dotnet build --no-incremental App.slnx", command.Display);
+        Assert.Equal("dotnet build App.slnx", command.Display);
         Assert.Equal(Path.Combine(_workspace.Root, "App.slnx"), command.Arguments[1]);
     }
 
@@ -37,12 +37,12 @@ public class BuildCommandResolverTests : IDisposable
         _workspace.Write("sample/src/Shop/Cart.cs", "class Cart {}");
         string[] modules = ["App.slnx", "src/Api/Api.csproj", "sample/Sample.slnx", "sample/src/Shop/Shop.csproj"];
 
-        Assert.Equal("dotnet build --no-incremental App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["src/Api/Orders/Order.cs"], out _)?.Display);
-        Assert.Equal("dotnet build --no-incremental sample/Sample.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["sample/src/Shop/Cart.cs", "sample/src/Shop/New.cs"], out _)?.Display);
+        Assert.Equal("dotnet build App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["src/Api/Orders/Order.cs"], out _)?.Display);
+        Assert.Equal("dotnet build sample/Sample.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["sample/src/Shop/Cart.cs", "sample/src/Shop/New.cs"], out _)?.Display);
         // Changes on both sides: no solution holds both, so the default build stays.
-        Assert.Equal("dotnet build --no-incremental App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["src/Api/Orders/Order.cs", "sample/src/Shop/Cart.cs"], out _)?.Display);
+        Assert.Equal("dotnet build App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["src/Api/Orders/Order.cs", "sample/src/Shop/Cart.cs"], out _)?.Display);
         // Files outside any project (docs) do not move the build.
-        Assert.Equal("dotnet build --no-incremental App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["README.md"], out _)?.Display);
+        Assert.Equal("dotnet build App.slnx", BuildCommandResolver.ForChanges(_workspace.Root, modules, ["README.md"], out _)?.Display);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class BuildCommandResolverTests : IDisposable
 
         var command = BuildCommandResolver.Resolve(_workspace.Root, ["src/Web/Lib/Lib.csproj", "src/Web/Web.csproj"], null, out _);
 
-        Assert.Equal("dotnet build --no-incremental src/Web/Web.csproj", command?.Display);
+        Assert.Equal("dotnet build src/Web/Web.csproj", command?.Display);
     }
 
     [Fact]
@@ -63,8 +63,8 @@ public class BuildCommandResolverTests : IDisposable
         _workspace.Write("src/Api/Api.csproj", "<Project />");
         _workspace.Write("src/Api/Program.cs", "class P {}");
 
-        Assert.Equal("dotnet build --no-incremental src/Api/Api.csproj", BuildCommandResolver.Resolve(_workspace.Root, [], "src/Api/Api.csproj", out _)?.Display);
-        Assert.Equal("dotnet build --no-incremental src/Api/Api.csproj", BuildCommandResolver.Resolve(_workspace.Root, [], "src/Api", out _)?.Display);
+        Assert.Equal("dotnet build src/Api/Api.csproj", BuildCommandResolver.Resolve(_workspace.Root, [], "src/Api/Api.csproj", out _)?.Display);
+        Assert.Equal("dotnet build src/Api/Api.csproj", BuildCommandResolver.Resolve(_workspace.Root, [], "src/Api", out _)?.Display);
 
         Assert.Null(BuildCommandResolver.Resolve(_workspace.Root, [], "src/Api/Program.cs", out var notManifest));
         Assert.Contains("not a solution", notManifest);
@@ -148,12 +148,10 @@ public class BuildCommandResolverTests : IDisposable
         Assert.Equal(".NET Framework", command.Stack);
         Assert.Equal(FakeMsBuild, command.FileName);
         Assert.Equal(Path.Combine(_workspace.Root, "Web", "Web.csproj"), command.Arguments[0]);
-        Assert.Contains("-t:Rebuild", command.Arguments);
+        Assert.Contains("-t:Build", command.Arguments);
+        Assert.DoesNotContain("-t:Rebuild", command.Arguments);
         Assert.Contains("-restore", command.Arguments);
-        Assert.Equal("msbuild -t:Rebuild Web/Web.csproj", command.Display);
-        Assert.Equal([Path.Combine(_workspace.Root, "Web", "bin")], command.OutputDirectories);
-        Assert.Contains("-t:Build", command.Incremental!.Arguments);
-        Assert.DoesNotContain("-t:Rebuild", command.Incremental.Arguments);
+        Assert.Equal("msbuild Web/Web.csproj", command.Display);
     }
 
     [Fact]
@@ -171,7 +169,7 @@ public class BuildCommandResolverTests : IDisposable
 
         var command = BuildCommandResolver.Resolve(_workspace.Root, ["App.sln", "Web/Web.csproj", "Lib/Lib.csproj"], null, () => FakeMsBuild, out _);
 
-        Assert.Equal("msbuild -t:Rebuild App.sln", command?.Display);
+        Assert.Equal("msbuild App.sln", command?.Display);
     }
 
     [Fact]
@@ -188,10 +186,8 @@ public class BuildCommandResolverTests : IDisposable
         var command = BuildCommandResolver.Resolve(_workspace.Root, ["App.slnx", "Lib/Lib.csproj"], null, () => throw new InvalidOperationException("not needed"), out _);
 
         Assert.Equal("dotnet", command?.FileName);
-        Assert.Contains("--no-incremental", command!.Arguments);
-        Assert.Equal("dotnet build App.slnx", command.Incremental?.Display);
-        Assert.DoesNotContain("--no-incremental", command.Incremental!.Arguments);
-        Assert.Equal([Path.Combine(_workspace.Root, "Lib", "bin")], command.OutputDirectories);
+        Assert.DoesNotContain("--no-incremental", command!.Arguments);
+        Assert.Equal("dotnet build App.slnx", command.Display);
     }
 
     [Fact]

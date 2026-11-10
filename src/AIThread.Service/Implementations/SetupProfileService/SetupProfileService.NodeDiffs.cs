@@ -25,6 +25,10 @@ public sealed partial class SetupProfileService
         if (current.Role == NodeRole.Planner && !currentDelegations.SequenceEqual(targetDelegations)) diffs.Add(Lang.T("delegasi tool", "tool delegation"));
         if (current.Role == NodeRole.Planner && node.AutoTesting is { } autoTesting && autoTesting != current.AutoTesting)
             diffs.Add(autoTesting ? Lang.T("Auto Testing dinyalakan", "Auto Testing turned on") : Lang.T("Auto Testing dimatikan", "Auto Testing turned off"));
+        if (current.Role == NodeRole.Planner && node.DirectRead is { } directRead && directRead != current.DirectRead)
+            diffs.Add(directRead ? Lang.T("baca langsung dinyalakan", "direct reading turned on") : Lang.T("baca langsung dimatikan", "direct reading turned off"));
+        if (current.Role == NodeRole.Planner && node.DirectReadPercent is { } percent && percent != current.DirectReadPercent)
+            diffs.Add(Lang.T($"batas baca langsung {current.DirectReadPercent}% → {percent}%", $"direct reading limit {current.DirectReadPercent}% → {percent}%"));
 
         var currentSkills = (current.Skills ?? []).Select(s => s.Id).Order();
         if (!currentSkills.SequenceEqual(target.SkillIds.Order())) diffs.Add("skill");

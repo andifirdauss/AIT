@@ -32,18 +32,22 @@ public static class AgentPrompts
 
     // Appended to the planner prompt when the planner node delegates tools to tools nodes.
     // run_command is shared, not handed over: the planner keeps it for commands that need the developer's permission.
-    public static string PlannerDelegation(IReadOnlyList<ToolsNodeGroup> groups)
+    // directRead: the planner keeps these tools and uses a sub agent only for wide exploration.
+    public static string PlannerDelegation(IReadOnlyList<ToolsNodeGroup> groups, bool directRead = false)
     {
         var handed = groups.SelectMany(g => g.Tools).Where(t => t != PlannerTools.RunCommand).ToList();
         var holders = handed.Count > 0 ? $"In this setup these tools are not yours: {string.Join(", ", handed)}. Cheaper sub agents hold them;" : "Cheaper sub agents can investigate for you;";
         var shared = groups.Any(g => g.Tools.Contains(PlannerTools.RunCommand))
             ? "\n- run_command is shared: a sub agent can run read-only commands (curl GET to the app on localhost, git reads, tool versions) while it investigates, so ask it for such checks. A command that needs the developer's permission stays yours to run."
             : string.Empty;
+        var first = directRead
+            ? $"These tools are yours, and cheaper sub agents hold them too: {string.Join(", ", handed)}. When the request names a file, a symbol or a line, or a few targeted reads are enough, call them yourself: it is faster than asking a sub agent. Use investigate for wide exploration (many files, every use of a name across the repository): it returns findings instead of raw output and keeps your context small. Never skip reading a file you will plan an edit for. When a read tool answers that your reading budget is used up, go on with investigate."
+            : $"{holders} reach them with investigate, which returns their findings instead of raw output. This keeps your context small, so prefer investigate over guessing, and never skip reading a file you will plan an edit for: ask the sub agent for it.";
         return $"""
 
 
         Delegated tools
-        - {holders} reach them with investigate, which returns their findings instead of raw output. This keeps your context small, so prefer investigate over guessing, and never skip reading a file you will plan an edit for: ask the sub agent for it.{shared}
+        - {first}{shared}
         - Ask precise questions and say what you need back: exact line ranges for focus and context excerpts, full signatures, every use of a name, the existing pattern to mirror.
         - When you need exact text (a file you will plan an edit for, a pattern to mirror), ask for it as excerpts: the sub agent names the line ranges and AIT attaches those lines copied from the files, exact and numbered, under "Exact excerpts". Never ask a sub agent to write out, return or repeat file contents; that is its slowest turn and the text would be retyped.
         - Getting what you need to plan correctly comes first; speed second. Within that, prefer parallel: send every question you can already ask as several investigate calls in one turn. Ask in a later turn only what depends on an earlier answer (e.g. about the callers an earlier question found); sequential is right then.

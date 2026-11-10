@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace AIThread.Service.Verification;
 
 public sealed partial class BuildRunner
@@ -10,11 +8,6 @@ public sealed partial class BuildRunner
         await gate.WaitAsync(cancellationToken);
         try
         {
-            if (command.Incremental is { } incremental && FirstInUse(command.OutputDirectories) is { } inUse)
-            {
-                logger.LogInformation("Build {Command} runs without clean: {File} is in use", command.Display, inUse);
-                return await RunCoreAsync(incremental, timeout, cancellationToken) with { InUseOutput = inUse };
-            }
             return await RunCoreAsync(command, timeout, cancellationToken);
         }
         finally

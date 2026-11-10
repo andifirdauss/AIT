@@ -14,7 +14,7 @@ public sealed partial class ThreadOrchestrator
     // is done, the footer; the thread stores only the wrapper's text (or the automatic summary) as its final response.
     private async Task<ThreadResult> CompleteAsync(Pipeline pipeline, ThreadPlan plan, ExecutionSummary execution, int nextTaskOrder, int firstRound, CancellationToken cancellationToken)
     {
-        var (recorder, progress, request, wrapper) = (pipeline.Recorder, pipeline.Progress, pipeline.Request, pipeline.Wrapper);
+        var (recorder, progress, request) = (pipeline.Recorder, pipeline.Progress, pipeline.Request);
         var thread = recorder.Thread;
 
         // 3. Verify: build and/or review, with fix rounds. From here on plan and execution include the fix tasks.
@@ -31,7 +31,10 @@ public sealed partial class ThreadOrchestrator
         // The unit test catalog learns the results, the new tests and the decisions of this change.
         var unitReport = pipeline.UnitTests is { } unitTests ? await FinishUnitTestsAsync(unitTests, plan, execution, recorder, cancellationToken) : null;
 
-        // 5. Wrap
+        // 5. Wrap. A small change that passed every check needs no model to explain it: the plan summary says what was done.
+        var wrapper = WrapperAgent.CanSkip(options.Value.WrapperSkipMaxTasks, execution, verification?.Report, testing?.Report, unitReport) ? null : pipeline.Wrapper;
+        if (pipeline.Wrapper is not null && wrapper is null)
+            recorder.Log(ActivityLevel.Info, Lang.T("Wrapper dilewati: perubahan kecil dan semua pemeriksaan lolos.", "Wrapper skipped: a small change and every check passed."));
         await recorder.UpdateThreadAsync(t =>
         {
             t.Status = ThreadStatus.Wrapping;

@@ -7,5 +7,6 @@ public sealed partial class NodeService
 {
     private static string DelegationNote(AiNode node) =>
         (node.ToolDelegations.Count == 0 ? string.Empty : Lang.T($", {node.ToolDelegations.Count} tool ke tools node", $", {node.ToolDelegations.Count} tools to a tools node")) +
-        (node.AutoTesting ? ", Auto Testing" : string.Empty);
+        (node.AutoTesting ? ", Auto Testing" : string.Empty) +
+        (node.DirectRead ? Lang.T($", baca langsung {node.DirectReadPercent}%", $", direct reading {node.DirectReadPercent}%") : string.Empty);
 }

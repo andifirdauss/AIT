@@ -19,9 +19,12 @@ public sealed partial class PlannerAgent
         var canGit = GitTools.IsRepository(input.Scope.Root);
         var groups = await ToolsNodeGroupsAsync(input.Nodes[0], build is not null, canGit, input.Settings.CommandToolEnabled, input.Settings.WebFetchEnabled, cancellationToken);
 
+        var directRead = CanReadDirectly(input.Nodes[0], groups);
         var run = new PlannerRun
         {
-            Messages = [await SystemMessageAsync(input.Nodes[0], groups, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken), ChatMessages.User(brief, input.Request.Images)],
+            Messages = [await SystemMessageAsync(input.Nodes[0], groups, directRead, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken), ChatMessages.User(brief, input.Request.Images)],
+            DirectRead = directRead,
+            DirectReadLimit = DirectReadLimit(input.Nodes[0]),
             Node = input.Nodes[0],
             CanBuild = build is not null,
             CanGit = canGit,

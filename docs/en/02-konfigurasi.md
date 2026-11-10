@@ -77,7 +77,7 @@ shows as *Online · check API key* (yellow) on the Dashboard and as a warning in
 
 | Field | Default | Range | Details |
 |---|---|---|---|
-| Automatic build & verification | on | — | AIT may run the project's build command (`dotnet build --no-incremental`, Visual Studio MSBuild for old-format .NET Framework projects, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): as the planner's `run_build` tool and to check the executors' results. Build errors go to an executor as fix tasks. See [Verification](07-cara-kerja.md#5-verification-build-and-reviewer). |
+| Automatic build & verification | on | — | AIT may run the project's build command (`dotnet build`, Visual Studio MSBuild for old-format .NET Framework projects, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): as the planner's `run_build` tool and to check the executors' results. Build errors go to an executor as fix tasks. See [Verification](07-cara-kerja.md#5-verification-build-and-reviewer). |
 | Build timeout (seconds) | 300 | 30–3600 | The limit of one build; a build that exceeds it is stopped together with its child processes. Also the limit of one [unit test](07-cara-kerja.md#unit-tests) run when the project does not fill in *Test run time limit*. |
 | Fix rounds | 2 | 0–5 | The maximum number of build/review → fix task rounds. `0` = only verify and report. Unit test regressions have their own limit (3 rounds); `0` turns that off too. |
 
@@ -174,6 +174,7 @@ See
 | Extra instructions | empty | Appended at the end of the role's built-in prompt, e.g. the team's coding conventions. |
 | Skills | empty | Skills from the store (at most 10). Search yourself with the *Search the store yourself* dropdown (matches the skill's name, description, tags or content; click to attach/detach), or describe the need in *What ability is needed?* and click **Find skills**: the Skill Orchestrator suggests matching skills with its reasons, you tick them, then **Apply** and **Save**. Skill content is pasted into the node's system prompt after the extra instructions; the *Extra instructions* field does not change. |
 | Tool delegation | everything in the planner | Planner only: per read tool, choose *Planner directly* or a Tools Node. See [Planner tools node](#planner-tools-node). |
+| Planner reads directly | off, limit 100% | Planner only: the planner may still call its delegated tools itself. *Direct reading limit* 100% = the planner does all the reading; a lower number = once the planner has read that share of a budget of 200,000 characters, further reading must go through the tools node; 0% = same as off. See [Planner tools node](#planner-tools-node). |
 | Auto Testing | off | Planner only: the planner also writes a testing plan, then the Tester node tries the change in the running application (UI through a non-headless browser, API through HTTP). See [Auto Testing](#auto-testing-tester-node). |
 | Active | on | An inactive node is not used. |
 
@@ -271,6 +272,9 @@ The rules:
 
 - A tool goes to one tools node per planner; a planner may use several tools nodes (e.g. one for reading code, one for
   memory). Several `investigate` calls in one step run in parallel, limited by the tools node's *Max parallel*.
+- With **Planner reads directly** on, delegated tools stay in the planner's tool list next to `investigate`, so a small
+  change does not wait for the tools node. When the *Direct reading limit* is reached, the planner is told to use
+  `investigate`; its tool list does not change, so the provider's prompt cache keeps matching.
 - An **inactive** tools node = its tools are run by the planner itself again (the node banner adds a note). A quick way
   to compare results with and without a tools node.
 - A tools node uses a [fallback node](#fallback-node) with the Tools Node role when it hits a rate limit. When it still

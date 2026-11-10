@@ -72,21 +72,8 @@ public class BuildRunnerTests : IDisposable
         Assert.Contains("not a code problem", result.StartError);
     }
 
-    [Fact]
-    public void Output_held_by_another_handle_is_in_use()
-    {
-        _workspace.Write("App/bin/Debug/App.dll", "binary");
-        _workspace.Write("App/bin/Debug/readme.txt", "not a binary");
-        var dll = Path.Combine(_workspace.Root, "App", "bin", "Debug", "App.dll");
-        var bin = Path.Combine(_workspace.Root, "App", "bin");
-
-        Assert.Null(BuildRunner.FirstInUse([bin, Path.Combine(_workspace.Root, "Missing", "bin")]));
-        using (new FileStream(dll, FileMode.Open, FileAccess.Read, FileShare.Read))
-            Assert.Equal(dll, BuildRunner.FirstInUse([bin]));
-    }
-
-    // A running app holds its binaries: the rebuild must not clean bin/ around them (runtimeconfig.json would be
-    // deleted and not copied back, so the app could no longer start).
+    // A running app holds its binaries: the build must not clean bin/ around them (runtimeconfig.json would be deleted
+    // and not copied back, so the app could no longer start).
     [Fact]
     public async Task Running_app_is_built_without_clean()
     {
@@ -103,7 +90,7 @@ public class BuildRunnerTests : IDisposable
         _workspace.Write("Live/Program.cs", "System.Threading.Thread.Sleep(60000);");
 
         var command = BuildCommandResolver.Resolve(_workspace.Root, ["Live/Live.csproj"], null, out _);
-        Assert.NotNull(command?.Incremental);
+        Assert.NotNull(command);
         Assert.True((await _runner.RunAsync(command, TimeSpan.FromMinutes(3), CancellationToken.None)).Succeeded);
 
         var output = Path.Combine(_workspace.Root, "Live", "bin", "Debug", "net10.0");
@@ -115,7 +102,6 @@ public class BuildRunnerTests : IDisposable
 
             var result = await _runner.RunAsync(command, TimeSpan.FromMinutes(3), CancellationToken.None);
 
-            Assert.NotNull(result.InUseOutput);
             Assert.True(result.Passed, result.OutputTail);
             Assert.True(File.Exists(Path.Combine(output, "Live.runtimeconfig.json")));
         }
@@ -125,7 +111,21 @@ public class BuildRunnerTests : IDisposable
             await app.WaitForExitAsync();
 
             // Windows releases the image a moment after the exit; the workspace is deleted next.
-            for (var i = 0; i < 50 && BuildRunner.FirstInUse([output]) is not null; i++) await Task.Delay(100);
+            var exe = Path.Combine(output, "Live.exe");
+            for (var i = 0; i < 50 && IsHeld(exe); i++) await Task.Delay(100);
+        }
+    }
+
+    private static bool IsHeld(string file)
+    {
+        try
+        {
+            using var stream = new FileStream(file, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            return false;
+        }
+        catch (IOException)
+        {
+            return true;
         }
     }
 

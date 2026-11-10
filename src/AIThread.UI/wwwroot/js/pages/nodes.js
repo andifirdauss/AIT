@@ -68,7 +68,7 @@
       : '';
     return `${nodeCardHead(n)}
         <div class="small text-secondary mt-1 text-truncate">
-          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}${delegationBadge(n)}${testingBadge(n)}${fallback}
+          temp ${n.temperature ?? 'default'} · ${fmt.number(n.maxTokens)} token · ${n.maxConcurrency} paralel · prioritas ${n.priority}${prompt}${skills}${delegationBadge(n)}${directReadBadge(n)}${testingBadge(n)}${fallback}
         </div>`;
   }
 
@@ -83,6 +83,14 @@
     return tester
       ? (isEn ? ` · <span title="Auto Testing: changes are tested by ${escapeHtml(tester.name)} (${escapeHtml(tester.model)}) after verification.">🧪 auto test</span>` : ` · <span title="Auto Testing: perubahan dites oleh ${escapeHtml(tester.name)} (${escapeHtml(tester.model)}) setelah verifikasi.">🧪 auto test</span>`)
       : t(' · <span class="text-warning" title="Auto Testing menyala, tetapi belum ada node Tester aktif — testing dilewati.">🧪 tanpa tester</span>', ' · <span class="text-warning" title="Auto Testing is on, but there is no active Tester node yet — testing is skipped.">🧪 no tester</span>');
+  }
+
+  // Planner that reads for itself, and how much of its reading budget it may use.
+  function directReadBadge(n) {
+    if (n.role !== 'Planner' || !n.directRead) return '';
+    return isEn
+      ? ` · <span title="The planner reads directly up to ${n.directReadPercent}% of its budget, then through the tools node.">📖 ${n.directReadPercent}%</span>`
+      : ` · <span title="Planner membaca langsung sampai ${n.directReadPercent}% anggarannya, sesudah itu lewat tools node.">📖 ${n.directReadPercent}%</span>`;
   }
 
   // Planner: the tools it hands to tools nodes. Tools node: the planners that use it.
@@ -340,6 +348,18 @@
       : t('<span class="text-warning">Belum ada node Tester aktif. Tambahkan node ber-role Tester dulu; tanpa itu testing dilewati.</span>', '<span class="text-warning">No active Tester node yet. Add a node with the Tester role first; without it testing is skipped.</span>');
   }
 
+  // Only planners read for themselves; the limit means nothing while the switch is off.
+  function renderDirectRead(checked, percent) {
+    el('nodeDirectReadBox').classList.toggle('d-none', el('nodeRole').value !== 'Planner');
+    el('nodeDirectRead').checked = checked;
+    el('nodeDirectReadPercent').value = percent;
+    el('nodeDirectReadPercent').disabled = !checked;
+  }
+
+  el('nodeDirectRead').addEventListener('change', () => {
+    el('nodeDirectReadPercent').disabled = !el('nodeDirectRead').checked;
+  });
+
   // One select per delegable tool; only planners delegate. Keeps the choices made in the form when re-rendered.
   function renderDelegations(selected) {
     const isPlanner = el('nodeRole').value === 'Planner';
@@ -405,6 +425,7 @@
     renderModelOptions(node?.model || '');
     renderFallbackOptions(node?.fallbackNodeId || '');
     renderDelegations(node?.toolDelegations || []);
+    renderDirectRead(node?.directRead ?? false, node?.directReadPercent ?? 100);
     renderAutoTesting(node?.autoTesting ?? false);
     el('nodeModalTitle').textContent = node ? `Edit node · ${node.name}` : t('Tambah node', 'Add node');
     modal.show();
@@ -414,6 +435,7 @@
     if (!el('nodeId').value) applyRoleDefaults(el('nodeRole').value);
     renderFallbackOptions(el('nodeFallback').value);
     renderDelegations(readDelegations());
+    renderDirectRead(el('nodeDirectRead').checked, el('nodeDirectReadPercent').value);
     renderAutoTesting(el('nodeAutoTesting').checked);
   });
 
@@ -435,7 +457,9 @@
       skillIds: nodeSkills.map(s => s.id),
       fallbackNodeId: el('nodeFallback').value || null,
       toolDelegations: el('nodeRole').value === 'Planner' ? readDelegations() : [],
-      autoTesting: el('nodeRole').value === 'Planner' && el('nodeAutoTesting').checked
+      autoTesting: el('nodeRole').value === 'Planner' && el('nodeAutoTesting').checked,
+      directRead: el('nodeRole').value === 'Planner' && el('nodeDirectRead').checked,
+      directReadPercent: Number(el('nodeDirectReadPercent').value || 100)
     };
     try {
       if (id) await api.put(`/api/nodes/${id}`, body);

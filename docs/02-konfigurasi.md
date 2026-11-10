@@ -74,7 +74,7 @@ sebagai *Online · cek API key* (kuning) di Dasbor dan sebagai peringatan di log
 
 | Field | Default | Rentang | Keterangan |
 |---|---|---|---|
-| Build & verifikasi otomatis | aktif | — | AIT boleh menjalankan perintah build project (`dotnet build --no-incremental`, MSBuild Visual Studio untuk project .NET Framework format lama, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
+| Build & verifikasi otomatis | aktif | — | AIT boleh menjalankan perintah build project (`dotnet build`, MSBuild Visual Studio untuk project .NET Framework format lama, `tsc`/`npm run build`, `go build`, `cargo check`, `mvn compile`): sebagai tool `run_build` planner dan untuk memeriksa hasil executor. Error build diserahkan ke executor sebagai tugas perbaikan. Lihat [Verifikasi](07-cara-kerja.md#5-verifikasi-build-dan-reviewer). |
 | Timeout build (detik) | 300 | 30–3600 | Batas satu kali build; build yang melewatinya dihentikan beserta proses anaknya. Juga batas satu kali run [unit test](07-cara-kerja.md#unit-test) bila project tidak mengisi *Batas waktu run test*. |
 | Putaran perbaikan | 2 | 0–5 | Maksimal putaran build/review → tugas perbaikan. `0` = hanya verifikasi dan laporkan. Regresi unit test punya batas sendiri (3 putaran); `0` juga mematikannya. |
 
@@ -168,6 +168,7 @@ Pengaturan → Penyimpanan memory; tempat penyimpanan wiki-nya tetap diatur di s
 | Instruksi tambahan | kosong | Ditambahkan di akhir prompt bawaan peran, mis. konvensi coding tim. |
 | Skill | kosong | Skill dari gudang (maks 10). Cari sendiri lewat dropdown *Cari sendiri di gudang* (cocok dengan nama, deskripsi, tag, atau isi skill; klik untuk memasang/melepas), atau tulis kebutuhan di *Butuh kemampuan apa?* lalu klik **Cari skill**: Skill Orchestrator menyarankan skill yang cocok beserta alasannya, Anda centang, lalu **Terapkan** dan **Simpan**. Isi skill ditempel ke system prompt node setelah instruksi tambahan; field *Instruksi tambahan* tidak berubah. |
 | Delegasi tool | semua di planner | Khusus Planner: per tool baca, pilih *Planner langsung* atau sebuah Tools Node. Lihat [Tools node planner](#tools-node-planner). |
+| Planner baca langsung | mati, batas 100% | Khusus Planner: planner tetap boleh memanggil sendiri tool yang didelegasikan. *Batas baca langsung* 100% = seluruh bacaan oleh planner; angka lebih kecil = setelah planner membaca sebanyak itu dari anggaran 200.000 karakter, bacaan berikutnya wajib lewat tools node; 0% = sama dengan mati. Lihat [Tools node planner](#tools-node-planner). |
 | Auto Testing | mati | Khusus Planner: planner ikut menyusun rencana testing, lalu node Tester mencoba perubahan di aplikasi yang berjalan (UI lewat browser non-headless, API lewat HTTP). Lihat [Auto Testing](#auto-testing-node-tester). |
 | Aktif | aktif | Node nonaktif tidak dipakai. |
 
@@ -263,6 +264,9 @@ Aturannya:
 
 - Satu tool hanya ke satu tools node per planner; satu planner boleh memakai beberapa tools node (mis. satu untuk baca
   kode, satu untuk memory). Beberapa `investigate` dalam satu langkah berjalan paralel, dibatasi *Max paralel* tools node.
+- Dengan **Planner baca langsung** menyala, tool yang didelegasikan tetap ada di daftar tool planner di samping
+  `investigate`, sehingga perubahan kecil tidak menunggu tools node. Saat *Batas baca langsung* tercapai, planner
+  mendapat pesan untuk memakai `investigate`; daftar tool-nya tidak berubah agar cache prompt provider tetap cocok.
 - Tools node **nonaktif** = tool-nya kembali dijalankan planner sendiri (banner node memberi catatan). Cara cepat
   membandingkan hasil dengan dan tanpa tools node.
 - Tools node memakai [node cadangan](#node-cadangan) ber-role Tools Node bila kena rate limit. Bila tetap gagal, planner

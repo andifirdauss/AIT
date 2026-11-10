@@ -103,12 +103,21 @@ public sealed partial class PlannerAgent(
     private const int MemoryChangesPerModule = 3;
     private const int MaxModuleMemoryChars = 14_000;
 
+    // What AiNode.DirectReadPercent is a percentage of: the characters of tool output the planner reads itself, about
+    // 50 000 tokens.
+    private const long DirectReadBudgetChars = 200_000;
+
     // Step is the last step taken; MaxSteps is when the planner is told to submit (one forced step may follow).
-    // Investigations and ToolsNodeTokens are fields: parallel investigate calls update them with Interlocked.
+    // Investigations, ToolsNodeTokens and DirectReadChars are fields: parallel tool calls update them with Interlocked.
+    // DirectRead: the planner runs its delegated tools itself; DirectReadLimit: the characters it may read that way (null = no limit).
     private sealed class PlannerRun
     {
         public int Investigations;
         public int ToolsNodeTokens;
+        public long DirectReadChars;
+
+        public bool DirectRead { get; init; }
+        public long? DirectReadLimit { get; init; }
 
         public required JsonArray Messages { get; init; }
         public required AiNode Node { get; set; }

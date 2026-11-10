@@ -26,7 +26,9 @@ public sealed partial class SetupProfileService
                 n.Skills is { Count: > 0 } nodeSkills
                     ? nodeSkills.Select(s => new SetupProfileSkillRef(s.Name, skills.FirstOrDefault(k => k.Id == s.Id)?.SourceUrl)).ToList()
                     : null,
-                n.Role == NodeRole.Planner ? n.AutoTesting : null))
+                n.Role == NodeRole.Planner ? n.AutoTesting : null,
+                n.Role == NodeRole.Planner ? n.DirectRead : null,
+                n.Role == NodeRole.Planner ? n.DirectReadPercent : null))
             .ToList();
 
         return new SetupProfileFile(

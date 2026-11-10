@@ -19,9 +19,6 @@ public sealed record BuildResult(
 
     // Good enough to stop fixing: the build succeeded or only failed to overwrite locked binaries.
     public bool Passed => Succeeded || OnlyLockedOutput;
-
-    // The output file a running program held before the build, which therefore ran without its clean step.
-    public string? InUseOutput { get; init; }
 }
 
 // Runs a BuildCommand: one build or test run per project root at a time (RootGates: two would fight over obj/), stopped
@@ -31,10 +28,6 @@ public sealed partial class BuildRunner(ILogger<BuildRunner> logger) : IBuildRun
 {
     private const int TailLines = 120;
     private const int MaxToolchainMessage = 300;
-
-    // bin\<configuration>\<framework>\<runtime>\ and bin\roslyn\ are deep enough; a huge bin is not worth a full scan.
-    private const int InUseDepth = 4;
-    private const int MaxInUseChecks = 5000;
 
     // Build servers started by the build (MSBuild nodes, the compiler server) can inherit the output pipes and keep
     // them open after the build exits; whatever the build wrote is read by then.

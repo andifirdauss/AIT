@@ -421,8 +421,8 @@ root lewat `run_build`):
 
 | Stack | Perintah | Target default |
 |---|---|---|
-| .NET | `dotnet build <file> --no-incremental -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | `.sln`/`.slnx` paling dangkal, kalau tidak ada `.csproj`/`.fsproj`/`.vbproj` paling dangkal. Verifikasi setelah eksekusi mem-build solution yang **memuat semua project file yang diubah**: repository dengan beberapa solution (mis. template + sample) mem-build solution sample bila perubahannya ada di sana |
-| .NET Framework (csproj format lama/non-SDK, mis. ASP.NET MVC 5) | `MSBuild.exe <file> -restore -t:Rebuild -m -nr:false -p:RestorePackagesConfig=true …` dari Visual Studio / Build Tools (dicari lewat `vswhere`, lalu folder standar `Program Files\Microsoft Visual Studio`) | sama dengan .NET; solution dianggap format lama bila salah satu project-nya format lama atau berisi web site project |
+| .NET | `dotnet build <file> -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | `.sln`/`.slnx` paling dangkal, kalau tidak ada `.csproj`/`.fsproj`/`.vbproj` paling dangkal. Verifikasi setelah eksekusi mem-build solution yang **memuat semua project file yang diubah**: repository dengan beberapa solution (mis. template + sample) mem-build solution sample bila perubahannya ada di sana |
+| .NET Framework (csproj format lama/non-SDK, mis. ASP.NET MVC 5) | `MSBuild.exe <file> -restore -t:Build -m -nr:false -p:RestorePackagesConfig=true …` dari Visual Studio / Build Tools (dicari lewat `vswhere`, lalu folder standar `Program Files\Microsoft Visual Studio`) | sama dengan .NET; solution dianggap format lama bila salah satu project-nya format lama atau berisi web site project |
 | Node.js | `tsc --noEmit` (TypeScript lokal di `node_modules`), kalau tidak ada `npm run build` | `package.json` paling dangkal yang punya salah satunya |
 | Go | `go build ./...` | `go.mod` |
 | Rust | `cargo check --message-format short` | `Cargo.toml` |
@@ -430,12 +430,9 @@ root lewat `run_build`):
 
 Stack lain (Python, PHP, Gradle, …) tidak punya perintah build; verifikasinya hanya lewat Reviewer bila ada.
 
-Build .NET selalu **rebuild penuh** (clean + build), supaya output lama tidak menutupi error. Pengecualiannya: bila
-ada `.dll`/`.exe` di folder `bin` project yang sedang dipakai program yang berjalan (app-nya sendiri, IIS tanpa shadow
-copy, compiler server di `bin\roslyn`), build dijalankan **incremental tanpa clean** (`dotnet build` / `msbuild
--t:Build`). Kalau tetap clean, semua file di sekitar file yang terkunci (mis. `*.runtimeconfig.json`, `*.deps.json`)
-ikut terhapus dan tidak disalin ulang karena copy-nya gagal, sehingga app tidak bisa dijalankan lagi tanpa build
-ulang. Copy ke `bin` yang gagal karena file terkunci (`MSB3021`/`MSB3027`) tetap dihitung lolos: kodenya sudah
+Build .NET selalu **incremental tanpa clean** (`dotnet build` / `msbuild -t:Build`), jadi perubahan kecil cukup
+beberapa detik. File di `bin` milik program yang sedang berjalan juga tetap utuh: clean akan menghapus semua file di
+sekitar file yang terkunci (mis. `*.runtimeconfig.json`, `*.deps.json`) tanpa menyalinnya lagi. Copy ke `bin` yang gagal karena file terkunci (`MSB3021`/`MSB3027`) tetap dihitung lolos: kodenya sudah
 terkompilasi. Project format lama
 tidak bisa di-build `dotnet build` karena meng-import target milik Visual Studio (mis.
 `Microsoft.WebApplication.targets`). Kalau MSBuild Visual Studio tidak ada, project itu tidak di-build sama sekali
@@ -831,12 +828,16 @@ oleh model: baris status (tugas, build, reviewer, unit test, testing) dan daftar
 *File berubah*, bagian *Unit test* dan *Testing*, dan footer (durasi, token, memory, wiki, sisa kuota provider, link thread) sesudahnya — lihat
 [Membaca output di CLI](04-penggunaan.md#membaca-output-di-cli). Teks Wrapper di-stream ke CLI.
 
-Jika tidak ada wrapper aktif atau wrapper gagal, CLI menampilkan ringkasan rencana sebagai pengganti teksnya;
+Perubahan kecil yang lolos semua pemeriksaan (paling banyak 2 tugas, semua berhasil, verifikasi lolos tanpa putaran
+perbaikan, testing dan unit test tidak gagal) tidak memanggil Wrapper; `AIThread:WrapperSkipMaxTasks` di
+`appsettings.json` mengatur batasnya (`0` = Wrapper selalu dipanggil).
+
+Jika tidak ada wrapper aktif, wrapper dilewati, atau wrapper gagal, CLI menampilkan ringkasan rencana sebagai pengganti teksnya;
 yang disimpan sebagai jawaban thread (Dasbor, Telegram) adalah ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
 verifikasi).
 
-Setelah itu ekstraksi memory dijalankan dan ditunggu paling lama 30 detik agar footer bisa menyebut jumlah memory
-baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi tetap selesai di latar belakang.
+Setelah itu ekstraksi memory dijalankan dan ditunggu paling lama 2 detik (`AIThread:MemoryWaitSeconds`) agar footer bisa
+menyebut jumlah memory baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi tetap selesai di latar belakang.
 
 ## 8. Setelah thread
 

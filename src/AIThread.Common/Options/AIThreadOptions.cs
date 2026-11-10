@@ -22,6 +22,14 @@ public class AIThreadOptions
     // Files up to this many lines are sent to executors in full; larger files are sent as excerpts.
     public int ExecutorFullFileMaxLines { get; set; } = 400;
 
+    // A change of at most this many tasks that passed every check ends with the plan summary, without a wrapper call.
+    // 0 = always call the wrapper.
+    public int WrapperSkipMaxTasks { get; set; } = 2;
+
+    // How long the final answer waits for the memory extraction before its footer says "still running"; the extraction
+    // goes on in the background either way.
+    public int MemoryWaitSeconds { get; set; } = 2;
+
     // Offline skill store (one folder per skill source). Empty = %LOCALAPPDATA%\AIThread\skills.
     public string? SkillsDirectory { get; set; }
 

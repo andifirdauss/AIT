@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Entities;
+using AIThread.Common.Options;
 using AIThread.Data.Context;
 using AIThread.Data.Messaging;
 using AIThread.Service.Interfaces;
@@ -8,6 +9,7 @@ using AIThread.Service.Workspace;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AIThread.Service.Orchestration;
 
@@ -45,11 +47,9 @@ public sealed partial class ThreadOrchestrator(
     ISecretGuard secrets,
     INineRouterService router,
     IHostApplicationLifetime lifetime,
+    IOptions<AIThreadOptions> options,
     ILogger<ThreadOrchestrator> logger) : IThreadOrchestrator
 {
-    // How long the final answer waits for the memory extraction before its footer says "still running".
-    private static readonly TimeSpan MemoryWait = TimeSpan.FromSeconds(30);
-
     // Files of the session a follow-up's labels are taken from, at most.
     private const int MaxSessionLabelFiles = 30;
 

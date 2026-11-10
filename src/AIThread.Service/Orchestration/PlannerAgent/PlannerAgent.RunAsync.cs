@@ -24,7 +24,7 @@ public sealed partial class PlannerAgent
         var canPublish = CanPublish(input, run);
         var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit, input.UnitTests is not null,
             canRunTests: input.UnitTests is { Suites.Count: > 0 }, canCommand: input.Settings.CommandToolEnabled, canPublish: canPublish, canFetch: input.Settings.WebFetchEnabled,
-            databases: input.Databases is { Count: > 0 }, canChangeDatabase: input.Databases?.Any(d => d.AllowWrites) == true);
+            databases: input.Databases is { Count: > 0 }, canChangeDatabase: input.Databases?.Any(d => d.AllowWrites) == true, directRead: run.DirectRead);
 
         while (run.Step < run.MaxSteps + 1)
         {
@@ -39,7 +39,7 @@ public sealed partial class PlannerAgent
             var current = node;
             var reply = await caller.ChatAsync(current, async candidate =>
             {
-                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, run.Groups, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
+                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, run.Groups, run.DirectRead, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
                 return new ChatCompletionRequest
                 {
                     Model = candidate.Model,

@@ -22,12 +22,15 @@ public sealed partial class PlannerAgent
         var node = input.Nodes.FirstOrDefault(n => n.Id == conversation.NodeId) ?? input.Nodes[0];
         var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, conversation.CanGit, input.Settings.CommandToolEnabled, input.Settings.WebFetchEnabled, cancellationToken);
         var messages = conversation.Messages;
-        messages[0] = await SystemMessageAsync(node, groups, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
+        var directRead = CanReadDirectly(node, groups);
+        messages[0] = await SystemMessageAsync(node, groups, directRead, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
         messages.Add(ChatMessages.Tool(conversation.AskCallId, toolResult));
 
         var run = new PlannerRun
         {
             Messages = messages,
+            DirectRead = directRead,
+            DirectReadLimit = DirectReadLimit(node),
             Node = node,
             Step = conversation.Step,
             Tokens = conversation.Tokens,

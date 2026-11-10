@@ -114,6 +114,96 @@ public class ToolsNodeTests
     }
 
     [Fact]
+    public async Task Planner_with_direct_read_runs_its_delegated_tools_itself()
+    {
+        await using var harness = await CreateAsync(addNodes: false);
+        var planner = await harness.AddNodeAsync(NodeRole.Planner, "planner-model", directRead: true);
+        await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
+        await harness.AddNodeAsync(NodeRole.Wrapper, "wrapper-model");
+        var scout = await harness.AddNodeAsync(NodeRole.ToolsNode, "scout-model");
+        await DelegateAsync(harness, planner.Id, scout.Id, PlannerTools.ReadFile);
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ReadFile, new { path = GreeterFile }))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Jawab.", Answer = "Hello mengembalikan Hi." }));
+
+        var (result, _) = await harness.RunAsync("Apa isi Hello?");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        var calls = router.CallsTo(ScriptedAgent.Planner);
+        Assert.Contains(PlannerTools.ReadFile, calls[0].ToolNames!);
+        Assert.Contains(PlannerTools.Investigate, calls[0].ToolNames!);
+        Assert.Contains("call them yourself", calls[0].System);
+        Assert.Contains("Hello()", LastToolResult(calls[1].Messages));
+        Assert.Empty(router.CallsTo(ScriptedAgent.ToolsNode));
+    }
+
+    [Fact]
+    public async Task Direct_reading_stops_at_the_limit_and_points_to_investigate()
+    {
+        const string bigFile = "src/Big.cs";
+        await using var harness = await CreateAsync(addNodes: false);
+        // 1% of the budget is 2 000 characters: the first read goes past it.
+        harness.Project.Write(bigFile, string.Join('\n', Enumerable.Repeat("// a line that only takes up room", 200)));
+        var planner = await harness.AddNodeAsync(NodeRole.Planner, "planner-model", directRead: true, directReadPercent: 1);
+        await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
+        await harness.AddNodeAsync(NodeRole.Wrapper, "wrapper-model");
+        var scout = await harness.AddNodeAsync(NodeRole.ToolsNode, "scout-model");
+        await DelegateAsync(harness, planner.Id, scout.Id, PlannerTools.ReadFile);
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ReadFile, new { path = bigFile }))
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ReadFile, new { path = GreeterFile }))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Jawab.", Answer = "Selesai." }));
+
+        var (result, _) = await harness.RunAsync("Baca dua file.");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        var calls = router.CallsTo(ScriptedAgent.Planner);
+        Assert.Contains("takes up room", LastToolResult(calls[1].Messages));
+        Assert.StartsWith("Error: your direct reading budget is used up", LastToolResult(calls[2].Messages));
+        // The tool list does not change when the budget runs out: that would invalidate the prompt cache.
+        Assert.Equal(calls[0].ToolNames, calls[2].ToolNames);
+    }
+
+    [Fact]
+    public async Task Zero_percent_is_the_same_as_direct_reading_off()
+    {
+        await using var harness = await CreateAsync(addNodes: false);
+        var planner = await harness.AddNodeAsync(NodeRole.Planner, "planner-model", directRead: true, directReadPercent: 0);
+        await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
+        await harness.AddNodeAsync(NodeRole.Wrapper, "wrapper-model");
+        var scout = await harness.AddNodeAsync(NodeRole.ToolsNode, "scout-model");
+        await DelegateAsync(harness, planner.Id, scout.Id, PlannerTools.ReadFile);
+        var router = harness.Router;
+        router.On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Jawab.", Answer = "Halo." }));
+
+        await harness.RunAsync("Halo?");
+
+        var call = Assert.Single(router.CallsTo(ScriptedAgent.Planner));
+        Assert.DoesNotContain(PlannerTools.ReadFile, call.ToolNames!);
+        Assert.DoesNotContain("call them yourself", call.System);
+    }
+
+    [Fact]
+    public async Task Only_planners_keep_direct_reading_and_the_limit_stays_a_percentage()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        var nodes = harness.Nodes;
+        SaveNodeRequest Save(NodeRole role, bool? on, int? percent) => new("P", role, "p-model", null, 4096, 2, 100, null, true, DirectRead: on, DirectReadPercent: percent);
+
+        var planner = await nodes.CreateAsync(Save(NodeRole.Planner, true, 150));
+        Assert.True(planner.DirectRead);
+        Assert.Equal(100, planner.DirectReadPercent);
+        Assert.Equal(40, (await nodes.UpdateAsync(planner.Id, Save(NodeRole.Planner, null, 40)))!.DirectReadPercent);
+        // null leaves them as they are.
+        var kept = await nodes.UpdateAsync(planner.Id, Save(NodeRole.Planner, null, null));
+        Assert.True(kept!.DirectRead);
+        Assert.Equal(40, kept.DirectReadPercent);
+        Assert.False((await nodes.UpdateAsync(planner.Id, Save(NodeRole.Executor, true, 40)))!.DirectRead);
+    }
+
+    [Fact]
     public async Task A_sub_node_that_stays_unavailable_returns_an_error_to_the_planner()
     {
         await using var harness = await CreateAsync(addNodes: false);

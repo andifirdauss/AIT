@@ -432,8 +432,8 @@ inside the root through `run_build`):
 
 | Stack | Command | Default target |
 |---|---|---|
-| .NET | `dotnet build <file> --no-incremental -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | the shallowest `.sln`/`.slnx`, otherwise the shallowest `.csproj`/`.fsproj`/`.vbproj`. The verification after execution builds the solution that **holds every project of the changed files**: a repository with several solutions (e.g. a template + a sample) builds the sample's solution when the change is there |
-| .NET Framework (old-format/non-SDK csproj, e.g. ASP.NET MVC 5) | `MSBuild.exe <file> -restore -t:Rebuild -m -nr:false -p:RestorePackagesConfig=true …` from Visual Studio / Build Tools (found through `vswhere`, then the standard `Program Files\Microsoft Visual Studio` folders) | the same as .NET; a solution counts as old-format when one of its projects is old-format or it holds a web site project |
+| .NET | `dotnet build <file> -v:q -p:GenerateFullPaths=true -p:CopyRetryCount=1 -p:NuGetAudit=false` | the shallowest `.sln`/`.slnx`, otherwise the shallowest `.csproj`/`.fsproj`/`.vbproj`. The verification after execution builds the solution that **holds every project of the changed files**: a repository with several solutions (e.g. a template + a sample) builds the sample's solution when the change is there |
+| .NET Framework (old-format/non-SDK csproj, e.g. ASP.NET MVC 5) | `MSBuild.exe <file> -restore -t:Build -m -nr:false -p:RestorePackagesConfig=true …` from Visual Studio / Build Tools (found through `vswhere`, then the standard `Program Files\Microsoft Visual Studio` folders) | the same as .NET; a solution counts as old-format when one of its projects is old-format or it holds a web site project |
 | Node.js | `tsc --noEmit` (a local TypeScript in `node_modules`), otherwise `npm run build` | the shallowest `package.json` that has one of them |
 | Go | `go build ./...` | `go.mod` |
 | Rust | `cargo check --message-format short` | `Cargo.toml` |
@@ -441,11 +441,9 @@ inside the root through `run_build`):
 
 Other stacks (Python, PHP, Gradle, …) have no build command; they are only verified by the Reviewer when there is one.
 
-A .NET build is always a **full rebuild** (clean + build), so old output does not hide errors. The exception: when a
-`.dll`/`.exe` in the project's `bin` folder is in use by a running program (the app itself, IIS without shadow copy, the
-compiler server in `bin\roslyn`), the build runs **incrementally without clean** (`dotnet build` / `msbuild -t:Build`).
-With a clean, every file around the locked file (e.g. `*.runtimeconfig.json`, `*.deps.json`) would be deleted and not
-copied again because the copy fails, so the app could not run again without another build. A copy to `bin` that fails
+A .NET build is always **incremental without clean** (`dotnet build` / `msbuild -t:Build`), so a small change takes a
+few seconds. The files in `bin` of a running program also stay intact: a clean would delete every file around the locked
+file (e.g. `*.runtimeconfig.json`, `*.deps.json`) without copying them again. A copy to `bin` that fails
 because the file is locked (`MSB3021`/`MSB3027`) still counts as passed: the code was compiled. An old-format project
 cannot be built with `dotnet build` because it imports targets owned by Visual Studio (e.g.
 `Microsoft.WebApplication.targets`). When the Visual Studio MSBuild is not there, that project is not built at all (it
@@ -862,10 +860,14 @@ testing) and the *Needs attention* list before the wrapper's text, the *Changed 
 see [Reading the output in the CLI](04-penggunaan.md#reading-the-output-in-the-cli). The wrapper's text is streamed to
 the CLI.
 
-When there is no active wrapper or the wrapper fails, the CLI shows the plan summary instead of its text; what is stored
+A small change that passed every check (at most 2 tasks, all succeeded, verification passed without a fix round, testing
+and unit tests did not fail) does not call the Wrapper; `AIThread:WrapperSkipMaxTasks` in `appsettings.json` sets the
+limit (`0` = always call the Wrapper).
+
+When there is no active wrapper, the wrapper is skipped, or the wrapper fails, the CLI shows the plan summary instead of its text; what is stored
 as the thread's answer (Dashboard, Telegram) is an automatic summary (✅/❌/⏭️ per task, plus the verification result).
 
-After that memory extraction runs and is waited for at most 30 seconds so the footer can name the number of new
+After that memory extraction runs and is waited for at most 2 seconds (`AIThread:MemoryWaitSeconds`) so the footer can name the number of new
 memories; past that the footer writes *new memory is still being processed* and the extraction still finishes in the
 background.
 

@@ -18,8 +18,14 @@ public sealed partial class NodeService
         node.SystemPrompt = string.IsNullOrWhiteSpace(request.SystemPrompt) ? null : request.SystemPrompt.Trim();
         node.IsActive = request.IsActive;
         node.FallbackNodeId = request.FallbackNodeId;
-        // Only a planner tests its plans; null keeps what the node has.
+        // Only a planner tests its plans or reads for itself; null keeps what the node has.
         if (request.AutoTesting is { } autoTesting) node.AutoTesting = autoTesting;
-        if (node.Role != NodeRole.Planner) node.AutoTesting = false;
+        if (request.DirectRead is { } directRead) node.DirectRead = directRead;
+        if (request.DirectReadPercent is { } percent) node.DirectReadPercent = Math.Clamp(percent, 0, 100);
+        if (node.Role != NodeRole.Planner)
+        {
+            node.AutoTesting = false;
+            node.DirectRead = false;
+        }
     }
 }

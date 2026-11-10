@@ -13,17 +13,9 @@ public sealed record BuildCommand(
     IReadOnlyList<string> Arguments,
     string WorkingDirectory,
     string Display,
-    string Root)
-{
-    // The same build without its clean step, run instead while a running program holds a file in OutputDirectories:
-    // the clean would delete every file around the locked ones and the failed copy would not put them back (the app
-    // then no longer starts without another build).
-    public BuildCommand? Incremental { get; init; }
+    string Root);
 
-    public IReadOnlyList<string> OutputDirectories { get; init; } = [];
-}
-
-// Picks the build command of a project from its manifests: .NET (a full rebuild: dotnet build --no-incremental, or
+// Picks the build command of a project from its manifests: .NET (incremental: dotnet build, or
 // MSBuild of Visual Studio for .NET Framework projects in the old format), Node.js (tsc --noEmit with a local
 // TypeScript, else the "build" script), Go (go build), Rust (cargo check) and Maven (compile). Other stacks have no
 // build step AIThread can run.
@@ -191,12 +183,12 @@ public static partial class BuildCommandResolver
 
         if (Has(SolutionExtensions, extension) || Has(ProjectExtensions, extension))
         {
-            // A full rebuild (clean + build), so stale outputs cannot hide an error; incremental while outputs are
-            // in use (see BuildCommand.Incremental). Full paths for the parser; output copies fail fast instead of
-            // retrying ten times when a running app locks its own binaries; no vulnerability audit (it can wait on
-            // unreachable feeds and adds nothing here).
+            // Incremental, never a clean: a small change costs seconds instead of a whole rebuild, and the bin folder
+            // of a running app stays intact (a clean deletes every file around the locked ones and the failed copy does
+            // not put them back). Full paths for the parser; output copies fail fast instead of retrying ten times when
+            // a running app locks its own binaries; no vulnerability audit (it can wait on unreachable feeds and adds
+            // nothing here).
             var projects = Has(ProjectExtensions, extension) ? [new SolutionEntry(manifest, false)] : SolutionEntries(manifest);
-            var outputs = projects.Select(p => Path.Combine(p.IsWebSite ? p.Path : Path.GetDirectoryName(p.Path)!, "bin")).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             if (projects.Any(p => p.IsWebSite || IsLegacyProject(p.Path)))
             {
@@ -207,20 +199,12 @@ public static partial class BuildCommandResolver
                 }
 
                 // Restore also covers packages.config; no node reuse, so no MSBuild process outlives the build.
-                string[] msBuildArguments = [manifest, "-nologo", "-v:q", "-clp:NoSummary", "-m", "-nr:false", "-restore", "-p:RestorePackagesConfig=true", "-p:GenerateFullPaths=true", "-p:CopyRetryCount=1", "-p:NuGetAudit=false"];
-                return new BuildCommand(".NET Framework", msBuildPath, [.. msBuildArguments, "-t:Rebuild"], directory, $"msbuild -t:Rebuild {relative}", root)
-                {
-                    Incremental = new BuildCommand(".NET Framework", msBuildPath, [.. msBuildArguments, "-t:Build"], directory, $"msbuild {relative}", root),
-                    OutputDirectories = outputs
-                };
+                string[] msBuildArguments = [manifest, "-nologo", "-v:q", "-clp:NoSummary", "-m", "-nr:false", "-restore", "-p:RestorePackagesConfig=true", "-p:GenerateFullPaths=true", "-p:CopyRetryCount=1", "-p:NuGetAudit=false", "-t:Build"];
+                return new BuildCommand(".NET Framework", msBuildPath, msBuildArguments, directory, $"msbuild {relative}", root);
             }
 
-            string[] dotnetArguments = ["-nologo", "-v:q", "-clp:NoSummary", "--tl:off", "-p:GenerateFullPaths=true", "-p:CopyRetryCount=1", "-p:NuGetAudit=false"];
-            return new BuildCommand(".NET", "dotnet", ["build", manifest, "--no-incremental", .. dotnetArguments], directory, $"dotnet build --no-incremental {relative}", root)
-            {
-                Incremental = new BuildCommand(".NET", "dotnet", ["build", manifest, .. dotnetArguments], directory, $"dotnet build {relative}", root),
-                OutputDirectories = outputs
-            };
+            string[] dotnetArguments = ["build", manifest, "-nologo", "-v:q", "-clp:NoSummary", "--tl:off", "-p:GenerateFullPaths=true", "-p:CopyRetryCount=1", "-p:NuGetAudit=false"];
+            return new BuildCommand(".NET", "dotnet", dotnetArguments, directory, $"dotnet build {relative}", root);
         }
 
         switch (name.ToLowerInvariant())
