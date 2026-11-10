@@ -9,6 +9,18 @@ Codex CLI, Gemini CLI, atau Antigravity CLI).
 
 Paket ini berisi `AIThread.exe` standalone, jadi .NET runtime tidak perlu dipasang. Hanya untuk **Windows x64**.
 
+## Yang baru di 1.19.0
+
+- **Perubahan kecil jauh lebih cepat**: nyalakan *Planner baca langsung* di node Planner agar planner membaca file
+  sendiri tanpa menunggu tools node (uji 5 pasang perubahan kecil: planning dari 34 ke 14 detik).
+- **Verifikasi lebih singkat**: build incremental, build dan reviewer berjalan bersamaan, unit test tidak membuild ulang,
+  dan perubahan kecil yang lolos semua pemeriksaan tidak menunggu Wrapper.
+- **Brief planner lebih lengkap**: file kecil yang disebut prompt langsung masuk utuh.
+- **Notifikasi memory**: jawaban tidak lagi menunggu ekstraksi memory, hasilnya tampil di web dan desktop Windows. Bisa
+  dimatikan lewat *Mode senyap* di Pengaturan.
+- **Autostart tanpa jendela console**, dan entri lama diperbarui otomatis.
+- **Benchmark node** di menu Node untuk melihat node yang paling lambat.
+
 ## Yang baru di 1.18.1
 
 - **AI bawaan CLI memakai AIT dengan sendirinya**: `npx -y aithread skill install all` memasang skill dan hook AIT di
