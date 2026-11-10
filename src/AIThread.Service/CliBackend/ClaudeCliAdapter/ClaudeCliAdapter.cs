@@ -14,7 +14,11 @@ public sealed partial class ClaudeCliAdapter(IOptions<AIThreadOptions> options, 
 
     private static readonly TimeSpan DetectCacheDuration = TimeSpan.FromMinutes(5);
 
+    // Long enough for the next call of a running thread, short enough that no process lingers after it.
+    private static readonly TimeSpan WarmIdle = TimeSpan.FromSeconds(90);
+
     private readonly SemaphoreSlim _slots = new(Math.Max(1, options.Value.ClaudeCli.MaxProcesses));
+    private readonly CliWarmPool _warm = new(options.Value.ClaudeCli.WarmProcesses, WarmIdle, CliProcess.Discard);
     private DetectCache? _detected;
 
     public string Tool => CliModelId.Claude;

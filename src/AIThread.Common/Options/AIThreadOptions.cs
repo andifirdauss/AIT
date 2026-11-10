@@ -94,6 +94,10 @@ public class ClaudeCliOptions : CliEngineOptions
     // --setting-sources of every run. "local" (in an empty working folder) skips the user's ~/.claude/settings.json and
     // CLAUDE.md: their hooks and an ANTHROPIC_BASE_URL pointing back at AIT must not apply. Managed policy always does.
     public string SettingSources { get; set; } = "local";
+
+    // CLI processes kept started ahead of their call, one per model and system prompt, so a call does not wait for the
+    // CLI to start. They use memory while they wait, for at most 90 seconds. 0 = start each process when it is needed.
+    public int WarmProcesses { get; set; } = 4;
 }
 
 // Codex CLI: `codex exec` ("cli:codex:<model>").

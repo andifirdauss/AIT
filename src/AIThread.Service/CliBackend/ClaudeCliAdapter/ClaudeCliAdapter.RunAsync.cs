@@ -10,18 +10,27 @@ public sealed partial class ClaudeCliAdapter
         string? work = null;
         try
         {
-            work = CliProcess.NewWorkFolder();
-            var systemFile = Path.Combine(work, "system-prompt.md");
-            await File.WriteAllTextAsync(systemFile, prompt.System.Length == 0 ? "You are a helpful assistant." : prompt.System, CliProcess.Utf8, cancellationToken);
+            var key = WarmKey(launch, model, prompt.System);
+            var warm = _warm.Take(key);
+            WarmUp(launch, model, prompt.System, key);
 
+            var input = InputLine(prompt) + "\n";
             var reader = new ClaudeStreamReader();
-            var exit = await CliProcess.RunAsync(launch, BuildArguments(model, systemFile), work, InputLine(prompt) + "\n", CleanEnvironment,
-                async line =>
-                {
-                    var delta = reader.Feed(line);
-                    if (delta is not null && onDelta is not null) await onDelta(delta);
-                },
-                limits, DisplayName, NotInstalled, cancellationToken);
+            if (warm is not null)
+            {
+                work = warm.WorkFolder;
+                var warmExit = await CliProcess.RunStartedAsync(warm.Process, input, Lines(reader, onDelta), limits, DisplayName, cancellationToken, Answered(reader));
+                if (reader.SawResult || reader.Text.Length > 0) return Output(model, reader, warmExit);
+
+                // It died while it waited and answered nothing: this call starts its own.
+                CliProcess.DeleteQuietly(work);
+                reader = new ClaudeStreamReader();
+            }
+
+            work = CliProcess.NewWorkFolder();
+            var systemFile = await WriteSystemFileAsync(work, prompt.System, cancellationToken);
+            var exit = await CliProcess.RunAsync(launch, BuildArguments(model, systemFile), work, input, CleanEnvironment,
+                Lines(reader, onDelta), limits, DisplayName, NotInstalled, cancellationToken, Answered(reader));
             return Output(model, reader, exit);
         }
         finally

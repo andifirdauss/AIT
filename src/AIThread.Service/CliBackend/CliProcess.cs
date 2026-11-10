@@ -29,6 +29,9 @@ public static class CliProcess
 
     private static readonly TimeSpan VersionTimeout = TimeSpan.FromSeconds(20);
 
+    // How long a stopped CLI gets to go, so its working folder can be deleted.
+    private static readonly TimeSpan ExitWait = TimeSpan.FromSeconds(2);
+
     // A fresh, empty folder per call: nothing of the project (no CLAUDE.md, AGENTS.md, GEMINI.md, settings) for the
     // CLI to read.
     public static readonly string WorkRoot =
@@ -154,9 +157,15 @@ public static class CliProcess
 
     // One headless run in the working folder: the input goes on stdin (no command-line length limit) and is closed,
     // every stdout line goes to onLine. Dropped after limits.Timeout in total or limits.Stall without a line.
-    public static async Task<CliExit> RunAsync(CliLaunch launch, IEnumerable<string> arguments, string workFolder, string? input,
+    // finished: true once the answer is complete, so a CLI that takes its time to shut down is not waited for.
+    public static Task<CliExit> RunAsync(CliLaunch launch, IEnumerable<string> arguments, string workFolder, string? input,
         Action<IDictionary<string, string?>> cleanEnvironment, Func<string, Task> onLine, CliCallLimits limits, string name,
-        Func<Exception, NineRouterException> notInstalled, CancellationToken cancellationToken)
+        Func<Exception, NineRouterException> notInstalled, CancellationToken cancellationToken, Func<bool>? finished = null) =>
+        RunStartedAsync(Start(launch, arguments, workFolder, cleanEnvironment, notInstalled), input, onLine, limits, name, cancellationToken, finished);
+
+    // Starts the CLI, which then waits for its input on stdin.
+    public static Process Start(CliLaunch launch, IEnumerable<string> arguments, string workFolder,
+        Action<IDictionary<string, string?>> cleanEnvironment, Func<Exception, NineRouterException> notInstalled)
     {
         var startInfo = new ProcessStartInfo(launch.FileName)
         {
@@ -175,16 +184,24 @@ public static class CliProcess
         // A node's own CLI must not be sent back to AIT by the plugin hook of the developer's CLI session.
         startInfo.Environment["AITHREAD_CLI_ENGINE"] = "1";
 
-        using var process = new Process { StartInfo = startInfo };
+        var process = new Process { StartInfo = startInfo };
         try
         {
             process.Start();
+            return process;
         }
         catch (Win32Exception ex)
         {
+            process.Dispose();
             throw notInstalled(ex);
         }
+    }
 
+    // The run of a CLI already started (RunAsync, or one waiting in a CliWarmPool). The process ends with it.
+    public static async Task<CliExit> RunStartedAsync(Process started, string? input, Func<string, Task> onLine, CliCallLimits limits, string name,
+        CancellationToken cancellationToken, Func<bool>? finished = null)
+    {
+        using var process = started;
         using var total = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         total.CancelAfter(limits.Timeout);
         using var stall = CancellationTokenSource.CreateLinkedTokenSource(total.Token);
@@ -207,6 +224,20 @@ public static class CliProcess
                 var line = await process.StandardOutput.ReadLineAsync(stall.Token);
                 if (line is null) break;
                 await onLine(line);
+                if (finished?.Invoke() != true) continue;
+
+                // Gone before the caller deletes the working folder the process runs in.
+                Kill(process);
+                using var exit = new CancellationTokenSource(ExitWait);
+                try
+                {
+                    await process.WaitForExitAsync(exit.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Still going down; the folder is cleaned up on a best-effort basis anyway.
+                }
+                return new CliExit(0, string.Empty);
             }
             await process.WaitForExitAsync(total.Token);
             return new CliExit(process.ExitCode, await stderr);
@@ -221,6 +252,22 @@ public static class CliProcess
         {
             Kill(process);
         }
+    }
+
+    // A warm process nobody will use: stopped and its folder removed.
+    public static void Discard(WarmCliProcess warm)
+    {
+        Kill(warm.Process);
+        try
+        {
+            warm.Process.WaitForExit(ExitWait);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+        {
+            // Already gone.
+        }
+        warm.Process.Dispose();
+        DeleteQuietly(warm.WorkFolder);
     }
 
     public static string? FindOnPath(string name)
