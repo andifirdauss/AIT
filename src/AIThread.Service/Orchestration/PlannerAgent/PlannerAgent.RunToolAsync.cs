@@ -20,7 +20,9 @@ public sealed partial class PlannerAgent
 
         // A delegated tool is not in the planner's list unless it reads directly; a model that calls it anyway, or has
         // used up its reading budget, is pointed to investigate. The list itself stays the same (see RunAsync).
-        var holder = run.Groups.FirstOrDefault(g => g.Tools.Contains(call.Name));
+        // run_command is shared, not handed over: only the planner can ask the developer's permission, so it is neither
+        // refused here nor counted as reading.
+        var holder = call.Name == PlannerTools.RunCommand ? null : run.Groups.FirstOrDefault(g => g.Tools.Contains(call.Name));
         if (holder is not null && !run.DirectRead)
             return new PlannerToolOutcome($"Error: {call.Name} is delegated to a sub agent{(run.Groups.Count > 1 ? $" (\"{holder.Key}\")" : string.Empty)}. Call investigate with your question instead.", null, true);
         if (holder is not null && Interlocked.Read(ref run.DirectReadChars) >= run.DirectReadLimit)

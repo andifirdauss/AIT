@@ -81,7 +81,11 @@ public sealed partial class PlannerAgent
             && Memory.ReferenceAreas.Brief(project.RootPath, input.Files ?? [], Memory.CodeMapHeuristics.References(request.Prompt).Identifiers, input.CanAsk) is { } areas)
             builder.Append(areas).Append('\n');
 
-        var outlined = (input.Files ?? []).Concat(input.CodeMap?.Select(h => h.Path) ?? []).Distinct(StringComparer.OrdinalIgnoreCase);
+        var (smallFiles, inlined) = await SmallFilesAsync(input, tools, cancellationToken);
+        if (smallFiles is not null)
+            builder.Append("# Full text of the small files the request names (current, with line numbers; do not read them again)\n").Append(smallFiles).Append('\n');
+
+        var outlined = (input.Files ?? []).Concat(input.CodeMap?.Select(h => h.Path) ?? []).Distinct(StringComparer.OrdinalIgnoreCase).Where(f => !inlined.Contains(f));
         if (await skeleton.BriefAsync(project, input.Scope, outlined, MaxOutlinedFiles, MaxOutlineChars, cancellationToken) is { } outlines)
         {
             builder.Append(input.LabelsFromSession is null

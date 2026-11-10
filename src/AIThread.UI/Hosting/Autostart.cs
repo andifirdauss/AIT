@@ -27,8 +27,41 @@ public static class Autostart
     {
         if (!CanEnable) throw new InvalidOperationException(Lang.T("Autostart hanya tersedia untuk AIThread.exe hasil publish.", "Autostart is only available for a published AIThread.exe."));
         using var key = Registry.CurrentUser.CreateSubKey(RunKey);
-        key.SetValue(ValueName, $"\"{AppPaths.ExePath}\" tray");
+        key.SetValue(ValueName, Command(AppPaths.ExePath, ConhostPath()));
         key.DeleteValue(LegacyValueName, throwOnMissingValue: false);
+    }
+
+    // AIThread.exe is a console program (chat, the menu), so a plain start at login opens a console window until the tray
+    // releases it. A headless console host gives it a console nobody sees. conhost: null when this Windows has no such host.
+    public static string Command(string exePath, string? conhost) =>
+        conhost is null ? $"\"{exePath}\" tray" : $"\"{conhost}\" --headless \"{exePath}\" tray";
+
+    // An entry of this same exe written before the headless start. An entry of another install is left alone.
+    public static bool NeedsUpgrade(string? existing, string exePath, string? conhost) =>
+        existing is not null && existing.Contains(exePath, StringComparison.OrdinalIgnoreCase) && !string.Equals(existing, Command(exePath, conhost), StringComparison.OrdinalIgnoreCase);
+
+    // Run by the tray: the developer does not have to switch autostart off and on to lose the console window. An entry
+    // that cannot be rewritten only keeps the window, so it never stops the tray.
+    public static void Upgrade()
+    {
+        if (!CanEnable) return;
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey);
+            var existing = (key?.GetValue(ValueName) ?? key?.GetValue(LegacyValueName)) as string;
+            if (NeedsUpgrade(existing, AppPaths.ExePath, ConhostPath())) Enable();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            Console.Error.WriteLine(Lang.T($"Entri autostart tidak bisa diperbarui: {ex.Message}", $"The autostart entry could not be updated: {ex.Message}"));
+        }
+    }
+
+    // --headless needs Windows 10 1809 or newer.
+    private static string? ConhostPath()
+    {
+        var conhost = Path.Combine(Environment.SystemDirectory, "conhost.exe");
+        return OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763) && File.Exists(conhost) ? conhost : null;
     }
 
     public static void Disable()

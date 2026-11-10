@@ -4,8 +4,10 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using AIThread.Common.Localization;
 using AIThread.Data;
+using AIThread.Data.Messaging;
 using AIThread.UI.Hosting.Agent;
 using AIThread.UI.Hosting.Chat;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AIThread.UI.Hosting;
 
@@ -208,9 +210,10 @@ public static class Cli
         }
 
         LogFile.Redirect();
-        // Autostart starts this exe as a console app, so Windows opens an empty console window. Output already goes to the
-        // log file, so the console is released here and the window closes.
+        // A plain start of this console app opens an empty console window. Output already goes to the log file, so the
+        // console is released here and the window closes.
         FreeConsole();
+        Autostart.Upgrade();
         var server = new ServerHost();
         try
         {
@@ -260,7 +263,11 @@ public static class Cli
         _ = server.Stopped.ContinueWith(_ => tray.Close());
 
         if (options.Open) OpenBrowser(client.BaseUrl);
+        using var notices = new CancellationTokenSource();
+        if (server.Services?.GetService<IEventBus>() is { } events)
+            _ = TrayNotifications.ForwardAsync(events, text => tray.Notify(text), notices.Token);
         tray.Run();
+        await notices.CancelAsync();
         await server.StopAsync();
         return 0;
     }

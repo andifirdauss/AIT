@@ -5,11 +5,11 @@ using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
-// One node of the benchmark and how many model calls a small change makes to it.
-public sealed record BenchmarkStep(AiNode Node, int Calls);
+// One node of the benchmark, how many model calls a small change makes to it and how much context each call reads.
+public sealed record BenchmarkStep(AiNode Node, int Calls, int ContextTokens);
 
 // Times: the samples that answered, in milliseconds. Error: why the last failed sample failed.
-public sealed record ModelMeasurement(string Model, IReadOnlyList<long> Times, int Failed, string? Error);
+public sealed record ModelMeasurement(string Model, int ContextTokens, IReadOnlyList<long> Times, int Failed, string? Error);
 
 // From the measured models to an estimate of one small change, its slowest node and what to do about it.
 public static class NodeBenchmarkReport
@@ -17,6 +17,11 @@ public static class NodeBenchmarkReport
     // Measured on real one-constant changes: the planner reads and submits, a tools node takes about three steps.
     public const int PlannerCalls = 2;
     public const int ToolsNodeCalls = 3;
+
+    // Median context of real small changes: a planner turn and a tools node call read about 30 000 tokens, an executor,
+    // a reviewer and a wrapper between 4 000 and 9 000. A short probe would hide what makes the big ones slow.
+    public const int LargeContextTokens = 30_000;
+    public const int SmallContextTokens = 6_000;
 
     // A median below this is not worth a tip.
     private const long SlowMs = 3_000;
@@ -31,20 +36,20 @@ public static class NodeBenchmarkReport
     public static IReadOnlyList<BenchmarkStep> Steps(AiNode? planner, AiNode? toolsNode, AiNode? executor, AiNode? reviewer, AiNode? wrapper, int wrapperSkipMaxTasks)
     {
         var steps = new List<BenchmarkStep>();
-        if (planner is not null) steps.Add(new BenchmarkStep(planner, PlannerCalls));
-        if (toolsNode is not null) steps.Add(new BenchmarkStep(toolsNode, ToolsNodeCalls));
-        if (executor is not null) steps.Add(new BenchmarkStep(executor, 1));
-        if (reviewer is not null) steps.Add(new BenchmarkStep(reviewer, 1));
-        if (wrapper is not null && wrapperSkipMaxTasks <= 0) steps.Add(new BenchmarkStep(wrapper, 1));
+        if (planner is not null) steps.Add(new BenchmarkStep(planner, PlannerCalls, LargeContextTokens));
+        if (toolsNode is not null) steps.Add(new BenchmarkStep(toolsNode, ToolsNodeCalls, LargeContextTokens));
+        if (executor is not null) steps.Add(new BenchmarkStep(executor, 1, SmallContextTokens));
+        if (reviewer is not null) steps.Add(new BenchmarkStep(reviewer, 1, SmallContextTokens));
+        if (wrapper is not null && wrapperSkipMaxTasks <= 0) steps.Add(new BenchmarkStep(wrapper, 1, SmallContextTokens));
         return steps;
     }
 
     public static NodeBenchmarkDto Build(IReadOnlyList<BenchmarkStep> steps, IReadOnlyList<ModelMeasurement> measured, int samplesPerModel)
     {
-        var byModel = measured.ToDictionary(m => m.Model, StringComparer.Ordinal);
+        var byModel = measured.ToDictionary(m => (m.Model, m.ContextTokens));
         var rows = steps.Select(step =>
         {
-            var measure = byModel[step.Node.Model];
+            var measure = byModel[(step.Node.Model, step.ContextTokens)];
             var median = Median(measure.Times);
             return (Step: step, Measure: measure, Median: median, Estimated: median * step.Calls);
         }).ToList();
@@ -57,6 +62,7 @@ public static class NodeBenchmarkReport
             r.Step.Node.Name,
             r.Step.Node.Model,
             r.Step.Calls,
+            r.Step.ContextTokens,
             r.Median,
             r.Measure.Times.Count == 0 ? null : r.Measure.Times.Min(),
             r.Measure.Times.Count == 0 ? null : r.Measure.Times.Max(),
@@ -116,7 +122,7 @@ public static class NodeBenchmarkReport
                 $"{slowest.NodeName} takes {slowest.SharePercent}% of the time ({median} seconds per call). That is normal for the strongest model; a lighter model is faster, at the risk of a less careful plan.");
 
         var faster = measured
-            .Where(m => m.Times.Count > 0 && !string.Equals(m.Model, slowest.Model, StringComparison.Ordinal))
+            .Where(m => m.Times.Count > 0 && m.ContextTokens == slowest.ContextTokens && !string.Equals(m.Model, slowest.Model, StringComparison.Ordinal))
             .Select(m => (m.Model, Median: Median(m.Times)!.Value))
             .Where(m => m.Median * WorthSwitchingFactor <= slowest.MedianMs!.Value)
             .OrderBy(m => m.Median)

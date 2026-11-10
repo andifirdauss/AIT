@@ -1,3 +1,4 @@
+using AIThread.Common.DTOs;
 using AIThread.Common.Entities;
 using AIThread.Common.Enums;
 using AIThread.Common.Localization;
@@ -10,7 +11,11 @@ public class NodeBenchmarkTests
 {
     private static AiNode Node(NodeRole role, string model) => new() { Name = role.ToString(), Role = role, Model = model };
 
-    private static ModelMeasurement Measured(string model, params long[] times) => new(model, times, 0, null);
+    // Every model and context size the steps need is measured with the times given for that model.
+    private static NodeBenchmarkDto Report(IReadOnlyList<BenchmarkStep> steps, params (string Model, long[] Times)[] models) =>
+        NodeBenchmarkReport.Build(steps,
+            steps.Select(s => (s.Node.Model, s.ContextTokens)).Distinct()
+                .Select(k => new ModelMeasurement(k.Model, k.ContextTokens, models.Single(m => m.Model == k.Model).Times, 0, null)).ToList(), 3);
 
     [Fact]
     public void Steps_follow_one_small_change()
@@ -30,7 +35,7 @@ public class NodeBenchmarkTests
         using var _ = Lang.Use("en");
         var steps = NodeBenchmarkReport.Steps(Node(NodeRole.Planner, "fast"), Node(NodeRole.ToolsNode, "slow"), Node(NodeRole.Executor, "fast"), null, null, 2);
 
-        var report = NodeBenchmarkReport.Build(steps, [Measured("fast", 1_000, 1_000, 1_000), Measured("slow", 8_000, 8_000, 8_000)], 3);
+        var report = Report(steps, ("fast", [1_000, 1_000, 1_000]), ("slow", [8_000, 8_000, 8_000]));
 
         // 2 x 1 s + 3 x 8 s + 1 x 1 s.
         Assert.Equal(27_000, report.EstimatedMs);
@@ -48,7 +53,7 @@ public class NodeBenchmarkTests
         using var _ = Lang.Use("en");
         var steps = NodeBenchmarkReport.Steps(Node(NodeRole.Planner, "strong"), null, Node(NodeRole.Executor, "fast"), null, null, 2);
 
-        var report = NodeBenchmarkReport.Build(steps, [Measured("strong", 6_000, 6_000, 6_000), Measured("fast", 1_000, 1_000, 1_000)], 3);
+        var report = Report(steps, ("strong", [6_000, 6_000, 6_000]), ("fast", [1_000, 1_000, 1_000]));
 
         Assert.Contains(report.Tips, t => t.Contains("normal for the strongest model") && t.Contains("risk"));
         Assert.DoesNotContain(report.Tips, t => t.Contains("much faster"));
@@ -60,7 +65,7 @@ public class NodeBenchmarkTests
         using var _ = Lang.Use("en");
         var steps = NodeBenchmarkReport.Steps(Node(NodeRole.Planner, "steady"), null, Node(NodeRole.Executor, "swing"), null, null, 2);
 
-        var report = NodeBenchmarkReport.Build(steps, [Measured("steady", 2_000, 2_200, 2_100), Measured("swing", 6_000, 10_000, 21_000)], 3);
+        var report = Report(steps, ("steady", [2_000, 2_200, 2_100]), ("swing", [6_000, 10_000, 21_000]));
 
         Assert.False(report.Stages[0].Unstable);
         Assert.True(report.Stages[1].Unstable);
@@ -73,7 +78,7 @@ public class NodeBenchmarkTests
         using var _ = Lang.Use("en");
         var steps = NodeBenchmarkReport.Steps(Node(NodeRole.Planner, "a"), null, Node(NodeRole.Executor, "b"), null, null, 2);
 
-        var report = NodeBenchmarkReport.Build(steps, [Measured("a", 1_000, 1_000, 1_000), Measured("b", 900, 900, 900)], 3);
+        var report = Report(steps, ("a", [1_000, 1_000, 1_000]), ("b", [900, 900, 900]));
 
         Assert.Contains("No slow spot", Assert.Single(report.Tips));
     }
@@ -105,6 +110,37 @@ public class NodeBenchmarkTests
         Assert.Equal([NodeRole.Planner, NodeRole.Executor, NodeRole.Reviewer, NodeRole.Wrapper], report.Stages.Select(s => s.Role));
         Assert.Equal(3, harness.Router.CallsTo(ScriptedAgent.Other).Count(c => c.Model == "strong"));
         Assert.Equal(3, harness.Router.CallsTo(ScriptedAgent.Other).Count(c => c.Model == "cheap"));
+    }
+
+    [Fact]
+    public async Task Each_node_is_measured_with_a_context_as_large_as_it_really_reads()
+    {
+        await using var harness = await OrchestrationHarness.CreateAsync();
+        await harness.AddNodeAsync(NodeRole.Planner, "shared");
+        await harness.AddNodeAsync(NodeRole.Executor, "shared");
+        foreach (var _ in Enumerable.Range(0, 6)) harness.Router.On(ScriptedAgent.Other, ScriptedRouter.Text("It totals order lines."));
+
+        var report = await harness.Benchmark.RunAsync();
+
+        Assert.Equal([NodeBenchmarkReport.LargeContextTokens, NodeBenchmarkReport.SmallContextTokens], report.Stages.Select(s => s.ContextTokens));
+        var sizes = harness.Router.CallsTo(ScriptedAgent.Other).Select(c => c.Messages.ToJsonString()).ToList();
+        Assert.Equal(6, sizes.Count);
+        Assert.Equal(3, sizes.Count(s => s.Length >= NodeBenchmarkReport.LargeContextTokens * 4));
+        Assert.Equal(3, sizes.Count(s => s.Length is >= NodeBenchmarkReport.SmallContextTokens * 4 and < NodeBenchmarkReport.LargeContextTokens));
+        // Every sample differs, so the provider's prompt cache cannot answer for it.
+        Assert.Equal(6, sizes.Distinct().Count());
+    }
+
+    [Fact]
+    public void Only_a_model_measured_with_the_same_context_is_named_as_faster()
+    {
+        using var _ = Lang.Use("en");
+        var steps = NodeBenchmarkReport.Steps(Node(NodeRole.Planner, "strong"), Node(NodeRole.ToolsNode, "slow"), Node(NodeRole.Executor, "tiny"), null, null, 2);
+
+        var report = Report(steps, ("strong", [8_000, 8_000, 8_000]), ("slow", [8_000, 8_000, 8_000]), ("tiny", [1_000, 1_000, 1_000]));
+
+        Assert.Contains(report.Tips, t => t.Contains("slow spot"));
+        Assert.DoesNotContain(report.Tips, t => t.Contains("tiny is much faster"));
     }
 
     [Fact]

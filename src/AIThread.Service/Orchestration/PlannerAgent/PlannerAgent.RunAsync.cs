@@ -115,7 +115,7 @@ public sealed partial class PlannerAgent
             {
                 // A permission request is not a clarifying question: it does not use up ask_user.
                 if (pause.Question.Approval is null) run.QuestionsAsked++;
-                var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild, run.ToolsNodeTokens, run.CanGit);
+                var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild, run.ToolsNodeTokens, run.CanGit, Interlocked.Read(ref run.DirectReadChars));
                 return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count, run.ToolsNodeTokens,
                     run.ModelTime, run.ToolTime, run.QueueTime);
             }

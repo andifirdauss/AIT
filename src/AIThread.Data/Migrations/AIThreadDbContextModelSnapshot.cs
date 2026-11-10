@@ -1463,6 +1463,9 @@ namespace AIThread.Data.Migrations
                     b.Property<bool>("SecretMaskingEnabled")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("SilentNotifications")
+                        .HasColumnType("bit");
+
                     b.Property<string>("SkillOrchestratorModel")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1965,7 +1968,16 @@ namespace AIThread.Data.Migrations
                     b.Property<int>("PlannerTokens")
                         .HasColumnType("int");
 
+                    b.Property<long?>("PlanningModelMs")
+                        .HasColumnType("bigint");
+
                     b.Property<long?>("PlanningMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("PlanningQueueMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("PlanningToolMs")
                         .HasColumnType("bigint");
 
                     b.Property<Guid?>("ProjectId")

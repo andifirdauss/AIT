@@ -7,6 +7,9 @@ public sealed record AppEvent(string Type, object? Data, Guid? ThreadId, DateTim
         new(type, data, threadId, DateTime.UtcNow);
 }
 
+// Data of AppEventTypes.MemoryExtracted.
+public sealed record MemoryExtractedDto(int Saved, bool Failed);
+
 public static class AppEventTypes
 {
     public const string Log = "log";
@@ -20,6 +23,7 @@ public static class AppEventTypes
     public const string TaskUpdated = "task.updated";
     public const string TaskOutput = "task.output";
     public const string MemoryChanged = "memory.changed";
+    public const string MemoryExtracted = "memory.extracted";
     public const string ProjectChanged = "project.changed";
     public const string NodeChanged = "node.changed";
     public const string TelegramChanged = "telegram.changed";

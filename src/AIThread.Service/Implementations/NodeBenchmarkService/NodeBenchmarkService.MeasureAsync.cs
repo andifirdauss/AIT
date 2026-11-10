@@ -8,7 +8,7 @@ namespace AIThread.Service.Implementations;
 public sealed partial class NodeBenchmarkService
 {
     // One sample after the other: parallel calls to one model would measure its rate limit instead of its speed.
-    private async Task<ModelMeasurement> MeasureAsync(string model, CancellationToken cancellationToken)
+    private async Task<ModelMeasurement> MeasureAsync(string model, int contextTokens, CancellationToken cancellationToken)
     {
         var times = new List<long>();
         var failed = 0;
@@ -23,7 +23,7 @@ public sealed partial class NodeBenchmarkService
                 await router.ChatAsync(new ChatCompletionRequest
                 {
                     Model = model,
-                    Messages = [ChatMessages.User(Probe)],
+                    Messages = [ChatMessages.User(Probe(contextTokens))],
                     MaxTokens = MaxReplyTokens
                 }, cancellationToken: limit.Token);
                 times.Add(clock.ElapsedMilliseconds);
@@ -39,6 +39,6 @@ public sealed partial class NodeBenchmarkService
                 error = Lang.T($"tidak menjawab dalam {CallLimit.TotalSeconds:0} detik", $"no answer within {CallLimit.TotalSeconds:0} seconds");
             }
         }
-        return new ModelMeasurement(model, times, failed, error);
+        return new ModelMeasurement(model, contextTokens, times, failed, error);
     }
 }

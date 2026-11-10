@@ -129,7 +129,8 @@ public class CodeSkeletonTests
     {
         await using var harness = await OrchestrationHarness.CreateAsync();
         await harness.AddStandardNodesAsync();
-        harness.Project.Write("Scripts/klaim.js", Script);
+        // Long enough to be outlined: a small file goes in the brief whole.
+        harness.Project.Write("Scripts/klaim.js", Script + "\n" + string.Concat(Enumerable.Repeat("// filler\n", 220)));
         harness.Router.On(ScriptedAgent.Planner, harness.Router.SubmitPlan(new ThreadPlan { Summary = "Jawab.", Answer = "Ada tiga function." }));
 
         await harness.RunAsync("Apa saja function di Scripts/klaim.js?");

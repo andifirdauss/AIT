@@ -315,7 +315,8 @@ public static partial class FinalReport
         return $"{fence}{language}\n{text}\n{fence}\n";
     }
 
-    // memoriesUsed: read by the planner. extraction: null when no extraction ran; pending when it did not finish in time.
+    // memoriesUsed: read by the planner. extraction: null when none ran or it is still running in the background; the
+    // footer stays silent then, since the answer rarely waits long enough for a model call to finish.
     // quotas: the 9router accounts behind the nodes' models; now: the moment reset times are counted from.
     // secretsMasked: distinct secrets replaced by placeholders before they reached a model (SecretGuard).
     public static string Footer(
@@ -323,7 +324,6 @@ public static partial class FinalReport
         int tokens,
         int memoriesUsed,
         MemoryExtraction? extraction,
-        bool extractionPending,
         int? wikiIntervalHours,
         string? dashboardUrl,
         Guid threadId,
@@ -337,8 +337,7 @@ public static partial class FinalReport
 
         var memory = new List<string>();
         if (memoriesUsed > 0) memory.Add(Lang.T($"{memoriesUsed} memory dipakai", $"{memoriesUsed} memories used"));
-        if (extractionPending) memory.Add(Lang.T("memory baru masih diproses", "new memory still being processed"));
-        else if (extraction is { Failed: true }) memory.Add(Lang.T("memory gagal diekstrak", "memory extraction failed"));
+        if (extraction is { Failed: true }) memory.Add(Lang.T("memory gagal diekstrak", "memory extraction failed"));
         else if (extraction is not null) memory.Add(extraction.Saved > 0 ? Lang.T($"+{extraction.Saved} memory baru", $"+{extraction.Saved} new memory") : Lang.T("tidak ada memory baru", "no new memory"));
         if (memory.Count > 0) parts.Add("🧠 " + string.Join(", ", memory));
 

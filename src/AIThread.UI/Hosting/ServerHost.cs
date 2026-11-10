@@ -15,6 +15,8 @@ public sealed class ServerHost : IAsyncDisposable
 
     public bool IsRunning => _app is not null;
 
+    // Null while the server is not running.
+    public IServiceProvider? Services => _app?.Services;
 
     // Completes when the host stops for any reason, including POST /api/system/shutdown.
     public Task Stopped { get; private set; } = Task.CompletedTask;

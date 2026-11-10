@@ -326,6 +326,12 @@
     return source;
   }
 
+  // Handler for the memory.extracted event: the answer does not wait for the memory extraction, so this tells how it ended.
+  function memoryToast(payload) {
+    if (payload.data.failed) toast(t('Ekstraksi memory gagal.', 'Memory extraction failed.'), 'warning');
+    else toast(isEn ? `${payload.data.saved} new memory saved.` : `${payload.data.saved} memory baru tersimpan.`, 'success');
+  }
+
   function debounce(fn, wait = 300) {
     let timer;
     return (...args) => {
@@ -846,5 +852,5 @@
     setInterval(refreshRouterPill, 20000);
   });
 
-  window.AIThread = { lang, isEn, locale, t, api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager, renderSetupStatus, securityStatusText };
+  window.AIThread = { lang, isEn, locale, t, api, toast, escapeHtml, winControls, winFrame, fmt, toDate, statusBadge, isActiveStatus, sourceLabel, statusDot, stream, memoryToast, debounce, md, diffHtml, threadRow, bindRowLinks, renderRouterPill, routerKeyState, pager, renderSetupStatus, securityStatusText };
 })();

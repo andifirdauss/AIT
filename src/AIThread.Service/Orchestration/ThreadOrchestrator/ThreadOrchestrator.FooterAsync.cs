@@ -20,7 +20,6 @@ public sealed partial class ThreadOrchestrator
         Stopwatch total,
         int memoriesUsed,
         MemoryExtraction? memory,
-        bool memoryPending,
         CancellationToken cancellationToken)
     {
         // The thread is already finished; a client that left gets nothing more, and the thread stays as it is.
@@ -30,7 +29,7 @@ public sealed partial class ThreadOrchestrator
         var masked = secrets.TallyCount;
         if (masked > 0)
             activityLog.Info("keamanan", Lang.T($"{masked} secret disamarkan sebelum dikirim ke model.", $"{masked} secret(s) masked before being sent to a model."), thread.Id, thread.ProjectId);
-        var footer = FinalReport.Footer(total.Elapsed, TotalTokens(thread) + (memory?.Tokens ?? 0), memoriesUsed, memory, memoryPending, wikiHours,
+        var footer = FinalReport.Footer(total.Elapsed, TotalTokens(thread) + (memory?.Tokens ?? 0), memoriesUsed, memory, wikiHours,
             request.DashboardUrl, thread.Id, quotas, secretsMasked: masked);
         await progress.FinalAsync(footer, cancellationToken);
     }

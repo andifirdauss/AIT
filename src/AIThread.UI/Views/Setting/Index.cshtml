@@ -75,6 +75,11 @@
                     <label class="form-check-label" for="streamProgress">@Lang.T("Tampilkan progres (rencana, tugas, tool planner) di CLI", "Show progress (plan, tasks, planner tools) in the CLI")</label>
                 </div>
                 <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="silentNotifications" />
+                    <label class="form-check-label" for="silentNotifications">@Lang.T("Mode senyap", "Silent mode")</label>
+                    <div class="form-text">@Lang.T("Tidak menampilkan notifikasi hasil ekstraksi memory, baik di web maupun di desktop Windows. Hasilnya tetap tercatat di log aktivitas.", "Shows no notification of the memory extraction result, neither on the web nor on the Windows desktop. The result is still in the activity log.")</div>
+                </div>
+                <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="plannerCanAsk" />
                     <label class="form-check-label" for="plannerCanAsk">@Lang.T("Planner boleh bertanya bila permintaan ambigu", "The planner may ask when a request is ambiguous")</label>
                     <div class="form-text">

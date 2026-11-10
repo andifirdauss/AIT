@@ -41,7 +41,7 @@ public sealed partial class ThreadOrchestrator
         await progress.FinalAsync(result is null
             ? Lang.T("🟡 Testing ulang berhenti sebelum selesai (lihat aktivitas di detail thread).", "🟡 Testing again stopped before it finished (see the activity in the thread detail).")
             : FinalReport.Testing(result.Report).TrimStart('\n'), cancellationToken);
-        await progress.FinalAsync(FinalReport.Footer(total.Elapsed, result?.Tokens ?? 0, 0, null, false, null, request.DashboardUrl, threadId), cancellationToken);
+        await progress.FinalAsync(FinalReport.Footer(total.Elapsed, result?.Tokens ?? 0, 0, null, null, request.DashboardUrl, threadId), cancellationToken);
         return new ThreadResult(threadId, ThreadStatus.Completed, progress.Transcript, result?.Tokens ?? 0);
     }
 }

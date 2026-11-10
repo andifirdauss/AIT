@@ -32,7 +32,7 @@ public sealed partial class ThreadOrchestrator
         var unitReport = pipeline.UnitTests is { } unitTests ? await FinishUnitTestsAsync(unitTests, plan, execution, recorder, cancellationToken) : null;
 
         // 5. Wrap. A small change that passed every check needs no model to explain it: the plan summary says what was done.
-        var wrapper = WrapperAgent.CanSkip(options.Value.WrapperSkipMaxTasks, execution, verification?.Report, testing?.Report, unitReport) ? null : pipeline.Wrapper;
+        var wrapper = WrapperAgent.CanSkip(options.Value.WrapperSkipMaxTasks, request.Prompt, execution, verification?.Report, testing?.Report, unitReport) ? null : pipeline.Wrapper;
         if (pipeline.Wrapper is not null && wrapper is null)
             recorder.Log(ActivityLevel.Info, Lang.T("Wrapper dilewati: perubahan kecil dan semua pemeriksaan lolos.", "Wrapper skipped: a small change and every check passed."));
         await recorder.UpdateThreadAsync(t =>
@@ -100,10 +100,9 @@ public sealed partial class ThreadOrchestrator
             Lang.T($"Thread selesai: {succeeded}/{execution.Results.Count} tugas berhasil dalam {Seconds(pipeline.Total.ElapsedMilliseconds)}.", $"Thread finished: {succeeded}/{execution.Results.Count} tasks succeeded in {Seconds(pipeline.Total.ElapsedMilliseconds)}."));
 
         MemoryExtraction? memory = null;
-        var memoryPending = false;
         if (succeeded > 0 && pipeline.MemoryNode is { } memoryNode)
-            (memory, memoryPending) = await ExtractMemoryAsync(memoryNode, thread, plan, execution, finalText, cancellationToken);
-        await FooterAsync(progress, request, pipeline.Settings, thread, status, pipeline.Total, pipeline.MemoriesUsed, memory, memoryPending, cancellationToken);
+            memory = await ExtractMemoryAsync(memoryNode, thread, plan, execution, finalText, cancellationToken);
+        await FooterAsync(progress, request, pipeline.Settings, thread, status, pipeline.Total, pipeline.MemoriesUsed, memory, cancellationToken);
 
         // Last, so the permission request is what the developer reads at the end.
         var blocker = succeeded < execution.Results.Count ? Lang.T("tidak semua tugas berhasil.", "not every task succeeded.")

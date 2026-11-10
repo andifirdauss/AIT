@@ -486,6 +486,38 @@ public class UnitTestOrchestrationTests
         Assert.Equal((newTest, UnitTestOrigin.Ait), (registered.MethodName, registered.Origin));
     }
 
+    [Fact]
+    public async Task Tests_after_a_successful_build_of_their_project_do_not_build_it_again()
+    {
+        var runner = new FakeTestRunner();
+        await using var harness = await OrchestrationHarness.CreateAsync(s => s.BuildEnabled = true, configureServices: s =>
+        {
+            s.AddSingleton<ITestRunner>(runner);
+            s.AddSingleton<IBuildRunner>(new PassingBuildRunner());
+        });
+        await harness.AddStandardNodesAsync();
+        harness.Project.Write("Shop.slnx", $"""<Solution><Project Path="{TestProject}" /></Solution>""");
+        await PrepareAsync(harness);
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Aturan tetap.", Tasks = [Step("T1", UserFile, "Keep the rule.")] }))
+            .OnExecutor(UserFile, ScriptedRouter.Edit(UserLine, UserLine.Replace("name.Length > 0", "name.Length >= 1"), "Aturan tetap."))
+            .On(ScriptedAgent.Wrapper, ScriptedRouter.Text("Selesai."));
+
+        var (result, _) = await harness.RunAsync($"Ubah {UserFile}: rapikan aturan nama");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        // The baseline runs before the change, with nothing built yet; the check after the change reuses the build.
+        Assert.False(runner.AlreadyBuilt.First());
+        Assert.True(runner.AlreadyBuilt.Last());
+    }
+
+    private sealed class PassingBuildRunner : IBuildRunner
+    {
+        public Task<BuildResult> RunAsync(BuildCommand command, TimeSpan timeout, CancellationToken cancellationToken) =>
+            Task.FromResult(new BuildResult(command.Display, true, false, 0, [], 0, string.Empty, 1));
+    }
+
     // Answers each test of a run from the next script step (the last step repeats); records the methods per run.
     private sealed class FakeTestRunner : ITestRunner
     {
@@ -498,6 +530,9 @@ public class UnitTestOrchestrationTests
 
         public IReadOnlyList<IReadOnlyList<string>> Calls => _calls.ToList();
 
+        // One entry per run: whether its suite was marked as already built.
+        public ConcurrentQueue<bool> AlreadyBuilt { get; } = new();
+
         public FakeTestRunner Then(Func<TestTarget, UnitTestResult> step)
         {
             _steps.Add(step);
@@ -506,6 +541,7 @@ public class UnitTestOrchestrationTests
 
         public Task<TestRunResult> RunAsync(TestSuite suite, IReadOnlyList<TestTarget>? targets, TimeSpan timeout, CancellationToken cancellationToken)
         {
+            AlreadyBuilt.Enqueue(suite.AlreadyBuilt);
             var wanted = targets ?? [];
             _calls.Enqueue(wanted.Select(t => t.MethodName).ToList());
             var step = _steps.Count == 0 ? _ => UnitTestResult.Passed : _steps[Math.Min(Interlocked.Increment(ref _next) - 1, _steps.Count - 1)];

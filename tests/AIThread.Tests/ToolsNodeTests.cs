@@ -136,6 +136,37 @@ public class ToolsNodeTests
         Assert.Contains("call them yourself", calls[0].System);
         Assert.Contains("Hello()", LastToolResult(calls[1].Messages));
         Assert.Empty(router.CallsTo(ScriptedAgent.ToolsNode));
+
+        // Where the planning time went stays on the thread, for comparing runs later.
+        var thread = await harness.LoadThreadAsync(result.ThreadId);
+        Assert.NotNull(thread.PlanningModelMs);
+        Assert.NotNull(thread.PlanningToolMs);
+        Assert.NotNull(thread.PlanningQueueMs);
+    }
+
+    [Fact]
+    public async Task The_reading_budget_survives_a_question_to_the_developer()
+    {
+        const string bigFile = "src/Big.cs";
+        await using var harness = await CreateAsync(addNodes: false);
+        harness.Project.Write(bigFile, string.Join('\n', Enumerable.Repeat("// a line that only takes up room", 200)));
+        var planner = await harness.AddNodeAsync(NodeRole.Planner, "planner-model", directRead: true, directReadPercent: 1);
+        await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
+        await harness.AddNodeAsync(NodeRole.Wrapper, "wrapper-model");
+        var scout = await harness.AddNodeAsync(NodeRole.ToolsNode, "scout-model");
+        await DelegateAsync(harness, planner.Id, scout.Id, PlannerTools.ReadFile);
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ReadFile, new { path = bigFile }))
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.AskUser, new { question = "Lanjut?", options = new[] { new { label = "Ya" }, new { label = "Tidak" } } }))
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ReadFile, new { path = GreeterFile }))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Jawab.", Answer = "Selesai." }));
+
+        await harness.RunAsync("Baca dua file.", ThreadSource.Telegram, "session-budget");
+        var (result, _) = await harness.RunAsync("1", ThreadSource.Telegram, "session-budget");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.StartsWith("Error: your direct reading budget is used up", LastToolResult(router.CallsTo(ScriptedAgent.Planner)[3].Messages));
     }
 
     [Fact]

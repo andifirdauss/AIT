@@ -54,6 +54,9 @@ public sealed record TestSuite(
     // vstest.console on the result (TestCommand.Prepare).
     public bool BuildsWithMsBuild { get; init; }
 
+    // The verification build has just compiled this test project, so dotnet test need not build it again.
+    public bool AlreadyBuilt { get; init; }
+
     public static bool IsDotNet(string framework) => framework is XUnit or NUnit or MsTest or DotNet;
 
     public static bool IsNode(string framework) => framework is Jest or Vitest or Mocha or Npm;

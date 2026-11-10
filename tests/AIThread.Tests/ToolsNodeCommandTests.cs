@@ -82,6 +82,52 @@ public class ToolsNodeCommandTests
     }
 
     [Fact]
+    public async Task The_planner_still_runs_a_delegated_command_itself()
+    {
+        using var _ = Lang.Use("en");
+        await using var harness = await CreateAsync(addNodes: false);
+        var planner = await harness.AddNodeAsync(NodeRole.Planner, "planner-model");
+        await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
+        await harness.AddNodeAsync(NodeRole.Wrapper, "wrapper-model");
+        var scout = await harness.AddNodeAsync(NodeRole.ToolsNode, "scout-model");
+        await DelegateAsync(harness, planner.Id, scout.Id, PlannerTools.RunCommand);
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.RunCommand, new { command = "git --version" }))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Answered.", Answer = "Git is installed." }));
+
+        var (result, _) = await harness.RunAsync("Which git version?", ThreadSource.ClaudeCode, "session-planner-cmd");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Contains("Exit code 0", LastToolResult(router.CallsTo(ScriptedAgent.Planner)[1].Messages));
+        Assert.Empty(router.CallsTo(ScriptedAgent.ToolsNode));
+    }
+
+    [Fact]
+    public async Task A_used_up_reading_budget_does_not_stop_the_planner_from_running_a_command()
+    {
+        const string bigFile = "src/Big.cs";
+        using var _ = Lang.Use("en");
+        await using var harness = await CreateAsync(addNodes: false);
+        harness.Project.Write(bigFile, string.Join('\n', Enumerable.Repeat("// a line that only takes up room", 200)));
+        var planner = await harness.AddNodeAsync(NodeRole.Planner, "planner-model", directRead: true, directReadPercent: 1);
+        await harness.AddNodeAsync(NodeRole.Executor, "executor-model");
+        await harness.AddNodeAsync(NodeRole.Wrapper, "wrapper-model");
+        var scout = await harness.AddNodeAsync(NodeRole.ToolsNode, "scout-model");
+        await DelegateAsync(harness, planner.Id, scout.Id, PlannerTools.ReadFile, PlannerTools.RunCommand);
+        var router = harness.Router;
+        router
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.ReadFile, new { path = bigFile }))
+            .On(ScriptedAgent.Planner, router.Tool(PlannerTools.RunCommand, new { command = "git --version" }))
+            .On(ScriptedAgent.Planner, router.SubmitPlan(new ThreadPlan { Summary = "Answered.", Answer = "Done." }));
+
+        var (result, _) = await harness.RunAsync("Read and check git.", ThreadSource.ClaudeCode, "session-budget-cmd");
+
+        Assert.Equal(ThreadStatus.Completed, result.Status);
+        Assert.Contains("Exit code 0", LastToolResult(router.CallsTo(ScriptedAgent.Planner)[2].Messages));
+    }
+
+    [Fact]
     public async Task A_tools_node_runs_a_command_the_developer_always_allowed()
     {
         using var _ = Lang.Use("en");

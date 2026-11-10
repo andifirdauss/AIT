@@ -190,6 +190,7 @@
     'thread.created': () => { refreshThreads(); refreshSummary(); },
     'thread.updated': () => { refreshThreads(); refreshSummary(); },
     'memory.changed': refreshSummary,
+    'memory.extracted': window.AIThread.memoryToast,
     'project.changed': () => { refreshSummary(); loadProjects(); },
     'node.changed': refreshSummary
   });

@@ -26,9 +26,9 @@ public class AIThreadOptions
     // 0 = always call the wrapper.
     public int WrapperSkipMaxTasks { get; set; } = 2;
 
-    // How long the final answer waits for the memory extraction before its footer says "still running"; the extraction
-    // goes on in the background either way.
-    public int MemoryWaitSeconds { get; set; } = 2;
+    // How long the final answer waits for the memory extraction, so its footer can name the new memories. 0: no wait; the
+    // extraction goes on in the background either way and the dashboard and the tray show a notification when it ends.
+    public int MemoryWaitSeconds { get; set; }
 
     // Offline skill store (one folder per skill source). Empty = %LOCALAPPDATA%\AIThread\skills.
     public string? SkillsDirectory { get; set; }

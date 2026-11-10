@@ -25,6 +25,12 @@ public sealed partial class VerificationStage
             report.Rounds.Add(current);
             forModels.Append($"\n## Round {round}\n");
 
+            // The reviewer reads the diffs while the build runs; only a build that does not pass makes it read again.
+            using var earlyReviewStop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var earlyReview = buildCommand is not null && input.Reviewer is { } earlyReviewer
+                ? ReviewAsync(earlyReviewer, input, tasks, results, null, recorder, progress, earlyReviewStop.Token)
+                : null;
+
             BuildResult? build = null;
             if (buildCommand is not null)
             {
@@ -42,7 +48,7 @@ public sealed partial class VerificationStage
             ReviewResult? review = null;
             if (input.Reviewer is { } reviewer)
             {
-                review = await ReviewAsync(reviewer, input, tasks, results, build, recorder, progress, cancellationToken);
+                review = await ReviewAfterBuildAsync(earlyReview, earlyReviewStop, reviewer, input, tasks, results, build, recorder, progress, cancellationToken);
                 reviewerTokens += review.Tokens;
                 current.Review = new ReviewRoundReport { Approved = review.Approved, Summary = review.Summary, Issues = review.Issues.ToList(), Error = review.Error };
                 await ReportReviewAsync(review, round, recorder, progress, cancellationToken);
@@ -66,7 +72,8 @@ public sealed partial class VerificationStage
                 // node (usually the stronger model) triages them instead of the same cheap guess again.
                 var triager = testFixRounds > 0 && input.Tester is not null && input.Reviewer is { } stronger ? stronger : input.Tester;
                 unit = await unitTestStage.CheckAsync(session,
-                    new UnitTestCheckInput(input.Request, input.Plan, tasks, results, changedFiles, round, triager, recorder.Thread.Id),
+                    // Not after a build that only failed to overwrite locked binaries: the bin folder may hold the old code.
+                    new UnitTestCheckInput(input.Request, input.Plan, tasks, results, changedFiles, round, triager, recorder.Thread.Id, build is { Succeeded: true } ? buildCommand!.Projects : null),
                     recorder, progress, cancellationToken);
                 current.UnitTests = unit.Round;
                 testerTokens += unit.TesterTokens;

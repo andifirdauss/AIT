@@ -39,6 +39,7 @@ public sealed partial class SettingService
             entity.CommandToolEnabled,
             entity.CommandTimeoutSeconds,
             entity.GitPublishEnabled,
-            entity.WebFetchEnabled);
+            entity.WebFetchEnabled,
+            entity.SilentNotifications);
     }
 }

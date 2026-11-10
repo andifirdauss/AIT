@@ -151,7 +151,7 @@ Run `AIThread.exe` without arguments for the **interactive menu**; the server ru
 | 3 Live log | Follow the server log; any key goes back to the menu. |
 | 4 Restart server | Apply a freshly changed `appsettings.json`. |
 | 5 Change port | Stored in `%LOCALAPPDATA%\AIThread\cli.json`. Apply the CLI integrations again (CLI menu) because the address changes. |
-| 6 Autostart | Run the tray automatically at Windows login (the user's `Run` key, no admin). |
+| 6 Autostart | Run the tray automatically at Windows login (the user's `Run` key, no admin), with no console window. An older entry is updated automatically when the tray runs. |
 | 0 Exit | Shut the server down cleanly. |
 
 When an instance is already running on that port (e.g. in the tray), the menu controls that instance: open the Web UI,

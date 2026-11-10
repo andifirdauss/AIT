@@ -93,6 +93,11 @@ public sealed partial class PlannerAgent(
     private const int MaxOutlinedFiles = 6;
     private const int MaxOutlineChars = 12_000;
 
+    // The files the request names that are small enough to go in the brief whole.
+    private const int MaxInlinedFiles = 3;
+    private const int MaxInlinedFileLines = 200;
+    private const int MaxInlinedChars = 16_000;
+
     // The module memory written out in the brief: the change log of at most this many modules (summary + newest entries).
     private const int MaxMemoryModules = 3;
 

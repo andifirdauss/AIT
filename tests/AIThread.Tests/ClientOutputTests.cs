@@ -170,13 +170,14 @@ public class ClientOutputTests
     {
         var id = Guid.Parse("3f2a1b9c-0000-0000-0000-000000000000");
 
-        var footer = FinalReport.Footer(TimeSpan.FromSeconds(72), 48_200, 2, new MemoryExtraction(3, 100), false, 6, "http://localhost:5080/", id);
+        var footer = FinalReport.Footer(TimeSpan.FromSeconds(72), 48_200, 2, new MemoryExtraction(3, 100), 6, "http://localhost:5080/", id);
 
         Assert.Contains("⏱️  1m 12s · 🪙  48.2k token · 🧠 2 memory dipakai, +3 memory baru · 📚 Wiki masuk antrian rangkuman berikutnya (tiap 6 jam)\n", footer);
         Assert.Contains($"🔗 Detail & rollback: http://localhost:5080/Thread/Detail/{id}\n", footer);
 
-        var pending = FinalReport.Footer(TimeSpan.FromSeconds(9.5), 850, 0, null, true, null, null, id);
-        Assert.Equal("\n\n⏱️  9.5s · 🪙  850 token · 🧠 memory baru masih diproses\n", pending);
+        // The extraction goes on in the background: nothing to say about memory yet.
+        var pending = FinalReport.Footer(TimeSpan.FromSeconds(9.5), 850, 0, null, null, null, id);
+        Assert.Equal("\n\n⏱️  9.5s · 🪙  850 token\n", pending);
     }
 
     private static string Edit(string file) => $"--- a/{file}\n+++ b/{file}\n@@ block 1 @@\n-old\n+new\n";

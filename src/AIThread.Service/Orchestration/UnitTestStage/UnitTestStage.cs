@@ -161,7 +161,7 @@ public sealed class UnitTestRoundReport
 }
 
 // ChangedFiles: every file the thread changed so far (fix tasks included). Tester: the node that triages failures,
-// null for the mechanical rule (fix the code under test).
+// null for the mechanical rule (fix the code under test). BuiltProjects: what the build of this round compiled.
 public sealed record UnitTestCheckInput(
     ThreadRequest Request,
     ThreadPlan Plan,
@@ -170,7 +170,8 @@ public sealed record UnitTestCheckInput(
     IReadOnlyCollection<string> ChangedFiles,
     int Round,
     AiNode? Tester,
-    Guid ThreadId);
+    Guid ThreadId,
+    IReadOnlyList<string>? BuiltProjects = null);
 
 // Issues: what fix tasks must change (the code, or a test of this change). Problems: tests that still fail as a
 // regression or a new test, fixable or not.

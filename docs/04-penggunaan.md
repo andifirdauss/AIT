@@ -125,8 +125,10 @@ Jawaban akhir disusun sebagian oleh AIT sendiri (dari hasil, bukan dari model) d
 | **🧪 Testing** | AIT | Hanya dengan Auto Testing: level, URL aplikasi, browser, ringkasan tester, `✅`/`❌`/`🚫` per skenario dengan penjelasannya, *Error di browser* (maks 5), lalu **Output API**: tiap request (maks 5) dengan status, durasi, dan body respons dalam blok kode (maks 30 baris / 2.000 karakter; selengkapnya di detail thread). Bila tester butuh login, ditutup dengan pertanyaan **🔐 Tester butuh login** — lihat [Login untuk testing](#login-untuk-testing). |
 | Footer | AIT | Durasi total, total token (planner + executor + reviewer + wrapper + ekstraksi memory), memory yang dipakai planner dan memory baru, antrian wiki bisnis (bila *Business memory* aktif), *Sisa kuota* provider, dan link ke halaman thread untuk detail & rollback. |
 
-Footer menunggu ekstraksi memory selesai, paling lama 30 detik. Bila lebih lama, footer menulis
-*memory baru masih diproses* dan ekstraksi tetap berjalan di latar belakang. Yang disimpan sebagai jawaban thread
+Jawaban tidak menunggu ekstraksi memory (`AIThread:MemoryWaitSeconds`, bawaan `0`): ekstraksi berjalan di latar
+belakang, dan saat selesai Dasbor serta halaman thread menampilkan notifikasi; saat AIT berjalan di tray, Windows juga
+menampilkannya sebagai notifikasi desktop. Footer hanya menyebut memory baru bila
+batas itu dinaikkan dan ekstraksi sempat selesai. Yang disimpan sebagai jawaban thread
 (Dasbor, Telegram, context keeper) hanya teks Wrapper atau ringkasan otomatis.
 
 **Sisa kuota** dibaca dari 9router (`/api/usage/{koneksi}`) dan hanya mencakup akun provider yang modelnya dipakai

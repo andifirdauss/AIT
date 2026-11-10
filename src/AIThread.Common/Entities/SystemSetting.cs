@@ -44,6 +44,9 @@ public class SystemSetting : BaseEntity
     // after the developer approves it (ApprovalGrant, the same Host grant as a curl).
     public bool WebFetchEnabled { get; set; } = true;
 
+    // No notification of the memory extraction, on the web or on the Windows desktop; the activity log still has it.
+    public bool SilentNotifications { get; set; }
+
     // Remote prompting through a Telegram bot. Long polling, so no public URL is needed.
     public bool TelegramEnabled { get; set; }
 

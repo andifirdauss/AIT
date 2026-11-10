@@ -42,7 +42,7 @@ public sealed partial class UnitTestStage
         }
         if (toRun.Count > 0)
         {
-            var execution = await executor.RunAsync(session.Project.RootPath, session.Suites, toRun, session.Timeout, retryFailures: true, cancellationToken);
+            var execution = await executor.RunAsync(session.Project.RootPath, WithBuilt(session.Suites, input.BuiltProjects), toRun, session.Timeout, retryFailures: true, cancellationToken);
             foreach (var (id, verdict) in execution.Verdicts) verdicts[id] = verdict;
             round.DurationMs = execution.DurationMs;
             round.Commands = execution.Suites.Select(s => s.Display).ToList();

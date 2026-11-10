@@ -15,7 +15,8 @@ public sealed partial class NodeBenchmarkService
         var toolsNode = await ToolsNodeAsync(planner, cancellationToken);
 
         var steps = NodeBenchmarkReport.Steps(planner, toolsNode, executor, reviewer, wrapper, options.Value.WrapperSkipMaxTasks);
-        var measured = await Task.WhenAll(steps.Select(s => s.Node.Model).Distinct(StringComparer.Ordinal).Select(m => MeasureAsync(m, cancellationToken)));
-        return NodeBenchmarkReport.Build(steps, measured, Samples);
+        var measured = await Task.WhenAll(steps.GroupBy(s => s.Node.Model, StringComparer.Ordinal)
+            .Select(g => MeasureModelAsync(g.Key, g.Select(s => s.ContextTokens).Distinct(), cancellationToken)));
+        return NodeBenchmarkReport.Build(steps, measured.SelectMany(m => m).ToList(), Samples);
     }
 }

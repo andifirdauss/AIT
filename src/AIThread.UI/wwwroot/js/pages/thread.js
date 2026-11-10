@@ -112,6 +112,9 @@
       ['Wrapper', detail.wrapperModel ? `<span class="mono">${escapeHtml(detail.wrapperModel)}</span>` : '–'],
       [t('Langkah planner', 'Planner steps'), fmt.number(detail.plannerSteps)],
       ['Planning', fmt.ms(detail.planningMs)],
+      [t('Planning · model', 'Planning · model'), detail.planningModelMs == null ? '–' : fmt.ms(detail.planningModelMs)],
+      [t('Planning · tool', 'Planning · tools'), detail.planningToolMs == null ? '–' : fmt.ms(detail.planningToolMs)],
+      [t('Planning · antre', 'Planning · queued'), detail.planningQueueMs == null ? '–' : fmt.ms(detail.planningQueueMs)],
       [t('Eksekusi (nyata)', 'Execution (actual)'), fmt.ms(s.executionWallMs)],
       [t('Eksekusi (jika sekuensial)', 'Execution (if sequential)'), fmt.ms(s.executionSumMs)],
       [(isEn ? 'Parallel speedup' : 'Speedup paralel'), fmt.speedup(s.executionSumMs, s.executionWallMs)],
@@ -794,6 +797,7 @@
     'thread.updated': reloadDetail,
     'thread.git': reloadDetail,
     'approval.requested': loadApproval,
+    'memory.extracted': window.AIThread.memoryToast,
     'task.updated': payload => {
       tasks.set(payload.data.id, payload.data);
       renderTasks();

@@ -31,6 +31,7 @@ public sealed partial class PlannerAgent
             Messages = messages,
             DirectRead = directRead,
             DirectReadLimit = DirectReadLimit(node),
+            DirectReadChars = conversation.DirectReadChars,
             Node = node,
             Step = conversation.Step,
             Tokens = conversation.Tokens,

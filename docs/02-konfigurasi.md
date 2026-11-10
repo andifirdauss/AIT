@@ -62,6 +62,7 @@ sebagai *Online · cek API key* (kuning) di Dasbor dan sebagai peringatan di log
 |---|---|---|---|
 | Orkestrasi aktif | aktif | — | Jika dimatikan, semua request CLI diteruskan ke 9router dengan *model passthrough* — CLI bekerja sebagai agen biasa. |
 | Tampilkan progres di CLI | aktif | — | Menampilkan langkah planner, rencana, dan status tiap tugas sebelum ringkasan akhir. Jika mati, hanya ringkasan yang tampil. |
+| Mode senyap | mati | — | Tidak menampilkan notifikasi hasil ekstraksi memory, baik di web maupun di desktop Windows. Hasilnya tetap tercatat di log aktivitas. |
 | Planner boleh bertanya | aktif | — | Planner boleh menghentikan thread dengan satu pertanyaan bernomor bila permintaan benar-benar ambigu, perubahannya berisiko dan tidak diminta, atau ada fakta yang tidak bisa ditemukan di kode/memory. Bukan konfirmasi tiap prompt. Lihat [Pertanyaan dari planner](07-cara-kerja.md#pertanyaan-dari-planner). |
 | Model passthrough | otomatis | — | Model untuk request pendukung (judul sesi, `/compact`, cek kuota). *Otomatis* = model node Wrapper aktif, lalu Executor. |
 | Proxy API key | kosong | — | Jika diisi, CLI wajib mengirimnya sebagai bearer token (Claude Code: `ANTHROPIC_AUTH_TOKEN`); menu CLI menuliskannya otomatis. Tombol *Generate* membuat key acak. |
@@ -176,11 +177,13 @@ Tombol **Test** mengirim prompt singkat ("Reply with exactly one word: pong") da
 balasan — cara cepat memastikan model dan key benar.
 
 Tombol **Benchmark** di atas halaman memperkirakan lama satu perubahan kecil tanpa menjalankan thread, jadi tidak ada
-file berubah dan tidak ada memory baru. Tiap model yang dipakai node aktif dipanggil 3 kali dengan potongan kode pendek
-(model yang dipakai beberapa node diukur sekali). Mediannya dikalikan jumlah panggilan dalam satu perubahan kecil:
-Planner 2, Tools Node 3 (bila dipakai), Executor 1, Reviewer 1, Wrapper 1 (bila tidak dilewati). Hasilnya: perkiraan
-total, porsi tiap node, node yang menjadi titik lambat, model yang tidak stabil, dan tips perbaikannya. Build dan test
-belum termasuk dan konteks asli lebih besar, jadi anggap angkanya perkiraan tercepat.
+file berubah dan tidak ada memory baru. Tiap model yang dipakai node aktif dipanggil 3 kali dengan konteks sebesar
+pemakaian nyata: sekitar 30.000 token untuk Planner dan Tools Node, 6.000 token untuk Executor, Reviewer, dan Wrapper
+(node dengan model dan ukuran konteks yang sama diukur sekali). Mediannya dikalikan jumlah panggilan dalam satu
+perubahan kecil: Planner 2, Tools Node 3 (bila dipakai), Executor 1, Reviewer 1, Wrapper 1 (bila tidak dilewati).
+Hasilnya: perkiraan total, porsi tiap node, node yang menjadi titik lambat, model yang tidak stabil, dan tips
+perbaikannya. Satu kali Benchmark bisa memakai sekitar 200.000 token. Angkanya hanya waktu model: build, test, dan
+tunggu antrean belum termasuk, dan cache prompt sengaja tidak dipakai.
 
 ### Aturan pemilihan node
 

@@ -226,8 +226,9 @@ public static partial class TestCommandResolver
         var project = Path.Combine(suite.Root, suite.Manifest);
         var filter = targets is null ? null : DotNetFilter(targets);
         List<string> arguments = ["test", project, "-nologo", "--logger", "trx", "--results-directory", Path.GetDirectoryName(reportPath)!];
+        if (suite.AlreadyBuilt) arguments.Add("--no-build");
         if (filter is not null) arguments.AddRange(["--filter", filter]);
-        return new TestCommand(suite, "dotnet", arguments, $"dotnet test {suite.Manifest}" + (filter is null ? string.Empty : $" ({targets!.Count} test)"),
+        return new TestCommand(suite, "dotnet", arguments, $"dotnet test {(suite.AlreadyBuilt ? "--no-build " : string.Empty)}{suite.Manifest}" + (filter is null ? string.Empty : $" ({targets!.Count} test)"),
             Path.GetDirectoryName(reportPath), filter is not null);
     }
 

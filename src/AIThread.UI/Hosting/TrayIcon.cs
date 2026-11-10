@@ -94,6 +94,18 @@ public sealed class TrayIcon : IDisposable
         Shell_NotifyIcon(NIM_MODIFY, ref data);
     }
 
+    // A Windows notification from the tray icon. Safe from any thread; false when the icon is not there (yet).
+    public bool Notify(string text)
+    {
+        if (_hwnd == 0 || !_added) return false;
+        var data = NewData(_tooltip);
+        data.uFlags |= NIF_INFO;
+        data.szInfo = text.Length > 255 ? text[..255] : text;
+        data.szInfoTitle = "AIT";
+        data.dwInfoFlags = NIIF_INFO;
+        return Shell_NotifyIcon(NIM_MODIFY, ref data);
+    }
+
     private void AddIcon(bool showBalloon)
     {
         var data = NewData(_tooltip);

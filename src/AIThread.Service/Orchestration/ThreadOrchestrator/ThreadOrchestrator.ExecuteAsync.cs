@@ -121,6 +121,7 @@ public sealed partial class ThreadOrchestrator
                 t.ToolsNodeTokens = planning.ToolsNodeTokens;
                 t.InvestigationJson = recorder.Investigation.ToJson();
                 t.PlanningMs = (t.PlanningMs ?? 0) + planClock.ElapsedMilliseconds;
+                AddPlanningTimes(t, planning);
             });
 
             if (plan.Tasks.Count == 0)
@@ -140,8 +141,8 @@ public sealed partial class ThreadOrchestrator
                 await progress.FinalAsync(answer, cancellationToken);
                 recorder.Log(ActivityLevel.Success, Lang.T("Planner menjawab langsung tanpa tugas eksekusi.", "The planner answered directly without execution tasks."));
                 await FinishAsync(recorder, ThreadStatus.Completed, answer, total, 0, null);
-                var (memory, memoryPending) = await ExtractMemoryAsync(wrapper ?? planner, thread, plan, null, answer, cancellationToken);
-                await FooterAsync(progress, request, settings, thread, ThreadStatus.Completed, total, planning.MemoriesUsed, memory, memoryPending, cancellationToken);
+                var memory = await ExtractMemoryAsync(wrapper ?? planner, thread, plan, null, answer, cancellationToken);
+                await FooterAsync(progress, request, settings, thread, ThreadStatus.Completed, total, planning.MemoriesUsed, memory, cancellationToken);
                 // "commit and push this change": the plan has no tasks, only a publish section.
                 await PublishAsync(request, project, thread, plan, settings, null, progress, cancellationToken);
                 ScheduleContextKeeping(thread, request);

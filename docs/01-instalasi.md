@@ -150,7 +150,7 @@ Jalankan `AIThread.exe` tanpa argumen untuk **menu interaktif**; server berjalan
 | 3 Log langsung | Ikuti log server; tombol apa pun kembali ke menu. |
 | 4 Restart server | Terapkan `appsettings.json` yang baru diubah. |
 | 5 Ganti port | Disimpan di `%LOCALAPPDATA%\AIThread\cli.json`. Terapkan ulang integrasi CLI (menu CLI) karena alamatnya berubah. |
-| 6 Autostart | Jalankan tray otomatis saat login Windows (kunci `Run` milik pengguna, tanpa admin). |
+| 6 Autostart | Jalankan tray otomatis saat login Windows (kunci `Run` milik pengguna, tanpa admin), tanpa jendela console. Entri lama diperbarui otomatis saat tray berjalan. |
 | 0 Keluar | Matikan server dengan rapi. |
 
 Bila sudah ada instance yang berjalan di port itu (mis. di tray), menu mengendalikan instance tersebut: buka Web UI,

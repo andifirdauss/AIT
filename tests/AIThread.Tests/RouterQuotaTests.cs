@@ -116,7 +116,7 @@ public class RouterQuotaTests
             new("g1", "github", "github", "github", [new("chat", null, true, null)])
         };
 
-        var footer = FinalReport.Footer(TimeSpan.FromSeconds(5), 100, 0, null, false, null, "http://localhost:5225", Guid.Empty, quotas, now);
+        var footer = FinalReport.Footer(TimeSpan.FromSeconds(5), 100, 0, null, null, "http://localhost:5225", Guid.Empty, quotas, now);
 
         Assert.Contains("""
             📊 **Sisa kuota**

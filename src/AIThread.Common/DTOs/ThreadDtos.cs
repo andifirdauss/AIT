@@ -74,7 +74,10 @@ public record ThreadDetailDto(
     string? TestingJson = null,
     long? UnitTestMs = null,
     string? UnitTestJson = null,
-    ThreadGitDto? Git = null);
+    ThreadGitDto? Git = null,
+    long? PlanningModelMs = null,
+    long? PlanningToolMs = null,
+    long? PlanningQueueMs = null);
 
 // An image of a prompt started outside a coding CLI (aithread chat). Data: base64 without a "data:" prefix.
 public record ImageAttachmentDto(string MediaType, string Data);

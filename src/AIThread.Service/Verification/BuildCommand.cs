@@ -13,7 +13,12 @@ public sealed record BuildCommand(
     IReadOnlyList<string> Arguments,
     string WorkingDirectory,
     string Display,
-    string Root);
+    string Root)
+{
+    // The projects a successful run has compiled (full paths), so their test run need not build them again. Empty when
+    // that is not certain.
+    public IReadOnlyList<string> Projects { get; init; } = [];
+}
 
 // Picks the build command of a project from its manifests: .NET (incremental: dotnet build, or
 // MSBuild of Visual Studio for .NET Framework projects in the old format), Node.js (tsc --noEmit with a local
@@ -204,7 +209,10 @@ public static partial class BuildCommandResolver
             }
 
             string[] dotnetArguments = ["build", manifest, "-nologo", "-v:q", "-clp:NoSummary", "--tl:off", "-p:GenerateFullPaths=true", "-p:CopyRetryCount=1", "-p:NuGetAudit=false"];
-            return new BuildCommand(".NET", "dotnet", dotnetArguments, directory, $"dotnet build {relative}", root);
+            return new BuildCommand(".NET", "dotnet", dotnetArguments, directory, $"dotnet build {relative}", root)
+            {
+                Projects = Has(ProjectExtensions, extension) || BuildsEveryProject(manifest) ? projects.Select(p => p.Path).ToList() : []
+            };
         }
 
         switch (name.ToLowerInvariant())
@@ -263,6 +271,21 @@ public static partial class BuildCommandResolver
             }
         }
         return result;
+    }
+
+    // False when a configuration of the solution leaves a project out of its build: a classic .sln lists one Build.0 per
+    // ActiveCfg, a .slnx marks the exception with Project="false".
+    private static bool BuildsEveryProject(string solution)
+    {
+        try
+        {
+            var text = File.ReadAllText(solution);
+            return text.Split(".ActiveCfg").Length == text.Split(".Build.0").Length && !text.Contains("Project=\"false\"", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     // Old format: no Sdk on <Project> or on any import, plus the MSBuild 2003 namespace, a ToolsVersion or one of

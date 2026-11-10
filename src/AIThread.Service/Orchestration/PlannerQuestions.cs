@@ -96,7 +96,8 @@ public sealed record PlannerConversation(
     int QuestionsAsked,
     bool CanBuild,
     int ToolsNodeTokens = 0,
-    bool CanGit = false);
+    bool CanGit = false,
+    long DirectReadChars = 0);
 
 public sealed record PendingQuestion(
     Guid ThreadId,

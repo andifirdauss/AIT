@@ -26,6 +26,48 @@ public class BuildCommandResolverTests : IDisposable
     }
 
     [Fact]
+    public void A_dotnet_build_names_the_projects_it_compiles()
+    {
+        _workspace.Write("App.slnx", """<Solution><Project Path="src/Api/Api.csproj" /></Solution>""");
+        _workspace.Write("src/Api/Api.csproj", "<Project />");
+
+        var command = BuildCommandResolver.Resolve(_workspace.Root, ["App.slnx"], null, out _);
+
+        Assert.Equal(Path.Combine(_workspace.Root, "src", "Api", "Api.csproj"), Assert.Single(command!.Projects));
+    }
+
+    [Theory]
+    [InlineData("App.slnx", """<Solution><Project Path="src/Api/Api.csproj"><Build Project="false" /></Project></Solution>""")]
+    [InlineData("App.sln", """
+        Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Api", "src\Api\Api.csproj", "{11111111-1111-1111-1111-111111111111}"
+        EndProject
+        Global
+          GlobalSection(ProjectConfigurationPlatforms) = postSolution
+            {11111111-1111-1111-1111-111111111111}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+          EndGlobalSection
+        EndGlobal
+        """)]
+    public void A_solution_that_leaves_a_project_out_of_its_build_promises_no_project(string solution, string text)
+    {
+        _workspace.Write(solution, text);
+        _workspace.Write("src/Api/Api.csproj", "<Project />");
+
+        var command = BuildCommandResolver.Resolve(_workspace.Root, [solution], null, out _);
+
+        Assert.Empty(command!.Projects);
+    }
+
+    [Fact]
+    public void Dotnet_test_skips_its_own_build_only_when_the_project_is_already_built()
+    {
+        var suite = new TestSuite(TestSuite.XUnit, ".NET", "Tests/Tests.csproj", _workspace.Root, _workspace.Root, TestReportFormat.Trx);
+        var report = Path.Combine(_workspace.Root, "report.json");
+
+        Assert.DoesNotContain("--no-build", TestCommandResolver.Command(suite, null, report).Arguments);
+        Assert.Contains("--no-build", TestCommandResolver.Command(suite with { AlreadyBuilt = true }, null, report).Arguments);
+    }
+
+    [Fact]
     public void Changes_in_a_nested_solution_build_that_solution_instead_of_the_root_one()
     {
         // A template at the root and its sample with a solution of its own, as in a repository holding both.

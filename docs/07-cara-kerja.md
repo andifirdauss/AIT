@@ -91,7 +91,9 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
    sesi: file yang diubah lalu file yang dibaca planner thread AIT terakhir di chat ini (atau yang disebut
    prompt-nya), bila tidak ada dari
    percakapan terakhir lalu dari konteks sesi; prompt thread terakhir itu ikut dipakai sebagai keyword;
-7. **outline** file-file tersebut (maks 6 file, 12.000 karakter): class, member, dan function beserta rentang
+7. **isi penuh file kecil** yang disebut prompt (maks 3 file, 200 baris per file, 16.000 karakter), dalam format
+   `read_file`, sehingga planner tidak perlu giliran khusus untuk membacanya; lalu
+   **outline** file lainnya (maks 6 file, 12.000 karakter): class, member, dan function beserta rentang
    `baris-awal-baris-akhir` dan signature-nya, dibaca langsung dari disk (sama dengan `code_outline`). Planner jadi
    tahu kerangka file sebelum membacanya, dan cukup membaca rentang baris yang dibutuhkan. File yang modulnya belum
    terpetakan tetap ikut;
@@ -450,7 +452,8 @@ Satu putaran verifikasi:
    150 baris per tugas), dan hasil build, lalu menjawab JSON: disetujui, atau daftar masalah per file — kebutuhan yang
    terlewat, nama yang tidak cocok antar file/kontrak, salah ketik, `using`/import yang kurang, dan penyebab error
    build. Gaya, refactor, dan hal di luar permintaan tidak dilaporkan. Reviewer yang gagal dihubungi atau menjawab
-   bukan JSON hanya membuat review dilewati.
+   bukan JSON hanya membuat review dilewati. Reviewer berjalan bersamaan dengan build; bila build tidak lolos, review
+   itu dibatalkan dan diulang dengan hasil build-nya.
 3. **Unit test** (bila build lolos atau tidak ada perintah build): test relevan dijalankan dan dibandingkan dengan
    hasil sebelum perubahan; kegagalan didiagnosis node Tester (bila ada) — lihat [Setelah build](#setelah-build).
 4. **Tugas perbaikan**. Masalah dikelompokkan per file menjadi tugas `V<putaran>-<n>` (mis. `V1-1`) yang dikerjakan
@@ -829,15 +832,18 @@ oleh model: baris status (tugas, build, reviewer, unit test, testing) dan daftar
 [Membaca output di CLI](04-penggunaan.md#membaca-output-di-cli). Teks Wrapper di-stream ke CLI.
 
 Perubahan kecil yang lolos semua pemeriksaan (paling banyak 2 tugas, semua berhasil, verifikasi lolos tanpa putaran
-perbaikan, testing dan unit test tidak gagal) tidak memanggil Wrapper; `AIThread:WrapperSkipMaxTasks` di
+perbaikan, testing dan unit test tidak gagal, prompt tidak meminta penjelasan seperti *kenapa* atau *jelaskan*, dan
+tidak berisi tanda tanya) tidak memanggil Wrapper; `AIThread:WrapperSkipMaxTasks` di
 `appsettings.json` mengatur batasnya (`0` = Wrapper selalu dipanggil).
 
 Jika tidak ada wrapper aktif, wrapper dilewati, atau wrapper gagal, CLI menampilkan ringkasan rencana sebagai pengganti teksnya;
 yang disimpan sebagai jawaban thread (Dasbor, Telegram) adalah ringkasan otomatis (✅/❌/⏭️ per tugas, plus hasil
 verifikasi).
 
-Setelah itu ekstraksi memory dijalankan dan ditunggu paling lama 2 detik (`AIThread:MemoryWaitSeconds`) agar footer bisa
-menyebut jumlah memory baru; lewat dari itu footer menulis *memory baru masih diproses* dan ekstraksi tetap selesai di latar belakang.
+Setelah itu ekstraksi memory dijalankan di latar belakang tanpa ditunggu (`AIThread:MemoryWaitSeconds`, bawaan `0`).
+Saat selesai, Dasbor dan halaman thread menampilkan notifikasi, dan saat AIT berjalan di tray Windows juga menampilkan
+notifikasi desktop; bila batas itu dinaikkan dan ekstraksi sempat selesai,
+footer ikut menyebut jumlah memory baru.
 
 ## 8. Setelah thread
 
@@ -1034,7 +1040,7 @@ sebagai filter yang di-escape AIT.
 
 | Stack | Suite dikenali dari | Perintah | Hasil |
 |---|---|---|---|
-| .NET | project (`.csproj`/`.fsproj`/`.vbproj`, juga yang tercantum di `.sln`/`.slnx`) yang mereferensikan xUnit, NUnit, MSTest, atau `Microsoft.NET.Test.Sdk` | `dotnet test <project> --logger trx` (+ `--filter`) | per test (TRX) |
+| .NET | project (`.csproj`/`.fsproj`/`.vbproj`, juga yang tercantum di `.sln`/`.slnx`) yang mereferensikan xUnit, NUnit, MSTest, atau `Microsoft.NET.Test.Sdk` | `dotnet test <project> --logger trx` (+ `--filter`; `--no-build` sesudah build verifikasi yang sukses dan mencakup test project itu) | per test (TRX) |
 | .NET Framework (csproj format lama) | sama | `vstest.console.exe` dari Visual Studio atas assembly test di `bin` (harus sudah di-build) | per test (TRX) |
 | .NET, test project SDK-style yang mereferensikan project format lama (`ProjectReference`, sampai 4 tingkat) | sama | dibuild dulu oleh **MSBuild Visual Studio** (`-restore -p:RestorePackagesConfig=true`, `SolutionDir` = solution terdekat di atasnya, output ke folder milik AIT), lalu `vstest.console.exe` atas assembly hasilnya | per test (TRX) |
 | Node.js | `package.json` dengan jest, vitest, atau mocha (dependency atau script `test`) | runner dari `node_modules` dijalankan lewat `node` dengan reporter JSON (+ filter judul) | per test |

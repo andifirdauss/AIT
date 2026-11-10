@@ -52,6 +52,9 @@ public sealed partial class ThreadService
             thread.TestingJson,
             thread.UnitTestMs,
             thread.UnitTestJson,
-            ToGitDto(thread, files));
+            ToGitDto(thread, files),
+            thread.PlanningModelMs,
+            thread.PlanningToolMs,
+            thread.PlanningQueueMs);
     }
 }

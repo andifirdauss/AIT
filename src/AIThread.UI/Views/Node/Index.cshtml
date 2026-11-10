@@ -311,7 +311,7 @@
                 <h5 class="modal-title" id="benchmarkModalTitle">@Lang.T("Benchmark node", "Node benchmark")</h5>
             </div>
             <div class="modal-body">
-                <p class="small text-secondary">@Lang.T("Mengukur model tiap node yang dipakai pipeline, lalu memperkirakan waktu satu perubahan kecil. Tanpa thread: tidak ada file berubah dan tidak ada memory baru, hanya memakai sedikit token. Belum termasuk build dan test, dan konteks asli lebih besar, jadi anggap ini perkiraan tercepat.", "Measures the model of each node the pipeline uses, then estimates one small change. No thread: no file changes and no new memory, it only uses a few tokens. Build and tests are not included and the real context is larger, so treat this as the fastest estimate.")</p>
+                <p class="small text-secondary">@Lang.T("Mengukur model tiap node yang dipakai pipeline dengan konteks sebesar pemakaian nyata (Planner dan Tools Node sekitar 30.000 token, lainnya 6.000), lalu memperkirakan waktu satu perubahan kecil. Tanpa thread: tidak ada file berubah dan tidak ada memory baru, tetapi bisa memakai sekitar 200.000 token. Angkanya hanya waktu model: build, test, dan antrean belum termasuk.", "Measures the model of each node the pipeline uses with a context as large as real use (Planner and Tools Node about 30,000 tokens, the others 6,000), then estimates one small change. No thread: no file changes and no new memory, but it can use about 200,000 tokens. The number is model time only: build, tests and queueing are not included.")</p>
                 <div id="benchmarkResult"></div>
             </div>
             <div class="modal-footer">

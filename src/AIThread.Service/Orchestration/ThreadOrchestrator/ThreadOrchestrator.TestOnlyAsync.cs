@@ -84,7 +84,7 @@ public sealed partial class ThreadOrchestrator
         await FinishAsync(recorder, ThreadStatus.Completed, finalText, pipeline.Total, wrapTokens, wrapClock.ElapsedMilliseconds, notes.Count > 0 ? string.Join(" ", notes) : null);
         recorder.Log(ActivityLevel.Success, Lang.T($"Thread selesai (hanya pengujian) dalam {Seconds(pipeline.Total.ElapsedMilliseconds)}.", $"Thread finished (testing only) in {Seconds(pipeline.Total.ElapsedMilliseconds)}."));
 
-        await FooterAsync(progress, request, pipeline.Settings, thread, ThreadStatus.Completed, pipeline.Total, pipeline.MemoriesUsed, null, false, cancellationToken);
+        await FooterAsync(progress, request, pipeline.Settings, thread, ThreadStatus.Completed, pipeline.Total, pipeline.MemoriesUsed, null, cancellationToken);
         if (pipeline.KeepContext) ScheduleContextKeeping(thread, request);
         return new ThreadResult(thread.Id, ThreadStatus.Completed, progress.Transcript, TotalTokens(thread));
     }

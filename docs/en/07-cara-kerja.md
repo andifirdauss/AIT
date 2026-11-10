@@ -98,7 +98,9 @@ can be reused between steps and between threads, and the request comes after all
    session: the files changed and then the files read by the planner of the last AIT thread in this chat (or the ones
    its prompt named), otherwise from the latest conversation and then from the session context; the prompt of that last
    thread is used as keywords too;
-7. the **outline** of those files (at most 6 files, 12,000 characters): classes, members and functions with their
+7. the **full text of the small files** the prompt names (at most 3 files, 200 lines per file, 16,000 characters), in
+   `read_file` format, so the planner needs no turn of its own to read them; then the
+   **outline** of the other files (at most 6 files, 12,000 characters): classes, members and functions with their
    `start-line-end-line` range and signature, read straight from disk (the same as `code_outline`). The planner thus
    knows a file's skeleton before reading it, and only needs to read the line ranges it needs. Files whose module is not
    mapped yet are included too;
@@ -461,7 +463,8 @@ One verification round:
    every task (at most 150 lines per task), and the build result, then answers in JSON: approved, or a list of problems
    per file — missed requirements, names that do not match between files/the contract, typos, missing `using`/imports,
    and the causes of build errors. Style, refactors and things outside the request are not reported. A reviewer that
-   cannot be reached or answers with something other than JSON only makes the review skipped.
+   cannot be reached or answers with something other than JSON only makes the review skipped. The reviewer runs alongside
+   the build; when the build does not pass, that review is cancelled and done again with the build result.
 3. **Unit tests** (when the build passed or there is no build command): the relevant tests are run and compared with the
    results before the change; failures are diagnosed by the Tester node (when there is one) — see
    [After the build](#after-the-build).
@@ -861,15 +864,17 @@ see [Reading the output in the CLI](04-penggunaan.md#reading-the-output-in-the-c
 the CLI.
 
 A small change that passed every check (at most 2 tasks, all succeeded, verification passed without a fix round, testing
-and unit tests did not fail) does not call the Wrapper; `AIThread:WrapperSkipMaxTasks` in `appsettings.json` sets the
+and unit tests did not fail, and a prompt with no question mark that does not ask for an explanation such as *why* or
+*explain*) does not call the Wrapper; `AIThread:WrapperSkipMaxTasks` in `appsettings.json` sets the
 limit (`0` = always call the Wrapper).
 
 When there is no active wrapper, the wrapper is skipped, or the wrapper fails, the CLI shows the plan summary instead of its text; what is stored
 as the thread's answer (Dashboard, Telegram) is an automatic summary (✅/❌/⏭️ per task, plus the verification result).
 
-After that memory extraction runs and is waited for at most 2 seconds (`AIThread:MemoryWaitSeconds`) so the footer can name the number of new
-memories; past that the footer writes *new memory is still being processed* and the extraction still finishes in the
-background.
+After that memory extraction runs in the background without being waited for (`AIThread:MemoryWaitSeconds`, default `0`).
+When it ends, the Dashboard and the thread page show a notification, and while AIT runs in the tray Windows also shows a
+desktop notification; when that limit is raised and the extraction finished
+in time, the footer also names the number of new memories.
 
 ## 8. After the thread
 
@@ -1068,7 +1073,7 @@ filter escaped by AIT.
 
 | Stack | Suite recognized from | Command | Result |
 |---|---|---|---|
-| .NET | a project (`.csproj`/`.fsproj`/`.vbproj`, also those listed in a `.sln`/`.slnx`) that references xUnit, NUnit, MSTest or `Microsoft.NET.Test.Sdk` | `dotnet test <project> --logger trx` (+ `--filter`) | per test (TRX) |
+| .NET | a project (`.csproj`/`.fsproj`/`.vbproj`, also those listed in a `.sln`/`.slnx`) that references xUnit, NUnit, MSTest or `Microsoft.NET.Test.Sdk` | `dotnet test <project> --logger trx` (+ `--filter`; `--no-build` after a successful verification build that covered that test project) | per test (TRX) |
 | .NET Framework (old-format csproj) | the same | `vstest.console.exe` from Visual Studio on the test assembly in `bin` (it must be built already) | per test (TRX) |
 | .NET, an SDK-style test project that references an old-format project (`ProjectReference`, up to 4 levels) | the same | built first by **the Visual Studio MSBuild** (`-restore -p:RestorePackagesConfig=true`, `SolutionDir` = the nearest solution above it, output to a folder owned by AIT), then `vstest.console.exe` on the resulting assembly | per test (TRX) |
 | Node.js | a `package.json` with jest, vitest or mocha (a dependency or the `test` script) | the runner from `node_modules` run through `node` with a JSON reporter (+ a title filter) | per test |

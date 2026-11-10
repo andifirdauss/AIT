@@ -8,6 +8,7 @@ namespace AIThread.Tests;
 public class WrapperSkipTests
 {
     private const int Limit = 2;
+    private const string Change = "Ganti sapaan jadi Halo";
 
     private static ExecutionSummary Tasks(params ThreadTaskStatus[] statuses) =>
         new(statuses.Select((s, i) => new TaskResult($"T{i + 1}", "a.cs", s, null, null, null, 1, 1)).ToList(), 1, 1, 1);
@@ -20,28 +21,37 @@ public class WrapperSkipTests
     [Fact]
     public void Small_change_that_passed_needs_no_wrapper()
     {
-        Assert.True(WrapperAgent.CanSkip(Limit, Done(), Verified(), null, null));
-        Assert.True(WrapperAgent.CanSkip(Limit, Done(Limit), Verified(), new TestingReport { Outcome = TestingReport.Passed }, new UnitTestReport { Outcome = UnitTestReport.Passed }));
+        Assert.True(WrapperAgent.CanSkip(Limit, Change,Done(), Verified(), null, null));
+        Assert.True(WrapperAgent.CanSkip(Limit, Change,Done(Limit), Verified(), new TestingReport { Outcome = TestingReport.Passed }, new UnitTestReport { Outcome = UnitTestReport.Passed }));
         // Nothing to verify with (no build command, no reviewer).
-        Assert.True(WrapperAgent.CanSkip(Limit, Done(), null, null, null));
+        Assert.True(WrapperAgent.CanSkip(Limit, Change,Done(), null, null, null));
     }
 
     [Fact]
     public void Anything_left_to_explain_keeps_the_wrapper()
     {
-        Assert.False(WrapperAgent.CanSkip(Limit, Done(Limit + 1), Verified(), null, null));
-        Assert.False(WrapperAgent.CanSkip(Limit, Tasks(ThreadTaskStatus.Succeeded, ThreadTaskStatus.Failed), Verified(), null, null));
-        Assert.False(WrapperAgent.CanSkip(Limit, Done(), Verified(VerificationReport.Failed), null, null));
-        Assert.False(WrapperAgent.CanSkip(Limit, Done(), Verified(VerificationReport.Unverified), null, null));
-        Assert.False(WrapperAgent.CanSkip(Limit, Done(), Verified(rounds: 2), null, null));
-        Assert.False(WrapperAgent.CanSkip(Limit, Done(), Verified(), new TestingReport { Outcome = TestingReport.Failed }, null));
-        Assert.False(WrapperAgent.CanSkip(Limit, Done(), Verified(), new TestingReport { Outcome = TestingReport.Blocked }, null));
-        Assert.False(WrapperAgent.CanSkip(Limit, Done(), Verified(), null, new UnitTestReport { Outcome = UnitTestReport.Failed }));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Done(Limit + 1), Verified(), null, null));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Tasks(ThreadTaskStatus.Succeeded, ThreadTaskStatus.Failed), Verified(), null, null));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Done(), Verified(VerificationReport.Failed), null, null));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Done(), Verified(VerificationReport.Unverified), null, null));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Done(), Verified(rounds: 2), null, null));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Done(), Verified(), new TestingReport { Outcome = TestingReport.Failed }, null));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Done(), Verified(), new TestingReport { Outcome = TestingReport.Blocked }, null));
+        Assert.False(WrapperAgent.CanSkip(Limit, Change,Done(), Verified(), null, new UnitTestReport { Outcome = UnitTestReport.Failed }));
     }
 
     [Fact]
     public void Limit_of_zero_always_keeps_the_wrapper() =>
-        Assert.False(WrapperAgent.CanSkip(0, Done(), Verified(), null, null));
+        Assert.False(WrapperAgent.CanSkip(0, Change, Done(), Verified(), null, null));
+
+    [Theory]
+    [InlineData("Ganti sapaan jadi Halo lalu jelaskan alasannya")]
+    [InlineData("Kenapa harus diubah begini")]
+    [InlineData("Ganti sapaan, sudah benar belum?")]
+    [InlineData("Change the greeting and explain the reason")]
+    [InlineData("WHY does this need a change")]
+    public void A_prompt_that_asks_for_an_explanation_keeps_the_wrapper(string prompt) =>
+        Assert.False(WrapperAgent.CanSkip(Limit, prompt, Done(), Verified(), null, null));
 
     [Fact]
     public async Task Small_change_ends_with_the_plan_summary_without_calling_the_wrapper()

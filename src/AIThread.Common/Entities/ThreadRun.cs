@@ -40,6 +40,12 @@ public class ThreadRun : BaseEntity
 
     public long? PlanningMs { get; set; }
 
+    // Where PlanningMs went: the planner model answering, its tools (the wait for a tools node included), the wait for a
+    // planner slot. Null on threads from before these were kept.
+    public long? PlanningModelMs { get; set; }
+    public long? PlanningToolMs { get; set; }
+    public long? PlanningQueueMs { get; set; }
+
     // Wall-clock time of the execution stage (bounded by the slowest executor).
     public long? ExecutionWallMs { get; set; }
 

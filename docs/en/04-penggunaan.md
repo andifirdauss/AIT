@@ -126,8 +126,10 @@ The final answer is written partly by AIT itself (from the results, not from a m
 | **🧪 Testing** | AIT | Only with Auto Testing: level, application URL, browser, the tester's summary, `✅`/`❌`/`🚫` per scenario with its explanation, *Browser errors* (at most 5), then **API output**: each request (at most 5) with status, duration and response body in a code block (at most 30 lines / 2,000 characters; the rest is in the thread detail). When the tester needs a login, it ends with the question **🔐 Tester needs a login** — see [Login for testing](#login-for-testing). |
 | Footer | AIT | Total duration, total tokens (planner + executor + reviewer + wrapper + memory extraction), the memories the planner used and new memories, the business wiki queue (when *Business memory* is on), the providers' *Quota left*, and a link to the thread page for details & rollback. |
 
-The footer waits for memory extraction to finish, at most 30 seconds. When it takes longer, the footer writes *new
-memory is still being processed* and the extraction keeps running in the background. What is stored as the thread's
+The answer does not wait for memory extraction (`AIThread:MemoryWaitSeconds`, default `0`): it runs in the background,
+and when it ends the Dashboard and the thread page show a notification; while AIT runs in the tray, Windows also shows
+it as a desktop notification. The footer names new memory only when that
+limit is raised and the extraction finished in time. What is stored as the thread's
 answer (Dashboard, Telegram, context keeper) is only the Wrapper's text or the automatic summary.
 
 **Quota left** is read from 9router (`/api/usage/{connection}`) and only covers the provider accounts whose models are

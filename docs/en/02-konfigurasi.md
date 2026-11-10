@@ -65,6 +65,7 @@ shows as *Online · check API key* (yellow) on the Dashboard and as a warning in
 |---|---|---|---|
 | Orchestration on | on | — | When off, every CLI request is forwarded to 9router with the *passthrough model* — the CLI works as a plain agent. |
 | Show progress in the CLI | on | — | Shows the planner steps, the plan and the status of each task before the final summary. When off, only the summary is shown. |
+| Silent mode | off | — | Shows no notification of the memory extraction result, neither on the web nor on the Windows desktop. The result is still in the activity log. |
 | Planner may ask | on | — | The planner may stop the thread with one numbered question when the request is truly ambiguous, the change is risky and was not asked for, or a fact cannot be found in the code/memory. It is not a confirmation of every prompt. See [Questions from the planner](07-cara-kerja.md#questions-from-the-planner). |
 | Passthrough model | automatic | — | The model for supporting requests (session title, `/compact`, quota check). *Automatic* = the model of the active Wrapper node, then the Executor. |
 | Proxy API key | empty | — | When filled in, the CLI must send it as a bearer token (Claude Code: `ANTHROPIC_AUTH_TOKEN`); the CLI menu writes it automatically. The *Generate* button creates a random key. |
@@ -182,11 +183,13 @@ The **Test** button sends a short prompt ("Reply with exactly one word: pong") a
 quick way to make sure the model and key are right.
 
 The **Benchmark** button at the top of the page estimates one small change without running a thread, so no file changes
-and no new memory. Each model used by an active node is called 3 times with a short piece of code (a model shared by
-several nodes is measured once). Its median is multiplied by the number of calls in one small change: Planner 2, Tools
-Node 3 (when used), Executor 1, Reviewer 1, Wrapper 1 (when not skipped). The result: the estimated total, each node's
-share, the node that is the slow spot, unstable models, and tips to improve. Build and tests are not included and the
-real context is larger, so treat the number as the fastest estimate.
+and no new memory. Each model used by an active node is called 3 times with a context as large as real use: about
+30,000 tokens for the Planner and Tools Node, 6,000 tokens for the Executor, Reviewer and Wrapper (nodes with the same
+model and context size are measured once). Its median is multiplied by the number of calls in one small change: Planner
+2, Tools Node 3 (when used), Executor 1, Reviewer 1, Wrapper 1 (when not skipped). The result: the estimated total, each
+node's share, the node that is the slow spot, unstable models, and tips to improve. One Benchmark can use about 200,000
+tokens. The number is model time only: build, tests and queueing are not included, and the prompt cache is deliberately
+not used.
 
 ### Node selection rules
 

@@ -516,7 +516,7 @@
     return `<tr>
         <td>
           <div class="fw-semibold">${escapeHtml(s.nodeName)}${slow}${unstable}</div>
-          <div class="small text-secondary mono text-break">${escapeHtml(roleLabels[s.role] || s.role)} · ${escapeHtml(s.model)}</div>
+          <div class="small text-secondary mono text-break">${escapeHtml(roleLabels[s.role] || s.role)} · ${escapeHtml(s.model)} · ${fmt.number(s.contextTokens)} token</div>
         </td>
         <td class="text-nowrap">${s.calls}×</td>
         <td class="text-nowrap" title="${s.minMs == null ? '' : `${fmt.ms(s.minMs)} – ${fmt.ms(s.maxMs)}`}">${s.medianMs == null ? '—' : fmt.ms(s.medianMs)}${failed}</td>
@@ -547,7 +547,7 @@
           <tbody>${r.stages.map(benchmarkStage).join('')}</tbody>
         </table>
       </div>
-      <div class="form-text mb-3">${isEn ? `${r.samplesPerModel} calls per model. A model shared by several nodes is measured once.` : `${r.samplesPerModel} panggilan per model. Model yang dipakai beberapa node diukur sekali.`}</div>` : '';
+      <div class="form-text mb-3">${isEn ? `${r.samplesPerModel} calls per model and context size. Nodes with the same model and context size are measured once.` : `${r.samplesPerModel} panggilan per model dan ukuran konteks. Node dengan model dan ukuran konteks yang sama diukur sekali.`}</div>` : '';
     el('benchmarkResult').innerHTML = `<p>${summary}</p>${table}
       <div class="fw-semibold small mb-1">${t('Tips', 'Tips')}</div>
       <ul class="small mb-0">${r.tips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}</ul>`;
