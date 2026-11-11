@@ -92,7 +92,11 @@ public sealed partial class NineRouterService
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new NineRouterException(Lang.T($"Model '{request.Model}' tidak merespons dalam {settings.RequestTimeoutSeconds} detik.", $"Model '{request.Model}' did not respond within {settings.RequestTimeoutSeconds} seconds."), 408);
+            throw new NineRouterException(Lang.T($"Model '{request.Model}' tidak merespons dalam {settings.RequestTimeoutSeconds} detik.", $"Model '{request.Model}' did not respond within {settings.RequestTimeoutSeconds} seconds."), 408)
+            {
+                // Under a shorter limit than the stall check, a silent connection ends here too: that one may retry.
+                IsTimeLimit = settings.RequestTimeoutSeconds > _stallTimeout.TotalSeconds
+            };
         }
         catch (HttpRequestException ex)
         {

@@ -85,7 +85,8 @@ public sealed record PlannerQuestion(string Question, IReadOnlyList<QuestionOpti
 }
 
 // Everything needed to continue a planner conversation after the developer answers. Messages end with the
-// assistant turn that called ask_user plus the results of the other tools called in that turn.
+// assistant turn that called ask_user plus the results of the other tools called in that turn. Committed: the tasks
+// the planner had committed with commit_tasks before it paused.
 public sealed record PlannerConversation(
     JsonArray Messages,
     Guid NodeId,
@@ -97,7 +98,8 @@ public sealed record PlannerConversation(
     bool CanBuild,
     int ToolsNodeTokens = 0,
     bool CanGit = false,
-    long DirectReadChars = 0);
+    long DirectReadChars = 0,
+    CommittedWork? Committed = null);
 
 public sealed record PendingQuestion(
     Guid ThreadId,

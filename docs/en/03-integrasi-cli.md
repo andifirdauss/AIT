@@ -538,6 +538,7 @@ Options in `appsettings.json`, sections `AIThread:ClaudeCli`, `AIThread:CodexCli
 |---|---|---|
 | `Path` | empty | the executable, the npm shim (`.cmd`) or the package's JS file. Empty = PATH → (Claude Code: `%USERPROFILE%\.local\bin`; agy: `%LOCALAPPDATA%\agy\bin`) → npm shim in `%APPDATA%\npm` |
 | `MaxProcesses` | `4` | processes of that CLI at once on this machine (all nodes) |
+| `BackgroundProcesses` | `1` | how many of `MaxProcesses` background work may hold at once (commit summaries, business wiki, memory, function call scan, skill import). The rest always stay available to threads (planner, executors, tools node) |
 | `ClaudeCli:WarmProcesses` | `4` | Claude Code processes started ahead of use, one per model + system prompt, so the next call does not wait for the CLI to start. They stop on their own after 90 unused seconds. `0` = off |
 | `ClaudeCli:SettingSources` | `local` | value of `--setting-sources`. Set `user` when the company configuration (e.g. Bedrock) is in user settings |
 | `CodexCli:IgnoreUserConfig` | `true` | `--ignore-user-config`. Set `false` when the company provider is in the user's `config.toml` (the `aithread` profile is still skipped) |

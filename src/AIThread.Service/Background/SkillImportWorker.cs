@@ -1,5 +1,6 @@
 using AIThread.Common.Enums;
 using AIThread.Data.Context;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Skills;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,8 @@ public sealed class SkillImportWorker(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Its model calls through a CLI take a background slot: threads keep the rest (CliEngineOptions.BackgroundProcesses).
+        using var background = CliSlots.Background();
         try
         {
             // Let startup (migrations) finish first.

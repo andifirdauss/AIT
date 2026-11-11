@@ -31,7 +31,9 @@ file, memory, status git, wiki bisnis).
      --no-session-persistence --max-turns 1 [--model …]`;
    - satu baris user stream-json dikirim lewat stdin;
    - environment dibersihkan (`CLAUDECODE`, `ANTHROPIC_BASE_URL` loopback, autoupdater mati);
-   - batas proses global `MaxProcesses`, timeout `RequestTimeoutSeconds`, stall 180 detik.
+   - batas proses global `MaxProcesses` lewat `CliSlots` (pekerjaan latar belakang di `CliSlots.Background()` maks
+     `BackgroundProcesses`), timeout `RequestTimeoutSeconds` (habis saat CLI masih menulis = `IsTimeLimit`, tidak
+     di-retry ke model yang sama), stall 180 detik (di-retry).
 3. `ClaudeStreamReader` membaca `text_delta` (diteruskan ke `onDelta`), `stop_reason`, serta baris `result`
    (`is_error`, `api_error_status`, `usage`).
 4. Bila request membawa tools, `CliToolCallParser` mengubah blok `<tool_call name="…">{json}</tool_call>` di luar

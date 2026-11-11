@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using AIThread.Common.Localization;
 
 namespace AIThread.Service.Orchestration;
 
@@ -23,6 +24,10 @@ public sealed partial class PlannerAgent
             .Take(4)
             .Select(o => new QuestionOption(o.Label!, o.Description))
             .ToList();
+        // Committed tasks already ran: the developer answers knowing that.
+        if (input.Stream is { Executed: > 0 } stream)
+            question += Lang.T($"\n\n_Catatan AIT: {stream.Executed} tugas yang sudah di-commit planner sudah dijalankan dan tetap ada; planner bisa menambah tugas untuk menyesuaikannya._",
+                $"\n\n_AIT note: {stream.Executed} task(s) the planner committed have already run and stay; the planner can add tasks to adjust them._");
         return new PlannerToolOutcome(string.Empty, null, Question: new PlannerQuestion(question, options));
     }
 }

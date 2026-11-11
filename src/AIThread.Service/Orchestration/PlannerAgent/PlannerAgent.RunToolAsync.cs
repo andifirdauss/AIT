@@ -28,8 +28,8 @@ public sealed partial class PlannerAgent
         if (holder is not null && Interlocked.Read(ref run.DirectReadChars) >= run.DirectReadLimit)
             return new PlannerToolOutcome($"Error: your direct reading budget is used up ({run.DirectReadLimit} characters). Call investigate with your question instead.", null, true);
 
-        // investigate numbers its own line; submit_plan has none.
-        if (call.Name is not (PlannerTools.SubmitPlan or PlannerTools.Investigate))
+        // investigate numbers its own line, commit_tasks writes its own; submit_plan has none.
+        if (call.Name is not (PlannerTools.SubmitPlan or PlannerTools.Investigate or PlannerTools.CommitTasks))
             await PlannerToolRunner.AnnounceAsync(call.Name, args, "Planner", string.Empty, recorder, progress, cancellationToken, badge);
 
         var outcome = call.Name switch
@@ -37,6 +37,7 @@ public sealed partial class PlannerAgent
             PlannerTools.Investigate => await InvestigateAsync(args, input, run, tools, recorder, progress, badge, cancellationToken),
             PlannerTools.AskUser => AskUser(args, input, run),
             PlannerTools.SubmitPlan => await SubmitPlanAsync(call.Arguments, input, CanPublish(input, run), recorder, cancellationToken),
+            PlannerTools.CommitTasks => await CommitTasksAsync(call.Arguments, input, recorder, progress, cancellationToken),
             _ => await runner.RunAsync(call.Name, args, input, tools, run.MemoriesRead, string.Empty, recorder, progress, cancellationToken)
         };
         if (holder is not null) Interlocked.Add(ref run.DirectReadChars, outcome.Output.Length);

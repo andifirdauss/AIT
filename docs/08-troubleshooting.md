@@ -66,8 +66,16 @@ token. Kolom token planner di detail thread menunjukkan pemakaian sebenarnya bes
   9router — bagian ini memang hanya untuk langganan/OAuth yang ditampilkan 9router di halaman *Usage*-nya.
 - 9router tidak menjawab dalam 10 detik; footer dikirim tanpa kuota. Thread berikutnya mencoba lagi.
 
-**"Model '…' tidak merespons dalam N detik"**
-Naikkan Pengaturan → *Timeout (detik)*, atau pakai model yang lebih cepat.
+**"Model '…' tidak merespons dalam N detik"** / **"… CLI belum selesai menjawab dalam N detik"**
+Naikkan Pengaturan → *Timeout (detik)*, atau pakai model yang lebih cepat (mis. node Planner `cli:claude:sonnet`).
+Panggilan seperti ini tidak diulang ke model yang sama; pasang node cadangan agar thread tetap jalan. Rencana yang
+sangat besar (mis. meng-clone beberapa halaman sekaligus) lebih cepat bila dipecah menjadi beberapa permintaan.
+
+**Thread lama di tahap planning**
+Buka Log & diagnostik atau halaman thread: setiap langkah planner menulis baris *Planner langkah N/M* (tool yang
+dipanggil, waktu model, antre, tool, token), dan panggilan model yang lebih dari 2 menit menulis *masih menunggu
+jawaban* setiap 2 menit. Antre lama berarti semua proses CLI sedang terpakai: naikkan `MaxProcesses` di
+`AIThread:<Cli>` (lihat [Integrasi CLI](03-integrasi-cli.md)).
 
 ## CLI tidak melewati AIT
 

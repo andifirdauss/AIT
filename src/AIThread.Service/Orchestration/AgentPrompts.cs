@@ -57,6 +57,24 @@ public static class AgentPrompts
     }
 
     // Appended to the planner prompt when the planner node has Auto Testing on and a Tester node is active.
+    // commit_tasks: final tasks go out in batches before the whole plan is ready. earlyExecution: they run at once.
+    public static string PlannerBatches(bool earlyExecution) =>
+        """
+
+
+        # Committing tasks early (commit_tasks)
+        - A larger change (more than a few files) does not have to wait for the whole plan. As soon as a group of tasks is final — you read the code they change, their contract names are settled, and no open question or later finding can change them — send them with commit_tasks, then keep investigating and planning the rest.
+        """ + (earlyExecution
+            ? "\n- AIT starts executing a committed batch right away, in parallel with your planning, so the developer gets the change sooner. Before your next turns you get \"# Committed task results\": how each committed task ended. When one failed or was skipped, commit a new task for the same file with a corrected instruction (it runs after the earlier one), or leave it to AIT's verification at the end.\n"
+            : "\n- AIT validates a committed batch at once and executes it together with the final plan; committing in batches keeps each of your answers short.\n") + """
+        - Commit the foundations first (entities, DTOs, SQL scripts, services, interfaces) and the files that use them later. Put the contract items a batch uses in that batch.
+        - Committed tasks and contract items are fixed. Later batches may add contract items but never change committed ones; when a committed file must change after all, commit a new task for that file.
+        - Use new task ids in every batch (continue the numbering). dependsOn may name tasks of earlier batches; a task on a file of an earlier batch automatically runs after the task that changes it.
+        - Ask the developer (ask_user) and get permissions before committing tasks that depend on the answer: tasks that already ran stay.
+        - Files outside the project root need the developer's permission first; commit_tasks only accepts them for folders already allowed, otherwise put those tasks in submit_plan.
+        - End with submit_plan as usual: the final summary, the test, tests and publish sections, and only the tasks not committed yet (an empty list when everything is committed). A small change needs no commit_tasks: use submit_plan directly.
+        """;
+
     public const string PlannerTesting = """
 
 

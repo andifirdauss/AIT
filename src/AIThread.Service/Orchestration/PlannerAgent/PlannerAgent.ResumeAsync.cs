@@ -23,7 +23,7 @@ public sealed partial class PlannerAgent
         var groups = await ToolsNodeGroupsAsync(node, conversation.CanBuild, conversation.CanGit, input.Settings.CommandToolEnabled, input.Settings.WebFetchEnabled, cancellationToken);
         var messages = conversation.Messages;
         var directRead = CanReadDirectly(node, groups);
-        messages[0] = await SystemMessageAsync(node, groups, directRead, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
+        messages[0] = await SystemMessageAsync(node, groups, directRead, input.AutoTesting, input.UnitTests?.Settings.Authoring, input.Stream, cancellationToken);
         messages.Add(ChatMessages.Tool(conversation.AskCallId, toolResult));
 
         var run = new PlannerRun

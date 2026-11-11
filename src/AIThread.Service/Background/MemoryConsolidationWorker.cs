@@ -1,4 +1,5 @@
 using AIThread.Common.Options;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,8 @@ public sealed class MemoryConsolidationWorker(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Its model calls through a CLI take a background slot: threads keep the rest (CliEngineOptions.BackgroundProcesses).
+        using var background = CliSlots.Background();
         // Let the host finish starting (and migrations run) before the first pass.
         await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken).ConfigureAwait(false);
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(Math.Max(1, options.Value.MemoryConsolidationIntervalMinutes)));

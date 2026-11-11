@@ -1,5 +1,6 @@
 using AIThread.Common.Enums;
 using AIThread.Data.Context;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Git;
 using AIThread.Service.Interfaces;
 using AIThread.Service.Workspace;
@@ -50,6 +51,8 @@ public sealed class GitWatchWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Its model calls through a CLI take a background slot: threads keep the rest (CliEngineOptions.BackgroundProcesses).
+        using var background = CliSlots.Background();
         try
         {
             await Task.WhenAll(RunQueueAsync(stoppingToken), WatchAsync(stoppingToken), FetchLoopAsync(stoppingToken));

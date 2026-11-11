@@ -1,4 +1,5 @@
 using AIThread.Common.Options;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,8 @@ public sealed class BusinessMemoryWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Its model calls through a CLI take a background slot: threads keep the rest (CliEngineOptions.BackgroundProcesses).
+        using var background = CliSlots.Background();
         // Let the host finish starting (and the first threads of the day arrive) before the first run.
         await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken).ConfigureAwait(false);
         var lastRun = DateTime.MinValue;

@@ -35,6 +35,7 @@ public static partial class PlannerTools
     public const string AskUser = "ask_user";
     public const string SetModule = "set_module";
     public const string SubmitPlan = "submit_plan";
+    public const string CommitTasks = "commit_tasks";
 
     // Ends a tools node's investigation (a reply without tool calls does too).
     public const string ReportFindings = "report_findings";
@@ -69,10 +70,11 @@ public static partial class PlannerTools
     // canCommand: run_command is on in the settings. canPublish: commit/push is on and the project is a git repository,
     // so submit_plan offers its publish section. canFetch: web_fetch is on in the settings. databases: the project has
     // databases (list/describe/query); canChangeDatabase: one of them allows changes (change_database). directRead: the
-    // planner keeps its delegated tools next to investigate.
+    // planner keeps its delegated tools next to investigate. canCommit: commit_tasks is offered (PlanStream); earlyExecution:
+    // committed tasks run while the planner goes on.
     public static JsonArray All(bool canBuild = false, bool canAsk = false, IReadOnlyList<ToolsNodeGroup>? groups = null, bool canTest = false, bool canGit = false,
         bool unitTests = false, bool canRunTests = true, bool canCommand = false, bool canPublish = false, bool canFetch = false, bool databases = false,
-        bool canChangeDatabase = false, bool directRead = false)
+        bool canChangeDatabase = false, bool directRead = false, bool canCommit = false, bool earlyExecution = false)
     {
         var delegated = directRead ? [] : groups?.SelectMany(g => g.Tools).ToHashSet() ?? [];
         var tools = new JsonArray();
@@ -90,11 +92,13 @@ public static partial class PlannerTools
         tools.Add(SetModuleDefinition());
         if (groups is { Count: > 0 }) tools.Add(InvestigateDefinition(groups));
         if (canAsk) tools.Add(AskUserDefinition());
-        tools.Add(SubmitPlanDefinition(canTest, unitTests, canPublish));
+        if (canCommit) tools.Add(CommitTasksDefinition(earlyExecution));
+        tools.Add(SubmitPlanDefinition(canTest, unitTests, canPublish, canCommit));
         return tools;
     }
 
-    public static JsonArray SubmitOnly(bool canTest = false, bool unitTests = false, bool canPublish = false) => [SubmitPlanDefinition(canTest, unitTests, canPublish)];
+    public static JsonArray SubmitOnly(bool canTest = false, bool unitTests = false, bool canPublish = false, bool canCommit = false) =>
+        [SubmitPlanDefinition(canTest, unitTests, canPublish, canCommit)];
 
     // Whether a delegable tool can run for this project, for the planner and for its tools nodes alike. canCommand:
     // run_command is on in the settings. canFetch: web_fetch is on in the settings.
@@ -547,7 +551,25 @@ public static partial class PlannerTools
             }
             """));
 
-    private static JsonObject SubmitPlanDefinition(bool canTest, bool unitTests, bool canPublish = false)
+    // A batch has the task and contract shape of submit_plan, and no test, tests, publish or answer section.
+    private static JsonObject CommitTasksDefinition(bool earlyExecution)
+    {
+        var schema = SubmitPlanSchema();
+        var properties = schema["properties"]!.AsObject();
+        properties.Remove("answer");
+        properties["summary"] = Schema("""{ "type": "string", "description": "Required with the first batch: one or two sentences, in the developer's language, describing the whole change. Later batches may leave it out." }""");
+        properties["contract"]!.AsObject()["description"] = "Names this batch shares with other tasks or files, new ones only: committed contract items are kept and can never change.";
+        schema["required"] = new JsonArray("tasks");
+        return ChatMessages.Function(CommitTasks,
+            "Commit a batch of tasks that are final now, before the whole plan is ready: you read the code they change, their contract names are settled and no open question can change them. " +
+            (earlyExecution
+                ? "AIT validates the batch and starts executing it at once while you keep planning; you get the results of committed tasks before your next turns. "
+                : "AIT validates the batch now and executes it with the final plan. ") +
+            "Committed tasks and contract items are fixed. Use new task ids in every batch; dependsOn may name tasks of earlier batches. A later task on a file of a committed task runs after it. End with submit_plan as usual, with the remaining tasks only.",
+            schema);
+    }
+
+    private static JsonObject SubmitPlanDefinition(bool canTest, bool unitTests, bool canPublish = false, bool canCommit = false)
     {
         var schema = SubmitPlanSchema();
         if (canPublish) schema["properties"]!.AsObject()["publish"] = PublishSchema();
@@ -559,6 +581,7 @@ public static partial class PlannerTools
         if (unitTests) schema["properties"]!.AsObject()["tests"] = UnitTestsSchema();
         return ChatMessages.Function(SubmitPlan,
             "Submit the final plan. Call exactly once, after investigating. For requests that need no file change, send an empty tasks list and the full answer in \"answer\"." +
+            (canCommit ? " After commit_tasks, send only the tasks not committed yet (an empty list when all are committed): committed tasks and contract items stay part of the plan." : string.Empty) +
             (canTest ? " When tasks change files, \"test\" tells the tester how to check the change on the running app." : string.Empty) +
             (unitTests ? " \"tests\" holds the decisions about registered unit tests and the new ones." : string.Empty) +
             (canPublish ? " \"publish\" only when the developer asked to commit or push." : string.Empty),

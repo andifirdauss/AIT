@@ -47,6 +47,10 @@ public class SystemSetting : BaseEntity
     // No notification of the memory extraction, on the web or on the Windows desktop; the activity log still has it.
     public bool SilentNotifications { get; set; }
 
+    // Tasks the planner commits before its final plan (commit_tasks) run at once, while it keeps planning. Off: the
+    // batches wait for the final plan (they still keep each planner answer short).
+    public bool EarlyExecution { get; set; } = true;
+
     // Remote prompting through a Telegram bot. Long polling, so no public URL is needed.
     public bool TelegramEnabled { get; set; }
 

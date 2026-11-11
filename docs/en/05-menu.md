@@ -495,7 +495,7 @@ a refresh and can be linked directly.
 
 - **9router connection** (`#router`) — URL, API key, *Test connection* (does not save); the status line shows whether
   the key is stored and accepted.
-- **Proxy & orchestration** (`#proxy`) — the orchestration switch, progress & *Planner may ask*, *The planner may run
+- **Proxy & orchestration** (`#proxy`) — the orchestration switch, progress, *Execute while planning* & *Planner may ask*, *The planner may run
   commands* (`run_command`, also `start_process`) with its timeout, *The planner may read web pages & APIs*
   (`web_fetch`), *AIT may commit & push when asked*, the passthrough model,
   the proxy API key (with a link to the [CLI](#cli) menu, where the CLI integrations (Claude Code, omp, Codex, Gemini CLI,

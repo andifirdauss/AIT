@@ -536,6 +536,7 @@ Opsi di `appsettings.json`, section `AIThread:ClaudeCli`, `AIThread:CodexCli`, `
 |---|---|---|
 | `Path` | kosong | executable, shim npm (`.cmd`), atau file JS paket. Kosong = PATH → (Claude Code: `%USERPROFILE%\.local\bin`; agy: `%LOCALAPPDATA%\agy\bin`) → shim npm di `%APPDATA%\npm` |
 | `MaxProcesses` | `4` | proses CLI itu yang berjalan bersamaan di mesin ini (semua node) |
+| `BackgroundProcesses` | `1` | dari `MaxProcesses`, berapa yang boleh dipakai pekerjaan latar belakang sekaligus (rangkuman commit, wiki bisnis, memory, scan panggilan function, impor skill). Sisanya selalu tersedia untuk thread (planner, executor, tools node) |
 | `ClaudeCli:WarmProcesses` | `4` | proses Claude Code yang disiapkan sebelum dipakai, satu per model + system prompt, agar panggilan berikutnya tidak menunggu CLI start. Berhenti sendiri setelah 90 detik tidak dipakai. `0` = mati |
 | `ClaudeCli:SettingSources` | `local` | nilai `--setting-sources`. Isi `user` bila konfigurasi perusahaan (mis. Bedrock) ada di settings user |
 | `CodexCli:IgnoreUserConfig` | `true` | `--ignore-user-config`. Isi `false` bila provider perusahaan ada di `config.toml` user (profile `aithread` tetap dilewati) |

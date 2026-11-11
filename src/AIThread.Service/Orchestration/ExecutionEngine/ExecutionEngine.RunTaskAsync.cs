@@ -7,8 +7,10 @@ namespace AIThread.Service.Orchestration;
 
 public sealed partial class ExecutionEngine
 {
+    // plan: what the executor sees of the plan (summary and contract), from the batch the task came in.
     private async Task<TaskResult> RunTaskAsync(
         PlanTask task,
+        ThreadPlan plan,
         ThreadTask entity,
         ExecutionRequest request,
         SemaphoreSlim globalGate,
@@ -34,7 +36,7 @@ public sealed partial class ExecutionEngine
             });
 
             var outcome = await executor.ExecuteAsync(new ExecutorJob(
-                request.Plan,
+                plan,
                 task,
                 node,
                 request.Scope,

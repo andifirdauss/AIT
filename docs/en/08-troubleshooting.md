@@ -71,8 +71,16 @@ column in the thread detail shows the real usage with its cache share. Solutions
   cannot read — this part is only for subscriptions/OAuth that 9router shows on its *Usage* page.
 - 9router does not answer within 10 seconds; the footer is sent without the quota. The next thread tries again.
 
-**"Model '…' did not respond within N seconds"**
-Raise Setting → *Timeout (seconds)*, or use a faster model.
+**"Model '…' did not respond within N seconds"** / **"… CLI did not finish its answer within N seconds"**
+Raise Setting → *Timeout (seconds)*, or use a faster model (e.g. Planner node `cli:claude:sonnet`). Such a call is not
+repeated on the same model; add a fallback node so the thread keeps going. A very large plan (e.g. cloning several
+pages at once) is faster when split into several requests.
+
+**A thread stays in planning for a long time**
+Open Log & diagnostics or the thread page: every planner step writes a *Planner step N/M* line (the tools it called,
+model time, queue, tools, tokens), and a model call that takes over 2 minutes writes *still waiting* every 2 minutes.
+A long queue means every CLI process is in use: raise `MaxProcesses` under `AIThread:<Cli>` (see
+[CLI integration](03-integrasi-cli.md)).
 
 ## The CLI does not go through AIT
 

@@ -295,6 +295,20 @@ public class NineRouterServiceTests
         Assert.Equal(1, cli.Calls);
     }
 
+    [Fact]
+    public async Task Cli_call_that_ran_out_of_time_is_not_repeated_so_the_node_falls_back()
+    {
+        var cli = new RecordingCli(_ => throw new NineRouterException("did not finish", 408) { IsTimeLimit = true });
+        var router = new NineRouterService(new StubFactory(new StubHandler(_ => throw new InvalidOperationException())), new StubSettings(GoodKey),
+            TestSecrets.Guard(), NullLogger<NineRouterService>.Instance, cliModels: cli);
+
+        var ex = await Assert.ThrowsAsync<NineRouterException>(() =>
+            router.ChatAsync(new ChatCompletionRequest { Model = "cli:claude:opus", Messages = [ChatMessages.User("hi")] }));
+
+        Assert.True(ex.IsModelUnavailable);
+        Assert.Equal(1, cli.Calls);
+    }
+
     private sealed class RecordingCli(Func<ChatCompletionRequest, ChatCompletionResult> answer) : ICliModelService
     {
         public CliModelId? Model { get; private set; }

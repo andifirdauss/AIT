@@ -480,7 +480,7 @@ Halaman dibagi menjadi tab. Tab yang terbuka tercatat di URL (mis. `/Setting#tel
 refresh dan bisa ditautkan langsung.
 
 - **Koneksi 9router** (`#router`) — URL, API key, *Test koneksi* (tidak menyimpan); baris status menunjukkan apakah key tersimpan dan diterima.
-- **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres & *Planner boleh bertanya*, *Planner boleh menjalankan
+- **Proxy & orkestrasi** (`#proxy`) — saklar orkestrasi, progres, *Eksekusi selama planning* & *Planner boleh bertanya*, *Planner boleh menjalankan
   perintah* (`run_command`, juga `start_process`) beserta batas waktunya, *Planner boleh membaca halaman web & API*
   (`web_fetch`), *AIT boleh commit & push bila diminta*, model passthrough, proxy API key (beserta tautan ke
   menu [CLI](#cli), tempat integrasi CLI (Claude Code, omp, Codex, Gemini CLI, opencode, Qwen Code) dan hook Context Keeper diatur), batas planner/executor/paralel/timeout.

@@ -23,7 +23,12 @@ public class NineRouterException(string message, int? statusCode = null, Excepti
     // elsewhere, or spends it all on reasoning), so it is not retried; a fallback node may still work.
     public bool IsEmptyReply { get; init; }
 
-    public bool IsTransient => !IsProviderLoginRequired && !IsEmptyReply && StatusCode is null or 408 or 429 or >= 500;
+    // The call used up the whole RequestTimeoutSeconds while the model was still going (a very long answer or long
+    // thinking), not a dropped connection. The same input would most likely run out again, so it is not retried with
+    // the same model; it still counts as a 408 for the fallback node, which may be faster.
+    public bool IsTimeLimit { get; init; }
+
+    public bool IsTransient => !IsProviderLoginRequired && !IsEmptyReply && !IsTimeLimit && StatusCode is null or 408 or 429 or >= 500;
 
     public bool IsRateLimited => StatusCode == 429;
 

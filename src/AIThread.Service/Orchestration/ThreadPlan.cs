@@ -147,6 +147,11 @@ public sealed class PlanTask
     public List<ContextRef>? Context { get; set; }
     public List<string>? DependsOn { get; set; }
 
+    // Set by AIT, never by the planner: tasks of earlier batches (commit_tasks) on the same file that must end, in any
+    // state, before this one starts, so two tasks never write one file at once. Unlike dependsOn, a failed one does not
+    // skip this task: it is often the task that fixes it.
+    public List<string>? After { get; set; }
+
     [JsonIgnore]
     public bool IsCreate => string.Equals(Action, Create, StringComparison.OrdinalIgnoreCase);
 

@@ -86,6 +86,10 @@ public class CliEngineOptions
 
     // Processes of this CLI running at once on this machine, over all nodes.
     public int MaxProcesses { get; set; } = 4;
+
+    // How many of MaxProcesses background work (commit summaries, business wiki, memory, function call scan, skill
+    // import) may hold at once, so a thread's planner, executors and tools node always keep the rest.
+    public int BackgroundProcesses { get; set; } = 1;
 }
 
 // Claude Code: `claude -p` ("cli:claude:<model>").

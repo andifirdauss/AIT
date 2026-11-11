@@ -63,6 +63,7 @@ sebagai *Online · cek API key* (kuning) di Dasbor dan sebagai peringatan di log
 | Orkestrasi aktif | aktif | — | Jika dimatikan, semua request CLI diteruskan ke 9router dengan *model passthrough* — CLI bekerja sebagai agen biasa. |
 | Tampilkan progres di CLI | aktif | — | Menampilkan langkah planner, rencana, dan status tiap tugas sebelum ringkasan akhir. Jika mati, hanya ringkasan yang tampil. |
 | Mode senyap | mati | — | Tidak menampilkan notifikasi hasil ekstraksi memory, baik di web maupun di desktop Windows. Hasilnya tetap tercatat di log aktivitas. |
+| Eksekusi selama planning | aktif | — | Untuk perubahan besar planner mengirim tugas yang sudah pasti per batch (`commit_tasks`) dan executor langsung mengerjakannya selagi planner menyusun sisanya; planner melihat hasilnya dan bisa menambah tugas perbaikan. Mati: batch menunggu rencana akhir. Lihat [Eksekusi selama planning](07-cara-kerja.md#eksekusi-selama-planning). |
 | Planner boleh bertanya | aktif | — | Planner boleh menghentikan thread dengan satu pertanyaan bernomor bila permintaan benar-benar ambigu, perubahannya berisiko dan tidak diminta, atau ada fakta yang tidak bisa ditemukan di kode/memory. Bukan konfirmasi tiap prompt. Lihat [Pertanyaan dari planner](07-cara-kerja.md#pertanyaan-dari-planner). |
 | Model passthrough | otomatis | — | Model untuk request pendukung (judul sesi, `/compact`, cek kuota). *Otomatis* = model node Wrapper aktif, lalu Executor. |
 | Proxy API key | kosong | — | Jika diisi, CLI wajib mengirimnya sebagai bearer token (Claude Code: `ANTHROPIC_AUTH_TOKEN`); menu CLI menuliskannya otomatis. Tombol *Generate* membuat key acak. |
@@ -211,7 +212,9 @@ Setiap node bisa diberi satu **node cadangan** di form node (opsional). Alurnya:
 1. Panggilan ke node gagal dengan error yang berarti "model sedang tidak tersedia": rate limit **429**, timeout
    **408**, atau error server **5xx**. Panggilan yang tidak menerima data sama sekali dari 9router selama 3 menit
    (koneksi menggantung setelah jaringan putus) juga dihitung timeout 408, tanpa menunggu *Request timeout* habis.
-2. 9router lebih dulu mencoba ulang dengan jeda (seperti sebelumnya).
+2. 9router lebih dulu mencoba ulang dengan jeda (seperti sebelumnya). Pengecualian: panggilan yang habis oleh
+   *Timeout (detik)* padahal model masih menulis (jawaban atau thinking yang sangat panjang) **tidak** diulang ke model
+   yang sama, karena input yang sama hampir pasti habis lagi; panggilan itu langsung ke node cadangan bila ada.
 3. Bila tetap gagal, panggilan yang **sama** dikirim ke node cadangan. Untuk planner dan executor, percakapan
    dilanjutkan dari titik terakhir, tidak diulang dari awal. Bila node cadangan juga gagal dan punya cadangan sendiri,
    rantainya diikuti terus. Setiap node paling banyak dicoba sekali per panggilan.

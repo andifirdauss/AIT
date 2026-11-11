@@ -16,14 +16,18 @@ public sealed record ExecutionRequest(
     // Null when the changes need not be undoable (no thread to undo).
     FileJournal? Journal = null,
     // Fix tasks of a verification round: their progress lines sit under the round's entry instead of being entries.
-    bool Nested = false);
+    bool Nested = false,
+    // Tasks that arrive while the run goes on (the planner's commit_tasks batches): Plan and TaskEntities are then
+    // ignored, and the run ends when the feed is complete and its tasks are done. Null: the run is Plan's tasks.
+    ExecutionFeed? Feed = null);
 
 public sealed record TaskResult(string TaskKey, string File, ThreadTaskStatus Status, string? Summary, string? Diff, string? Error, long DurationMs, int Tokens);
 
 public sealed record ExecutionSummary(IReadOnlyList<TaskResult> Results, long WallMs, long SumMs, int Tokens);
 
 // Runs the task DAG: every task whose dependencies succeeded starts immediately, so the stage takes as long as
-// the slowest chain — not the sum of all tasks. Tasks whose dependency failed are skipped, not attempted.
+// the slowest chain — not the sum of all tasks. Tasks whose dependency failed are skipped, not attempted. Tasks may
+// keep arriving while it runs (ExecutionFeed): each starts as soon as its dependencies are done.
 // Delete and move tasks are done by FileOperations without a model.
 public sealed partial class ExecutionEngine(IExecutorAgent executor, INodeConcurrencyLimiter limiter, IFileOperations fileOperations) : IExecutionEngine
 {
@@ -36,8 +40,9 @@ public sealed partial class ExecutionEngine(IExecutorAgent executor, INodeConcur
     {
         private const int SecondsWidth = 6;
 
+        // Ids arriving later through a feed are not known yet: room for "T10" and the like.
         public static TaskLine For(ExecutionRequest request) => new(
-            request.Plan.Tasks.Select(t => t.Id.Length).DefaultIfEmpty(2).Max(),
+            request.Plan.Tasks.Select(t => t.Id.Length).Append(request.Feed is null ? 2 : 3).Max(),
             request.Executors.Select(e => ClientProgress.DisplayWidth(e.Name)).Append(NoModel.Length).Max(),
             request.Nested);
 

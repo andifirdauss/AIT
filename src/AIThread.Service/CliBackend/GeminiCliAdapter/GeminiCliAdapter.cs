@@ -23,7 +23,7 @@ public sealed partial class GeminiCliAdapter(IOptions<AIThreadOptions> options, 
 
     private static readonly TimeSpan DetectCacheDuration = TimeSpan.FromMinutes(5);
 
-    private readonly SemaphoreSlim _slots = new(Math.Max(1, options.Value.GeminiCli.MaxProcesses));
+    private readonly CliSlots _slots = new(options.Value.GeminiCli.MaxProcesses, options.Value.GeminiCli.BackgroundProcesses);
     private DetectCache? _detected;
 
     public string Tool => CliModelId.Gemini;

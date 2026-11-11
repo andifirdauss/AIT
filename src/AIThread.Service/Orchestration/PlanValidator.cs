@@ -22,8 +22,12 @@ public static class PlanValidator
     // requireTest: Auto Testing is on, so a plan that changes files must say how to test it. unitTests: the project has
     // a unit test catalog; null drops the plan's tests section.
     // actors: the test accounts and roles a test scenario may name; null keeps any actor.
+    // existence: whether files existed when their tasks were committed (full path → existed), for a plan whose earlier
+    // batches already run (commit_tasks): a file one of them creates is checked as it was, not as it is now.
+    // earlier: the ids of those tasks. A later task may edit a file one of them creates or moves; AIT runs it after them
+    // (PlanTask.After), so it needs no dependsOn.
     public static IReadOnlyList<string> Validate(ThreadPlan plan, WorkspaceScope scope, bool requireTest = false, UnitTestRules? unitTests = null,
-        IReadOnlyCollection<string>? actors = null)
+        IReadOnlyCollection<string>? actors = null, IReadOnlyDictionary<string, bool>? existence = null, IReadOnlySet<string>? earlier = null)
     {
         var errors = new List<string>();
         plan.Summary = plan.Summary?.Trim() ?? string.Empty;
@@ -84,20 +88,22 @@ public static class PlanValidator
             if (Resolve(task.File, label, scope, errors, plan) is { } fullPath)
             {
                 task.File = scope.ToDisplay(fullPath);
-                var exists = File.Exists(fullPath);
+                var exists = Exists(fullPath, existence);
                 if (task.Action == PlanTask.Edit && !exists) missingEdits.Add(task);
                 if (task.IsCreate && exists)
                     errors.Add($"{label}: '{task.File}' already exists. Use action \"edit\".");
                 if (task.IsCreate && !arrivals.TryAdd(task.File, task.Id))
-                    errors.Add($"{label}: another task already creates or moves a file to '{task.File}'. Merge them into one task.");
+                    errors.Add(earlier?.Contains(arrivals[task.File]) == true
+                        ? $"{label}: task {arrivals[task.File]} of an earlier batch already creates '{task.File}'. Use action \"edit\" to change it further."
+                        : $"{label}: another task already creates or moves a file to '{task.File}'. Merge them into one task.");
                 if (task.IsFileOperation && !exists)
                     errors.Add($"{label}: '{task.File}' does not exist, so it cannot be {(task.IsMove ? "moved" : task.IsExtract ? "extracted from" : "deleted")}. Fix the path (use find_files).");
                 if ((task.IsDelete || task.IsMove) && !removals.TryAdd(task.File, task.Id))
                     errors.Add($"{label}: another task already deletes or moves '{task.File}'.");
             }
 
-            if (task.IsMove) ValidateDestination(task, label, scope, arrivals, errors, plan);
-            if (task.IsExtract) ValidateExtract(task, label, scope, arrivals, byId, errors, plan);
+            if (task.IsMove) ValidateDestination(task, label, scope, arrivals, errors, plan, existence);
+            if (task.IsExtract) ValidateExtract(task, label, scope, arrivals, byId, errors, plan, existence);
 
             if (task.IsExtract)
             {
@@ -133,6 +139,9 @@ public static class PlanValidator
         foreach (var task in missingEdits)
         {
             var label = $"Task {task.Id}";
+            // A file an earlier batch creates or moves there: the task runs after that one.
+            if (arrivals.TryGetValue(task.File, out var made) && earlier?.Contains(made) == true && !string.Equals(made, task.Id, StringComparison.OrdinalIgnoreCase))
+                continue;
             if (!arrivals.TryGetValue(task.File, out var arrival) || !plan.Tasks.Any(t => (t.IsMove || t.IsExtract) && string.Equals(t.Id, arrival, StringComparison.OrdinalIgnoreCase)))
                 errors.Add($"{label}: '{task.File}' does not exist. Use action \"create\" for new files, or fix the path (use find_files).");
             else if (!(task.DependsOn ?? []).Contains(arrival, StringComparer.OrdinalIgnoreCase))
@@ -259,7 +268,8 @@ public static class PlanValidator
         return null;
     }
 
-    private static void ValidateDestination(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, List<string> errors, ThreadPlan plan)
+    private static void ValidateDestination(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, List<string> errors, ThreadPlan plan,
+        IReadOnlyDictionary<string, bool>? existence)
     {
         if (task.To is null)
         {
@@ -272,7 +282,7 @@ public static class PlanValidator
         // Paths compare without case (Windows, and the snapshot table), so a rename that only changes case is refused.
         if (string.Equals(task.To, task.File, StringComparison.OrdinalIgnoreCase))
             errors.Add($"{label}: \"to\" must be a different path than \"file\" (renames that only change letter case are not supported).");
-        else if (File.Exists(fullPath))
+        else if (Exists(fullPath, existence))
             errors.Add($"{label}: the destination '{task.To}' already exists. Choose another destination, or edit the existing file instead.");
         else if (!arrivals.TryAdd(task.To, task.Id))
             errors.Add($"{label}: another task already creates or moves a file to '{task.To}'.");
@@ -280,7 +290,7 @@ public static class PlanValidator
 
     // Several extracts may fill the same new file (the first creates it, the next ones add to it); a create task may not.
     private static void ValidateExtract(PlanTask task, string label, WorkspaceScope scope, Dictionary<string, string> arrivals, Dictionary<string, PlanTask> byId, List<string> errors,
-        ThreadPlan plan)
+        ThreadPlan plan, IReadOnlyDictionary<string, bool>? existence)
     {
         if (task.Members is not { Count: > 0 })
             errors.Add($"{label}: action \"extract\" needs \"members\", the names of the members to move.");
@@ -300,9 +310,12 @@ public static class PlanValidator
             errors.Add($"{label}: \"to\" must be a .cs file.");
         else if (string.Equals(task.To, task.File, StringComparison.OrdinalIgnoreCase))
             errors.Add($"{label}: \"to\" must be a different file than \"file\".");
-        else if (!File.Exists(fullPath) && !arrivals.TryAdd(task.To, task.Id) && !(byId.TryGetValue(arrivals[task.To], out var other) && other.IsExtract))
+        else if (!Exists(fullPath, existence) && !arrivals.TryAdd(task.To, task.Id) && !(byId.TryGetValue(arrivals[task.To], out var other) && other.IsExtract))
             errors.Add($"{label}: task {arrivals[task.To]} already creates '{task.To}'. An extract to a new file creates it by itself; drop the create task.");
     }
+
+    private static bool Exists(string fullPath, IReadOnlyDictionary<string, bool>? existence) =>
+        existence is not null && existence.TryGetValue(fullPath, out var existed) ? existed : File.Exists(fullPath);
 
     private static bool IsCSharp(string path) => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
 

@@ -22,6 +22,7 @@ namespace AIThread.Service.Orchestration;
 // CanApprove: the developer can be asked for permission (run_command, files outside the root): a session to answer in,
 // or the thread page of a dashboard thread.
 // Databases: the project databases (Project > Detail → Database) the database tools may reach; null or empty: none offered.
+// Stream: where commit_tasks batches go (PlanStream); null: the planner submits the whole plan at once, as for a retry.
 public sealed record PlannerInput(
     ThreadRequest Request,
     ProjectContext Project,
@@ -39,7 +40,8 @@ public sealed record PlannerInput(
     TestAccountSet? TestAccounts = null,
     bool CanApprove = false,
     IReadOnlyList<Databases.DatabaseTarget>? Databases = null,
-    Git.OutsideChangeSet? OutsideChanges = null);
+    Git.OutsideChangeSet? OutsideChanges = null,
+    PlanStream? Stream = null);
 
 // Where the labels of a follow-up came from: the session's last thread (its prompt joins the keyword search), or —
 // ThreadId null — the recent conversation or the session summary.
@@ -111,6 +113,10 @@ public sealed partial class PlannerAgent(
     // What AiNode.DirectReadPercent is a percentage of: the characters of tool output the planner reads itself, about
     // 50 000 tokens.
     private const long DirectReadBudgetChars = 200_000;
+
+    // A planner turn still waiting on its model after this long gets an activity line, and another one each time this
+    // much more passes: one turn of a large plan can take minutes, and the thread must not look stuck meanwhile.
+    private static readonly TimeSpan SlowStepNotice = TimeSpan.FromMinutes(2);
 
     // Step is the last step taken; MaxSteps is when the planner is told to submit (one forced step may follow).
     // Investigations, ToolsNodeTokens and DirectReadChars are fields: parallel tool calls update them with Interlocked.

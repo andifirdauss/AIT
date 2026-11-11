@@ -244,9 +244,21 @@ public static class CliProcess
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            var seconds = (int)(total.IsCancellationRequested ? limits.Timeout : limits.Stall).TotalSeconds;
+            if (total.IsCancellationRequested)
+            {
+                var limit = (int)limits.Timeout.TotalSeconds;
+                throw new NineRouterException(
+                    Lang.T($"{name} CLI belum selesai menjawab dalam {limit} detik. Naikkan Setting → Timeout (detik) bila jawaban model memang panjang.",
+                        $"{name} CLI did not finish its answer within {limit} seconds. Raise Setting → Timeout (seconds) when the model's answer is really long."), 408)
+                {
+                    // Under a shorter limit than the stall check, a silent CLI ends here too: that one may retry.
+                    IsTimeLimit = limits.Timeout > limits.Stall
+                };
+            }
+
+            var silent = (int)limits.Stall.TotalSeconds;
             throw new NineRouterException(
-                Lang.T($"{name} CLI tidak menjawab dalam {seconds} detik.", $"{name} CLI did not answer within {seconds} seconds."), 408);
+                Lang.T($"{name} CLI tidak mengirim output selama {silent} detik.", $"{name} CLI sent no output for {silent} seconds."), 408);
         }
         finally
         {

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using AIThread.Common.Localization;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Models;
 using AIThread.Service.Workspace;
 
@@ -24,7 +25,8 @@ public sealed partial class PlannerAgent
         var canPublish = CanPublish(input, run);
         var allTools = PlannerTools.All(run.CanBuild, input.CanAsk, run.Groups, input.AutoTesting, run.CanGit, input.UnitTests is not null,
             canRunTests: input.UnitTests is { Suites.Count: > 0 }, canCommand: input.Settings.CommandToolEnabled, canPublish: canPublish, canFetch: input.Settings.WebFetchEnabled,
-            databases: input.Databases is { Count: > 0 }, canChangeDatabase: input.Databases?.Any(d => d.AllowWrites) == true, directRead: run.DirectRead);
+            databases: input.Databases is { Count: > 0 }, canChangeDatabase: input.Databases?.Any(d => d.AllowWrites) == true, directRead: run.DirectRead,
+            canCommit: input.Stream is not null, earlyExecution: input.Stream?.ExecutesEarly == true);
 
         while (run.Step < run.MaxSteps + 1)
         {
@@ -33,23 +35,41 @@ public sealed partial class PlannerAgent
             var forcedStep = step > run.MaxSteps;
             if (step == run.MaxSteps)
                 messages.Add(ChatMessages.User("You have reached the investigation limit. Call submit_plan now with the best plan you can make from what you already know."));
+            // How the committed tasks ended since the last turn (early execution).
+            if (input.Stream?.TakeFinished() is { Count: > 0 } finished)
+                messages.Add(ChatMessages.User(PlanStream.ResultsNote(finished)));
 
             // A slot is held only while the model answers, not while tools run, so concurrent threads share the planner.
             // The conversation so far is plain OpenAI chat, so a fallback planner continues where this one stopped.
             var current = node;
-            var reply = await caller.ChatAsync(current, async candidate =>
+            NodeReply reply;
+            // The planner's turn takes the next free CLI slot ahead of its own committed tasks' executors.
+            using (CliSlots.Priority())
+            using (var watch = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
-                if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, run.Groups, run.DirectRead, input.AutoTesting, input.UnitTests?.Settings.Authoring, cancellationToken);
-                return new ChatCompletionRequest
+                var watching = WatchSlowStepAsync(recorder, step, current.Model, input.Settings.RequestTimeoutSeconds, watch.Token);
+                try
                 {
-                    Model = candidate.Model,
-                    Messages = messages,
-                    Tools = forcedStep ? PlannerTools.SubmitOnly(input.AutoTesting, input.UnitTests is not null, canPublish) : allTools,
-                    Temperature = candidate.Temperature ?? 0.2,
-                    MaxTokens = candidate.MaxTokens,
-                    PromptCacheKey = ChatCompletionRequest.CacheKey(recorder.Thread.Id, "planner")
-                };
-            }, cancellationToken, onSwitch: s => s.ReportAsync("Planner", recorder, progress, cancellationToken));
+                    reply = await caller.ChatAsync(current, async candidate =>
+                    {
+                        if (candidate.Id != current.Id) messages[0] = await SystemMessageAsync(candidate, run.Groups, run.DirectRead, input.AutoTesting, input.UnitTests?.Settings.Authoring, input.Stream, cancellationToken);
+                        return new ChatCompletionRequest
+                        {
+                            Model = candidate.Model,
+                            Messages = messages,
+                            Tools = forcedStep ? PlannerTools.SubmitOnly(input.AutoTesting, input.UnitTests is not null, canPublish, input.Stream is not null) : allTools,
+                            Temperature = candidate.Temperature ?? 0.2,
+                            MaxTokens = candidate.MaxTokens,
+                            PromptCacheKey = ChatCompletionRequest.CacheKey(recorder.Thread.Id, "planner")
+                        };
+                    }, cancellationToken, onSwitch: s => s.ReportAsync("Planner", recorder, progress, cancellationToken));
+                }
+                finally
+                {
+                    await watch.CancelAsync();
+                    await watching;
+                }
+            }
             node = run.Node = reply.Node;
             var result = reply.Result;
             run.Tokens += result.TotalTokens;
@@ -59,14 +79,15 @@ public sealed partial class PlannerAgent
 
             if (result.ToolCalls.Count == 0)
             {
+                LogStep(recorder, run, step, reply, result.ToolCalls, TimeSpan.Zero);
                 messages.Add(ChatMessages.Assistant(result.Content));
 
                 // Some models ignore tool calling and print the plan as JSON.
-                if (ThreadPlan.TryParseFromText(result.Content, out var textPlan) && textPlan is not null)
+                if (ThreadPlan.TryParseFromText(result.Content, out var parsedPlan) && parsedPlan is not null)
                 {
-                    if (!canPublish) textPlan.Publish = null;
-                    var errors = PlanValidator.Validate(textPlan, input.Scope, input.AutoTesting, input.UnitTests?.Rules, Actors(input));
-                    if (errors.Count == 0 && textPlan.OutsideFolders is null) return Finished(textPlan, run, node);
+                    if (!canPublish) parsedPlan.Publish = null;
+                    var (textPlan, errors, newFolders) = await ValidateFinalAsync(parsedPlan, input, cancellationToken);
+                    if (errors.Count == 0 && newFolders.Count == 0) return Finished(textPlan, run, node);
                     // Writes outside the project need the developer's permission, which only submit_plan asks for.
                     if (errors.Count == 0) errors = ["The plan changes files outside the project root; send it through submit_plan so AIT can ask the developer."];
                     messages.Add(ChatMessages.User($"The plan is invalid:\n- {string.Join("\n- ", errors)}\nFix it and call submit_plan."));
@@ -74,7 +95,7 @@ public sealed partial class PlannerAgent
                 }
 
                 if (++textReplies > MaxTextNudges)
-                    return DirectAnswer(result.Content, run, node, recorder);
+                    return DirectAnswer(result.Content, run, node, recorder, input.Stream);
 
                 messages.Add(ChatMessages.User("Do not answer in plain text. Use the tools to investigate if needed, then call submit_plan (put the full answer in its \"answer\" field when no file change is needed)."));
                 continue;
@@ -89,6 +110,7 @@ public sealed partial class PlannerAgent
             var toolClock = Stopwatch.StartNew();
             var outcomes = await Task.WhenAll(result.ToolCalls.Select(call => RunToolAsync(call, input, run, tools, recorder, progress, ReferenceEquals(call, badgeHolder) ? badge : null, cancellationToken)));
             run.ToolTime += toolClock.Elapsed;
+            LogStep(recorder, run, step, reply, result.ToolCalls, toolClock.Elapsed);
 
             ThreadPlan? accepted = null;
             (ToolCall Call, PlannerQuestion Question)? ask = null;
@@ -115,7 +137,8 @@ public sealed partial class PlannerAgent
             {
                 // A permission request is not a clarifying question: it does not use up ask_user.
                 if (pause.Question.Approval is null) run.QuestionsAsked++;
-                var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild, run.ToolsNodeTokens, run.CanGit, Interlocked.Read(ref run.DirectReadChars));
+                var conversation = new PlannerConversation(messages, node.Id, run.Step, run.Tokens, run.CachedTokens, pause.Call.Id, run.QuestionsAsked, run.CanBuild, run.ToolsNodeTokens, run.CanGit, Interlocked.Read(ref run.DirectReadChars),
+                    input.Stream is { HasCommitted: true } stream ? stream.Snapshot() : null);
                 return new PlanningResult(null, run.Step, run.Tokens, run.CachedTokens, node, new PlannerPause(pause.Question, conversation), run.MemoriesRead.Count, run.ToolsNodeTokens,
                     run.ModelTime, run.ToolTime, run.QueueTime);
             }

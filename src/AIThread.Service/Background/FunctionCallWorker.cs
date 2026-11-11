@@ -1,3 +1,4 @@
+using AIThread.Service.CliBackend;
 using AIThread.Service.CodeCalls;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Hosting;
@@ -12,6 +13,8 @@ public sealed class FunctionCallWorker(IFunctionCallQueue queue, IFunctionCallSc
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Its model calls through a CLI take a background slot: threads keep the rest (CliEngineOptions.BackgroundProcesses).
+        using var background = CliSlots.Background();
         try
         {
             while (await queue.Reader.WaitToReadAsync(stoppingToken))

@@ -30,7 +30,8 @@ public sealed record RuntimeSettings(
     int CommandTimeoutSeconds = 60,
     bool GitPublishEnabled = true,
     bool WebFetchEnabled = true,
-    bool SilentNotifications = false)
+    bool SilentNotifications = false,
+    bool EarlyExecution = true)
 {
     // Recorded on business pages and revisions so the team sees who (or whose AIThread) wrote what: the name saved in
     // the Setting menu, else the global git user.name, else the Windows user.

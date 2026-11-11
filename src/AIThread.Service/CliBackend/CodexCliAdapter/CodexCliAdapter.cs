@@ -17,7 +17,7 @@ public sealed partial class CodexCliAdapter(IOptions<AIThreadOptions> options, I
 
     private static readonly TimeSpan DetectCacheDuration = TimeSpan.FromMinutes(5);
 
-    private readonly SemaphoreSlim _slots = new(Math.Max(1, options.Value.CodexCli.MaxProcesses));
+    private readonly CliSlots _slots = new(options.Value.CodexCli.MaxProcesses, options.Value.CodexCli.BackgroundProcesses);
     private DetectCache? _detected;
 
     public string Tool => CliModelId.Codex;

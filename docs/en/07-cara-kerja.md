@@ -121,7 +121,8 @@ can be reused between steps and between threads, and the request comes after all
 
 When a part exceeds its limit, its middle is dropped; the start and the end of the text stay.
 
-Then the planner works in tool rounds (at most *Planner steps*). Every tool is **read-only**, except `run_build`, which
+Then the planner works in tool rounds (at most *Planner steps*); each round is written to the thread's activity log
+(*Planner step N/M*: tools, model/queue/tool time, tokens). Every tool is **read-only**, except `run_build`, which
 runs the project's build (it does not change code; only offered when *Automatic build & verification* is on and the
 project has a build command) and `run_tests`, which runs the catalog's unit tests (also without changing code). Relative
 paths are counted from the project root; the read tools (`list_directory`, `find_files`, `search_text`, `find_symbol`,
@@ -151,7 +152,8 @@ root, results are shown with absolute paths:
 | `run_tests(tests?, file?, all?)` | only when the project has an active [unit test catalog](#unit-tests): runs catalog tests (a number `UT-0012`, one test file, or all) and returns the result per test (passed, failed + message, skipped + reason). Used when the request really is about tests |
 | `investigate(question, agent?)` | only present when the planner node [delegates tools to a tools node](02-konfigurasi.md#planner-tools-node); the tools node runs the delegated tools (the ones missing from this list) in its own loop, at most 12 steps, then returns short findings (usually under 1,500 characters, cut at 6,000). In the progress: `investigate  #1 "…"`, then a `#1 › read_file …` line per tools node tool, and `#1 › complete  n steps · 8.4s (model 6.1s, report 2.0s, queued 1.2s) · tokens · model` (aligned with the tool column; when it fails `#1 › failed  …`). The first time = the whole investigation, *model* = the total time the tools node took to answer, *report* = the part of *model* for the last turn that writes the findings (it has no tool line of its own), *queued* (only shown when present) = waiting for a *parallel* slot of the tools node. The `[↑ prompt ↓ completion cache% time]` badge on the first tool line of each turn (planner, tools node, tester) shows the tokens and how long the model took to answer that turn. The planner's closing line `done in 45.2s (model 30.1s · tools 12.0s · queued 2.0s)` separates the planner model's time, the tool time (including investigate; a turn that calls several investigates at once waits for the slowest) and the wait for a planner slot. In the CLI progress, long paths are shortened to `first-folder/…/folder/file` (at most 48 characters) and search queries are cut at 60 characters so one tool stays one line; the activity log keeps the full version |
 | `ask_user(question, options?)` | stops the thread with one question to the developer (see [Questions from the planner](#questions-from-the-planner)); only offered when *Planner may ask* is on and the prompt comes from a session that can answer |
-| `submit_plan(plan)` | ends the planning |
+| `commit_tasks(batch)` | sends a group of final tasks before the whole plan (see [Execution while planning](#execution-while-planning)) |
+| `submit_plan(plan)` | ends the planning; after `commit_tasks` it only holds the tasks not committed yet |
 
 The folders `.git .vs .idea .nuget bin obj node_modules packages TestResults artifacts` and `wwwroot/lib/` are hidden from
 every tool. The content of `.git` is never read directly; the `git_*` tools run `git` itself.
@@ -169,6 +171,41 @@ push are still up to you. Git output is at most 24,000 characters; when it is cu
 Several tools in one round run in parallel. The tool list does not change during a thread (changing it would invalidate
 the prompt cache). At the last step the planner is asked to call `submit_plan`; only when it ignores that, one extra step
 runs with `submit_plan` as the only tool.
+
+### Execution while planning
+
+For a change that touches many files the planner does not have to wait for the whole plan. As soon as a group of tasks
+is final (the code is read, the contract names are settled, and no open question can change them), it sends them with
+`commit_tasks` and goes on planning the rest:
+
+- **Validation per batch.** A batch is checked together with the earlier batches like a normal plan (paths, actions,
+  `dependsOn`, the 40-task limit). Whether a file exists is judged as it was when its task was committed, since an
+  earlier batch may already have created, moved or deleted it. The first batch needs a `summary`. Task ids cannot be
+  reused.
+- **Committed tasks and contract items are fixed.** Later batches may only add contract items. A file an earlier batch
+  handles may change again through a new task; AIT runs it *after* the earlier task ends (succeeded or failed), without
+  `dependsOn`.
+- **Immediate execution** (Setting → *Execute while planning*, on by default): the executors start on a batch at once,
+  next to the planner. The planner's model calls get the next CLI slot before the waiting executors, so the planner is
+  not held up by its own tasks. Each batch's executors see the summary and the contract as committed with that batch.
+  The progress shows `📦 batch 1 · 3 task(s) running now: …`, and the lines of finished tasks appear inside the planner
+  phase.
+- **The planner sees the results.** Before its next turn the planner gets `# Committed task results` (succeeded +
+  summary, failed/skipped + reason). It can replace a failed task with a new task for the same file, or leave it to the
+  verification at the end (build and review with fix rounds).
+- **It still ends with `submit_plan`**: the final summary, the `test`/`tests`/`publish` sections, and only the tasks not
+  committed yet (may be empty). Verification, testing and the wrapper run after *all* tasks are done, as usual.
+- **Questions and permissions.** The planner is told to ask before committing tasks that depend on the answer. When it
+  still asks (or needs a permission) while tasks run, AIT lets those tasks finish before the thread stops; the question
+  carries a note on how many tasks already ran. After the answer, the plan goes on with the finished tasks. Tasks outside
+  the project folder are only accepted by `commit_tasks` when their folder is already allowed; otherwise they go through
+  `submit_plan`, which asks for permission.
+- **When the planner fails** (timeout, step limit), the running tasks finish first; the thread fails and can be rolled
+  back as usual.
+- **Unit tests.** The baseline of the related tests is taken per batch, before that batch's files change. A later batch's
+  baseline may be taken after an earlier batch changed shared code.
+- **Turned off.** With *Execute while planning* off, `commit_tasks` stays: a batch is validated at once and runs with the
+  final plan. It keeps every planner answer short, so no single giant turn runs out of *Timeout*.
 
 ### Questions from the planner
 

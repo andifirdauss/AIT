@@ -66,6 +66,7 @@ shows as *Online · check API key* (yellow) on the Dashboard and as a warning in
 | Orchestration on | on | — | When off, every CLI request is forwarded to 9router with the *passthrough model* — the CLI works as a plain agent. |
 | Show progress in the CLI | on | — | Shows the planner steps, the plan and the status of each task before the final summary. When off, only the summary is shown. |
 | Silent mode | off | — | Shows no notification of the memory extraction result, neither on the web nor on the Windows desktop. The result is still in the activity log. |
+| Execute while planning | on | — | For larger changes the planner sends the tasks that are final in batches (`commit_tasks`) and the executors start on them while it plans the rest; the planner sees the results and can add fix tasks. Off: the batches wait for the final plan. See [Execution while planning](07-cara-kerja.md#execution-while-planning). |
 | Planner may ask | on | — | The planner may stop the thread with one numbered question when the request is truly ambiguous, the change is risky and was not asked for, or a fact cannot be found in the code/memory. It is not a confirmation of every prompt. See [Questions from the planner](07-cara-kerja.md#questions-from-the-planner). |
 | Passthrough model | automatic | — | The model for supporting requests (session title, `/compact`, quota check). *Automatic* = the model of the active Wrapper node, then the Executor. |
 | Proxy API key | empty | — | When filled in, the CLI must send it as a bearer token (Claude Code: `ANTHROPIC_AUTH_TOKEN`); the CLI menu writes it automatically. The *Generate* button creates a random key. |
@@ -217,7 +218,9 @@ Each node can be given one **fallback node** in the node form (optional). The fl
 1. A call to the node fails with an error that means "the model is not available right now": rate limit **429**,
    timeout **408**, or a server error **5xx**. A call that receives no data at all from 9router for 3 minutes (a
    connection left hanging after a network drop) counts as a 408 timeout too, without waiting for the *Request timeout*.
-2. 9router first retries with a pause (as before).
+2. 9router first retries with a pause (as before). Except: a call that used up the whole *Timeout (seconds)* while the
+   model was still writing (a very long answer or long thinking) is **not** repeated on the same model, because the
+   same input would almost surely run out again; it goes straight to the fallback node when there is one.
 3. When it still fails, the **same** call is sent to the fallback node. For the planner and executors, the conversation
    continues from the last point instead of starting over. When the fallback node fails too and has its own fallback,
    the chain is followed further. Each node is tried at most once per call.

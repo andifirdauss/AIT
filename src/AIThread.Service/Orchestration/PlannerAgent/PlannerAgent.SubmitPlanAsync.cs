@@ -11,20 +11,21 @@ public sealed partial class PlannerAgent
     // canPublish: commit/push is on and the project is a git repository; otherwise a publish section is dropped.
     private async Task<PlannerToolOutcome> SubmitPlanAsync(string arguments, PlannerInput input, bool canPublish, ThreadRecorder recorder, CancellationToken cancellationToken)
     {
-        if (!ThreadPlan.TryParse(arguments, out var plan, out var parseError) || plan is null)
+        if (!ThreadPlan.TryParse(arguments, out var submitted, out var parseError) || submitted is null)
             return new PlannerToolOutcome($"Plan rejected: invalid JSON ({parseError}). Call submit_plan again.", null, true);
 
-        plan.RestorePaths(path => secrets.Restore(path).Text);
-        if (!canPublish) plan.Publish = null;
+        submitted.RestorePaths(path => secrets.Restore(path).Text);
+        if (!canPublish) submitted.Publish = null;
 
-        var errors = PlanValidator.Validate(plan, input.Scope, input.AutoTesting, input.UnitTests?.Rules, Actors(input));
+        // With committed batches (commit_tasks) the plan is those plus the submitted tasks.
+        var (plan, errors, folders) = await ValidateFinalAsync(submitted, input, cancellationToken);
         if (errors.Count > 0)
         {
             recorder.Log(ActivityLevel.Warning, Lang.T($"Rencana ditolak validator: {string.Join("; ", errors)}", $"Plan rejected by the validator: {string.Join("; ", errors)}"));
             return new PlannerToolOutcome($"Plan rejected. Fix these problems and call submit_plan again:\n- {string.Join("\n- ", errors)}", null, true);
         }
 
-        if (plan.OutsideFolders is not { Count: > 0 } folders) return new PlannerToolOutcome("Plan accepted.", plan);
+        if (folders.Count == 0) return new PlannerToolOutcome("Plan accepted.", plan);
 
         var missing = new List<string>();
         foreach (var folder in folders)

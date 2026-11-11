@@ -6,7 +6,7 @@ public sealed partial class GeminiCliAdapter
         CancellationToken cancellationToken = default)
     {
         var launch = ResolveLaunch() ?? throw NotInstalled(null);
-        await _slots.WaitAsync(cancellationToken);
+        var slot = await _slots.AcquireAsync(cancellationToken);
         string? work = null;
         try
         {
@@ -34,7 +34,7 @@ public sealed partial class GeminiCliAdapter
         }
         finally
         {
-            _slots.Release();
+            slot.Dispose();
             if (work is not null) CliProcess.DeleteQuietly(work);
         }
     }

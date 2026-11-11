@@ -114,7 +114,8 @@ bisa dipakai ulang antar langkah dan antar thread, dan permintaan berada setelah
 
 Bila sebuah bagian melebihi batas, yang dibuang adalah bagian tengahnya; awal dan akhir teks tetap ada.
 
-Lalu planner bekerja dalam putaran tool (maks *Langkah planner*). Semua tool **read-only**, kecuali `run_build` yang
+Lalu planner bekerja dalam putaran tool (maks *Langkah planner*); setiap putaran tercatat di log aktivitas thread
+(*Planner langkah N/M*: tool, waktu model/antre/tool, token). Semua tool **read-only**, kecuali `run_build` yang
 menjalankan build project (tidak mengubah kode; hanya ditawarkan bila *Build & verifikasi otomatis* menyala dan project
 punya perintah build) dan `run_tests` yang menjalankan unit test katalog (juga tidak mengubah kode). Path relatif dihitung dari
 root project; tool baca (`list_directory`, `find_files`, `search_text`, `find_symbol`, `find_references`, `code_outline` untuk file, `read_file`) juga menerima **path absolut di luar
@@ -143,7 +144,8 @@ root**, supaya planner bisa mengecek folder atau project lain ketika Anda memint
 | `run_tests(tests?, file?, all?)` | hanya bila project punya [katalog unit test](#unit-test) aktif: menjalankan test katalog (nomor `UT-0012`, satu file test, atau semua) dan mengembalikan hasil per test (lolos, gagal + pesan, dilewati + alasan). Dipakai bila permintaan memang soal test |
 | `investigate(question, agent?)` | hanya ada bila node planner [mendelegasikan tool ke tools node](02-konfigurasi.md#tools-node-planner); tools node menjalankan tool yang didelegasikan (yang hilang dari daftar ini) dalam loop sendiri, maks 12 langkah, lalu mengembalikan temuan ringkas (biasanya di bawah 1.500 karakter, dipotong di 6.000). Di progres: `investigate  #1 "…"`, lalu baris `#1 › read_file …` per tool tools node, dan `#1 › complete  n langkah · 8.4s (model 6.1s, laporan 2.0s, antre 1.2s) · token · model` (sejajar dengan kolom tool; bila gagal `#1 › failed  …`). Waktu pertama = seluruh investigasi, *model* = total waktu tools node menjawab, *laporan* = bagian dari *model* untuk giliran terakhir yang menulis temuan (tidak punya baris tool sendiri), *antre* (hanya muncul bila ada) = menunggu slot *paralel* tools node. Badge `[↑ prompt ↓ completion cache% waktu]` di baris tool pertama tiap giliran (planner, tools node, tester) menunjukkan token dan lama model menjawab giliran itu. Baris akhir planner `selesai dalam 45.2s (model 30.1s · tool 12.0s · antre 2.0s)` memisahkan waktu model planner, waktu tool (termasuk investigate; giliran yang memanggil beberapa investigate sekaligus menunggu yang paling lambat), dan antre slot planner. Di progres CLI, path panjang diringkas menjadi `folder-awal/…/folder/file` (maks 48 karakter) dan query pencarian dipotong di 60 karakter agar satu tool tetap satu baris; log aktivitas menyimpan versi lengkap |
 | `ask_user(question, options?)` | menghentikan thread dengan satu pertanyaan ke developer (lihat [Pertanyaan dari planner](#pertanyaan-dari-planner)); hanya ditawarkan bila *Planner boleh bertanya* menyala dan prompt berasal dari sesi yang bisa menjawab |
-| `submit_plan(plan)` | mengakhiri planning |
+| `commit_tasks(batch)` | mengirim sekumpulan tugas yang sudah pasti sebelum rencana lengkap (lihat [Eksekusi selama planning](#eksekusi-selama-planning)) |
+| `submit_plan(plan)` | mengakhiri planning; setelah `commit_tasks` cukup berisi tugas yang belum di-commit |
 
 Folder `.git .vs .idea .nuget bin obj node_modules packages TestResults artifacts` dan `wwwroot/lib/` disembunyikan
 dari semua tool. Isi `.git` tidak pernah dibaca langsung; tool `git_*` menjalankan `git` itu sendiri.
@@ -161,6 +163,41 @@ dan push tetap urusan Anda. Output git maks 24.000 karakter; bila terpotong, pla
 Beberapa tool dalam satu putaran dijalankan paralel. Daftar tool tidak berubah selama satu thread
 (mengubahnya membatalkan prompt cache). Di langkah terakhir planner diminta memanggil `submit_plan`; hanya bila ia
 mengabaikannya, satu langkah tambahan dijalankan dengan `submit_plan` sebagai satu-satunya tool.
+
+### Eksekusi selama planning
+
+Untuk perubahan yang menyentuh banyak file, planner tidak perlu menunggu rencana lengkap. Begitu sekumpulan tugas sudah
+pasti (kodenya sudah dibaca, nama kontraknya sudah tetap, dan tidak ada pertanyaan terbuka yang bisa mengubahnya), ia
+mengirimnya dengan `commit_tasks`, lalu lanjut menyusun sisanya:
+
+- **Validasi per batch.** Batch diperiksa bersama batch sebelumnya seperti rencana biasa (path, aksi, `dependsOn`,
+  batas 40 tugas). Keberadaan file dinilai seperti saat tugasnya di-commit, karena batch sebelumnya mungkin sudah membuat,
+  memindahkan, atau menghapusnya. Batch pertama wajib punya `summary`. Id tugas tidak boleh dipakai ulang.
+- **Tugas dan kontrak yang sudah di-commit tetap.** Batch berikutnya hanya boleh menambah item kontrak. File yang sudah
+  ditangani batch sebelumnya boleh diubah lagi lewat tugas baru; AIT menjalankannya *setelah* tugas sebelumnya selesai
+  (berhasil atau gagal), tanpa perlu `dependsOn`.
+- **Eksekusi langsung** (Pengaturan → *Eksekusi selama planning*, bawaan aktif): executor mengerjakan batch saat itu
+  juga, sejajar dengan planner. Panggilan model planner mendapat slot CLI berikutnya lebih dulu daripada executor yang
+  menunggu, jadi planner tidak tertahan oleh tugasnya sendiri. Executor tiap batch melihat ringkasan dan kontrak saat
+  batch itu di-commit. Di progres muncul `📦 batch 1 · 3 tugas langsung dijalankan: …`, dan baris tugas yang selesai
+  muncul di tengah fase planner.
+- **Planner melihat hasilnya.** Sebelum giliran berikutnya planner menerima `# Committed task results` (berhasil +
+  ringkasan, gagal/dilewati + alasan). Tugas yang gagal bisa ia ganti dengan tugas baru untuk file yang sama, atau
+  dibiarkan ke verifikasi di akhir (build dan review dengan putaran perbaikan).
+- **Penutup tetap `submit_plan`**: ringkasan akhir, bagian `test`/`tests`/`publish`, dan hanya tugas yang belum
+  di-commit (boleh kosong). Verifikasi, testing, dan wrapper berjalan setelah *semua* tugas selesai, seperti biasa.
+- **Pertanyaan dan izin.** Planner diminta bertanya dulu sebelum meng-commit tugas yang bergantung pada jawabannya.
+  Bila ia tetap bertanya (atau perlu izin) setelah ada tugas yang berjalan, AIT menunggu tugas-tugas itu selesai dulu
+  baru thread berhenti; pertanyaannya diberi catatan berapa tugas sudah dijalankan. Setelah dijawab, rencana dilanjutkan
+  bersama tugas yang sudah selesai. Tugas di luar folder project hanya diterima `commit_tasks` bila foldernya sudah
+  diizinkan; selain itu harus lewat `submit_plan`, yang meminta izin.
+- **Bila planner gagal** (timeout, batas langkah), tugas yang sedang berjalan diselesaikan dulu; thread gagal dan bisa
+  di-rollback seperti biasa.
+- **Unit test.** Baseline test terkait diambil per batch sebelum file batch itu berubah. Baseline batch berikutnya
+  bisa saja diambil setelah batch sebelumnya mengubah kode bersama.
+- **Mode mati.** Bila *Eksekusi selama planning* dimatikan, `commit_tasks` tetap ada: batch divalidasi saat itu dan
+  baru dijalankan bersama rencana akhir. Gunanya membuat setiap jawaban planner tetap pendek, sehingga tidak ada satu
+  giliran raksasa yang habis oleh *Timeout*.
 
 ### Pertanyaan dari planner
 

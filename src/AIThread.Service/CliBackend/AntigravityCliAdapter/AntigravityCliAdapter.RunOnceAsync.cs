@@ -8,7 +8,7 @@ public sealed partial class AntigravityCliAdapter
         CancellationToken cancellationToken)
     {
         var launch = ResolveLaunch() ?? throw NotInstalled(null);
-        await _slots.WaitAsync(cancellationToken);
+        var slot = await _slots.AcquireAsync(cancellationToken);
         string? work = null;
         var reader = new AntigravityStreamReader();
         try
@@ -32,7 +32,7 @@ public sealed partial class AntigravityCliAdapter
         }
         finally
         {
-            _slots.Release();
+            slot.Dispose();
             if (work is not null) CliProcess.DeleteQuietly(work);
             // The process has exited (or was killed): the conversation it saved is AIT's own and is not kept.
             if (options.Value.AntigravityCli.DeleteConversations && reader.ConversationId is { } conversation && !ForgetConversation(conversation))

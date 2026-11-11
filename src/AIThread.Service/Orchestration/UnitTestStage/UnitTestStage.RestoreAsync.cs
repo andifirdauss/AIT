@@ -33,7 +33,11 @@ public sealed partial class UnitTestStage
         foreach (var note in result.Notes) await progress.StepAsync($"💡 {note}", cancellationToken, hang: 3);
         if (result.Tasks.Count == 0) await progress.StepAsync(Lang.T("selesai", "done"), cancellationToken, last: true);
 
-        recorder.Log(ActivityLevel.Info, Lang.T("Unit test dipulihkan otomatis: ", "Unit tests restored automatically: ") + string.Join("; ", result.Items.Select(i => $"{i.Number} {RestoreLabel(i)}")));
+        // A restore with notes only (nothing restored) logs the notes, not an empty list.
+        if (result.Items.Count > 0)
+            recorder.Log(ActivityLevel.Info, Lang.T("Unit test dipulihkan otomatis: ", "Unit tests restored automatically: ") + string.Join("; ", result.Items.Select(i => $"{i.Number} {RestoreLabel(i)}")));
+        if (result.Notes.Count > 0)
+            recorder.Log(ActivityLevel.Info, Lang.T("Catatan pemulihan unit test: ", "Unit test restore notes: ") + string.Join("; ", result.Notes));
         return result.Tasks;
     }
 }

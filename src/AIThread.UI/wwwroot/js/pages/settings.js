@@ -21,6 +21,7 @@
     el('gitPublishEnabled').checked = s.gitPublishEnabled;
     el('webFetchEnabled').checked = s.webFetchEnabled;
     el('silentNotifications').checked = s.silentNotifications;
+    el('earlyExecution').checked = s.earlyExecution;
     el('plannerMaxSteps').value = s.plannerMaxSteps;
     el('executorMaxRetries').value = s.executorMaxRetries;
     el('maxParallelTasks').value = s.maxParallelTasks;
@@ -143,7 +144,8 @@
       commandTimeoutSeconds: Number(el('commandTimeout').value),
       gitPublishEnabled: el('gitPublishEnabled').checked,
       webFetchEnabled: el('webFetchEnabled').checked,
-      silentNotifications: el('silentNotifications').checked
+      silentNotifications: el('silentNotifications').checked,
+      earlyExecution: el('earlyExecution').checked
     };
     try {
       fill(await api.put('/api/settings', body));

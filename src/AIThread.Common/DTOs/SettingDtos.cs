@@ -24,7 +24,8 @@ public record SystemSettingDto(
     int CommandTimeoutSeconds = 60,
     bool GitPublishEnabled = true,
     bool WebFetchEnabled = true,
-    bool SilentNotifications = false);
+    bool SilentNotifications = false,
+    bool EarlyExecution = true);
 
 public record UpdateLanguageRequest(string Language);
 
@@ -48,7 +49,8 @@ public record UpdateSystemSettingRequest(
     int CommandTimeoutSeconds = 60,
     bool GitPublishEnabled = true,
     bool WebFetchEnabled = true,
-    bool SilentNotifications = false);
+    bool SilentNotifications = false,
+    bool EarlyExecution = true);
 
 public record ClaudeSettingsStatusDto(
     ClaudeSettingsScope Scope,

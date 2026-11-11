@@ -1,4 +1,5 @@
 using AIThread.Common.Options;
+using AIThread.Service.CliBackend;
 using AIThread.Service.Interfaces;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,8 @@ public sealed class MemoryRelabelWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Its model calls through a CLI take a background slot: threads keep the rest (CliEngineOptions.BackgroundProcesses).
+        using var background = CliSlots.Background();
         // Let the host finish starting (migrations, 9router, project key backfill) before the first pass.
         await Task.Delay(TimeSpan.FromSeconds(45), stoppingToken).ConfigureAwait(false);
         var interval = TimeSpan.FromMinutes(Math.Max(1, options.Value.MemoryRelabelIntervalMinutes));

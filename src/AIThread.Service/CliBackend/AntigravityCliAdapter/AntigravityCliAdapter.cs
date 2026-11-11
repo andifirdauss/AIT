@@ -23,7 +23,7 @@ public sealed partial class AntigravityCliAdapter(IOptions<AIThreadOptions> opti
     private static readonly TimeSpan ModelsCacheDuration = TimeSpan.FromMinutes(10);
     private static readonly CliCallLimits ModelsLimits = new(TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(60));
 
-    private readonly SemaphoreSlim _slots = new(Math.Max(1, options.Value.AntigravityCli.MaxProcesses));
+    private readonly CliSlots _slots = new(options.Value.AntigravityCli.MaxProcesses, options.Value.AntigravityCli.BackgroundProcesses);
     private DetectCache? _detected;
     private ModelsCache? _models;
 

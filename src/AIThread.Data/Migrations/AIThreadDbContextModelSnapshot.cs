@@ -1411,6 +1411,9 @@ namespace AIThread.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<bool>("EarlyExecution")
+                        .HasColumnType("bit");
+
                     b.Property<int>("ExecutorMaxRetries")
                         .HasColumnType("int");
 

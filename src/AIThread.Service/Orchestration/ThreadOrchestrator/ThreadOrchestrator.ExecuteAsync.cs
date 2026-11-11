@@ -60,6 +60,23 @@ public sealed partial class ThreadOrchestrator
                     recorder, cancellationToken);
             }
 
+            // Every write is journaled so the thread can be undone, also the tasks that run while the planner plans.
+            var journal = new FileJournal(dbFactory, thread.Id, scope);
+            // The batches the planner commits before its final plan (commit_tasks); a resumed planner goes on with its own.
+            var earlier = prepared.Resume?.Conversation.Committed;
+            var stream = new PlanStream(executionEngine, recorder, progress, executors, scope, settings, journal, settings.EarlyExecution, BaselineAsync, cancellationToken,
+                earlier, earlier is { Executed: true } ? await EarlierResultsAsync(thread.Id, cancellationToken) : null);
+
+            // The unit test baseline of a part of the plan, before its files change.
+            async Task BaselineAsync(ThreadPlan part, CancellationToken token)
+            {
+                if (unitTests is null) return;
+                var partFiles = part.Tasks.SelectMany(t => t.To is null ? [t.File] : new[] { t.File, t.To }).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                var partModules = (await codeMapper.MapQuicklyAsync(project, partFiles, token)).Select(h => h.Module)
+                    .Concat(codeMap.Select(h => h.Module)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                await unitTestStage.CompleteBaselineAsync(unitTests, part, partModules, recorder, progress, token);
+            }
+
             // 1. Plan
             await recorder.UpdateThreadAsync(t =>
             {
@@ -72,30 +89,45 @@ public sealed partial class ThreadOrchestrator
             var canApprove = !string.IsNullOrEmpty(request.SessionId) || request.Source == ThreadSource.Dashboard;
             var plannerInput = new PlannerInput(request, project, planners, scope, settings, canAsk, codeMap, labelsFromSession, promptFiles,
                 AutoTesting: tester is not null, PreviousTurn: previousTurn, UnitTests: unitTests, SessionChanges: sessionChanges, CanApprove: canApprove,
-                Databases: await DatabasesAsync(project.ProjectId, cancellationToken), OutsideChanges: outsideChanges);
+                Databases: await DatabasesAsync(project.ProjectId, cancellationToken), OutsideChanges: outsideChanges, Stream: stream);
             var planClock = Stopwatch.StartNew();
             PlanningResult planning;
             await progress.PhaseAsync("🧠", $"Planner · {planner.Model}", cancellationToken);
-            if (prepared.Resume is { Question.Approval: { } approval } waiting)
+            try
             {
-                var decision = ApprovalReply.Parse(prepared.Reply);
-                await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern or ApprovalDecision.AlwaysAll
-                    ? Lang.T("🔐 Izin diberikan, rencana dilanjutkan", "🔐 Permission given, the plan goes on")
-                    : decision is ApprovalDecision.Rehearse && approval.Request.AllowRehearse
-                        ? Lang.T("🧪 Latihan lokal dulu, eksekusi menunggu izin berikutnya", "🧪 Local rehearsal first, running waits for the next permission")
-                        : Lang.T("🔐 Izin ditolak, planner mencari jalan lain", "🔐 Permission denied, the planner looks for another way"), cancellationToken, hang: 3);
-                planning = await plannerAgent.ResumeApprovalAsync(plannerInput, waiting.Conversation, approval, decision, prepared.Reply ?? string.Empty, recorder, progress, cancellationToken);
+                if (prepared.Resume is { Question.Approval: { } approval } waiting)
+                {
+                    var decision = ApprovalReply.Parse(prepared.Reply);
+                    await progress.StepAsync(decision is ApprovalDecision.Once or ApprovalDecision.Always or ApprovalDecision.AlwaysPattern or ApprovalDecision.AlwaysAll
+                        ? Lang.T("🔐 Izin diberikan, rencana dilanjutkan", "🔐 Permission given, the plan goes on")
+                        : decision is ApprovalDecision.Rehearse && approval.Request.AllowRehearse
+                            ? Lang.T("🧪 Latihan lokal dulu, eksekusi menunggu izin berikutnya", "🧪 Local rehearsal first, running waits for the next permission")
+                            : Lang.T("🔐 Izin ditolak, planner mencari jalan lain", "🔐 Permission denied, the planner looks for another way"), cancellationToken, hang: 3);
+                    planning = await plannerAgent.ResumeApprovalAsync(plannerInput, waiting.Conversation, approval, decision, prepared.Reply ?? string.Empty, recorder, progress, cancellationToken);
+                }
+                else if (prepared.Resume is { } resume)
+                {
+                    await progress.StepAsync(Lang.T("💬 Jawaban diterima, rencana dilanjutkan", "💬 Answer received, the plan goes on"), cancellationToken, hang: 3);
+                    planning = await plannerAgent.ResumeAsync(plannerInput, resume.Conversation, resume.Question.AnswerFor(prepared.Reply ?? string.Empty), recorder, progress, cancellationToken);
+                }
+                else
+                {
+                    planning = await plannerAgent.PlanAsync(plannerInput, recorder, progress, cancellationToken);
+                }
             }
-            else if (prepared.Resume is { } resume)
+            catch
             {
-                await progress.StepAsync(Lang.T("💬 Jawaban diterima, rencana dilanjutkan", "💬 Answer received, the plan goes on"), cancellationToken, hang: 3);
-                planning = await plannerAgent.ResumeAsync(plannerInput, resume.Conversation, resume.Question.AnswerFor(prepared.Reply ?? string.Empty), recorder, progress, cancellationToken);
-            }
-            else
-            {
-                planning = await plannerAgent.PlanAsync(plannerInput, recorder, progress, cancellationToken);
+                // Committed tasks already running finish before the thread ends: no file changes after it.
+                await stream.DrainAsync();
+                throw;
             }
             planClock.Stop();
+            if (planning.Pause is not null && stream.Executed > 0)
+            {
+                // The thread waits for the developer with nothing running.
+                await progress.StepAsync(Lang.T($"⏳ menunggu {stream.Executed} tugas yang sudah di-commit selesai sebelum bertanya", $"⏳ waiting for {stream.Executed} committed task(s) to finish before asking"), cancellationToken, hang: 3);
+                await stream.DrainAsync();
+            }
             planner = planning.Node;
             await progress.StepAsync(planning.Pause is null ? Lang.T($"selesai dalam {Seconds(planClock.ElapsedMilliseconds)} ({PlanningTimes(planning)}) · {planning.Steps} giliran · {FinalReport.Tokens(planning.Tokens)} token", $"done in {Seconds(planClock.ElapsedMilliseconds)} ({PlanningTimes(planning)}) · {planning.Steps} turns · {FinalReport.Tokens(planning.Tokens)} tokens") + (planning.CachedTokens > 0 ? $" · c{FinalReport.Tokens(planning.CachedTokens)}" : string.Empty) + (planning.ToolsNodeTokens > 0 ? $" · sub-agent {FinalReport.Tokens(planning.ToolsNodeTokens)}" : string.Empty) : Lang.T("menunggu jawaban developer", "waiting for the developer's answer"),
                 cancellationToken, last: true);
@@ -152,23 +184,27 @@ public sealed partial class ThreadOrchestrator
             if (executors.Count == 0) throw new OrchestrationException(Lang.T("Belum ada node Executor aktif. Tambahkan di menu Node.", "No active Executor node yet. Add one in the Node menu."));
 
             await ReportPlanAsync(progress, plan, cancellationToken);
-            recorder.Log(ActivityLevel.Info, Lang.T($"Rencana: {plan.Tasks.Count} tugas, {plan.Contract.Count} item kontrak. {plan.Summary}", $"Plan: {plan.Tasks.Count} tasks, {plan.Contract.Count} contract items. {plan.Summary}"));
+            var early = stream.Executed > 0
+                ? Lang.T($" {stream.Executed} di antaranya sudah berjalan selama planning ({stream.Batches} batch).", $" {stream.Executed} of them already ran during planning ({stream.Batches} batches).")
+                : string.Empty;
+            recorder.Log(ActivityLevel.Info, Lang.T($"Rencana: {plan.Tasks.Count} tugas, {plan.Contract.Count} item kontrak.{early} {plan.Summary}", $"Plan: {plan.Tasks.Count} tasks, {plan.Contract.Count} contract items.{early} {plan.Summary}"));
 
-            // The baseline covers every test the plan concerns before a file changes.
-            if (unitTests is not null)
+            // The baseline covers every test the plan concerns before its files change (BaselineAsync); the tasks
+            // committed during planning had theirs before they ran.
+            try
             {
-                var planFiles = plan.Tasks.SelectMany(t => t.To is null ? [t.File] : new[] { t.File, t.To }).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                var planModules = (await codeMapper.MapQuicklyAsync(project, planFiles, cancellationToken)).Select(h => h.Module)
-                    .Concat(codeMap.Select(h => h.Module)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                await unitTestStage.CompleteBaselineAsync(unitTests, plan, planModules, recorder, progress, cancellationToken);
+                await stream.PrepareFinalAsync(plan, cancellationToken);
+            }
+            catch
+            {
+                await stream.DrainAsync();
+                throw;
             }
 
-            // 2. Execute in parallel; every write is journaled so the thread can be undone.
+            // 2. Execute in parallel, together with the committed tasks still running.
             await recorder.UpdateThreadAsync(t => t.Status = ThreadStatus.Executing);
             await progress.PhaseAsync("🚀", Lang.T($"Eksekusi · {executors.Count} executor paralel", $"Execution · {executors.Count} parallel executors"), cancellationToken);
-            var taskEntities = await recorder.CreateTasksAsync(plan);
-            var journal = new FileJournal(dbFactory, thread.Id, scope);
-            var execution = await executionEngine.RunAsync(new ExecutionRequest(plan, taskEntities, executors, scope, settings, journal), recorder, progress, cancellationToken);
+            var execution = await stream.RunAsync();
 
             await recorder.UpdateThreadAsync(t =>
             {

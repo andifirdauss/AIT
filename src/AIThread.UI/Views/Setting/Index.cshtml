@@ -86,6 +86,13 @@
                         @Lang.T("Hanya untuk ambiguitas nyata, perubahan berisiko yang tidak diminta, atau fakta yang tidak ada di kode — bukan konfirmasi tiap prompt. Thread berhenti dengan pertanyaan bernomor; pesan berikutnya di sesi yang sama menjadi jawaban dan rencana dilanjutkan.", "Only for real ambiguity, risky changes nobody asked for, or facts that are not in the code — not to confirm every prompt. The thread stops with a numbered question; the next message in the same session becomes the answer and the plan goes on.")
                     </div>
                 </div>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="earlyExecution" />
+                    <label class="form-check-label" for="earlyExecution">@Lang.T("Eksekusi selama planning", "Execute while planning")</label>
+                    <div class="form-text">
+                        @Lang.T("Untuk perubahan besar, planner mengirim tugas yang sudah pasti per batch (commit_tasks) dan executor langsung mengerjakannya selagi planner menyusun sisanya. Planner melihat hasilnya dan bisa menambah tugas perbaikan. Mati: batch menunggu rencana akhir.", "For larger changes the planner sends the tasks that are final in batches (commit_tasks) and the executors start on them while the planner plans the rest. The planner sees the results and can add fix tasks. Off: the batches wait for the final plan.")
+                    </div>
+                </div>
                 <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="commandToolEnabled" />
                     <label class="form-check-label" for="commandToolEnabled">@Lang.T("Planner boleh menjalankan perintah (run_command)", "The planner may run commands (run_command)")</label>
